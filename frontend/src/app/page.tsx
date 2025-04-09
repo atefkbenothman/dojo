@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 import { DarkModeToggle } from "@/components/dark-mode-toggle"
 import { Chat } from "@/app/chat"
@@ -21,8 +21,31 @@ export default function Home() {
   })
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
-
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false)
+  const [isSmallScreen, setIsSmallScreen] = useState<boolean>(false)
+
+  // Check if screen is small on mount and when window resizes
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const small = window.innerWidth < 640
+      setIsSmallScreen(small)
+
+      // If screen is small, ensure sidebar is not collapsed
+      if (small && sidebarCollapsed) {
+        setSidebarCollapsed(false)
+        resizeChatPanel(20)
+      }
+    }
+
+    // Check on mount
+    checkScreenSize()
+
+    // Add event listener for window resize
+    window.addEventListener("resize", checkScreenSize)
+
+    // Clean up event listener
+    return () => window.removeEventListener("resize", checkScreenSize)
+  }, [sidebarCollapsed])
 
   const resizeChatPanel = (newSize: number) => {
     if (chatPanelRef.current) {
@@ -33,16 +56,21 @@ export default function Home() {
   }
 
   const handleSidebarClick = (mode: boolean) => {
+    // Don't allow collapsing on small screens
+    if (isSmallScreen && mode === true) {
+      return
+    }
+
     mode === true ? resizeChatPanel(8) : resizeChatPanel(20)
     setSidebarCollapsed(mode)
     play()
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="flex h-[100dvh] w-screen overflow-hidden">
       {AudioComponent}
       <ResizablePanelGroup direction="horizontal">
-        <ResizablePanel defaultSize={80}>
+        <ResizablePanel defaultSize={80} className="hidden sm:block">
           <div className="flex h-full flex-col">
             {/* Content Header */}
             <div className="bg-card flex h-12 flex-shrink-0 items-center border-b pr-2 pl-4">
@@ -81,7 +109,7 @@ export default function Home() {
           onCollapse={() => handleSidebarClick(true)}
           onExpand={() => handleSidebarClick(false)}
           style={{
-            minWidth: "2rem",
+            minWidth: "2.5rem",
           }}
         >
           <div className={cn("flex h-full w-full flex-col")}>

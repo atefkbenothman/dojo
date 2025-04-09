@@ -11,33 +11,97 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ArrowUp } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import { useVirtualizer } from "@tanstack/react-virtual"
+import { useRef } from "react"
 
 export function Chat() {
   const { messages, input, handleInputChange, handleSend } = useChatProvider()
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    estimateSize: () => 80,
+    getScrollElement: () => scrollRef.current,
+  })
+
+  const virtualItems = virtualizer.getVirtualItems()
+
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* Message List */}
-          <div className="space-y-2 p-2">
-            {messages.map((msg, idx) =>
-              msg.role === "user" ? (
-                <div
-                  key={idx}
-                  className="bg-secondary text-secondary-foreground inline-block w-full p-2 px-2 py-1 wrap-break-word"
-                >
-                  <p className="text-xs">{msg.content.toString()}</p>
-                </div>
-              ) : (
-                <div
-                  key={idx}
-                  className="bg-accent text-accent-foreground inline-block w-full p-2 px-2 py-1 wrap-break-word"
-                >
-                  <p className="text-xs">{msg.content.toString()}</p>
-                </div>
-              ),
-            )}
+        <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
+          <div
+            className="relative flex w-full flex-col"
+            style={{ height: `${virtualizer.getTotalSize()}px` }}
+          >
+            <div
+              className="absolute flex w-full flex-col p-2"
+              style={{
+                transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
+              }}
+            >
+              {/* Message List */}
+              {virtualItems.map((vItem) => {
+                const msg = messages[vItem.index]!
+                return (
+                  <div
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={virtualizer.measureElement}
+                  >
+                    {msg.role === "user" ? (
+                      <div className="bg-accent text-accent-foreground inline-block w-full overflow-auto p-2 wrap-break-word">
+                        <p className="text-xs">{msg.content.toString()}</p>
+                      </div>
+                    ) : (
+                      <div className="bg-popover text-accent-foreground inline-block w-full overflow-auto p-2 text-sm wrap-break-word">
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ ...props }) => <h1 className="text-xs" />,
+                            h2: ({ ...props }) => (
+                              <h2 className="text-xs" {...props} />
+                            ),
+                            h3: ({ ...props }) => (
+                              <h3 className="text-xs" {...props} />
+                            ),
+                            p: ({ ...props }) => (
+                              <p className="text-xs" {...props} />
+                            ),
+                            ul: ({ ...props }) => (
+                              <ul className="text-xs" {...props} />
+                            ),
+                            ol: ({ ...props }) => (
+                              <ol className="text-xs" {...props} />
+                            ),
+                            li: ({ ...props }) => (
+                              <li className="text-xs" {...props} />
+                            ),
+                            code: ({ className, children, ...props }: any) => {
+                              const match = /language-(\w+)/.exec(
+                                className || "",
+                              )
+                              const isInline = !className
+                              return (
+                                <code
+                                  className="text-xs font-medium"
+                                  {...props}
+                                >
+                                  {children}
+                                </code>
+                              )
+                            },
+                          }}
+                        >
+                          {msg.content.toString()}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
         {/* Footer */}
@@ -45,7 +109,7 @@ export function Chat() {
           <Textarea
             value={input}
             onChange={handleInputChange}
-            className="ring-none max-h-[280px] min-h-[100px] flex-1 resize-none text-xs focus-visible:ring-transparent"
+            className="ring-none max-h-[280px] min-h-[100px] flex-1 resize-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
           />
           <div className="flex w-full">
             <Select>

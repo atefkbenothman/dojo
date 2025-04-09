@@ -37,7 +37,7 @@ export function MCPList() {
                 : handleConnect
             }
             disabled={connectionStatus === "connecting"}
-            className="w-full"
+            className="w-fit"
             variant={
               connectionStatus === "connected" ? "destructive" : "default"
             }
