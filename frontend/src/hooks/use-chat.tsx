@@ -148,13 +148,12 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   }, [connectionStatus, sessionId])
 
   const handleSend = useCallback(async () => {
-    if (connectionStatus !== "connected" || !sessionId) {
-      console.warn("handleSend called but not connected")
+    if (chatStatus === "loading") {
+      console.warn("handleSend called while already loading")
       return
     }
 
     const messageToSend = input.trim()
-
     if (!messageToSend) return
 
     const userMessage: CoreMessage = {
@@ -219,7 +218,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         { role: "assistant", content: "I encountered an error" },
       ])
     }
-  }, [connectionStatus, sessionId, input, context])
+  }, [connectionStatus, sessionId, input, context, messages, chatStatus])
 
   const value: AIChatContextType = {
     messages,

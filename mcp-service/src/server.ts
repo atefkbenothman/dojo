@@ -1,9 +1,26 @@
 import * as path from "path"
-
 import express, { Express, Request, Response } from "express"
-import { CoreMessage } from "ai"
+import { CoreMessage, extractReasoningMiddleware, LanguageModel, wrapLanguageModel } from "ai"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { MCPClient } from "./mcp-client"
+import dotenv from "dotenv"
 
+dotenv.config({
+  path: path.resolve(process.cwd(), "../.env")
+})
+
+let aiModel: LanguageModel | null = null
+
+try {
+  const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })
+  aiModel = wrapLanguageModel({
+    model: google("gemini-1.5-flash"),
+    middleware: extractReasoningMiddleware({ tagName: "think" })
+  })
+} catch (err) {
+  console.error("[server]: Failed to initialize central AI model:", err)
+  aiModel = null
+}
 
 // Store active connections
 interface ActiveConnection {
@@ -60,10 +77,16 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
+  if (!aiModel) {
+    console.error(`[server]: Cannot connect ${sessionId}, AI model not initialized.`)
+    res.status(500).json({ message: 'AI Service not configured on backend.' })
+    return
+  }
+
   let mcpClient: MCPClient | null = null
 
   try {
-    mcpClient = new MCPClient(path.resolve(process.cwd(), ".."))
+    mcpClient = new MCPClient(aiModel)
     console.log(`[server]: Starting MCPClient connection for ${sessionId}...`)
 
     await mcpClient.start()
@@ -124,9 +147,9 @@ app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
 app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, messages } = req.body
 
-  if (!sessionId || typeof sessionId !== "string") {
-    console.warn("[server]: /chat called without a valid sessionId")
-    res.status(400).json({ message: "Missing or invalid sessionId" })
+  if (!aiModel) {
+    console.error(`[server /chat - Direct]: Cannot process direct chat, AI model not initialized.`)
+    res.status(500).json({ message: 'AI Service not configured on backend.' });
     return
   }
 
@@ -141,10 +164,19 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const connectionData = activeConnections.get(sessionId)
 
   if (!connectionData) {
-    console.log(`[server]: Session ${sessionId} not found for chat`)
-    res.status(404).json({
-      message: "Sesssion not found or not connected. Please connect first"
-    })
+    console.log(`[server /chat]: No active MCP connection found for sessionId: ${sessionId}. Using direct AI call.`)
+    try {
+      const response = await MCPClient.directChat(aiModel, messages)
+      if (!response) {
+        console.warn(`[server]: MCPClient chat for ${sessionId} returned undefined: ${response}`)
+        res.status(500).json({ message: response })
+        return
+      }
+      res.status(200).json({ response: response })
+    } catch (err) {
+      console.error(`[server /chat - Direct]: Error during direct AI call:`, err)
+      res.status(500).json({ message: `Error processing direct chat: ${err}` })
+    }
     return
   }
 

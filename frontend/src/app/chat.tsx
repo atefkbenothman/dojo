@@ -53,7 +53,9 @@ export function Chat() {
                   >
                     {msg.role === "user" ? (
                       <div className="bg-accent text-accent-foreground inline-block w-full overflow-auto p-2 wrap-break-word">
-                        <p className="text-xs">{msg.content.toString()}</p>
+                        <p className="text-xs leading-6">
+                          {msg.content.toString()}
+                        </p>
                       </div>
                     ) : (
                       <div className="bg-popover text-accent-foreground inline-block w-full overflow-auto p-2 text-sm wrap-break-word">
@@ -67,7 +69,7 @@ export function Chat() {
                               <h3 className="text-xs" {...props} />
                             ),
                             p: ({ ...props }) => (
-                              <p className="text-xs" {...props} />
+                              <p className="text-xs leading-6" {...props} />
                             ),
                             ul: ({ ...props }) => (
                               <ul className="text-xs" {...props} />

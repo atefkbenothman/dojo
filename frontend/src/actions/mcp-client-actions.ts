@@ -86,11 +86,6 @@ export async function disconnectMCP(sessionId: string | null): Promise<{ success
 
 
 export async function sendChatMCP(sessionId: string | null, messages: CoreMessage[]): Promise<{ response?: string; error?: string }> {
-  if (!sessionId) {
-    console.warn('[Next Action] Cannot send chat, no sessionId provided')
-    return { error: 'Not connected. Session ID is missing' }
-  }
-
   if (!messages || messages.length === 0) {
     console.warn("[Next Action] Cannot send chat, message is empty")
     return { error: "Cannot send an empty message" }

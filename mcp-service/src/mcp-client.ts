@@ -1,16 +1,12 @@
 import * as path from "path"
-
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
-import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import {
   CoreMessage,
-  extractReasoningMiddleware,
   generateText,
   LanguageModel,
   Tool,
   ToolSet,
-  wrapLanguageModel,
   jsonSchema
 } from "ai"
 import dotenv from "dotenv"
@@ -19,7 +15,6 @@ dotenv.config({
   path: path.resolve(process.cwd(), "../.env")
 })
 
-
 export class MCPClient {
   private client: Client | null = null
   private transport: StdioClientTransport | null = null
@@ -27,45 +22,14 @@ export class MCPClient {
   private command: string
   private args: string[]
   private tools: ToolSet | undefined = undefined
-  private model: LanguageModel | null = null
+  private model: LanguageModel
 
-  constructor(composeFilePath: string = path.resolve(process.cwd(), "..")) {
-    const GROQ_API_KEY = process.env.GROQ_API_KEY
-    if (!GROQ_API_KEY) {
-      throw new Error("GROQ_API_KEY is missing")
-    }
-    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
-    if (!GOOGLE_API_KEY) {
-      throw new Error("GOOGLE_API_KEY is missing")
-    }
+  constructor(model: LanguageModel, composeFilePath: string = path.resolve(process.cwd(), "..")) {
+    this.model = model
     this.composeFilePath = composeFilePath
     this.command = "docker-compose"
     this.args = ["run", "--rm", "github-mcp-server"]
-    this.initializeAI(GOOGLE_API_KEY, GROQ_API_KEY)
     console.log(`Client SDK configured to run: ${this.command} ${this.args.join(" ")} in ${this.composeFilePath}`);
-  }
-
-  private initializeAI(googleApiKey: string, groqApiKey?: string) {
-    try {
-      const google = createGoogleGenerativeAI({ apiKey: googleApiKey })
-      this.model = wrapLanguageModel({
-        model: google("gemini-1.5-flash"),
-        middleware: extractReasoningMiddleware({ tagName: "think" }),
-      })
-      // const groq = createGroq({ apiKey: groqApiKey })
-      // this.model = wrapLanguageModel({
-      //   model: groq("llama-3.3-70b-versatile"),
-      //   middleware: extractReasoningMiddleware({ tagName: "think" }),
-      // })
-      if (this.model) {
-         console.log(`Initialized AI: [${this.model.provider}] [${this.model.modelId}]`)
-      } else {
-          throw new Error("Failed to initialize any AI model")
-      }
-    } catch (err) {
-      console.error("Could not initialize AI model:", err)
-      throw err
-    }
   }
 
   public async start(): Promise<void> {
@@ -87,6 +51,7 @@ export class MCPClient {
 
     try {
       console.log("Connecting client and initiating handshake...")
+
       await this.client.connect(this.transport)
 
       const toolsResults = await this.client.listTools()
@@ -109,18 +74,9 @@ export class MCPClient {
   }
 
   public async chat(messages: CoreMessage[]): Promise<string | undefined> {
-    if (!this.model) {
-      console.warn("AI model not initialized")
-      return "Error: AI model not available."
-    }
-
     if (!this.client) {
       console.warn("Client not connected")
       return "Error: MCP Client not connected."
-    }
-
-    if (!messages || messages.length === 0) {
-      return "Error: cannot process empty message history"
     }
 
     console.log(`Generating AI response based on ${messages.length} messages. Last message:`, messages[messages.length-1]?.content)
@@ -175,6 +131,32 @@ export class MCPClient {
     } catch (err) {
       console.error("Error generating text or calling tool:", err)
       return `Sorry, I encountered an error: ${err instanceof Error ? err.message : 'Unknown error'}`
+    }
+  }
+
+  static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<string | undefined> {
+    console.log(`MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
+
+    if (!model) {
+      console.error("MCPClient.directChat called without a valid model")
+      return "Error: AI Model not provided for direct chat"
+    }
+
+    if (!messages || messages.length === 0) {
+        console.warn("MCPClient.directChat called with empty messages")
+        return "Error: Cannot process empty message history"
+    }
+
+    try {
+      const result = await generateText({
+        model: model,
+        messages: messages
+      })
+
+      return result.text
+    } catch (err) {
+      console.error(`MCPClient.directChat: Error during direct AI call:`, err)
+      return `Error during direct chat: ${err}`
     }
   }
 
