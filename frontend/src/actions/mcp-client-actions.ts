@@ -5,15 +5,10 @@ import { CoreMessage } from "ai"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
-export async function connectMCP(currentSessionId: string | null): Promise<{ sessionId: string | undefined}> {
-  let sessionId = currentSessionId
+export async function connectMCP(currentSessionId: string | null, serverId: string): Promise<{ sessionId: string | undefined}> {
+  let sessionId = currentSessionId || uuid4()
 
-  if (!sessionId) {
-    sessionId = uuid4()
-    console.log(`[Next Action] Generated new sessionId: ${sessionId}`)
-  } else {
-    console.log(`[Next Action] Using existing sessionId: ${sessionId}`)
-  }
+  console.log(`[Next Action] Requesting connection to server '${serverId}' for session: ${sessionId}`)
 
   try {
     console.log(`[Next Action] Calling ${MCP_SERVICE_URL}/connect for sessionId: ${sessionId}`)
@@ -23,7 +18,7 @@ export async function connectMCP(currentSessionId: string | null): Promise<{ ses
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ sessionId, serverId }),
       cache: "no-store"
     })
 
@@ -117,5 +112,29 @@ export async function sendChatMCP(sessionId: string | null, messages: CoreMessag
   } catch (err) {
     console.error("[Next Action] Error calling /chat:", err)
     return { error: "An unexpected error occurred during disconnect" }
+  }
+}
+
+export async function getAvailableMCPServers() {
+  try {
+    const response = await fetch(`${MCP_SERVICE_URL}/servers`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      },
+      cache: "no-store"
+    })
+
+    if (!response.ok) {
+      console.error(`[Next Action] /servers fetch failed: ${response.status}`)
+      return { error: "Failed to get available servers" }
+    }
+
+    const data = await response.json()
+
+    return { servers: data.servers }
+  } catch (err) {
+    console.error("[Next Action] Error calling /servers:", err)
+    return { error: err }
   }
 }

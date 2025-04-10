@@ -23,13 +23,15 @@ export class MCPClient {
   private args: string[]
   private tools: ToolSet | undefined = undefined
   private model: LanguageModel
+  private dockerComposeService: string
 
-  constructor(model: LanguageModel, composeFilePath: string = path.resolve(process.cwd(), "..")) {
+  constructor(model: LanguageModel, dockerComposeService: string, composeFilePath: string = path.resolve(process.cwd(), "..")) {
     this.model = model
     this.composeFilePath = composeFilePath
+    this.dockerComposeService = dockerComposeService
     this.command = "docker-compose"
-    this.args = ["run", "--rm", "github-mcp-server"]
-    console.log(`Client SDK configured to run: ${this.command} ${this.args.join(" ")} in ${this.composeFilePath}`);
+    this.args = ["run", "--rm", dockerComposeService]
+    console.log(`MCPClient configured for model ${this.model.modelId} and service ${this.dockerComposeService}`)
   }
 
   public async start(): Promise<void> {

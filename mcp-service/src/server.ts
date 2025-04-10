@@ -24,9 +24,29 @@ try {
 
 // Store active connections
 interface ActiveConnection {
+  serverId: string
   client: MCPClient
   lastActivityTimestamp: number
 }
+
+// Available MCP Server Configs
+interface MCPServerConfig {
+  dockerComposeService: string // The service name in docker-compose.yml
+  displayName: string
+}
+
+const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
+  "github": {
+    dockerComposeService: "github-mcp-server",
+    displayName: "Github"
+  },
+  "supabase": {
+    dockerComposeService: "supabase-mcp-server",
+    displayName: "Supabase"
+  }
+}
+
+console.log("[server]: Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
 
 // In-memory map to hold active connections, keyed by sessionId
 const activeConnections = new Map<string, ActiveConnection>()
@@ -46,14 +66,28 @@ app.get("/", (req: Request, res: Response) => {
 })
 
 
+app.get("/servers", (req: Request, res: Response) => {
+  const servers = Object.entries(AVAILABLE_MCP_SERVERS).map(([ id, config ]) => ({
+    id: id,
+    name: config.displayName
+  }))
+  res.status(200).json({ servers: servers })
+})
+
+
 app.post("/connect", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId } = req.body
+  const { sessionId, serverId } = req.body
 
   if (!sessionId || typeof sessionId !== "string") {
     console.warn("[server]: /connect called without a valid sessionId")
     res.status(400).json({
       message: "Missing or invalid sessionId"
     })
+    return
+  }
+
+  if (!serverId || typeof serverId !== "string" || !AVAILABLE_MCP_SERVERS[serverId]) {
+    res.status(400).json({ message: `Missing or invalid serverId. Available: ${Object.keys(AVAILABLE_MCP_SERVERS).join(', ')}` })
     return
   }
 
@@ -83,15 +117,40 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
+  // Handle existing connection
+  const existingConnection = activeConnections.get(sessionId)
+
+  if (existingConnection) {
+    if (existingConnection.serverId === serverId) {
+      console.log(`[server /connect]: Session ${sessionId} already connected to ${serverId}. Refreshing timestamp.`)
+      res.status(200).json({ message: `Already connected to ${AVAILABLE_MCP_SERVERS[serverId].displayName}`})
+      return
+    } else {
+      // Connecting to a different mcp server
+      console.log(`[server /connect]: Session ${sessionId} switching from ${existingConnection.serverId} to ${serverId}. Disconnecting old client...`)
+      try {
+        await existingConnection.client.cleanup()
+        console.log(`[server /connect]: Old client ${existingConnection.serverId} cleaned up for session ${sessionId}`)
+      } catch (err) {
+        console.error(`[server /connect]: Error cleaning up old client ${existingConnection.serverId} for session ${sessionId}:`, err)
+      }
+      activeConnections.delete(sessionId)
+    }
+  }
+
   let mcpClient: MCPClient | null = null
 
   try {
-    mcpClient = new MCPClient(aiModel)
+    const serverConfig = AVAILABLE_MCP_SERVERS[serverId]
+
+    mcpClient = new MCPClient(aiModel, serverConfig.dockerComposeService)
+
     console.log(`[server]: Starting MCPClient connection for ${sessionId}...`)
 
     await mcpClient.start()
 
     const connectionData: ActiveConnection = {
+      serverId: serverId,
       client: mcpClient,
       lastActivityTimestamp: Date.now()
     }
@@ -131,15 +190,14 @@ app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
   try {
     await connectionData.client.cleanup()
 
-    activeConnections.delete(sessionId)
     console.log(`[server]: Connection closed for ${sessionId}. Total connections: ${activeConnections.size}`)
-
     res.status(200).json({ message: "Disconnection successful" })
   } catch (err) {
     console.error(`[server]: Error during disconnection for ${sessionId}:`, err)
-    activeConnections.delete(sessionId)
     console.log(`[server]: Connection removed for ${sessionId} after error during close. Total connections: ${activeConnections.size}`)
     res.status(500).json({ message: "Error during disconnection cleanup" })
+  } finally {
+    activeConnections.delete(sessionId)
   }
 })
 
