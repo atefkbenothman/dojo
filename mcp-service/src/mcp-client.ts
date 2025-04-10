@@ -46,6 +46,7 @@ export class MCPClient {
     console.log(`[MCPClient] MCPClient configured for model ${this.model.modelId} and service ${this.mcpServerConfig.displayName}`)
   }
 
+  /* start */
   public async start(): Promise<void> {
     if (this.client || !this.mcpServerConfig) return
 
@@ -88,6 +89,7 @@ export class MCPClient {
     console.log("[MCPClient] Connected to server with tools: ", Object.values(this.tools).map(tool => tool.description))
   }
 
+  /* chat */
   public async chat(messages: CoreMessage[]): Promise<string> {
     if (!this.client) return "Error: MCP Client not connected"
 
@@ -102,25 +104,43 @@ export class MCPClient {
 
     for (const message of response.response.messages) {
       for (const content of message.content) {
-        if (typeof content === "object") {
-          if (content.type === "text" || content.type === "reasoning") {
-            finalText.push(content.text)
-          } else if (content.type === "tool-call") {
-            console.log("[MCPClient] Calling Tool:", content)
-            const toolResult = await this.client.callTool({
-              name: content.toolName,
-              args: content.args
-            })
-            toolResults.push(toolResult)
-            finalText.push(`[Calling tool ${content.toolName} with args ${JSON.stringify(content.args)}]`)
-            messages.push({
+
+        if (typeof content !== "object") continue
+
+        if (content.type === "text" || content.type == "reasoning") {
+          finalText.push(content.text)
+          continue
+        }
+
+        if (content.type === "tool-call") {
+          console.log("[MCPClient] Calling Tool:", content)
+
+          const { data: toolCall, error } = await asyncTryCatch(this.client.callTool({
+            name: content.toolName,
+            args: content.args
+          }))
+
+          if (error || !toolCall) {
+            finalText.push(`Error calling tool: ${content.toolName} ${JSON.stringify(content.args)}`)
+            continue
+          }
+
+          finalText.push(`[Calling tool ${content.toolName} with args ${JSON.stringify(content.args)}]`)
+
+          toolResults.push(toolCall)
+
+          const updatedMessages = [
+            ...messages,
+            {
               role: "user",
-              content: toolResult.content as string
-            })
-            const finalResponse = await generateModelResponse(this.model, messages)
-            if (finalResponse) {
-              finalText.push(finalResponse.text)
-            }
+              content: toolCall.content as string
+            } as CoreMessage
+          ]
+
+          const finalResponse = await generateModelResponse(this.model, updatedMessages)
+
+          if (finalResponse) {
+            finalText.push(finalResponse.text)
           }
         }
       }
@@ -129,6 +149,7 @@ export class MCPClient {
     return finalText.join("\n\n")
   }
 
+  /* direct chat */
   static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<string> {
     console.log(`[MCPClient] MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
 
@@ -143,6 +164,7 @@ export class MCPClient {
     return response.text
   }
 
+  /* clean up */
   public async cleanup() {
     if (this.client) {
       console.log("[MCPClient] Cleaning up and closing MCPClient")
