@@ -80,21 +80,21 @@ export async function disconnectMCP(sessionId: string | null): Promise<{ success
 }
 
 
-export async function sendChatMCP(sessionId: string | null, messages: CoreMessage[]): Promise<{ response?: string; error?: string }> {
+export async function sendChatMCP(sessionId: string | null, modelId: string, messages: CoreMessage[]): Promise<{ response?: string; error?: string }> {
   if (!messages || messages.length === 0) {
     console.warn("[Next Action] Cannot send chat, message is empty")
     return { error: "Cannot send an empty message" }
   }
 
   try {
-    console.log(`[Next Action] Calling ${MCP_SERVICE_URL}/chat for sessionId: ${sessionId}`)
+    console.log(`[Next Action] Calling ${MCP_SERVICE_URL}/chat for sessionId: ${sessionId} using ${modelId}`)
 
     const response = await fetch(`${MCP_SERVICE_URL}/chat`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ sessionId, messages }),
+        body: JSON.stringify({ sessionId, messages, modelId }),
         cache: "no-store",
     })
 

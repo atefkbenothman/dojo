@@ -13,10 +13,24 @@ import {
 import { ArrowUp } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { useRef } from "react"
+import { useRef, useState } from "react"
+import { useSoundEffect } from "@/hooks/use-sound-effect"
 
 export function Chat() {
-  const { messages, input, handleInputChange, handleSend } = useChatProvider()
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSend,
+    selectedModelId,
+    handleModelChange,
+    availableModels,
+  } = useChatProvider()
+  const { play, AudioComponent } = useSoundEffect("./hover.mp3", {
+    volume: 0.5,
+  })
+
+  const [selectedModel, setSelectedModel] = useState<string>(selectedModelId)
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -27,6 +41,16 @@ export function Chat() {
   })
 
   const virtualItems = virtualizer.getVirtualItems()
+
+  const handleTrigger = () => {
+    play()
+  }
+
+  const handleSelectChange = (modelId: string) => {
+    setSelectedModel(modelId)
+    handleModelChange(modelId)
+    play()
+  }
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -106,27 +130,24 @@ export function Chat() {
         </div>
         {/* Footer */}
         <div className="flex flex-shrink-0 flex-col items-center gap-2 border-t p-2">
+          {AudioComponent}
           <div className="dark:bg-input/30 relative w-full border bg-transparent">
             <Textarea
               value={input}
               onChange={handleInputChange}
-              className="ring-none max-h-[280px] min-h-[100px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
+              className="ring-none max-h-[280px] min-h-[120px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
             />
             <div className="dark:bg-input/30 flex w-full overflow-hidden bg-transparent p-2">
-              <Select>
-                <SelectTrigger className="">
-                  <SelectValue placeholder="Model " />
+              <Select value={selectedModel} onValueChange={handleSelectChange}>
+                <SelectTrigger onPointerDown={handleTrigger}>
+                  <SelectValue placeholder="Model" />
                 </SelectTrigger>
                 <SelectContent className="text-xs" align="start">
-                  <SelectItem value="light" className="text-xs">
-                    Light
-                  </SelectItem>
-                  <SelectItem value="dark" className="text-xs">
-                    Dark
-                  </SelectItem>
-                  <SelectItem value="system" className="text-xs">
-                    System
-                  </SelectItem>
+                  {availableModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Button

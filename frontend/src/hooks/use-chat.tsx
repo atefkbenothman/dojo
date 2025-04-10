@@ -21,6 +21,24 @@ interface AvailableServersInfo {
   name: string
 }
 
+interface AIModelInfo {
+  id: string
+  name: string
+}
+
+const AVAILABLE_MODELS: AIModelInfo[] = [
+  {
+    id: "gemini-1.5-flash",
+    name: "Gemini 1.5 Flash",
+  },
+  {
+    id: "deepseek-r1-distill-llama-70b",
+    name: "Deepseek R1",
+  },
+]
+
+const DEFAULT_MODEL_ID = "gemini-1.5-flash"
+
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
 type ChatStatus = "idle" | "loading" | "error"
 
@@ -38,6 +56,10 @@ type AIChatContextType = {
 
   availableServers: AvailableServersInfo[] | null
   connectedServerId: string | null
+
+  availableModels: AIModelInfo[]
+  selectedModelId: string
+  handleModelChange: (modelId: string) => void
 
   handleInputChange: (
     e:
@@ -85,6 +107,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     null,
   )
 
+  const [selectedModelId, setSelectedModelId] =
+    useState<string>(DEFAULT_MODEL_ID)
+
   useEffect(() => {
     const fetchServers = async () => {
       try {
@@ -95,8 +120,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
           return
         }
 
-        console.log("RESPONSE: ", response.servers)
-
         setAvailableServers(response.servers)
       } catch (err) {
         console.error("Exception fetching servers:", err)
@@ -105,6 +128,10 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     }
     fetchServers()
   }, [])
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModelId(modelId)
+  }
 
   const handleInputChange = (
     e:
@@ -222,7 +249,11 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setChatError(null)
 
     try {
-      const result = await sendChatMCP(sessionId, messagesToSend)
+      const result = await sendChatMCP(
+        sessionId,
+        selectedModelId,
+        messagesToSend,
+      )
 
       if (result.error) {
         console.error("Chat API error:", result.error)
@@ -286,6 +317,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     chatError,
     availableServers,
     connectedServerId,
+    availableModels: AVAILABLE_MODELS,
+    selectedModelId,
+    handleModelChange,
     handleInputChange,
     handleSend,
     handleNewChat,

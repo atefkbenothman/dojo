@@ -233,7 +233,7 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
-  console.log(`[server]: /chat request received for sessionId: ${sessionId}`)
+  console.log(`[server]: /chat request received for sessionId: ${sessionId} using model: ${model}`)
 
   const connectionData = activeConnections.get(sessionId)
 

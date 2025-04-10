@@ -21,10 +21,6 @@ export function MCPList() {
     connectedServerId,
   } = useChatProvider()
 
-  console.log("availableServers:", availableServers)
-  console.log("Is Array?", Array.isArray(availableServers))
-  console.log("Length:", availableServers?.length)
-
   if (
     !availableServers ||
     !Array.isArray(availableServers) ||
@@ -40,7 +36,6 @@ export function MCPList() {
   return (
     <div className="flex flex-row flex-wrap gap-4">
       {availableServers.map((server) => {
-        console.log("Rendering server:", server)
         const isConnected =
           connectionStatus === "connected" && connectedServerId === server.id
 
