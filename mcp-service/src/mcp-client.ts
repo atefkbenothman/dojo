@@ -10,6 +10,7 @@ import {
   jsonSchema
 } from "ai"
 import dotenv from "dotenv"
+import { MCPServerConfig } from "./types"
 
 dotenv.config({
   path: path.resolve(process.cwd(), "../.env")
@@ -18,20 +19,14 @@ dotenv.config({
 export class MCPClient {
   private client: Client | null = null
   private transport: StdioClientTransport | null = null
-  private composeFilePath: string
-  private command: string
-  private args: string[]
+  private mcpServerConfig: MCPServerConfig | null = null
   private tools: ToolSet | undefined = undefined
   private model: LanguageModel
-  private dockerComposeService: string
 
-  constructor(model: LanguageModel, dockerComposeService: string, composeFilePath: string = path.resolve(process.cwd(), "..")) {
+  constructor(model: LanguageModel, serverConfig: MCPServerConfig) {
     this.model = model
-    this.composeFilePath = composeFilePath
-    this.dockerComposeService = dockerComposeService
-    this.command = "docker-compose"
-    this.args = ["run", "--rm", dockerComposeService]
-    console.log(`MCPClient configured for model ${this.model.modelId} and service ${this.dockerComposeService}`)
+    this.mcpServerConfig = serverConfig
+    console.log(`MCPClient configured for model ${this.model.modelId} and service ${this.mcpServerConfig.displayName}`)
   }
 
   public async start(): Promise<void> {
@@ -45,10 +40,12 @@ export class MCPClient {
       version: "1.0.0"
     })
 
+    if (!this.mcpServerConfig) return
+
     this.transport = new StdioClientTransport({
-      command: this.command,
-      args: this.args,
-      cwd: this.composeFilePath
+      command: this.mcpServerConfig.command,
+      args: this.mcpServerConfig.args,
+      cwd: this.mcpServerConfig.cwd,
     })
 
     try {

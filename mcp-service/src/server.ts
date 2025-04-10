@@ -3,6 +3,7 @@ import express, { Express, Request, Response } from "express"
 import { CoreMessage, extractReasoningMiddleware, LanguageModel, wrapLanguageModel } from "ai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { MCPClient } from "./mcp-client"
+import type { MCPServerConfig, ActiveConnection } from "./types"
 import dotenv from "dotenv"
 
 dotenv.config({
@@ -22,27 +23,24 @@ try {
   aiModel = null
 }
 
-// Store active connections
-interface ActiveConnection {
-  serverId: string
-  client: MCPClient
-  lastActivityTimestamp: number
-}
-
-// Available MCP Server Configs
-interface MCPServerConfig {
-  dockerComposeService: string // The service name in docker-compose.yml
-  displayName: string
-}
+const PROJECT_ROOT_PATH = path.resolve(process.cwd(), '..')
 
 const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
   "github": {
-    dockerComposeService: "github-mcp-server",
-    displayName: "Github"
+    displayName: "Github",
+    command: "docker-compose",
+    args: ["run", "--rm", "github-mcp-server"],
+    cwd: PROJECT_ROOT_PATH
   },
   "supabase": {
-    dockerComposeService: "supabase-mcp-server",
-    displayName: "Supabase"
+    displayName: "Supabase",
+    command: "npx",
+    args: [
+      "-y",
+      "@supabase/mcp-server-supabase@latest",
+      "--access-token",
+      process.env.SUPABASE_ACCESS_TOKEN || ""
+    ],
   }
 }
 
@@ -143,7 +141,7 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
   try {
     const serverConfig = AVAILABLE_MCP_SERVERS[serverId]
 
-    mcpClient = new MCPClient(aiModel, serverConfig.dockerComposeService)
+    mcpClient = new MCPClient(aiModel, serverConfig)
 
     console.log(`[server]: Starting MCPClient connection for ${sessionId}...`)
 
