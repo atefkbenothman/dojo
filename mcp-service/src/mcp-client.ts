@@ -7,7 +7,8 @@ import {
   LanguageModel,
   Tool,
   ToolSet,
-  jsonSchema
+  jsonSchema,
+  GenerateTextResult
 } from "ai"
 import dotenv from "dotenv"
 import { asyncTryCatch } from "./utils"
@@ -16,6 +17,21 @@ import { MCPServerConfig } from "./types"
 dotenv.config({
   path: path.resolve(process.cwd(), "../.env")
 })
+
+async function generateModelResponse(model: LanguageModel, messages: CoreMessage[], tools?: ToolSet): Promise<GenerateTextResult<ToolSet, never> | null | undefined> {
+  const { data: response, error } = await asyncTryCatch(generateText({
+    model: model,
+    messages: messages,
+    tools: tools ?? {}
+  }))
+
+  if (error || !response) {
+    console.error("[MCPClient] Error generating text:", error)
+    return
+  }
+
+  return response
+}
 
 export class MCPClient {
   private client: Client | null = null
@@ -77,16 +93,9 @@ export class MCPClient {
 
     console.log(`[MCPClient] Generating AI response based on ${messages.length} messages. Last message:`, messages[messages.length-1]?.content)
 
-    const { data: response, error: responseError } = await asyncTryCatch(generateText({
-      model: this.model,
-      messages: messages,
-      tools: this.tools
-    }))
+    const response = await generateModelResponse(this.model, messages, this.tools)
 
-    if (responseError || !response) {
-      console.error("[MCPClient] Error generating text:", responseError)
-      return `Sorry, I encountered an error: ${responseError}`
-    }
+    if (!response) return "Error generating response from AI"
 
     let finalText = []
     let toolResults = []
@@ -108,11 +117,10 @@ export class MCPClient {
               role: "user",
               content: toolResult.content as string
             })
-            const finalResponse = await generateText({
-              model: this.model,
-              messages: messages
-            })
-            finalText.push(finalResponse.text)
+            const finalResponse = await generateModelResponse(this.model, messages)
+            if (finalResponse) {
+              finalText.push(finalResponse.text)
+            }
           }
         }
       }
@@ -128,12 +136,9 @@ export class MCPClient {
       return "Error: Cannot process empty message history"
     }
 
-    const { data: response, error } = await asyncTryCatch(generateText({ model: model, messages: messages }))
+    const response = await generateModelResponse(model, messages)
 
-    if (error || !response) {
-      console.error(`[MCPClient] MCPClient.directChat: Error during direct AI call:`, error)
-      return `Error during direct chat: ${error}`
-    }
+    if (!response) return "Error generating response from AI"
 
     return response.text
   }
