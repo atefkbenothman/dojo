@@ -12,7 +12,5 @@ export interface MCPServerConfig {
   displayName: string
   command: string
   args: string[]
-  requiredEnvVars?: string[]
   cwd?: string
-  env?: Record<string, string>
 }

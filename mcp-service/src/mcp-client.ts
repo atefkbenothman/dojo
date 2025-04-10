@@ -164,7 +164,6 @@ export class MCPClient {
       await this.client.close()
       this.client = null
       this.transport = null
-      console.log("MCPClient connection closed")
     }
   }
 }

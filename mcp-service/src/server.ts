@@ -4,26 +4,14 @@ import { CoreMessage, extractReasoningMiddleware, LanguageModel, wrapLanguageMod
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { MCPClient } from "./mcp-client"
 import type { MCPServerConfig, ActiveConnection } from "./types"
+import { asyncTryCatch, tryCatch } from "./utils"
 import dotenv from "dotenv"
 
 dotenv.config({
   path: path.resolve(process.cwd(), "../.env")
 })
 
-let aiModel: LanguageModel | null = null
-
-try {
-  const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })
-  aiModel = wrapLanguageModel({
-    model: google("gemini-1.5-flash"),
-    middleware: extractReasoningMiddleware({ tagName: "think" })
-  })
-} catch (err) {
-  console.error("[server]: Failed to initialize central AI model:", err)
-  aiModel = null
-}
-
-const PROJECT_ROOT_PATH = path.resolve(process.cwd(), '..')
+const PROJECT_ROOT_PATH = path.resolve(process.cwd(), "..")
 
 const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
   "github": {
@@ -45,6 +33,18 @@ const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
 }
 
 console.log("[server]: Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
+
+const { data: google, error } = tryCatch(createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY }))
+
+if (error) {
+  console.error("[server]: Failed to initialize central AI model:", error)
+  throw error
+}
+
+const aiModel: LanguageModel = wrapLanguageModel({
+  model: google("gemini-1.5-flash"),
+  middleware: extractReasoningMiddleware({ tagName: "think" })
+})
 
 // In-memory map to hold active connections, keyed by sessionId
 const activeConnections = new Map<string, ActiveConnection>()
@@ -126,43 +126,45 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
     } else {
       // Connecting to a different mcp server
       console.log(`[server /connect]: Session ${sessionId} switching from ${existingConnection.serverId} to ${serverId}. Disconnecting old client...`)
-      try {
-        await existingConnection.client.cleanup()
-        console.log(`[server /connect]: Old client ${existingConnection.serverId} cleaned up for session ${sessionId}`)
-      } catch (err) {
-        console.error(`[server /connect]: Error cleaning up old client ${existingConnection.serverId} for session ${sessionId}:`, err)
+      const { error } = await asyncTryCatch(existingConnection.client.cleanup())
+      if (error) {
+        console.error(`[server /connect]: Error cleaning up old client ${existingConnection.serverId} for session ${sessionId}:`, error)
       }
       activeConnections.delete(sessionId)
     }
   }
 
-  let mcpClient: MCPClient | null = null
+  const { data: mcpClient, error: mcpClientError } = tryCatch(new MCPClient(aiModel, AVAILABLE_MCP_SERVERS[serverId]))
 
-  try {
-    const serverConfig = AVAILABLE_MCP_SERVERS[serverId]
-
-    mcpClient = new MCPClient(aiModel, serverConfig)
-
-    console.log(`[server]: Starting MCPClient connection for ${sessionId}...`)
-
-    await mcpClient.start()
-
-    const connectionData: ActiveConnection = {
-      serverId: serverId,
-      client: mcpClient,
-      lastActivityTimestamp: Date.now()
-    }
-
-    // Store the new connection
-    activeConnections.set(sessionId, connectionData)
-    console.log(`[server]: Connection established for ${sessionId}. Total connections: ${activeConnections.size}`)
-
-    res.status(200).json({ message: "Connection successful" })
-  } catch (err) {
-    console.error(`[server]: Error establising connection for ${sessionId}:`, err)
+  if (!mcpClient || mcpClientError) {
+    console.error(`[server]: Error establising connection for ${sessionId}:`, mcpClientError)
     activeConnections.delete(sessionId)
     res.status(500).json({ message: "Failed to establish connection" })
+    return
   }
+
+  console.log(`[server]: Starting MCPClient connection for ${sessionId}...`)
+
+  const { error: mcpStartError } = await asyncTryCatch(mcpClient.start())
+
+  if (mcpStartError) {
+    console.error(`[server]: Error starting MCPClient for ${sessionId}`)
+    activeConnections.delete(sessionId)
+    res.status(500).json({ message: "Failed to start MCPClient" })
+    return
+  }
+
+  const connectionData: ActiveConnection = {
+    serverId: serverId,
+    client: mcpClient,
+    lastActivityTimestamp: Date.now()
+  }
+
+  // Store the new connection
+  activeConnections.set(sessionId, connectionData)
+
+  console.log(`[server]: Connection established for ${sessionId}. Total connections: ${activeConnections.size}`)
+  res.status(200).json({ message: "Connection successful" })
 })
 
 
@@ -185,18 +187,18 @@ app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
-  try {
-    await connectionData.client.cleanup()
+  const { error } = await asyncTryCatch(connectionData.client.cleanup())
 
-    console.log(`[server]: Connection closed for ${sessionId}. Total connections: ${activeConnections.size}`)
-    res.status(200).json({ message: "Disconnection successful" })
-  } catch (err) {
-    console.error(`[server]: Error during disconnection for ${sessionId}:`, err)
-    console.log(`[server]: Connection removed for ${sessionId} after error during close. Total connections: ${activeConnections.size}`)
+  if (error) {
+    console.error(`[server]: Error during disconnection for ${sessionId}:`, error)
     res.status(500).json({ message: "Error during disconnection cleanup" })
-  } finally {
-    activeConnections.delete(sessionId)
+    return
   }
+
+  activeConnections.delete(sessionId)
+
+  console.log(`[server]: Connection closed for ${sessionId}. Total connections: ${activeConnections.size}`)
+  res.status(200).json({ message: "Disconnection successful" })
 })
 
 
@@ -221,44 +223,32 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
 
   if (!connectionData) {
     console.log(`[server /chat]: No active MCP connection found for sessionId: ${sessionId}. Using direct AI call.`)
-    try {
-      const response = await MCPClient.directChat(aiModel, messages)
-      if (!response) {
-        console.warn(`[server]: MCPClient chat for ${sessionId} returned undefined: ${response}`)
-        res.status(500).json({ message: response })
-        return
-      }
-      res.status(200).json({ response: response })
-    } catch (err) {
-      console.error(`[server /chat - Direct]: Error during direct AI call:`, err)
-      res.status(500).json({ message: `Error processing direct chat: ${err}` })
+
+    const { data: directChatResponse, error } = await asyncTryCatch(MCPClient.directChat(aiModel, messages))
+
+    if (error || !directChatResponse) {
+      console.error(`[server /chat - Direct]: Error during direct AI call:`, error)
+      res.status(500).json({ message: `Error processing direct chat: ${error}` })
+      return
     }
+
+    res.status(200).json({ response: directChatResponse })
     return
   }
 
   connectionData.lastActivityTimestamp = Date.now()
   console.log(`[server]: Updated last activity time for ${sessionId}`)
 
-  try {
-    console.log(`[server]: Calling MCPClient chat for ${sessionId}...`)
+  const { data: response, error } = await asyncTryCatch(connectionData.client.chat(messages as CoreMessage[]))
 
-    const response = await connectionData.client.chat(messages as CoreMessage[])
-
-    if (!response) {
-      console.warn(`[server]: MCPClient chat for ${sessionId} returned undefined: ${response}`)
-      res.status(500).json({ message: response })
-      return
-    }
-
-    res.status(200).json({ response: response })
-    return
-  } catch (err) {
-    console.error(`[server]: Error during simulated chat for ${sessionId}:`, err)
-    res.status(500).json({
-      message: "Error processing chat message"
-    })
+  if (error || !response) {
+    console.error(`[server]: Error during chat for ${sessionId}:`, error)
+    res.status(500).json({ message: "Error processing chat message" })
     return
   }
+
+  res.status(200).json({ response: response })
+  return
 })
 
 
