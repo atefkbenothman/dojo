@@ -1,9 +1,10 @@
 import * as path from "path"
 import express, { Express, Request, Response } from "express"
-import { CoreMessage, extractReasoningMiddleware, LanguageModel, wrapLanguageModel } from "ai"
+import { CoreMessage, extractReasoningMiddleware, wrapLanguageModel } from "ai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { createGroq } from "@ai-sdk/groq"
 import { MCPClient } from "./mcp-client"
-import type { MCPServerConfig, ActiveConnection } from "./types"
+import type { MCPServerConfig, ActiveConnection, AIModelConfig } from "./types"
 import { asyncTryCatch, tryCatch } from "./utils"
 import dotenv from "dotenv"
 
@@ -34,17 +35,28 @@ const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
 
 console.log("[server]: Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
 
-const { data: google, error } = tryCatch(createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY }))
-
-if (error) {
-  console.error("[server]: Failed to initialize central AI model:", error)
-  throw error
+const AVAILABLE_AI_MODELS: Record<string, AIModelConfig>  = {
+  "gemini-1.5-flash": {
+    name: "Google Gemini",
+    modelName: "gemini-1.5-flash",
+    languageModel: wrapLanguageModel({
+      model: createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-1.5-flash"),
+      middleware: extractReasoningMiddleware({ tagName: "think" })
+    })
+  },
+  "deepseek-r1-distill-llama-70b": {
+    name: "Deepseek",
+    modelName: "deepseek-r1-distill-llama-70b",
+    languageModel: wrapLanguageModel({
+      model: createGroq({ apiKey: process.env.GROQ_API_KEY })("deepseek-r1-distill-llama-70b"),
+      middleware: extractReasoningMiddleware({ tagName: "think" })
+    })
+  }
 }
 
-const aiModel: LanguageModel = wrapLanguageModel({
-  model: google("gemini-1.5-flash"),
-  middleware: extractReasoningMiddleware({ tagName: "think" })
-})
+const DEFAULT_MODEL_ID = "gemini-1.5-flash"
+
+console.log("[server]: Available AI Models:", Object.keys(AVAILABLE_AI_MODELS).join(", "))
 
 // In-memory map to hold active connections, keyed by sessionId
 const activeConnections = new Map<string, ActiveConnection>()
@@ -111,12 +123,6 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
-  if (!aiModel) {
-    console.error(`[server]: Cannot connect ${sessionId}, AI model not initialized.`)
-    res.status(500).json({ message: 'AI Service not configured on backend.' })
-    return
-  }
-
   // Handle existing connection
   const existingConnection = activeConnections.get(sessionId)
 
@@ -136,7 +142,9 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
     }
   }
 
-  const { data: mcpClient, error: mcpClientError } = tryCatch(new MCPClient(aiModel, AVAILABLE_MCP_SERVERS[serverId]))
+  const mcpServer = AVAILABLE_MCP_SERVERS[serverId]
+
+  const { data: mcpClient, error: mcpClientError } = tryCatch(new MCPClient(mcpServer))
 
   if (!mcpClient || mcpClientError) {
     console.error(`[server]: Error establising connection for ${sessionId}:`, mcpClientError)
@@ -207,11 +215,15 @@ app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
 
 /* Chat */
 app.post("/chat", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId, messages } = req.body
+  const { sessionId, messages, modelId } = req.body
+
+  const model = modelId || DEFAULT_MODEL_ID
+
+  const aiModel = AVAILABLE_AI_MODELS[model].languageModel
 
   if (!aiModel) {
     console.error(`[server /chat - Direct]: Cannot process direct chat, AI model not initialized.`)
-    res.status(500).json({ message: 'AI Service not configured on backend.' });
+    res.status(500).json({ message: 'AI Model not configured on backend.' });
     return
   }
 
@@ -243,7 +255,7 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   connectionData.lastActivityTimestamp = Date.now()
   console.log(`[server]: Updated last activity time for ${sessionId}`)
 
-  const { data: response, error } = await asyncTryCatch(connectionData.client.chat(messages as CoreMessage[]))
+  const { data: response, error } = await asyncTryCatch(connectionData.client.chat(aiModel, messages as CoreMessage[]))
 
   if (error || !response) {
     console.error(`[server]: Error during chat for ${sessionId}:`, error)

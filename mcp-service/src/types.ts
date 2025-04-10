@@ -1,3 +1,4 @@
+import { LanguageModel } from "ai"
 import { MCPClient } from "./mcp-client"
 
 // Store active connections
@@ -13,4 +14,11 @@ export interface MCPServerConfig {
   command: string
   args: string[]
   cwd?: string
+}
+
+// Available AI Models
+export interface AIModelConfig {
+  name: string
+  modelName: string
+  languageModel: LanguageModel
 }

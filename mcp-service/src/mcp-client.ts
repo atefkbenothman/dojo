@@ -38,12 +38,10 @@ export class MCPClient {
   private transport: StdioClientTransport | null = null
   private mcpServerConfig: MCPServerConfig | null = null
   private tools: ToolSet | undefined = undefined
-  private model: LanguageModel
 
-  constructor(model: LanguageModel, serverConfig: MCPServerConfig) {
-    this.model = model
+  constructor(serverConfig: MCPServerConfig) {
     this.mcpServerConfig = serverConfig
-    console.log(`[MCPClient] MCPClient configured for model ${this.model.modelId} and service ${this.mcpServerConfig.displayName}`)
+    console.log(`[MCPClient] MCPClient configured for service ${this.mcpServerConfig.displayName}`)
   }
 
   /* Start */
@@ -90,12 +88,12 @@ export class MCPClient {
   }
 
   /* Chat */
-  public async chat(messages: CoreMessage[]): Promise<string> {
+  public async chat(model: LanguageModel, messages: CoreMessage[]): Promise<string> {
     if (!this.client) return "Error: MCP Client not connected"
 
     console.log(`[MCPClient] Generating AI response based on ${messages.length} messages. Last message:`, messages[messages.length-1]?.content)
 
-    const response = await generateModelResponse(this.model, messages, this.tools)
+    const response = await generateModelResponse(model, messages, this.tools)
 
     if (!response) return "Error generating response from AI"
 
@@ -137,7 +135,7 @@ export class MCPClient {
             } as CoreMessage
           ]
 
-          const finalResponse = await generateModelResponse(this.model, updatedMessages)
+          const finalResponse = await generateModelResponse(model, updatedMessages)
 
           if (finalResponse) {
             finalText.push(finalResponse.text)
