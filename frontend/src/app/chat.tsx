@@ -61,7 +61,9 @@ export function Chat() {
                       <div className="bg-popover text-accent-foreground inline-block w-full overflow-auto p-2 text-sm wrap-break-word">
                         <ReactMarkdown
                           components={{
-                            h1: ({ ...props }) => <h1 className="text-xs" />,
+                            h1: ({ ...props }) => (
+                              <h1 className="text-md font-bold" {...props} />
+                            ),
                             h2: ({ ...props }) => (
                               <h2 className="text-xs" {...props} />
                             ),
@@ -81,13 +83,9 @@ export function Chat() {
                               <li className="text-xs" {...props} />
                             ),
                             code: ({ className, children, ...props }: any) => {
-                              const match = /language-(\w+)/.exec(
-                                className || "",
-                              )
-                              const isInline = !className
                               return (
                                 <code
-                                  className="text-xs font-medium"
+                                  className="text-xs font-semibold"
                                   {...props}
                                 >
                                   {children}
