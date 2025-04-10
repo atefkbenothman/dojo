@@ -61,7 +61,7 @@ export default function Home() {
       return
     }
 
-    mode === true ? resizeChatPanel(8) : resizeChatPanel(20)
+    mode === true ? resizeChatPanel(8) : resizeChatPanel(30)
     setSidebarCollapsed(mode)
     play()
   }
@@ -70,7 +70,7 @@ export default function Home() {
     <div className="flex h-[100dvh] w-screen overflow-hidden">
       {AudioComponent}
       <ResizablePanelGroup direction="horizontal">
-        <ResizablePanel defaultSize={80} className="hidden sm:block">
+        <ResizablePanel defaultSize={70} className="hidden sm:block">
           <div className="flex h-full flex-col">
             {/* Content Header */}
             <div className="bg-card flex h-12 flex-shrink-0 items-center border-b pr-2 pl-4">
@@ -103,7 +103,7 @@ export default function Home() {
           className="bg-card h-full w-full"
           minSize={20}
           maxSize={60}
-          defaultSize={20}
+          defaultSize={30}
           collapsible
           collapsedSize={3}
           onCollapse={() => handleSidebarClick(true)}
