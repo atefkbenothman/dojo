@@ -10,6 +10,7 @@ import {
   jsonSchema
 } from "ai"
 import dotenv from "dotenv"
+import { asyncTryCatch } from "./utils"
 import { MCPServerConfig } from "./types"
 
 dotenv.config({
@@ -26,21 +27,16 @@ export class MCPClient {
   constructor(model: LanguageModel, serverConfig: MCPServerConfig) {
     this.model = model
     this.mcpServerConfig = serverConfig
-    console.log(`MCPClient configured for model ${this.model.modelId} and service ${this.mcpServerConfig.displayName}`)
+    console.log(`[MCPClient] MCPClient configured for model ${this.model.modelId} and service ${this.mcpServerConfig.displayName}`)
   }
 
   public async start(): Promise<void> {
-    if (this.client) {
-      console.warn("Client already started")
-      return
-    }
+    if (this.client || !this.mcpServerConfig) return
 
     this.client = new Client({
       name: "mcp-client",
       version: "1.0.0"
     })
-
-    if (!this.mcpServerConfig) return
 
     this.transport = new StdioClientTransport({
       command: this.mcpServerConfig.command,
@@ -48,119 +44,103 @@ export class MCPClient {
       cwd: this.mcpServerConfig.cwd,
     })
 
-    try {
-      console.log("Connecting client and initiating handshake...")
+    const { error: connectError } = await asyncTryCatch(this.client.connect(this.transport))
 
-      await this.client.connect(this.transport)
-
-      const toolsResults = await this.client.listTools()
-
-      this.tools = toolsResults.tools.reduce((acc, tool) => {
-        acc[tool.name] = {
-          description: tool.description,
-          parameters: jsonSchema(tool.inputSchema)
-        } as Tool
-        return acc
-      }, {} as ToolSet)
-
-      console.log("Connected to server with tools: ", Object.values(this.tools).map(tool => tool.description))
-    } catch (err) {
-      console.error("Failed to connect MCP client: ", err)
+    if (connectError) {
+      console.error("[MCPClient] Failed to connect MCP client: ", connectError)
       this.client = null
       this.transport = null
-      throw err
+      throw connectError
     }
+
+    const { data: allTools, error: allToolsError } = await asyncTryCatch(this.client.listTools())
+
+    if (allToolsError || !allTools) {
+      console.error("[MCPClient] Failed to fetch tools from MCP server:", allToolsError)
+      this.tools = {} as ToolSet
+      return
+    }
+
+    this.tools = allTools.tools.reduce((acc, tool) => {
+      acc[tool.name] = {
+        description: tool.description,
+        parameters: jsonSchema(tool.inputSchema)
+      } as Tool
+      return acc
+    }, {} as ToolSet)
+
+    console.log("[MCPClient] Connected to server with tools: ", Object.values(this.tools).map(tool => tool.description))
   }
 
-  public async chat(messages: CoreMessage[]): Promise<string | undefined> {
-    if (!this.client) {
-      console.warn("Client not connected")
-      return "Error: MCP Client not connected."
+  public async chat(messages: CoreMessage[]): Promise<string> {
+    if (!this.client) return "Error: MCP Client not connected"
+
+    console.log(`[MCPClient] Generating AI response based on ${messages.length} messages. Last message:`, messages[messages.length-1]?.content)
+
+    const { data: response, error: responseError } = await asyncTryCatch(generateText({
+      model: this.model,
+      messages: messages,
+      tools: this.tools
+    }))
+
+    if (responseError || !response) {
+      console.error("[MCPClient] Error generating text:", responseError)
+      return `Sorry, I encountered an error: ${responseError}`
     }
 
-    console.log(`Generating AI response based on ${messages.length} messages. Last message:`, messages[messages.length-1]?.content)
+    let finalText = []
+    let toolResults = []
 
-    try {
-      let response = await generateText({
-          model: this.model,
-          messages: messages,
-          tools: this.tools,
-      })
-
-      let finalText = []
-      let toolResults = []
-
-      for (const message of response.response.messages) {
-        for (const content of message.content) {
-          if (typeof content === "object") {
-            if (content.type === "text" || content.type === "reasoning") {
-              finalText.push(content.text)
-            } else if (content.type === "tool-call") {
-              console.log("CALLING TOOL: ", content)
-
-              const toolName = content.toolName
-              const toolArgs = content.args as { [x: string]: unknown } | undefined
-
-              const result = await this.client.callTool({
-                name: toolName,
-                arguments: toolArgs
-              })
-
-              toolResults.push(result)
-              finalText.push(`[Calling tool ${toolName} with args ${JSON.stringify(toolArgs)}]`)
-
-              messages.push({
-                role: "user",
-                content: result.content as string
-              })
-
-              const response = await generateText({
-                model: this.model,
-                messages: messages,
-              })
-
-              finalText.push(response.text)
-
-            }
+    for (const message of response.response.messages) {
+      for (const content of message.content) {
+        if (typeof content === "object") {
+          if (content.type === "text" || content.type === "reasoning") {
+            finalText.push(content.text)
+          } else if (content.type === "tool-call") {
+            console.log("[MCPClient] Calling Tool:", content)
+            const toolResult = await this.client.callTool({
+              name: content.toolName,
+              args: content.args
+            })
+            toolResults.push(toolResult)
+            finalText.push(`[Calling tool ${content.toolName} with args ${JSON.stringify(content.args)}]`)
+            messages.push({
+              role: "user",
+              content: toolResult.content as string
+            })
+            const finalResponse = await generateText({
+              model: this.model,
+              messages: messages
+            })
+            finalText.push(finalResponse.text)
           }
         }
       }
-
-      return finalText.join("\n")
-    } catch (err) {
-      console.error("Error generating text or calling tool:", err)
-      return `Sorry, I encountered an error: ${err instanceof Error ? err.message : 'Unknown error'}`
     }
+
+    return finalText.join("\n\n")
   }
 
-  static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<string | undefined> {
-    console.log(`MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
-
-    if (!model) {
-      console.error("MCPClient.directChat called without a valid model")
-      return "Error: AI Model not provided for direct chat"
-    }
+  static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<string> {
+    console.log(`[MCPClient] MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
 
     if (!messages || messages.length === 0) {
-        console.warn("MCPClient.directChat called with empty messages")
-        return "Error: Cannot process empty message history"
+      return "Error: Cannot process empty message history"
     }
 
-    try {
-      const result = await generateText({
-        model: model,
-        messages: messages
-      })
+    const { data: response, error } = await asyncTryCatch(generateText({ model: model, messages: messages }))
 
-      return result.text
-    } catch (err) {
-      console.error(`MCPClient.directChat: Error during direct AI call:`, err)
-      return `Error during direct chat: ${err}`
+    if (error || !response) {
+      console.error(`[MCPClient] MCPClient.directChat: Error during direct AI call:`, error)
+      return `Error during direct chat: ${error}`
     }
+
+    return response.text
   }
 
   public async cleanup() {
     if (this.client) {
+      console.log("[MCPClient] Cleaning up and closing MCPClient")
       await this.client.close()
       this.client = null
       this.transport = null
