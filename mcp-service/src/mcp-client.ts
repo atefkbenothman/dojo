@@ -117,11 +117,11 @@ export class MCPClient {
 
           const { data: toolCall, error } = await asyncTryCatch(this.client.callTool({
             name: content.toolName,
-            args: content.args
+            arguments: content.args as { [x: string]: unknown } | undefined
           }))
 
           if (error || !toolCall) {
-            finalText.push(`Error calling tool: ${content.toolName} ${JSON.stringify(content.args)}`)
+            finalText.push(`Error calling tool: ${content.toolName} ${JSON.stringify(content.args)}: ${error}`)
             continue
           }
 
