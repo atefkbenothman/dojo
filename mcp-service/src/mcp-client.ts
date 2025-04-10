@@ -46,7 +46,7 @@ export class MCPClient {
     console.log(`[MCPClient] MCPClient configured for model ${this.model.modelId} and service ${this.mcpServerConfig.displayName}`)
   }
 
-  /* start */
+  /* Start */
   public async start(): Promise<void> {
     if (this.client || !this.mcpServerConfig) return
 
@@ -89,7 +89,7 @@ export class MCPClient {
     console.log("[MCPClient] Connected to server with tools: ", Object.values(this.tools).map(tool => tool.description))
   }
 
-  /* chat */
+  /* Chat */
   public async chat(messages: CoreMessage[]): Promise<string> {
     if (!this.client) return "Error: MCP Client not connected"
 
@@ -149,7 +149,7 @@ export class MCPClient {
     return finalText.join("\n\n")
   }
 
-  /* direct chat */
+  /* Direct chat */
   static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<string> {
     console.log(`[MCPClient] MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
 
@@ -164,7 +164,7 @@ export class MCPClient {
     return response.text
   }
 
-  /* clean up */
+  /* Clean up */
   public async cleanup() {
     if (this.client) {
       console.log("[MCPClient] Cleaning up and closing MCPClient")

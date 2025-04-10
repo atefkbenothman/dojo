@@ -64,6 +64,7 @@ app.get("/", (req: Request, res: Response) => {
 })
 
 
+/* Servers */
 app.get("/servers", (req: Request, res: Response) => {
   const servers = Object.entries(AVAILABLE_MCP_SERVERS).map(([ id, config ]) => ({
     id: id,
@@ -73,6 +74,7 @@ app.get("/servers", (req: Request, res: Response) => {
 })
 
 
+/* Connect */
 app.post("/connect", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, serverId } = req.body
 
@@ -168,6 +170,7 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
 })
 
 
+/* Disconnect */
 app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
   const { sessionId } = req.body
 
@@ -202,6 +205,7 @@ app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
 })
 
 
+/* Chat */
 app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, messages } = req.body
 
@@ -252,7 +256,7 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
 })
 
 
-// Start the server
+/* Start the server */
 app.listen(port, () => {
   console.log(`[server]: MCP Service listening on port ${port}`)
   console.log(`[server]: Initializing with ${activeConnections.size} connections.`)
