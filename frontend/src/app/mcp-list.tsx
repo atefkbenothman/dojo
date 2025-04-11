@@ -39,8 +39,12 @@ export function MCPList() {
     availableServers.length === 0
   ) {
     return (
-      <div className="flex h-full w-fit w-full items-center justify-center">
-        <p className="border p-4">No servers available</p>
+      <div className="flex h-full w-full items-center justify-center">
+        <Card>
+          <CardContent className="font-medium">
+            No services available
+          </CardContent>
+        </Card>
       </div>
     )
   }
