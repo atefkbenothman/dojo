@@ -4,11 +4,13 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import {
   CoreMessage,
   generateText,
+  streamText,
   LanguageModel,
   Tool,
   ToolSet,
   jsonSchema,
-  GenerateTextResult
+  GenerateTextResult,
+  StreamTextResult
 } from "ai"
 import dotenv from "dotenv"
 import { asyncTryCatch } from "./utils"
@@ -148,18 +150,15 @@ export class MCPClient {
   }
 
   /* Direct chat */
-  static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<string> {
+  static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<Response> {
     console.log(`[MCPClient] MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
 
-    if (!messages || messages.length === 0) {
-      return "Error: Cannot process empty message history"
-    }
+    const result = await streamText({
+      model: model,
+      messages: messages
+    })
 
-    const response = await generateModelResponse(model, messages)
-
-    if (!response) return "Error generating response from AI"
-
-    return response.text
+    return result.toTextStreamResponse()
   }
 
   /* Clean up */

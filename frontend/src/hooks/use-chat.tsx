@@ -15,6 +15,7 @@ import {
   getAvailableMCPServers,
   sendChatMCP,
 } from "@/actions/mcp-client-actions"
+import { asyncTryCatch } from "@/lib/utils"
 
 interface AvailableServersInfo {
   id: string
@@ -68,6 +69,7 @@ type AIChatContextType = {
   ) => void
   handleSend: () => Promise<void>
   handleNewChat: () => void
+  handleStream: () => Promise<void>
   handleConnect: (serverId: string) => Promise<void>
   handleDisconnect: () => Promise<void>
 }
@@ -305,6 +307,104 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     }
   }, [connectionStatus, sessionId, input, context, messages, chatStatus])
 
+  const handleStream = useCallback(async () => {
+    if (chatStatus === "loading") {
+      console.warn("handleSend called while already loading")
+      return
+    }
+
+    const messageToSend = input.trim()
+    if (!messageToSend) return
+
+    const userMessage: CoreMessage = {
+      role: "user",
+      content: messageToSend,
+    }
+    const messagesToSend: CoreMessage[] = [...messages, userMessage]
+
+    setMessages((prevMessages) => [...prevMessages, userMessage])
+    setInput("")
+    setChatStatus("loading")
+    setChatError(null)
+
+    const abortController = new AbortController()
+
+    const { data: response, error } = await asyncTryCatch(
+      fetch("http://localhost:8888/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: messagesToSend,
+          modelId: selectedModelId,
+        }),
+        signal: abortController.signal,
+      }),
+    )
+
+    if (error || !response.ok) {
+      console.error("Error during direct streaming chat:", error)
+      setChatStatus("error")
+      setChatError("Chat stream error")
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          role: "assistant",
+          content: `Error: ${error}`,
+        },
+      ])
+      if (!abortController.signal.aborted) {
+        abortController.abort()
+      }
+      return
+    }
+
+    const reader = response.body
+      ?.pipeThrough(new TextDecoderStream())
+      .getReader()
+
+    if (!reader) {
+      setChatStatus("error")
+      setChatError("Could not get reader in response body")
+      if (!abortController.signal.aborted) {
+        abortController.abort()
+      }
+      return
+    }
+
+    setMessages((prevMessages) => {
+      return [...prevMessages, { role: "assistant", content: "" }]
+    })
+
+    let fullResponse = ""
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      if (!value) continue
+      try {
+        fullResponse += value
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages]
+          updatedMessages[updatedMessages.length - 1] = {
+            role: "assistant",
+            content: fullResponse,
+          }
+          return updatedMessages
+        })
+      } catch (err) {
+        console.error("Error parsing stream chunk:", err, "Chunk:", value)
+        fullResponse += `\n[Stream Parse Error]`
+        if (!abortController.signal.aborted) {
+          abortController.abort()
+        }
+      }
+    }
+
+    setChatStatus("idle")
+  }, [connectionStatus, sessionId, input, context, messages, chatStatus])
+
   const value: AIChatContextType = {
     messages,
     input,
@@ -323,6 +423,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     handleInputChange,
     handleSend,
     handleNewChat,
+    handleStream,
     handleConnect,
     handleDisconnect,
   }

@@ -5,6 +5,8 @@ import { CoreMessage } from "ai"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
+
+/* Connect to MCP Client Server */
 export async function connectMCP(currentSessionId: string | null, serverId: string): Promise<{ sessionId: string | undefined}> {
   let sessionId = currentSessionId || uuid4()
 
@@ -45,6 +47,7 @@ export async function connectMCP(currentSessionId: string | null, serverId: stri
 }
 
 
+/* Disconnect from MCP Client Server */
 export async function disconnectMCP(sessionId: string | null): Promise<{ success: boolean; error?: string }> {
   if (!sessionId) {
     console.log("[Next Action] No sessionId provided for disconnect")
@@ -80,6 +83,7 @@ export async function disconnectMCP(sessionId: string | null): Promise<{ success
 }
 
 
+/* Send a chat to MCP Client Server */
 export async function sendChatMCP(sessionId: string | null, modelId: string, messages: CoreMessage[]): Promise<{ response?: string; error?: string }> {
   if (!messages || messages.length === 0) {
     console.warn("[Next Action] Cannot send chat, message is empty")
@@ -115,6 +119,8 @@ export async function sendChatMCP(sessionId: string | null, modelId: string, mes
   }
 }
 
+
+/* Get available MCP Services from Client Server */
 export async function getAvailableMCPServers() {
   try {
     const response = await fetch(`${MCP_SERVICE_URL}/servers`, {

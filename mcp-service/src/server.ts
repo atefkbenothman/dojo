@@ -1,4 +1,5 @@
 import * as path from "path"
+import cors from "cors"
 import express, { Express, Request, Response } from "express"
 import { CoreMessage, extractReasoningMiddleware, wrapLanguageModel } from "ai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
@@ -67,6 +68,10 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 const app: Express = express()
 const port = process.env.PORT || 8888
 
+app.use(cors({
+  origin: "http://localhost:3000",
+  methods: ["GET", "POST"]
+}))
 
 app.use(express.json())
 
@@ -259,12 +264,62 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
 
   if (error || !response) {
     console.error(`[server]: Error during chat for ${sessionId}:`, error)
-    res.status(500).json({ message: "Error processing chat message" })
+    res.status(400).json({ message: "Error processing chat message" })
     return
   }
 
   res.status(200).json({ response: response })
   return
+})
+
+
+/* Stream */
+app.post("/stream", async (req: Request, res: Response): Promise<void> => {
+  const { messages, modelId } = req.body
+
+  if (!messages || !modelId) {
+    console.error("[server /stream]: messages or modelId not provided")
+    res.status(400).json({ message: "Messages or modelId not provided" })
+    return
+  }
+
+  const model = modelId || DEFAULT_MODEL_ID
+  const aiModel = AVAILABLE_AI_MODELS[model].languageModel
+
+  const { data: response, error } = await asyncTryCatch(MCPClient.directChat(aiModel, messages))
+
+  if (error || !response) {
+    console.error("[server /stream]: Error streaming text:", error)
+    res.status(500).json({ message: `Error streaming text: ${error}`})
+    return
+  }
+
+  response.headers.forEach((value ,key) => {
+    if (key.toLowerCase() === "content-type") {
+      res.setHeader(key, value)
+    }
+  })
+
+  res.status(response.status)
+
+  if (!response.body) {
+    console.error("[server /stream]: Web API Response body was null")
+    res.end()
+    return
+  }
+
+  const reader = response.body.getReader()
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    if (value) {
+      res.write(value)
+    }
+  }
+  res.end()
 })
 
 

@@ -13,7 +13,7 @@ import {
 import { ArrowUp } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 
 export function Chat() {
@@ -21,6 +21,7 @@ export function Chat() {
     messages,
     input,
     handleInputChange,
+    handleStream,
     handleSend,
     selectedModelId,
     handleModelChange,
@@ -31,16 +32,22 @@ export function Chat() {
   })
 
   const [selectedModel, setSelectedModel] = useState<string>(selectedModelId)
-
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const virtualizer = useVirtualizer({
     count: messages.length,
     estimateSize: () => 80,
     getScrollElement: () => scrollRef.current,
+    overscan: 5,
   })
 
   const virtualItems = virtualizer.getVirtualItems()
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
 
   const handleTrigger = () => {
     play()
@@ -50,6 +57,15 @@ export function Chat() {
     setSelectedModel(modelId)
     handleModelChange(modelId)
     play()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      if (input.trim() !== "") {
+        handleStream()
+      }
+    }
   }
 
   return (
@@ -135,6 +151,7 @@ export function Chat() {
             <Textarea
               value={input}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               className="ring-none max-h-[280px] min-h-[120px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
             />
             <div className="dark:bg-input/30 flex w-full overflow-hidden bg-transparent p-2">
@@ -153,7 +170,7 @@ export function Chat() {
               <Button
                 className="ml-auto"
                 variant="outline"
-                onClick={handleSend}
+                onClick={handleStream}
                 disabled={input.trim() === ""}
               >
                 <ArrowUp className="h-4 w-4" strokeWidth={3} />
