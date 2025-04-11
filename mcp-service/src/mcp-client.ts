@@ -3,13 +3,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import {
   CoreMessage,
-  generateText,
   streamText,
   LanguageModel,
   Tool,
   ToolSet,
   jsonSchema,
-  GenerateTextResult,
   ToolCallPart,
   ToolResultPart
 } from "ai"

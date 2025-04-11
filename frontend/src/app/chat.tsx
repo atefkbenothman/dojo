@@ -153,9 +153,9 @@ export function Chat() {
               onKeyDown={handleKeyDown}
               className="ring-none max-h-[280px] min-h-[120px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
             />
-            <div className="dark:bg-input/30 flex w-full overflow-hidden bg-transparent p-2">
+            <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-1.5">
               <Select value={selectedModel} onValueChange={handleSelectChange}>
-                <SelectTrigger onPointerDown={handleTrigger}>
+                <SelectTrigger onPointerDown={handleTrigger} size="sm">
                   <SelectValue placeholder="Model" />
                 </SelectTrigger>
                 <SelectContent className="text-xs" align="start">
