@@ -10,7 +10,8 @@ import {
   ToolSet,
   jsonSchema,
   GenerateTextResult,
-  StreamTextResult
+  ToolCallPart,
+  ToolResultPart
 } from "ai"
 import dotenv from "dotenv"
 import { asyncTryCatch } from "./utils"
@@ -90,63 +91,116 @@ export class MCPClient {
   }
 
   /* Chat */
-  public async chat(model: LanguageModel, messages: CoreMessage[]): Promise<string> {
-    if (!this.client) return "Error: MCP Client not connected"
+  public async chat(model: LanguageModel, messages: CoreMessage[]): Promise<ReadableStream<string>> {
+    if (!this.client) {
+      return new ReadableStream({
+        start(controller) {
+            controller.error(new Error("Error: MCP Client not connected"))
+            controller.close()
+        }
+      });
+    }
 
     console.log(`[MCPClient] Generating AI response based on ${messages.length} messages. Last message:`, messages[messages.length-1]?.content)
 
-    const response = await generateModelResponse(model, messages, this.tools)
+    const mcpClient = this.client
+    const tools = this.tools || {}
 
-    if (!response) return "Error generating response from AI"
+    const readableStream = new ReadableStream<string>({
+      async start (controller) {
+        let toolCallsToExecute: ToolCallPart[] = []
+        let capturedText = ""
 
-    let finalText = []
-    let toolResults = []
+        try {
+          console.log("[MCPClient.chat] Phase 1: Initial streamText call...")
 
-    for (const message of response.response.messages) {
-      for (const content of message.content) {
+          const initialResult = await streamText({
+            model: model,
+            messages: messages,
+            tools: tools
+          })
 
-        if (typeof content !== "object") continue
-
-        if (content.type === "text" || content.type == "reasoning") {
-          finalText.push(content.text)
-          continue
-        }
-
-        if (content.type === "tool-call") {
-          console.log("[MCPClient] Calling Tool:", content)
-
-          const { data: toolCall, error } = await asyncTryCatch(this.client.callTool({
-            name: content.toolName,
-            arguments: content.args as { [x: string]: unknown } | undefined
-          }))
-
-          if (error || !toolCall) {
-            finalText.push(`Error calling tool: ${content.toolName} ${JSON.stringify(content.args)}: ${error}`)
-            continue
+          for await (const part of initialResult.fullStream) {
+            console.log(part.type)
+            switch (part.type) {
+              case "text-delta":
+                console.log("TEXT DELTA", part.textDelta)
+                controller.enqueue(part.textDelta)
+                capturedText += part.textDelta
+                break
+              case "tool-call":
+                console.dir(`TOOL CALL: ${part}`, { depth: null })
+                console.log(part.args)
+                console.log(part.toolCallId)
+                console.log(part.toolName)
+                console.log(part.type)
+                toolCallsToExecute.push(part)
+                break
+            }
           }
 
-          finalText.push(`[Calling tool ${content.toolName} with args ${JSON.stringify(content.args)}]`)
+          // Phase 1 stream finished
 
-          toolResults.push(toolCall)
+          if (toolCallsToExecute.length <= 0) {
+            console.log("[MCPClient.chat] No tool calls detected in Phase 1");
+          } else {
+            console.log(`[MCPClient.chat] Phase 2: Executing ${toolCallsToExecute.length} tool(s)...`)
+            console.log("CAPTURED TEXT:", capturedText)
 
-          const updatedMessages = [
-            ...messages,
-            {
-              role: "user",
-              content: toolCall.content as string
-            } as CoreMessage
-          ]
+            messages.push({
+              role: "assistant",
+              content: toolCallsToExecute
+            })
 
-          const finalResponse = await generateModelResponse(model, updatedMessages)
+            const toolResults: ToolResultPart[] = []
+            for (const toolCall of toolCallsToExecute) {
+              let resultData: unknown = null
 
-          if (finalResponse) {
-            finalText.push(finalResponse.text)
+              const { data, error } = await asyncTryCatch(mcpClient.callTool({
+                name: toolCall.toolName,
+                arguments: toolCall.args as { [x: string]: unknown } | undefined
+              }))
+
+              if (!data || error) {
+                resultData = `Error: ${error}`
+              } else {
+                resultData = data.content
+              }
+
+              toolResults.push({
+                type: "tool-result",
+                toolCallId: toolCall.toolCallId,
+                toolName: toolCall.toolName,
+                result: resultData,
+              })
+            }
+
+            messages.push({ role: "tool", content: toolResults })
+
+            // Call streamText again for the final response
+            const finalResult = await streamText({
+              model: model,
+              messages: messages
+            })
+
+            for await (const textPart of finalResult.textStream) {
+              controller.enqueue(textPart)
+            }
+
           }
+
+          console.log("[MCPClient.chat] Stream process complete")
+          controller.close()
+
+        } catch (err) {
+          controller.enqueue(`\n[STREAM ERROR]: ${err}}`)
+          controller.close()
         }
       }
-    }
 
-    return finalText.join("\n\n")
+    })
+
+    return readableStream
   }
 
   /* Direct chat */

@@ -253,23 +253,39 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    res.status(200).json({ response: directChatResponse })
+    directChatResponse.headers.forEach((value, key) => { res.setHeader(key, value) })
+    res.status(directChatResponse.status)
+
+    if (directChatResponse.body) {
+      for await (const chunk of directChatResponse.body) {
+        res.write(chunk)
+      }
+      res.end()
+    } else {
+      res.end()
+    }
+
     return
   }
 
   connectionData.lastActivityTimestamp = Date.now()
   console.log(`[server]: Updated last activity time for ${sessionId}`)
 
-  const { data: response, error } = await asyncTryCatch(connectionData.client.chat(aiModel, messages as CoreMessage[]))
+  const { data: stream, error } = await asyncTryCatch(connectionData.client.chat(aiModel, messages as CoreMessage[]))
 
-  if (error || !response) {
+  if (error || !stream) {
     console.error(`[server]: Error during chat for ${sessionId}:`, error)
     res.status(400).json({ message: "Error processing chat message" })
     return
   }
 
-  res.status(200).json({ response: response })
-  return
+  res.setHeader("Content-Type", "text/plain; charset=utf-8")
+  res.status(200)
+
+  for await (const chunk of stream) {
+    res.write(chunk)
+  }
+  res.end()
 })
 
 

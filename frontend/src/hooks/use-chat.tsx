@@ -330,12 +330,13 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     const abortController = new AbortController()
 
     const { data: response, error } = await asyncTryCatch(
-      fetch("http://localhost:8888/stream", {
+      fetch("http://localhost:8888/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          sessionId: sessionId,
           messages: messagesToSend,
           modelId: selectedModelId,
         }),
