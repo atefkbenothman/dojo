@@ -13,7 +13,6 @@ import {
   connectMCP,
   disconnectMCP,
   getAvailableMCPServers,
-  sendChatMCP,
 } from "@/actions/mcp-client-actions"
 import { asyncTryCatch } from "@/lib/utils"
 
@@ -67,9 +66,8 @@ type AIChatContextType = {
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLTextAreaElement>,
   ) => void
-  handleSend: () => Promise<void>
+  handleChat: () => Promise<void>
   handleNewChat: () => void
-  handleStream: () => Promise<void>
   handleConnect: (serverId: string) => Promise<void>
   handleDisconnect: () => Promise<void>
 }
@@ -230,84 +228,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     console.log(`Attempting to disconnect session: ${sessionId}...`)
   }, [connectionStatus, sessionId, connectedServerId])
 
-  const handleSend = useCallback(async () => {
-    if (chatStatus === "loading") {
-      console.warn("handleSend called while already loading")
-      return
-    }
-
-    const messageToSend = input.trim()
-    if (!messageToSend) return
-
-    const userMessage: CoreMessage = {
-      role: "user",
-      content: messageToSend,
-    }
-    const messagesToSend: CoreMessage[] = [...messages, userMessage]
-
-    setMessages((prevMessages) => [...prevMessages, userMessage])
-    setInput("")
-    setChatStatus("loading")
-    setChatError(null)
-
-    try {
-      const result = await sendChatMCP(
-        sessionId,
-        selectedModelId,
-        messagesToSend,
-      )
-
-      if (result.error) {
-        console.error("Chat API error:", result.error)
-        setChatStatus("error")
-        setChatError(result.error)
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            role: "assistant",
-            content: `Error: ${result.error}`,
-          },
-        ])
-        return
-      }
-
-      if (!result.response) {
-        console.error("Chat API returned undefined response without error")
-        setChatStatus("error")
-        setChatError("Recieved an empty response from the assistant")
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            role: "assistant",
-            content: "Empty response received",
-          },
-        ])
-        return
-      }
-
-      console.log("Chat response received:", result.response)
-
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        {
-          role: "assistant",
-          content: result.response!,
-        },
-      ])
-      setChatStatus("idle")
-      setChatError(null)
-    } catch (err) {
-      console.error("Exception during chat action call:", err)
-      setChatStatus("error")
-      setChatError("Exception during chat action call")
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { role: "assistant", content: "I encountered an error" },
-      ])
-    }
-  }, [connectionStatus, sessionId, input, context, messages, chatStatus])
-
-  const handleStream = useCallback(async () => {
+  const handleChat = useCallback(async () => {
     if (chatStatus === "loading") {
       console.warn("handleSend called while already loading")
       return
@@ -420,11 +341,10 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     connectedServerId,
     availableModels: AVAILABLE_MODELS,
     selectedModelId,
+    handleChat,
     handleModelChange,
     handleInputChange,
-    handleSend,
     handleNewChat,
-    handleStream,
     handleConnect,
     handleDisconnect,
   }

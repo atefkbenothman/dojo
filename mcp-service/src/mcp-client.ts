@@ -21,20 +21,6 @@ dotenv.config({
   path: path.resolve(process.cwd(), "../.env")
 })
 
-async function generateModelResponse(model: LanguageModel, messages: CoreMessage[], tools?: ToolSet): Promise<GenerateTextResult<ToolSet, never> | null | undefined> {
-  const { data: response, error } = await asyncTryCatch(generateText({
-    model: model,
-    messages: messages,
-    tools: tools ?? {}
-  }))
-
-  if (error || !response) {
-    console.error("[MCPClient] Error generating text:", error)
-    return
-  }
-
-  return response
-}
 
 export class MCPClient {
   private client: Client | null = null
@@ -121,19 +107,12 @@ export class MCPClient {
           })
 
           for await (const part of initialResult.fullStream) {
-            console.log(part.type)
             switch (part.type) {
               case "text-delta":
-                console.log("TEXT DELTA", part.textDelta)
                 controller.enqueue(part.textDelta)
                 capturedText += part.textDelta
                 break
               case "tool-call":
-                console.dir(`TOOL CALL: ${part}`, { depth: null })
-                console.log(part.args)
-                console.log(part.toolCallId)
-                console.log(part.toolName)
-                console.log(part.type)
                 toolCallsToExecute.push(part)
                 break
             }
@@ -145,7 +124,6 @@ export class MCPClient {
             console.log("[MCPClient.chat] No tool calls detected in Phase 1");
           } else {
             console.log(`[MCPClient.chat] Phase 2: Executing ${toolCallsToExecute.length} tool(s)...`)
-            console.log("CAPTURED TEXT:", capturedText)
 
             messages.push({
               role: "assistant",

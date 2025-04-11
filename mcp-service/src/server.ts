@@ -218,7 +218,7 @@ app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
 })
 
 
-/* Chat */
+/* Chat Stream */
 app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, messages, modelId } = req.body
 
@@ -284,56 +284,6 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
 
   for await (const chunk of stream) {
     res.write(chunk)
-  }
-  res.end()
-})
-
-
-/* Stream */
-app.post("/stream", async (req: Request, res: Response): Promise<void> => {
-  const { messages, modelId } = req.body
-
-  if (!messages || !modelId) {
-    console.error("[server /stream]: messages or modelId not provided")
-    res.status(400).json({ message: "Messages or modelId not provided" })
-    return
-  }
-
-  const model = modelId || DEFAULT_MODEL_ID
-  const aiModel = AVAILABLE_AI_MODELS[model].languageModel
-
-  const { data: response, error } = await asyncTryCatch(MCPClient.directChat(aiModel, messages))
-
-  if (error || !response) {
-    console.error("[server /stream]: Error streaming text:", error)
-    res.status(500).json({ message: `Error streaming text: ${error}`})
-    return
-  }
-
-  response.headers.forEach((value ,key) => {
-    if (key.toLowerCase() === "content-type") {
-      res.setHeader(key, value)
-    }
-  })
-
-  res.status(response.status)
-
-  if (!response.body) {
-    console.error("[server /stream]: Web API Response body was null")
-    res.end()
-    return
-  }
-
-  const reader = response.body.getReader()
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) {
-      break
-    }
-    if (value) {
-      res.write(value)
-    }
   }
   res.end()
 })

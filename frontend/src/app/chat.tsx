@@ -21,8 +21,7 @@ export function Chat() {
     messages,
     input,
     handleInputChange,
-    handleStream,
-    handleSend,
+    handleChat,
     selectedModelId,
     handleModelChange,
     availableModels,
@@ -63,7 +62,7 @@ export function Chat() {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       if (input.trim() !== "") {
-        handleStream()
+        handleChat()
       }
     }
   }
@@ -170,7 +169,7 @@ export function Chat() {
               <Button
                 className="ml-auto"
                 variant="outline"
-                onClick={handleStream}
+                onClick={handleChat}
                 disabled={input.trim() === ""}
               >
                 <ArrowUp className="h-4 w-4" strokeWidth={3} />
