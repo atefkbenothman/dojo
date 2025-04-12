@@ -111,6 +111,7 @@ export class MCPClient {
                 capturedText += part.textDelta
                 break
               case "tool-call":
+                controller.enqueue(`**[Calling Tool: \`${part.toolName}\`]**\n\n`)
                 toolCallsToExecute.push(part)
                 break
             }
