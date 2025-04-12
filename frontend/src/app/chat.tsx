@@ -97,7 +97,7 @@ export function Chat() {
                         </p>
                       </div>
                     ) : (
-                      <div className="bg-popover text-accent-foreground inline-block w-full overflow-auto p-2 text-sm wrap-break-word">
+                      <div className="inline-block w-full overflow-auto bg-transparent p-2 text-sm wrap-break-word">
                         <ReactMarkdown
                           components={{
                             h1: ({ ...props }) => (
