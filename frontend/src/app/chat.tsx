@@ -10,11 +10,139 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import Link from "next/link"
 import { ArrowUp } from "lucide-react"
-import ReactMarkdown from "react-markdown"
+import ReactMarkdown, { type Components } from "react-markdown"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useRef, useState, useEffect } from "react"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
+
+interface CodeBlockProps {
+  node: any
+  inline: boolean
+  className: string
+  children: any
+}
+
+export function CodeBlock({
+  node,
+  inline,
+  className,
+  children,
+  ...props
+}: CodeBlockProps) {
+  if (!inline) {
+    return (
+      <div className="not-prose flex flex-col">
+        <pre {...props} className={`w-full overflow-x-auto border text-xs`}>
+          <code className="break-words whitespace-pre-wrap">{children}</code>
+        </pre>
+      </div>
+    )
+  } else {
+    return (
+      <code
+        className={`${className} rounded-md bg-blue-300 px-1 py-0.5 text-sm`}
+        {...props}
+      >
+        {children}
+      </code>
+    )
+  }
+}
+
+const components: Partial<Components> = {
+  code: ({ node, children, ...props }) => {
+    return <code className="text-xs">{children}</code>
+  },
+  pre: ({ children }) => <>{children}</>,
+  ol: ({ node, children, ...props }) => {
+    return (
+      <ol className="list-decimal" {...props}>
+        {children}
+      </ol>
+    )
+  },
+  li: ({ node, children, ...props }) => {
+    return (
+      <li className="ml-4 px-2 py-1 text-xs" {...props}>
+        {children}
+      </li>
+    )
+  },
+  ul: ({ node, children, ...props }) => {
+    return (
+      <ul className="ml-4 list-decimal" {...props}>
+        {children}
+      </ul>
+    )
+  },
+  strong: ({ node, children, ...props }) => {
+    return (
+      <span className="text-sm font-medium" {...props}>
+        {children}
+      </span>
+    )
+  },
+  a: ({ node, children, ...props }) => {
+    return (
+      // @ts-expect-error
+      <Link
+        className="text-xs text-blue-500 hover:underline"
+        target="_blank"
+        rel="noreferrer"
+        {...props}
+      >
+        {children}
+      </Link>
+    )
+  },
+  h1: ({ node, children, ...props }) => {
+    return (
+      <h1 className="mt-4 mb-2 text-lg font-medium" {...props}>
+        {children}
+      </h1>
+    )
+  },
+  h2: ({ node, children, ...props }) => {
+    return (
+      <h2 className="mt-4 mb-2 text-lg font-medium" {...props}>
+        {children}
+      </h2>
+    )
+  },
+  h3: ({ node, children, ...props }) => {
+    return (
+      <h3 className="mt-4 mb-2 text-xl font-medium" {...props}>
+        {children}
+      </h3>
+    )
+  },
+  h4: ({ node, children, ...props }) => {
+    return (
+      <h4 className="mt-4 mb-2 text-xl font-medium" {...props}>
+        {children}
+      </h4>
+    )
+  },
+  h5: ({ node, children, ...props }) => {
+    return (
+      <h5 className="mt-4 mb-2 text-xs font-medium" {...props}>
+        {children}
+      </h5>
+    )
+  },
+  h6: ({ node, children, ...props }) => {
+    return (
+      <h6 className="mt-4 mb-2 text-xs font-medium" {...props}>
+        {children}
+      </h6>
+    )
+  },
+  p: ({ node, children, ...props }) => {
+    return <p className="py-2 text-xs leading-6">{children}</p>
+  },
+}
 
 export function Chat() {
   const {
@@ -98,41 +226,7 @@ export function Chat() {
                       </div>
                     ) : (
                       <div className="inline-block w-full overflow-auto bg-transparent p-2 text-sm wrap-break-word">
-                        <ReactMarkdown
-                          components={{
-                            h1: ({ ...props }) => (
-                              <h1 className="text-md font-bold" {...props} />
-                            ),
-                            h2: ({ ...props }) => (
-                              <h2 className="text-xs" {...props} />
-                            ),
-                            h3: ({ ...props }) => (
-                              <h3 className="text-xs" {...props} />
-                            ),
-                            p: ({ ...props }) => (
-                              <p className="text-xs leading-6" {...props} />
-                            ),
-                            ul: ({ ...props }) => (
-                              <ul className="text-xs" {...props} />
-                            ),
-                            ol: ({ ...props }) => (
-                              <ol className="text-xs" {...props} />
-                            ),
-                            li: ({ ...props }) => (
-                              <li className="text-xs" {...props} />
-                            ),
-                            code: ({ className, children, ...props }: any) => {
-                              return (
-                                <code
-                                  className="text-xs font-semibold"
-                                  {...props}
-                                >
-                                  {children}
-                                </code>
-                              )
-                            },
-                          }}
-                        >
+                        <ReactMarkdown components={components}>
                           {msg.content.toString()}
                         </ReactMarkdown>
                       </div>
