@@ -123,9 +123,20 @@ export class MCPClient {
           } else {
             console.log(`[MCPClient.chat] Phase 2: Executing ${toolCallsToExecute.length} tool(s)...`)
 
+            const assitantMessage: Array<{ type: "text", text: string } | ToolCallPart> = []
+
+            if (capturedText.trim()) {
+              assitantMessage.push({
+                type: "text",
+                text: capturedText.trim()
+              })
+            }
+
+            assitantMessage.push(...toolCallsToExecute)
+
             messages.push({
               role: "assistant",
-              content: toolCallsToExecute
+              content: assitantMessage
             })
 
             const toolResults: ToolResultPart[] = []
