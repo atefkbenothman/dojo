@@ -14,6 +14,7 @@ import {
   disconnectMCP,
   getAvailableMCPServers,
 } from "@/actions/mcp-client-actions"
+import { toast } from "sonner"
 import { asyncTryCatch } from "@/lib/utils"
 
 interface AvailableServersInfo {
@@ -116,7 +117,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         const response = await getAvailableMCPServers()
 
         if (response.error) {
-          console.error("Error fetching servers:", response.error)
+          toast.error("Error fetching available mcp services", {
+            position: "top-right",
+          })
           return
         }
 
