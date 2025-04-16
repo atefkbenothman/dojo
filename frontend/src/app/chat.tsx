@@ -249,7 +249,7 @@ export function Chat() {
             />
             <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
               <Select value={selectedModel} onValueChange={handleSelectChange}>
-                <SelectTrigger onPointerDown={handleTrigger} size="sm">
+                <SelectTrigger onPointerDown={handleTrigger}>
                   <SelectValue placeholder="Model" />
                 </SelectTrigger>
                 <SelectContent className="text-xs" align="start">
