@@ -38,10 +38,18 @@ console.log("[server]: Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVER
 
 const AVAILABLE_AI_MODELS: Record<string, AIModelConfig>  = {
   "gemini-1.5-flash": {
-    name: "Google Gemini",
+    name: "Google Gemini 1.5 Flash",
     modelName: "gemini-1.5-flash",
     languageModel: wrapLanguageModel({
       model: createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-1.5-flash"),
+      middleware: extractReasoningMiddleware({ tagName: "think" })
+    })
+  },
+  "gemini-2.0-flash-001": {
+    name: "Google Gemini 2.0 Flash",
+    modelName: "gemini-2.0-flash-001",
+    languageModel: wrapLanguageModel({
+      model: createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-2.0-flash-001"),
       middleware: extractReasoningMiddleware({ tagName: "think" })
     })
   },

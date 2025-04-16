@@ -33,6 +33,10 @@ const AVAILABLE_MODELS: AIModelInfo[] = [
     name: "Gemini 1.5 Flash",
   },
   {
+    id: "gemini-2.0-flash-001",
+    name: "Gemini 2.0 Flash",
+  },
+  {
     id: "deepseek-r1-distill-llama-70b",
     name: "Deepseek R1",
   },
