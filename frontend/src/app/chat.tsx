@@ -14,7 +14,7 @@ import Link from "next/link"
 import { ArrowUp } from "lucide-react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, useMemo, memo } from "react"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 
 interface CodeBlockProps {
@@ -24,7 +24,7 @@ interface CodeBlockProps {
   children: any
 }
 
-export function CodeBlock({
+const CodeBlock = memo(function CodeBlock({
   node,
   inline,
   className,
@@ -49,7 +49,7 @@ export function CodeBlock({
       </code>
     )
   }
-}
+})
 
 const components: Partial<Components> = {
   code: ({ node, children, ...props }) => {
@@ -144,6 +144,16 @@ const components: Partial<Components> = {
   },
 }
 
+interface MarkdownRendererProps {
+  content: string
+}
+
+const MarkdownRenderer = memo(function MarkdownRenderer({
+  content,
+}: MarkdownRendererProps) {
+  return <ReactMarkdown components={components}>{content}</ReactMarkdown>
+})
+
 export function Chat() {
   const {
     messages,
@@ -226,9 +236,7 @@ export function Chat() {
                       </div>
                     ) : (
                       <div className="inline-block w-full overflow-auto bg-transparent p-2 text-sm wrap-break-word">
-                        <ReactMarkdown components={components}>
-                          {msg.content.toString()}
-                        </ReactMarkdown>
+                        <MarkdownRenderer content={msg.content.toString()} />
                       </div>
                     )}
                   </div>
