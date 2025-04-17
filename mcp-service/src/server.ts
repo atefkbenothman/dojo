@@ -31,6 +31,15 @@ const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
       "--access-token",
       process.env.SUPABASE_ACCESS_TOKEN || ""
     ],
+  },
+  "filesystem": {
+    displayName: "Filesystem",
+    command: "npx",
+    args: [
+      "-y",
+      "@modelcontextprotocol/server-filesystem",
+    ],
+    userArgs: true
   }
 }
 
@@ -91,9 +100,10 @@ app.get("/", (req: Request, res: Response) => {
 
 /* Servers */
 app.get("/servers", (req: Request, res: Response) => {
-  const servers = Object.entries(AVAILABLE_MCP_SERVERS).map(([ id, config ]) => ({
+  const servers = Object.entries(AVAILABLE_MCP_SERVERS).map(([ id, config  ]) => ({
     id: id,
-    name: config.displayName
+    name: config.displayName,
+    userArgs: config.userArgs ? true : false
   }))
   res.status(200).json({ servers: servers })
 })
@@ -101,7 +111,7 @@ app.get("/servers", (req: Request, res: Response) => {
 
 /* Connect */
 app.post("/connect", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId, serverId } = req.body
+  const { sessionId, serverId, userArgs } = req.body
 
   if (!sessionId || typeof sessionId !== "string") {
     console.warn("[server]: /connect called without a valid sessionId")
@@ -156,6 +166,12 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
   }
 
   const mcpServer = AVAILABLE_MCP_SERVERS[serverId]
+
+  // Construct final arguments
+  if (userArgs) {
+    console.log(`[server]: Adding user arguments for ${serverId}:`, userArgs)
+    mcpServer.args = [...mcpServer.args, ...userArgs]
+  }
 
   const { data: mcpClient, error: mcpClientError } = tryCatch(new MCPClient(mcpServer))
 

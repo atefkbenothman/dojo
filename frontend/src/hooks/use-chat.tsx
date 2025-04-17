@@ -20,6 +20,7 @@ import { asyncTryCatch } from "@/lib/utils"
 interface AvailableServersInfo {
   id: string
   name: string
+  userArgs: boolean
 }
 
 interface AIModelInfo {
@@ -67,7 +68,7 @@ type AIChatContextType = {
 
   handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
-  handleConnect: (serverId: string) => Promise<void>
+  handleConnect: (serverId: string, userArgs?: string[]) => Promise<void>
   handleDisconnect: () => Promise<void>
 }
 
@@ -242,7 +243,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   }, [])
 
   const handleConnect = useCallback(
-    async (serverId: string) => {
+    async (serverId: string, userArgs?: string[]) => {
       if (
         connectionStatus === "connecting" ||
         connectionStatus === "connected"
@@ -258,7 +259,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       setConnectedServerId(null)
 
       try {
-        const result = await connectMCP(sessionId, serverId)
+        const result = await connectMCP(sessionId, serverId, userArgs)
 
         if (!result.sessionId) {
           console.error("Connection failed: result is undefined")

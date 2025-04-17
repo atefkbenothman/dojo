@@ -2,48 +2,41 @@
 
 import { v4 as uuid4 } from "uuid"
 import { CoreMessage } from "ai"
+import { asyncTryCatch } from "@/lib/utils"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 
 /* Connect to MCP Client Server */
-export async function connectMCP(currentSessionId: string | null, serverId: string): Promise<{ sessionId: string | undefined}> {
+export async function connectMCP(currentSessionId: string | null, serverId: string, userArgs?: string[]): Promise<{ sessionId: string | undefined}> {
   let sessionId = currentSessionId || uuid4()
 
-  console.log(`[Next Action] Requesting connection to server '${serverId}' for session: ${sessionId}`)
+  console.log(`[MCP Client] Connecting to server '${serverId}' with session ID: ${sessionId}`)
 
-  try {
-    console.log(`[Next Action] Calling ${MCP_SERVICE_URL}/connect for sessionId: ${sessionId}`)
+  const mcpServiceURL = `${MCP_SERVICE_URL}/connect`
+  const { data, error } = await asyncTryCatch(fetch(mcpServiceURL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ sessionId, serverId, userArgs }),
+    cache: "no-store"
+  }))
 
-    const response = await fetch(`${MCP_SERVICE_URL}/connect`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ sessionId, serverId }),
-      cache: "no-store"
-    })
-
-    console.log(`[Next Action] /connect response status: ${response.status}`)
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      console.error(`[Next Action] /connect failed: ${response.status}`, data)
-      return { sessionId: undefined }
-    }
-
-    const alreadyConnected = data?.message === "Already connected"
-    if (alreadyConnected) {
-      console.log(`[Next Action] Session ${sessionId} was already connected on the service`)
-    }
-
-    return { sessionId: sessionId }
-
-  } catch (err) {
-    console.error("[Next Action] Error calling /connect:", err)
+  if (error || !data) {
+    console.error(`[MCP Client] Connection failed for session ${sessionId}:`, error)
     return { sessionId: undefined }
   }
+
+  const connection = await data.json()
+
+  if (connection.message === "Already connected") {
+    console.log(`[MCP Client] Session ${sessionId} is already connected to server '${serverId}'`)
+  } else {
+    console.log(`[MCP Client] Successfully connected session ${sessionId} to server '${serverId}'`)
+  }
+
+  return { sessionId }
 }
 
 
