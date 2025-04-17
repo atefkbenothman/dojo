@@ -168,7 +168,7 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
   const mcpServer = AVAILABLE_MCP_SERVERS[serverId]
 
   // Construct final arguments
-  if (userArgs) {
+  if (mcpServer.userArgs && userArgs) {
     console.log(`[server]: Adding user arguments for ${serverId}:`, userArgs)
     mcpServer.args = [...mcpServer.args, ...userArgs]
   }
