@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 import { DarkModeToggle } from "@/components/dark-mode-toggle"
-import { Chat } from "@/app/chat"
+import { Chat } from "@/components/chat/chat"
 import {
   ResizableHandle,
   ResizablePanel,

@@ -49,7 +49,6 @@ type ChatStatus = "idle" | "loading" | "error"
 
 type AIChatContextType = {
   messages: CoreMessage[]
-  input: string
   context: string
   sessionId: string | null
   connectionStatus: ConnectionStatus
@@ -66,12 +65,7 @@ type AIChatContextType = {
   selectedModelId: string
   handleModelChange: (modelId: string) => void
 
-  handleInputChange: (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLTextAreaElement>,
-  ) => void
-  handleChat: () => Promise<void>
+  handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
   handleConnect: (serverId: string) => Promise<void>
   handleDisconnect: () => Promise<void>
@@ -94,7 +88,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   const { play } = useSoundEffect("./hover.mp3", { volume: 0.5 })
 
   const [messages, setMessages] = useState<CoreMessage[]>(initialMessages)
-  const [input, setInput] = useState<string>("")
   const [context, setContext] = useState<string>("")
 
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -136,24 +129,117 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     fetchServers()
   }, [])
 
-  const handleModelChange = (modelId: string) => {
+  const handleModelChange = useCallback((modelId: string) => {
     setSelectedModelId(modelId)
-  }
+  }, [])
 
-  const handleInputChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLTextAreaElement>,
-  ) => {
-    setInput(e.target.value)
-  }
+  const handleChat = useCallback(
+    async (message: string) => {
+      if (chatStatus === "loading") {
+        console.warn("handleSend called while already loading")
+        return
+      }
 
-  const handleNewChat = () => {
+      const messageToSend = message.trim()
+      if (!messageToSend) return
+
+      const userMessage: CoreMessage = {
+        role: "user",
+        content: messageToSend,
+      }
+      const messagesToSend: CoreMessage[] = [...messages, userMessage]
+
+      setMessages((prevMessages) => [...prevMessages, userMessage])
+      setContext(message)
+      setChatStatus("loading")
+      setChatError(null)
+
+      const abortController = new AbortController()
+
+      const { data: response, error } = await asyncTryCatch(
+        fetch("http://localhost:8888/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sessionId: sessionId,
+            messages: messagesToSend,
+            modelId: selectedModelId,
+          }),
+          signal: abortController.signal,
+        }),
+      )
+
+      if (error || !response.ok) {
+        console.error("Error during direct streaming chat:", error)
+        setChatStatus("error")
+        setChatError("Chat stream error")
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            role: "assistant",
+            content: `Error: ${error}`,
+          },
+        ])
+        if (!abortController.signal.aborted) {
+          abortController.abort()
+        }
+        return
+      }
+
+      const reader = response.body
+        ?.pipeThrough(new TextDecoderStream())
+        .getReader()
+
+      if (!reader) {
+        setChatStatus("error")
+        setChatError("Could not get reader in response body")
+        if (!abortController.signal.aborted) {
+          abortController.abort()
+        }
+        return
+      }
+
+      setMessages((prevMessages) => {
+        return [...prevMessages, { role: "assistant", content: "" }]
+      })
+
+      let fullResponse = ""
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (!value) continue
+        try {
+          fullResponse += value
+          setMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages]
+            updatedMessages[updatedMessages.length - 1] = {
+              role: "assistant",
+              content: fullResponse,
+            }
+            return updatedMessages
+          })
+        } catch (err) {
+          console.error("Error parsing stream chunk:", err, "Chunk:", value)
+          fullResponse += `\n[Stream Parse Error]`
+          if (!abortController.signal.aborted) {
+            abortController.abort()
+          }
+        }
+      }
+
+      setChatStatus("idle")
+    },
+    [connectionStatus, sessionId, context, messages, chatStatus],
+  )
+
+  const handleNewChat = useCallback(() => {
     setMessages(initialMessages)
-    setInput("")
     setChatStatus("idle")
     setChatError(null)
-  }
+  }, [])
 
   const handleConnect = useCallback(
     async (serverId: string) => {
@@ -235,113 +321,13 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     console.log(`Attempting to disconnect session: ${sessionId}...`)
   }, [connectionStatus, sessionId, connectedServerId])
 
-  const handleChat = useCallback(async () => {
-    if (chatStatus === "loading") {
-      console.warn("handleSend called while already loading")
-      return
-    }
-
-    const messageToSend = input.trim()
-    if (!messageToSend) return
-
-    const userMessage: CoreMessage = {
-      role: "user",
-      content: messageToSend,
-    }
-    const messagesToSend: CoreMessage[] = [...messages, userMessage]
-
-    setMessages((prevMessages) => [...prevMessages, userMessage])
-    setInput("")
-    setChatStatus("loading")
-    setChatError(null)
-
-    const abortController = new AbortController()
-
-    const { data: response, error } = await asyncTryCatch(
-      fetch("http://localhost:8888/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          messages: messagesToSend,
-          modelId: selectedModelId,
-        }),
-        signal: abortController.signal,
-      }),
-    )
-
-    if (error || !response.ok) {
-      console.error("Error during direct streaming chat:", error)
-      setChatStatus("error")
-      setChatError("Chat stream error")
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        {
-          role: "assistant",
-          content: `Error: ${error}`,
-        },
-      ])
-      if (!abortController.signal.aborted) {
-        abortController.abort()
-      }
-      return
-    }
-
-    const reader = response.body
-      ?.pipeThrough(new TextDecoderStream())
-      .getReader()
-
-    if (!reader) {
-      setChatStatus("error")
-      setChatError("Could not get reader in response body")
-      if (!abortController.signal.aborted) {
-        abortController.abort()
-      }
-      return
-    }
-
-    setMessages((prevMessages) => {
-      return [...prevMessages, { role: "assistant", content: "" }]
-    })
-
-    let fullResponse = ""
-
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      if (!value) continue
-      try {
-        fullResponse += value
-        setMessages((prevMessages) => {
-          const updatedMessages = [...prevMessages]
-          updatedMessages[updatedMessages.length - 1] = {
-            role: "assistant",
-            content: fullResponse,
-          }
-          return updatedMessages
-        })
-      } catch (err) {
-        console.error("Error parsing stream chunk:", err, "Chunk:", value)
-        fullResponse += `\n[Stream Parse Error]`
-        if (!abortController.signal.aborted) {
-          abortController.abort()
-        }
-      }
-    }
-
-    setChatStatus("idle")
-  }, [connectionStatus, sessionId, input, context, messages, chatStatus])
-
   const value: AIChatContextType = {
     messages,
-    input,
     context,
-    setContext,
     sessionId,
     connectionStatus,
     connectionError,
+    setContext,
     chatStatus,
     chatError,
     availableServers,
@@ -349,11 +335,10 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     availableModels: AVAILABLE_MODELS,
     selectedModelId,
     handleChat,
-    handleModelChange,
-    handleInputChange,
     handleNewChat,
     handleConnect,
     handleDisconnect,
+    handleModelChange,
   }
 
   return (
