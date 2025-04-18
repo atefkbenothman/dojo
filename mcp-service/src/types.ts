@@ -15,6 +15,7 @@ export interface MCPServerConfig {
   args: string[]
   cwd?: string
   userArgs?: boolean
+  env?: Record<string, string>
 }
 
 // Available AI Models

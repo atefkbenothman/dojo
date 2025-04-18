@@ -40,6 +40,27 @@ const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
       "@modelcontextprotocol/server-filesystem",
     ],
     userArgs: true
+  },
+  "playwright": {
+    displayName: "Playwright",
+    command: "npx",
+    args: [
+      "-y",
+      "@playwright/mcp@latest",
+      "--browser",
+      "chrome",
+    ],
+  },
+  "ticketmaster": {
+    displayName: "Ticketmaster",
+    command: "npx",
+    args: [
+      "-y",
+      "@delorenj/mcp-server-ticketmaster",
+    ],
+    env: {
+      "TICKETMASTER_API_KEY": process.env.TICKETMASTER_API_KEY || "",
+    },
   }
 }
 
