@@ -65,26 +65,29 @@ function Nav() {
         <p className="text-base font-medium">⛩️</p>
       </div>
       <div className="flex h-full flex-col gap-4 py-4">
-        {navigationItems.map(({ href, icon: Icon }) => (
-          <div key={href} className="flex w-full items-center justify-center">
-            <Link
-              href={href}
-              className={cn(
-                "text-primary/50 group-hover:text-primary",
-                pathname === href && "text-primary",
-              )}
-            >
-              <div
+        {navigationItems.map(({ href, icon: Icon }) => {
+          const isActive = pathname === href
+          return (
+            <div key={href} className="flex w-full items-center justify-center">
+              <Link
+                href={href}
                 className={cn(
-                  "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
-                  pathname === href && "bg-muted border-border border",
+                  "text-primary/50 group-hover:text-primary",
+                  isActive && "text-primary",
                 )}
               >
-                <Icon className="h-5.5 w-5.5" />
-              </div>
-            </Link>
-          </div>
-        ))}
+                <div
+                  className={cn(
+                    "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
+                    isActive && "bg-muted border-border border",
+                  )}
+                >
+                  <Icon className="h-5.5 w-5.5" />
+                </div>
+              </Link>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
