@@ -147,7 +147,7 @@ export function Messages() {
                 ref={virtualizer.measureElement}
               >
                 {msg.role === "user" ? (
-                  <div className="bg-accent text-accent-foreground inline-block w-full overflow-auto p-2 wrap-break-word">
+                  <div className="bg-secondary text-secondary-foreground inline-block w-full overflow-auto p-2 wrap-break-word">
                     <p className="text-xs leading-6">
                       {msg.content.toString()}
                     </p>

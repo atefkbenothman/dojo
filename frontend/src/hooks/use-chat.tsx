@@ -12,15 +12,13 @@ import { useSoundEffect } from "@/hooks/use-sound-effect"
 import {
   connectMCP,
   disconnectMCP,
-  getAvailableMCPServers,
   checkMCPHealth,
 } from "@/actions/mcp-client-actions"
 import { asyncTryCatch } from "@/lib/utils"
+import { MCPServerConfig } from "@/lib/types"
 
-interface AvailableServersInfo {
-  id: string
-  name: string
-  userArgs: boolean
+export interface AvailableServersInfo {
+  [k: string]: MCPServerConfig
 }
 
 interface AIModelInfo {
@@ -59,7 +57,6 @@ type AIChatContextType = {
   chatStatus: ChatStatus
   chatError: string | null
 
-  availableServers: AvailableServersInfo[] | null
   connectedServerId: string | null
 
   availableModels: AIModelInfo[]
@@ -101,9 +98,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle")
   const [chatError, setChatError] = useState<string | null>(null)
 
-  const [availableServers, setAvailableServers] = useState<
-    AvailableServersInfo[] | null
-  >(null)
   const [connectedServerId, setConnectedServerId] = useState<string | null>(
     null,
   )
@@ -322,7 +316,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setContext,
     chatStatus,
     chatError,
-    availableServers,
     connectedServerId,
     availableModels: AVAILABLE_MODELS,
     selectedModelId,

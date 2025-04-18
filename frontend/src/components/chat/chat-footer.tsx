@@ -24,18 +24,26 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
       <Select value={selectedModelId} onValueChange={handleModelChange}>
-        <SelectTrigger>
+        <SelectTrigger className="hover:cursor-pointer">
           <SelectValue placeholder="Model" />
         </SelectTrigger>
         <SelectContent className="text-xs" align="start">
           {availableModels.map((model) => (
-            <SelectItem key={model.id} value={model.id}>
+            <SelectItem
+              key={model.id}
+              value={model.id}
+              className="hover:cursor-pointer"
+            >
               {model.name}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <Button className="ml-auto" variant="outline" onClick={onSend}>
+      <Button
+        className="ml-auto hover:cursor-pointer"
+        variant="outline"
+        onClick={onSend}
+      >
         <ArrowUp className="h-4 w-4" strokeWidth={3} />
       </Button>
     </div>

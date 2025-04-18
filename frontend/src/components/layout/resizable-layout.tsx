@@ -105,7 +105,12 @@ function MainPanelHeader({
       <p className="flex-1 text-base font-medium">Dojo</p>
       <div className="flex flex-row items-center gap-2">
         <DarkModeToggle />
-        <Button onClick={onSidebarToggle} size="icon" variant="outline">
+        <Button
+          onClick={onSidebarToggle}
+          size="icon"
+          variant="outline"
+          className="hover:cursor-pointer"
+        >
           {isCollapsed ? (
             <ChevronLeft className="h-4.5 w-4.5" />
           ) : (

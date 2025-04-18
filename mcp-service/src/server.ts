@@ -17,12 +17,15 @@ const PROJECT_ROOT_PATH = path.resolve(process.cwd(), "..")
 
 const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
   "github": {
+    id: "github",
     displayName: "Github",
     command: "docker-compose",
     args: ["run", "--rm", "github-mcp-server"],
-    cwd: PROJECT_ROOT_PATH
+    cwd: PROJECT_ROOT_PATH,
+    summary: "Repository management, file operations, and GitHub API integration",
   },
   "supabase": {
+    id: "supabase",
     displayName: "Supabase",
     command: "npx",
     args: [
@@ -31,17 +34,21 @@ const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
       "--access-token",
       process.env.SUPABASE_ACCESS_TOKEN || ""
     ],
+    summary: "Connect directly to the cloud platform to access your database",
   },
   "filesystem": {
+    id: "filesystem",
     displayName: "Filesystem",
     command: "npx",
     args: [
       "-y",
       "@modelcontextprotocol/server-filesystem",
     ],
-    userArgs: true
+    userArgs: true,
+    summary: "Secure file operations with configurable access controls",
   },
   "playwright": {
+    id: "playwright",
     displayName: "Playwright",
     command: "npx",
     args: [
@@ -50,8 +57,10 @@ const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
       "--browser",
       "chrome",
     ],
+    summary: "Run browser automation and webscraping"
   },
   "ticketmaster": {
+    id: "ticketmaster",
     displayName: "Ticketmaster",
     command: "npx",
     args: [
@@ -61,6 +70,7 @@ const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
     env: {
       "TICKETMASTER_API_KEY": process.env.TICKETMASTER_API_KEY || "",
     },
+    summary: "Search for events, venues, and attractions through the Ticketmaster Discovery API"
   }
 }
 
@@ -121,12 +131,7 @@ app.get("/health", (req: Request, res: Response) => {
 
 /* Servers */
 app.get("/servers", (req: Request, res: Response) => {
-  const servers = Object.entries(AVAILABLE_MCP_SERVERS).map(([ id, config  ]) => ({
-    id: id,
-    name: config.displayName,
-    userArgs: config.userArgs ? true : false
-  }))
-  res.status(200).json({ servers: servers })
+  res.status(200).json({ servers: AVAILABLE_MCP_SERVERS })
 })
 
 

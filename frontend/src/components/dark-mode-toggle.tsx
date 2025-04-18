@@ -32,10 +32,15 @@ export function DarkModeToggle() {
             <TabsTrigger
               value="light"
               onClick={() => handleThemeClick("light")}
+              className="hover:cursor-pointer"
             >
               <Sun />
             </TabsTrigger>
-            <TabsTrigger value="dark" onClick={() => handleThemeClick("dark")}>
+            <TabsTrigger
+              value="dark"
+              onClick={() => handleThemeClick("dark")}
+              className="hover:cursor-pointer"
+            >
               <Moon />
             </TabsTrigger>
           </TabsList>
