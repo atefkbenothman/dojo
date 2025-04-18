@@ -107,7 +107,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   return <ReactMarkdown components={components}>{content}</ReactMarkdown>
 })
 
-export function MessageList() {
+export function Messages() {
   const { messages } = useChatProvider()
   const scrollRef = useRef<HTMLDivElement>(null)
 

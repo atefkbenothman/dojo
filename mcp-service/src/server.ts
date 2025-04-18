@@ -114,8 +114,8 @@ app.use(cors({
 app.use(express.json())
 
 
-app.get("/", (req: Request, res: Response) => {
-  res.send("MCP Service is running!")
+app.get("/health", (req: Request, res: Response) => {
+  res.json({ status: "ok" })
 })
 
 

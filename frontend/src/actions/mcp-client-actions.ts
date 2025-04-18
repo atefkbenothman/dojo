@@ -6,6 +6,28 @@ import { asyncTryCatch } from "@/lib/utils"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
+/* Check health of MCP Client Server */
+export async function checkMCPHealth(): Promise<{ success: boolean }> {
+  console.log(`[MCP Client] Checking health of MCP service at ${MCP_SERVICE_URL}/health`)
+
+  const { data, error } = await asyncTryCatch(fetch(`${MCP_SERVICE_URL}/health`, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json"
+    },
+    cache: "no-store"
+  }))
+
+  if (error || !data) {
+    console.error(`[MCP Client] Health check failed:`, error)
+    return { success: false }
+  }
+
+  const health = await data.json()
+
+  console.log(`[MCP Client] Health check successful:`, health)
+  return { success: health.status === "ok" }
+}
 
 /* Connect to MCP Client Server */
 export async function connectMCP(currentSessionId: string | null, serverId: string, userArgs?: string[]): Promise<{ sessionId: string | undefined}> {

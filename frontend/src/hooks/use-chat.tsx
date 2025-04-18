@@ -13,8 +13,8 @@ import {
   connectMCP,
   disconnectMCP,
   getAvailableMCPServers,
+  checkMCPHealth,
 } from "@/actions/mcp-client-actions"
-import { toast } from "sonner"
 import { asyncTryCatch } from "@/lib/utils"
 
 interface AvailableServersInfo {
@@ -70,6 +70,8 @@ type AIChatContextType = {
   handleNewChat: () => void
   handleConnect: (serverId: string, userArgs?: string[]) => Promise<void>
   handleDisconnect: () => Promise<void>
+
+  isServerHealthy: boolean
 }
 
 const AIChatContext = createContext<AIChatContextType | undefined>(undefined)
@@ -109,25 +111,14 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   const [selectedModelId, setSelectedModelId] =
     useState<string>(DEFAULT_MODEL_ID)
 
+  const [isServerHealthy, setIsServerHealthy] = useState<boolean>(false)
+
   useEffect(() => {
-    const fetchServers = async () => {
-      try {
-        const response = await getAvailableMCPServers()
-
-        if (response.error) {
-          toast.error("Error fetching available mcp services", {
-            position: "top-right",
-          })
-          return
-        }
-
-        setAvailableServers(response.servers)
-      } catch (err) {
-        console.error("Exception fetching servers:", err)
-        setAvailableServers(null)
-      }
+    const checkServerHealth = async () => {
+      const { success } = await checkMCPHealth()
+      setIsServerHealthy(success)
     }
-    fetchServers()
+    checkServerHealth()
   }, [])
 
   const handleModelChange = useCallback((modelId: string) => {
@@ -340,6 +331,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     handleConnect,
     handleDisconnect,
     handleModelChange,
+    isServerHealthy,
   }
 
   return (

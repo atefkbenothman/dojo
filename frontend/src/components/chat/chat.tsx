@@ -1,13 +1,26 @@
 "use client"
 
 import { ChatFooter } from "@/components/chat/chat-footer"
-import { MessageList } from "@/components/chat/messages"
+import { Messages } from "@/components/chat/messages"
+import { useChatProvider } from "@/hooks/use-chat"
 
 export function Chat() {
+  const { isServerHealthy } = useChatProvider()
+
+  if (!isServerHealthy) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="bg-muted text-muted-foreground border p-2 text-xs font-semibold">
+          Connect to server first
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex flex-1 flex-col overflow-hidden">
-        <MessageList />
+        <Messages />
         <ChatFooter />
       </div>
     </div>
