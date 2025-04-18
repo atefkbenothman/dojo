@@ -67,22 +67,22 @@ function Nav() {
       <div className="flex h-full flex-col gap-4 py-4">
         {navigationItems.map(({ href, icon: Icon }) => (
           <div key={href} className="flex w-full items-center justify-center">
-            <div
+            <Link
+              href={href}
               className={cn(
-                "hover:bg-muted hover:border-border border border-transparent p-2 hover:border",
-                pathname === href && "bg-muted border-border border",
+                "text-primary/50 group-hover:text-primary",
+                pathname === href && "text-primary",
               )}
             >
-              <Link
-                href={href}
+              <div
                 className={cn(
-                  "text-primary/40 hover:text-primary",
-                  pathname === href && "text-primary",
+                  "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
+                  pathname === href && "bg-muted border-border border",
                 )}
               >
                 <Icon className="h-5.5 w-5.5" />
-              </Link>
-            </div>
+              </div>
+            </Link>
           </div>
         ))}
       </div>
