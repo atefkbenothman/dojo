@@ -10,7 +10,7 @@ import type { CoreMessage } from "ai"
 import type { ActiveConnection } from "./types"
 
 dotenv.config({
-  path: path.resolve(process.cwd(), "../.env")
+  path: path.resolve(process.cwd(), ".env")
 })
 
 const DEFAULT_MODEL_ID = "gemini-1.5-flash"

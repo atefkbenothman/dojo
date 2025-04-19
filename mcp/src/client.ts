@@ -16,7 +16,7 @@ import { asyncTryCatch } from "./utils"
 import { MCPServerConfig } from "./types"
 
 dotenv.config({
-  path: path.resolve(process.cwd(), "../.env")
+  path: path.resolve(process.cwd(), ".env")
 })
 
 
