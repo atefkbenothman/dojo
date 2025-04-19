@@ -7,7 +7,7 @@ import { asyncTryCatch } from "@/lib/utils"
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 /* Check health of MCP Client Server */
-export async function checkMCPHealth(): Promise<{ success: boolean }> {
+export async function checkMCPHealth(): Promise<{ success: boolean; error?: string }> {
   console.log(`[MCP Client] Checking health of MCP service at ${MCP_SERVICE_URL}/health`)
 
   const { data, error } = await asyncTryCatch(fetch(`${MCP_SERVICE_URL}/health`, {
@@ -19,13 +19,10 @@ export async function checkMCPHealth(): Promise<{ success: boolean }> {
   }))
 
   if (error || !data) {
-    console.error(`[MCP Client] Health check failed:`, error)
-    return { success: false }
+    return { success: false, error: error?.message || "Service unavailable" }
   }
 
   const health = await data.json()
-
-  console.log(`[MCP Client] Health check successful:`, health)
   return { success: health.status === "ok" }
 }
 
@@ -133,7 +130,6 @@ export async function getAvailableMCPServers() {
   }))
 
   if (error || !data) {
-    console.error(`[MCP Client] Failed to fetch available servers:`, error)
     return { error: "Failed to get available servers" }
   }
 

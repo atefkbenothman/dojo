@@ -109,7 +109,13 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   useEffect(() => {
     const checkServerHealth = async () => {
-      const { success } = await checkMCPHealth()
+      const { success, error } = await checkMCPHealth()
+
+      if (error || !success) {
+        setIsServerHealthy(false)
+        return
+      }
+
       setIsServerHealthy(success)
     }
     checkServerHealth()

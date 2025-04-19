@@ -10,11 +10,9 @@ export default async function Mcp() {
   if (error || !servers) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <Card>
-          <CardContent className="font-medium">
-            No services available
-          </CardContent>
-        </Card>
+        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">
+          Connect to server first
+        </p>
       </div>
     )
   }
