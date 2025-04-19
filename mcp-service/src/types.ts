@@ -1,14 +1,12 @@
 import { LanguageModel } from "ai"
 import { MCPClient } from "./mcp-client"
 
-// Store active connections
 export interface ActiveConnection {
   serverId: string
   client: MCPClient
   lastActivityTimestamp: number
 }
 
-// Available MCP Server Configs
 export interface MCPServerConfig {
   id: string
   displayName: string
@@ -20,7 +18,6 @@ export interface MCPServerConfig {
   summary: string
 }
 
-// Available AI Models
 export interface AIModelConfig {
   name: string
   modelName: string
