@@ -62,9 +62,13 @@ const navigationItems = [
 
 function Nav() {
   const pathname = usePathname()
+  const { play, AudioComponent } = useSoundEffect("./hover.mp3", {
+    volume: 0.5,
+  })
 
   return (
-    <div className="bg-card w-[46px] border-r">
+    <div className="bg-card w-[42px] flex-shrink-0 border-r">
+      {AudioComponent}
       <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b">
         <p className="text-base font-medium">⛩️</p>
       </div>
@@ -75,6 +79,7 @@ function Nav() {
             <div key={href} className="flex w-full items-center justify-center">
               <Link
                 href={href}
+                onClick={() => play()}
                 className={cn(
                   "text-primary/50 group-hover:text-primary",
                   isActive && "text-primary",
@@ -259,7 +264,7 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
         <ResizablePanel
           id="chat-panel"
           ref={chatPanelRef}
-          className="bg-card h-full w-full"
+          className="bg-card h-full w-full flex-shrink-0"
           minSize={panelConfig.chatPanel.minSize}
           maxSize={panelConfig.chatPanel.maxSize}
           defaultSize={panelConfig.chatPanel.defaultSize}

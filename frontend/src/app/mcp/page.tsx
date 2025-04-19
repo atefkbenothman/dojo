@@ -1,10 +1,10 @@
 "use server"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { Suspense } from "react"
 import { MCPList } from "@/app/mcp/mcp-list"
 import { getAvailableMCPServers } from "@/actions/mcp-client-actions"
 
-export default async function Mcp() {
+export async function Mcp() {
   const { servers, error } = await getAvailableMCPServers()
 
   if (error || !servers) {
@@ -18,4 +18,12 @@ export default async function Mcp() {
   }
 
   return <MCPList servers={servers} />
+}
+
+export default async function McpPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <Mcp />
+    </Suspense>
+  )
 }
