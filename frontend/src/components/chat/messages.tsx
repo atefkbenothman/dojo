@@ -93,7 +93,7 @@ const components: Partial<Components> = {
     )
   },
   p: ({ node, children, ...props }) => {
-    return <p className="py-2 text-xs leading-6">{children}</p>
+    return <div className="py-2 text-xs leading-6">{children}</div>
   },
 }
 

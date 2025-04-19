@@ -38,7 +38,7 @@ function MCPDialog({ server }: MCPDialogProps) {
           size="icon"
           className="ml-auto hover:cursor-pointer"
         >
-          <Settings className="text-primary/80" />
+          <Settings className="h-4.5 w-4.5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -102,14 +102,19 @@ function MCPCard({
       </CardHeader>
       <CardFooter className="mt-auto">
         <Button
-          variant={isConnected ? "secondary" : "default"}
+          variant={isConnected ? "default" : "secondary"}
           onClick={
             isConnected
               ? handleDisconnect
               : () => handleConnectWithArgs(server.id)
           }
           disabled={connectionStatus === "connecting"}
-          className="hover:cursor-pointer"
+          className={cn(
+            "border hover:cursor-pointer",
+            isConnected
+              ? "bg-primary hover:bg-primary"
+              : "bg-secondary/80 hover:bg-secondary/90",
+          )}
         >
           {isConnected ? "Disconnect" : "Connect"}
         </Button>
