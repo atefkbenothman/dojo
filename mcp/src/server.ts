@@ -3,7 +3,7 @@ import cors from "cors"
 import dotenv from "dotenv"
 import express, { Express, Request, Response } from "express"
 
-import { MCPClient } from "./mcp-client"
+import { MCPClient } from "./client"
 import { AVAILABLE_MCP_SERVERS, AVAILABLE_AI_MODELS } from "./config"
 import { asyncTryCatch, tryCatch } from "./utils"
 import type { CoreMessage } from "ai"

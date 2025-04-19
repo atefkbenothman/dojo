@@ -1,5 +1,5 @@
 import { LanguageModel } from "ai"
-import { MCPClient } from "./mcp-client"
+import { MCPClient } from "./client"
 
 export interface ActiveConnection {
   serverId: string

@@ -36,7 +36,7 @@ export const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
     displayName: "Github",
     command: "docker-compose",
     args: ["run", "--rm", "github-mcp-server"],
-    cwd: "../",
+    cwd: "./",
     summary: "Repository management, file operations, and GitHub API integration",
   },
   "blender": {
@@ -44,7 +44,7 @@ export const AVAILABLE_MCP_SERVERS: Record<string, MCPServerConfig> = {
     displayName: "Blender",
     command: "uvx",
     args: ["blender-mcp"],
-    cwd: "../",
+    cwd: "./",
     summary: "Enable prompt assisted 3D modeling, scene creation, and manipulation",
   },
   "supabase": {
