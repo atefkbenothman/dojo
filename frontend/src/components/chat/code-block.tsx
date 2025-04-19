@@ -16,7 +16,7 @@ export const CodeBlock = memo(function CodeBlock({
 }: CodeBlockProps) {
   if (!inline) {
     return (
-      <div className="not-prose flex flex-col">
+      <div className="not-prose block">
         <pre {...props} className={`w-full overflow-x-auto text-xs`}>
           <code className="break-words whitespace-pre-wrap">{children}</code>
         </pre>

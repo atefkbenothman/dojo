@@ -19,7 +19,5 @@ export default async function Mcp() {
     )
   }
 
-  console.log(servers)
-
   return <MCPList servers={servers} />
 }
