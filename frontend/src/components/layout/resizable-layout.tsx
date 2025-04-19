@@ -17,6 +17,8 @@ import {
   House,
   Server,
   LayoutGrid,
+  Maximize,
+  Minimize,
 } from "lucide-react"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
@@ -29,7 +31,7 @@ const panelConfig = {
   },
   chatPanel: {
     minSize: 20,
-    maxSize: 60,
+    maxSize: 100,
     defaultSize: 30,
     collapsedSize: 3,
     minWidth: 42,
@@ -102,7 +104,7 @@ function MainPanelHeader({
 }) {
   return (
     <div className="bg-card flex h-12 flex-shrink-0 items-center border-b pr-2 pl-4">
-      <p className="flex-1 text-base font-medium">Dojo</p>
+      <p className="flex-1 pr-4 text-base font-medium">Dojo</p>
       <div className="flex flex-row items-center gap-2">
         <DarkModeToggle />
         <Button
@@ -122,7 +124,15 @@ function MainPanelHeader({
   )
 }
 
-function ChatPanelHeader({ isCollapsed }: { isCollapsed: boolean }) {
+function ChatPanelHeader({
+  isCollapsed,
+  isMaximized,
+  onMaximizeToggle,
+}: {
+  isCollapsed: boolean
+  isMaximized: boolean
+  onMaximizeToggle: () => void
+}) {
   return (
     <div className="bg-card flex h-12 flex-shrink-0 items-center border-b">
       {isCollapsed ? (
@@ -130,7 +140,21 @@ function ChatPanelHeader({ isCollapsed }: { isCollapsed: boolean }) {
           <MessageSquare className="h-4.5 w-4.5" />
         </div>
       ) : (
-        <p className="flex-1 px-4 text-base font-medium">Chat</p>
+        <>
+          <p className="flex-1 px-4 text-base font-medium">Chat</p>
+          <Button
+            onClick={onMaximizeToggle}
+            size="icon"
+            variant="outline"
+            className="mr-2 hover:cursor-pointer"
+          >
+            {isMaximized ? (
+              <Minimize className="h-4.5 w-4.5" />
+            ) : (
+              <Maximize className="h-4.5 w-4.5" />
+            )}
+          </Button>
+        </>
       )}
     </div>
   )
@@ -144,6 +168,7 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false)
   const [isSmallScreen, setIsSmallScreen] = useState<boolean>(false)
+  const [isMaximized, setIsMaximized] = useState<boolean>(false)
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -181,6 +206,18 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
     play()
   }
 
+  const handleMaximizeToggle = () => {
+    if (isMaximized) {
+      // Restore to default sizes
+      resizeChatPanel(panelConfig.chatPanel.defaultSize)
+    } else {
+      // Maximize chat panel
+      resizeChatPanel(100)
+    }
+    setIsMaximized(!isMaximized)
+    play()
+  }
+
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">
       {AudioComponent}
@@ -188,7 +225,7 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
       <ResizablePanelGroup direction="horizontal">
         <ResizablePanel
           defaultSize={panelConfig.mainPanel.defaultSize}
-          className="hidden sm:block"
+          className={cn("hidden sm:block", isMaximized && "hidden")}
         >
           <div className="flex h-full flex-col">
             <MainPanelHeader
@@ -198,7 +235,7 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
             <div className="flex-1 overflow-auto p-4">{children}</div>
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle />
+        <ResizableHandle withHandle className={cn(isMaximized && "hidden")} />
         <ResizablePanel
           id="chat-panel"
           ref={chatPanelRef}
@@ -215,7 +252,11 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
           }}
         >
           <div className={cn("flex h-full w-full flex-col")}>
-            <ChatPanelHeader isCollapsed={sidebarCollapsed} />
+            <ChatPanelHeader
+              isCollapsed={sidebarCollapsed}
+              isMaximized={isMaximized}
+              onMaximizeToggle={handleMaximizeToggle}
+            />
             {sidebarCollapsed ? (
               <div className="flex flex-1 items-center justify-center" />
             ) : (
