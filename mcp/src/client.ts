@@ -9,54 +9,57 @@ import {
   ToolSet,
   jsonSchema,
   ToolCallPart,
-  ToolResultPart
+  ToolResultPart,
 } from "ai"
 import dotenv from "dotenv"
 import { asyncTryCatch } from "./utils"
 import { MCPServerConfig } from "./types"
 
 dotenv.config({
-  path: path.resolve(process.cwd(), ".env")
+  path: path.resolve(process.cwd(), ".env"),
 })
 
-
 export class MCPClient {
+  private config: MCPServerConfig
   private client: Client | null = null
   private transport: StdioClientTransport | null = null
-  private mcpServerConfig: MCPServerConfig | null = null
   private tools: ToolSet | undefined = undefined
 
   constructor(serverConfig: MCPServerConfig) {
-    this.mcpServerConfig = serverConfig
-    console.log(`[MCPClient] MCPClient configured for service ${this.mcpServerConfig.displayName}`)
+    this.config = serverConfig
+    console.log(
+      `[MCPClient] MCPClient configured for service ${this.config.displayName}`,
+    )
   }
 
   /* Start */
   public async start(): Promise<void> {
-    if (this.client || !this.mcpServerConfig) return
+    if (this.client) return
 
     this.client = new Client({
       name: "mcp-client",
-      version: "1.0.0"
+      version: "1.0.0",
     })
 
     const parentEnv = { ...process.env }
-    const configEnv = this.mcpServerConfig.env || {}
+    const configEnv = this.config.env || {}
 
     const envs: Record<string, string> = {
       ...parentEnv,
       ...configEnv,
-      PATH: configEnv.PATH || parentEnv.PATH || ""
+      PATH: configEnv.PATH || parentEnv.PATH || "",
     }
 
     this.transport = new StdioClientTransport({
-      command: this.mcpServerConfig.command,
-      args: this.mcpServerConfig.args,
-      cwd: this.mcpServerConfig.cwd,
+      command: this.config.command,
+      args: this.config.args,
+      cwd: ".",
       env: envs,
     })
 
-    const { error: connectError } = await asyncTryCatch(this.client.connect(this.transport))
+    const { error: connectError } = await asyncTryCatch(
+      this.client.connect(this.transport),
+    )
 
     if (connectError) {
       console.error("[MCPClient] Failed to connect MCP client: ", connectError)
@@ -65,10 +68,15 @@ export class MCPClient {
       throw connectError
     }
 
-    const { data: allTools, error: allToolsError } = await asyncTryCatch(this.client.listTools())
+    const { data: allTools, error: allToolsError } = await asyncTryCatch(
+      this.client.listTools(),
+    )
 
     if (allToolsError || !allTools) {
-      console.error("[MCPClient] Failed to fetch tools from MCP server:", allToolsError)
+      console.error(
+        "[MCPClient] Failed to fetch tools from MCP server:",
+        allToolsError,
+      )
       this.tools = {} as ToolSet
       return
     }
@@ -76,42 +84,55 @@ export class MCPClient {
     this.tools = allTools.tools.reduce((acc, tool) => {
       acc[tool.name] = {
         description: tool.description,
-        parameters: jsonSchema(tool.inputSchema)
+        parameters: jsonSchema(tool.inputSchema),
       } as Tool
       return acc
     }, {} as ToolSet)
 
-    console.log("[MCPClient] Connected to server with tools: ", Object.values(this.tools).map(tool => tool.description))
+    console.log(
+      "[MCPClient] Connected to server with tools: ",
+      Object.values(this.tools).map((tool) => tool.description),
+    )
   }
 
   /* Chat */
-  public async chat(model: LanguageModel, messages: CoreMessage[]): Promise<ReadableStream<string>> {
+  public async chat(
+    model: LanguageModel,
+    messages: CoreMessage[],
+  ): Promise<ReadableStream<string>> {
     if (!this.client) {
       return new ReadableStream({
         start(controller) {
-            controller.error(new Error("Error: MCP Client not connected"))
-            controller.close()
-        }
-      });
+          controller.error(new Error("Error: MCP Client not connected"))
+          controller.close()
+        },
+      })
     }
 
-    console.log(`[MCPClient] Generating AI response based on ${messages.length} messages. Last message:`, messages[messages.length-1]?.content)
+    console.log(
+      `[MCPClient] Generating AI response based on ${messages.length} messages. Last message:`,
+      messages[messages.length - 1]?.content,
+    )
 
     const mcpClient = this.client
     const tools = this.tools || {}
     let currentMessages = [...messages]
 
     const readableStream = new ReadableStream<string>({
-      async start (controller) {
+      async start(controller) {
         let loopCounter = 0
 
         while (true) {
           loopCounter += 1
-          console.log(`[MCPClient.chat] Loop ${loopCounter}: Starting streamText call with ${currentMessages.length} messages.`)
+          console.log(
+            `[MCPClient.chat] Loop ${loopCounter}: Starting streamText call with ${currentMessages.length} messages.`,
+          )
 
           let toolCallsToExecute: ToolCallPart[] = []
           let capturedText = ""
-          let assistantTurnContent: Array<{ type: "text", text: string } | ToolCallPart> = []
+          let assistantTurnContent: Array<
+            { type: "text"; text: string } | ToolCallPart
+          > = []
           let currentTurnHadToolCall = false
 
           try {
@@ -120,7 +141,7 @@ export class MCPClient {
             const currentResult = await streamText({
               model: model,
               messages: currentMessages,
-              tools: tools
+              tools: tools,
             })
 
             for await (const part of currentResult.fullStream) {
@@ -131,36 +152,51 @@ export class MCPClient {
                   break
                 case "tool-call":
                   currentTurnHadToolCall = true
-                  controller.enqueue(`**Calling Tool: ${part.toolName}(${JSON.stringify(part.args)})**\n\n`)
+                  controller.enqueue(
+                    `**Calling Tool: ${part.toolName}(${JSON.stringify(
+                      part.args,
+                    )})**\n\n`,
+                  )
                   toolCallsToExecute.push(part)
                   break
               }
             }
-            console.log(`[MCPClient.chat] Loop ${loopCounter}: streamText finished.`)
+            console.log(
+              `[MCPClient.chat] Loop ${loopCounter}: streamText finished.`,
+            )
 
             if (capturedText.trim()) {
-              assistantTurnContent.push({ type: "text", text: capturedText.trim() })
+              assistantTurnContent.push({
+                type: "text",
+                text: capturedText.trim(),
+              })
             }
 
             assistantTurnContent.push(...toolCallsToExecute)
 
             if (assistantTurnContent.length === 0) {
-              console.warn(`[MCPClient.chat] Loop ${loopCounter}: Assistant message content was empty.`)
+              console.warn(
+                `[MCPClient.chat] Loop ${loopCounter}: Assistant message content was empty.`,
+              )
             }
 
             currentMessages.push({
               role: "assistant",
-              content: assistantTurnContent
+              content: assistantTurnContent,
             })
 
             // Check loop condition: If NO tools were called in THIS turn, break the loop
             if (!currentTurnHadToolCall) {
-              console.log(`[MCPClient.chat] Loop ${loopCounter}: No tool calls in this turn. Ending loop.`)
+              console.log(
+                `[MCPClient.chat] Loop ${loopCounter}: No tool calls in this turn. Ending loop.`,
+              )
               break
             }
 
             // Tools were called, execute them
-            console.log(`[MCPClient.chat] Loop ${loopCounter}: Executing ${toolCallsToExecute.length} tool(s)...`)
+            console.log(
+              `[MCPClient.chat] Loop ${loopCounter}: Executing ${toolCallsToExecute.length} tool(s)...`,
+            )
 
             const toolResults: ToolResultPart[] = []
 
@@ -168,10 +204,14 @@ export class MCPClient {
               let resultData: unknown = null
               let isResultError = false
 
-              const { data, error } = await asyncTryCatch(mcpClient.callTool({
-                name: toolCall.toolName,
-                arguments: toolCall.args as { [x: string]: unknown } | undefined
-              }))
+              const { data, error } = await asyncTryCatch(
+                mcpClient.callTool({
+                  name: toolCall.toolName,
+                  arguments: toolCall.args as
+                    | { [x: string]: unknown }
+                    | undefined,
+                }),
+              )
 
               if (error || !data) {
                 resultData = `Error: ${error}`
@@ -185,15 +225,17 @@ export class MCPClient {
                 toolCallId: toolCall.toolCallId,
                 toolName: toolCall.toolName,
                 result: resultData,
-                isError: isResultError
+                isError: isResultError,
               })
             }
 
             currentMessages.push({ role: "tool", content: toolResults })
-
           } catch (err) {
-            console.error(`[MCPClient.chat] Loop ${loopCounter}: Error during processing:`, err)
-            controller.enqueue(`\n[STREAM ERROR]: ${err}`);
+            console.error(
+              `[MCPClient.chat] Loop ${loopCounter}: Error during processing:`,
+              err,
+            )
+            controller.enqueue(`\n[STREAM ERROR]: ${err}`)
             controller.close()
             return
           }
@@ -201,19 +243,24 @@ export class MCPClient {
 
         console.log("[MCPClient.chat] Loop finished. Stream process complete.")
         controller.close()
-      }
+      },
     })
 
     return readableStream
   }
 
   /* Direct chat */
-  static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<Response> {
-    console.log(`[MCPClient] MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
+  static async directChat(
+    model: LanguageModel,
+    messages: CoreMessage[],
+  ): Promise<Response> {
+    console.log(
+      `[MCPClient] MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`,
+    )
 
     const result = await streamText({
       model: model,
-      messages: messages
+      messages: messages,
     })
 
     return result.toTextStreamResponse()
