@@ -92,34 +92,28 @@ export function MCPCard({ server }: MCPCardProps) {
         <CardDescription className="w-[90%]">{server.summary}</CardDescription>
       </CardHeader>
       <CardFooter className="mt-auto flex items-center justify-between">
-        <Button
-          variant={isConnected ? "default" : "secondary"}
-          onClick={handleConnectClick}
-          disabled={connectionStatus === "connecting"}
-          className={cn(
-            "border hover:cursor-pointer",
-            isConnected
-              ? "bg-primary hover:bg-primary"
-              : "bg-secondary/80 hover:bg-secondary/90",
-          )}
-        >
-          {isConnected ? "Disconnect" : "Connect"}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleConfigureClick}
-          className="bg-muted text-muted-foreground hover:bg-muted h-8 w-8 hover:cursor-pointer"
-          size="icon"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-        <MCPDialog
-          server={server}
-          onSaveConfig={handleSaveConfig}
-          savedConfig={currentConfig}
-          open={isConfigDialogOpen}
-          onOpenChange={setIsConfigDialogOpen}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant={isConnected ? "default" : "secondary"}
+            onClick={handleConnectClick}
+            disabled={connectionStatus === "connecting"}
+            className={cn(
+              "border hover:cursor-pointer",
+              isConnected
+                ? "bg-primary hover:bg-primary"
+                : "bg-secondary/80 hover:bg-secondary/90",
+            )}
+          >
+            {isConnected ? "Disconnect" : "Connect"}
+          </Button>
+          <MCPDialog
+            server={server}
+            onSaveConfig={handleSaveConfig}
+            savedConfig={currentConfig}
+            open={isConfigDialogOpen}
+            onOpenChange={setIsConfigDialogOpen}
+          />
+        </div>
       </CardFooter>
     </Card>
   )
