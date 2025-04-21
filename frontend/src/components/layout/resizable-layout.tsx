@@ -276,7 +276,7 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
             minWidth: `${panelConfig.chatPanel.minWidth}px`,
           }}
         >
-          <div className={cn("flex h-full w-full flex-col")}>
+          <div className="flex h-full w-full flex-col">
             <ChatPanelHeader
               isCollapsed={sidebarCollapsed}
               isMaximized={isMaximized}
@@ -286,7 +286,12 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
             {sidebarCollapsed ? (
               <div className="flex flex-1 items-center justify-center" />
             ) : (
-              <div className="flex flex-1 flex-col overflow-hidden">
+              <div
+                className={cn(
+                  "flex flex-1 flex-col overflow-hidden p-2",
+                  isMaximized && "mx-auto flex w-full lg:w-[80%] xl:w-[60%]",
+                )}
+              >
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   <Chat />
                 </div>

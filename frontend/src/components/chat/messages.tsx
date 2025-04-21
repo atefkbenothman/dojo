@@ -93,7 +93,7 @@ const components: Partial<Components> = {
     )
   },
   p: ({ node, children, ...props }) => {
-    return <div className="py-2 text-xs leading-6">{children}</div>
+    return <div className="text-xs leading-6">{children}</div>
   },
 }
 
@@ -133,7 +133,7 @@ export function Messages() {
         style={{ height: `${virtualizer.getTotalSize()}px` }}
       >
         <div
-          className="absolute flex w-full flex-col p-2"
+          className="absolute flex w-full flex-col gap-4 px-2 py-4"
           style={{
             transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
           }}
@@ -147,13 +147,15 @@ export function Messages() {
                 ref={virtualizer.measureElement}
               >
                 {msg.role === "user" ? (
-                  <div className="bg-secondary text-secondary-foreground inline-block w-full overflow-auto p-2 wrap-break-word">
-                    <p className="text-xs leading-6">
-                      {msg.content.toString()}
-                    </p>
+                  <div className="flex justify-end">
+                    <div className="bg-secondary text-secondary-foreground inline-block max-w-[80%] overflow-auto rounded-lg p-2 text-left wrap-break-word">
+                      <p className="text-xs leading-6">
+                        {msg.content.toString()}
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="inline-block w-full overflow-auto bg-transparent p-2 text-sm wrap-break-word">
+                  <div className="text-balanced inline-block w-full max-w-[98%] overflow-auto bg-transparent text-sm wrap-break-word">
                     <MarkdownRenderer content={msg.content.toString()} />
                   </div>
                 )}
