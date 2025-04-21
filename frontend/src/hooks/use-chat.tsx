@@ -8,23 +8,13 @@ import {
   useEffect,
 } from "react"
 import type { CoreMessage } from "ai"
-import { useSoundEffect } from "@/hooks/use-sound-effect"
 import {
   connectMCP,
   disconnectMCP,
   checkMCPHealth,
 } from "@/actions/mcp-client-actions"
 import { asyncTryCatch } from "@/lib/utils"
-import { MCPServerConfig } from "@/lib/types"
-
-export interface AvailableServersInfo {
-  [k: string]: MCPServerConfig
-}
-
-interface AIModelInfo {
-  id: string
-  name: string
-}
+import type { MCPServerConfig, AIModelInfo } from "@/lib/types"
 
 const AVAILABLE_MODELS: AIModelInfo[] = [
   {
@@ -43,21 +33,28 @@ const AVAILABLE_MODELS: AIModelInfo[] = [
 
 const DEFAULT_MODEL_ID = "gemini-1.5-flash"
 
+const initialMessages: CoreMessage[] = [
+  {
+    role: "assistant",
+    content: "Hello. I am an AI assistant",
+  },
+]
+
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
 type ChatStatus = "idle" | "loading" | "error"
 
 type AIChatContextType = {
   messages: CoreMessage[]
   context: string
+  setContext: (data: string) => void
+
   sessionId: string | null
   connectionStatus: ConnectionStatus
   connectionError: string | null
-  setContext: (data: string) => void
+  connectedServerId: string | null
 
   chatStatus: ChatStatus
   chatError: string | null
-
-  connectedServerId: string | null
 
   availableModels: AIModelInfo[]
   selectedModelId: string
@@ -65,7 +62,7 @@ type AIChatContextType = {
 
   handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
-  handleConnect: (serverId: string, userArgs?: string[]) => Promise<void>
+  handleConnect: (config: MCPServerConfig) => Promise<void>
   handleDisconnect: () => Promise<void>
 
   isServerHealthy: boolean
@@ -77,16 +74,7 @@ type AIChatProviderProps = {
   children: React.ReactNode
 }
 
-const initialMessages: CoreMessage[] = [
-  {
-    role: "assistant",
-    content: "Hello. I am an AI assistant",
-  },
-]
-
 export function AIChatProvider({ children }: AIChatProviderProps) {
-  const { play } = useSoundEffect("./hover.mp3", { volume: 0.5 })
-
   const [messages, setMessages] = useState<CoreMessage[]>(initialMessages)
   const [context, setContext] = useState<string>("")
 
@@ -234,7 +222,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   }, [])
 
   const handleConnect = useCallback(
-    async (serverId: string, userArgs?: string[]) => {
+    async (config: MCPServerConfig) => {
       if (
         connectionStatus === "connecting" ||
         connectionStatus === "connected"
@@ -249,29 +237,24 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       setConnectionError(null)
       setConnectedServerId(null)
 
-      try {
-        const result = await connectMCP(sessionId, serverId, userArgs)
+      const { data: result, error } = await asyncTryCatch(
+        connectMCP(sessionId, config),
+      )
 
-        if (!result.sessionId) {
-          console.error("Connection failed: result is undefined")
-          setConnectionStatus("error")
-          setConnectionError("An unexpected error occurred during connecting")
-          setSessionId(null)
-          setConnectedServerId(null)
-          return
-        }
-
-        console.log("Connection successful. sessionId:", result.sessionId)
-        setSessionId(result.sessionId)
-        setConnectionStatus("connected")
-        setConnectionError(null)
-        setConnectedServerId(serverId)
-      } catch (err) {
-        console.error("Exception during connect action call:", err)
+      if (error || !result?.sessionId) {
+        console.error("Connection failed:", error || "result is undefined")
         setConnectionStatus("error")
         setConnectionError("An unexpected error occurred during connecting")
         setSessionId(null)
+        setConnectedServerId(null)
+        return
       }
+
+      console.log("Connection successful. sessionId:", result.sessionId)
+      setSessionId(result.sessionId)
+      setConnectionStatus("connected")
+      setConnectionError(null)
+      setConnectedServerId(config.id)
     },
     [connectionStatus, sessionId],
   )
@@ -287,28 +270,24 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
     setConnectedServerId(null)
 
-    try {
-      const result = await disconnectMCP(sessionId)
+    const { data: result, error } = await asyncTryCatch(
+      disconnectMCP(sessionId),
+    )
 
-      if (result.error) {
-        console.error("Disconnection failed:", result.error)
-        setConnectionStatus("error")
-        setConnectionError(`Disconnection error: ${result.error}`)
-        return
-      }
-
-      console.log("Disconnection successful")
-
-      setConnectionStatus("disconnected")
-      setConnectionError(null)
-    } catch (err) {
-      console.error("Exception during disconnect action call:", err)
+    if (error || result?.error) {
+      console.error("Disconnection failed:", error || result?.error)
       setConnectionStatus("error")
-      setConnectionError("Error during disconnect action call")
-    } finally {
+      setConnectionError(`Disconnection error: ${error || result?.error}`)
       setSessionId(null)
       setConnectedServerId(null)
+      return
     }
+
+    console.log("Disconnection successful")
+    setConnectionStatus("disconnected")
+    setConnectionError(null)
+    setSessionId(null)
+    setConnectedServerId(null)
 
     console.log(`Attempting to disconnect session: ${sessionId}...`)
   }, [connectionStatus, sessionId, connectedServerId])
