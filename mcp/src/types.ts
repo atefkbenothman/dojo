@@ -1,4 +1,11 @@
-import { LanguageModel } from "ai"
+import {
+  FinishReason,
+  LanguageModel,
+  TextStreamPart,
+  ToolCallPart,
+  ToolResultPart,
+  ToolSet,
+} from "ai"
 import { MCPClient } from "./client"
 
 export interface ActiveConnection {
@@ -25,3 +32,18 @@ export interface AIModelConfig {
   modelName: string
   languageModel: LanguageModel
 }
+
+export type ChatStreamPart =
+  | TextStreamPart<ToolSet>
+  | ToolCallPart
+  | ToolResultPart
+  | { type: "error"; error: unknown }
+  | {
+      type: "finish"
+      reason: FinishReason | string
+      usage?: {
+        completionTokens: number
+        promptTokens: number
+        totalTokens: number
+      }
+    }

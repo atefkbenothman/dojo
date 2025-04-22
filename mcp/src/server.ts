@@ -1,37 +1,25 @@
 import * as path from "path"
-import cors from "cors"
 import dotenv from "dotenv"
-import express, { Express, Request, Response } from "express"
 
+dotenv.config({
+  path: path.resolve(__dirname, "..", ".env"),
+})
+
+import cors from "cors"
+import express, { Express, Request, Response } from "express"
 import { MCPClient } from "./client"
 import { AVAILABLE_MCP_SERVERS, AVAILABLE_AI_MODELS } from "./config"
 import { asyncTryCatch, tryCatch } from "./utils"
 import type { CoreMessage } from "ai"
 import type { ActiveConnection } from "./types"
 
-dotenv.config({
-  path: path.resolve(process.cwd(), ".env"),
-})
-
+const PORT = process.env.PORT || 8888
 const DEFAULT_MODEL_ID = "gemini-1.5-flash"
-
-console.log(
-  "[server]: Available MCP Servers:",
-  Object.values(AVAILABLE_MCP_SERVERS).join(", "),
-)
-console.log(
-  "[server]: Available AI Models:",
-  Object.keys(AVAILABLE_AI_MODELS).join(", "),
-)
-
-// In-memory map to hold active connections, keyed by sessionId
-const activeConnections = new Map<string, ActiveConnection>()
 
 const MAX_CONNECTIONS = 10
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 
 const app: Express = express()
-const port = process.env.PORT || 8888
 
 app.use(
   cors({
@@ -42,79 +30,95 @@ app.use(
 
 app.use(express.json())
 
+console.log("[server]: Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
+console.log("[server]: Available AI Models:", Object.keys(AVAILABLE_AI_MODELS).join(", "))
+
+const activeConnections = new Map<string, ActiveConnection>()
+
+/* Start the server */
+app.listen(PORT, () => {
+  console.log(`[server]: MCP Service listening on port ${PORT}`)
+  console.log(`[server]: Initializing with ${activeConnections.size} connections.`)
+  console.log(`[server]: Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes.`)
+})
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err)
+})
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason)
+})
+
+/* Get server health */
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok" })
 })
 
-/* Servers */
+/* List servers */
 app.get("/servers", (req: Request, res: Response) => {
   res.status(200).json({ servers: AVAILABLE_MCP_SERVERS })
 })
+
+const validateReqBody = (sessionId: any, config: any): boolean => {
+  if (!sessionId || typeof sessionId !== "string") return false
+  if (!config || typeof config !== "object") return false
+  return true
+}
+
+const validateConnection = (sessionId: string): boolean => {
+  if (activeConnections.has(sessionId)) {
+    console.log(`[server]: Session ${sessionId} is already connected`)
+    return false
+  }
+
+  if (activeConnections.size >= MAX_CONNECTIONS) {
+    console.warn(`[server]: Connection limit ${MAX_CONNECTIONS} reached. Rejecting ${sessionId}`)
+    return false
+  }
+
+  return true
+}
+
+const findConnection = (sessionId: string): ActiveConnection | null => {
+  return activeConnections.get(sessionId) || null
+}
+
+const cleanupExistingConnection = async (sessionId: string): Promise<void> => {
+  const existingConnection = findConnection(sessionId)
+
+  if (existingConnection) {
+    const { error } = await asyncTryCatch(existingConnection.client.cleanup())
+    if (error) {
+      console.error(`[server /connect]: Error cleaning up old client for session ${sessionId}:`, error)
+    }
+    activeConnections.delete(sessionId)
+  }
+}
 
 /* Connect */
 app.post("/connect", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, config } = req.body
 
-  if (!sessionId || typeof sessionId !== "string") {
-    console.warn("[server]: /connect called without a valid sessionId")
-    res.status(400).json({
-      message: "Missing or invalid sessionId",
-    })
-    return
-  }
-
-  if (!config || typeof config !== "object") {
-    res.status(400).json({
-      message: "Missing or invalid config",
-    })
+  if (!validateReqBody(sessionId, config)) {
+    res.status(400).json({ message: "Missing or invalid sessionId or config" })
     return
   }
 
   console.log(`[server]: /connect request received for sessionId: ${sessionId}`)
 
-  // Check if connection already exists
-  if (activeConnections.has(sessionId)) {
-    console.log(`[server]: Session ${sessionId} is already connected`)
-    res.status(200).json({
-      message: "Already connected",
-    })
+  if (!validateConnection(sessionId)) {
+    res.status(503).json({ message: "Service busy, connection limit reached" })
     return
   }
 
-  // Check connection limit
-  if (activeConnections.size >= MAX_CONNECTIONS) {
-    console.warn(
-      `[server]: Connection limit ${MAX_CONNECTIONS} reached. Rejecting ${sessionId}`,
-    )
-    res.status(503).json({
-      message: "Service busy, connection limit reached",
-    })
-    return
-  }
+  await cleanupExistingConnection(sessionId)
 
-  // Handle existing connection
-  const existingConnection = activeConnections.get(sessionId)
-
-  if (existingConnection) {
-    const { error } = await asyncTryCatch(existingConnection.client.cleanup())
-    if (error) {
-      console.error(
-        `[server /connect]: Error cleaning up old client for session ${sessionId}:`,
-        error,
-      )
-    }
-    activeConnections.delete(sessionId)
-  }
-
-  const { data: mcpClient, error: mcpClientError } = tryCatch(
-    new MCPClient(config),
-  )
+  // Create mcp client
+  const { data: mcpClient, error: mcpClientError } = tryCatch(new MCPClient(config))
 
   if (!mcpClient || mcpClientError) {
-    console.error(
-      `[server]: Error establising connection for ${sessionId}:`,
-      mcpClientError,
-    )
+    console.error(`[server]: Error establising connection for ${sessionId}:`, mcpClientError)
     activeConnections.delete(sessionId)
     res.status(500).json({ message: "Failed to establish connection" })
     return
@@ -122,6 +126,7 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
 
   console.log(`[server]: Starting MCPClient connection for ${sessionId}...`)
 
+  // Start mcp server
   const { error: mcpStartError } = await asyncTryCatch(mcpClient.start())
 
   if (mcpStartError) {
@@ -135,13 +140,9 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
     client: mcpClient,
     lastActivityTimestamp: Date.now(),
   }
-
-  // Store the new connection
   activeConnections.set(sessionId, connectionData)
 
-  console.log(
-    `[server]: Connection established for ${sessionId}. Total connections: ${activeConnections.size}`,
-  )
+  console.log(`[server]: Connection established for ${sessionId}. Total connections: ${activeConnections.size}`)
   res.status(200).json({ message: "Connection successful" })
 })
 
@@ -150,147 +151,148 @@ app.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
   const { sessionId } = req.body
 
   if (!sessionId || typeof sessionId !== "string") {
-    console.warn("[server]: /disconnect called without a valid sessionId")
     res.status(400).json({ message: "Missing or invalid sessionId" })
     return
   }
 
-  console.log(
-    `[server]: /disconnect request received for sessionId: ${sessionId}`,
-  )
+  console.log(`[server]: /disconnect request received for sessionId: ${sessionId}`)
 
-  const connectionData = activeConnections.get(sessionId)
+  await cleanupExistingConnection(sessionId)
 
-  if (!connectionData) {
-    console.log(`[server]: Session ${sessionId} not found for disconnection`)
-    res
-      .status(200)
-      .json({ message: "Session not found or already disconnected" })
-    return
-  }
-
-  const { error } = await asyncTryCatch(connectionData.client.cleanup())
-
-  if (error) {
-    console.error(
-      `[server]: Error during disconnection for ${sessionId}:`,
-      error,
-    )
-    res.status(500).json({ message: "Error during disconnection cleanup" })
-    return
-  }
-
-  activeConnections.delete(sessionId)
-
-  console.log(
-    `[server]: Connection closed for ${sessionId}. Total connections: ${activeConnections.size}`,
-  )
+  console.log(`[server]: Connection closed for ${sessionId}. Total connections: ${activeConnections.size}`)
   res.status(200).json({ message: "Disconnection successful" })
 })
+
+const validateChatRequest = (messages: any, modelId: string): { isValid: boolean; error?: string } => {
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return { isValid: false, error: "Missing or invalid messages array" }
+  }
+
+  const model = modelId || DEFAULT_MODEL_ID
+  const aiModel = AVAILABLE_AI_MODELS[model]?.languageModel
+
+  if (!aiModel) {
+    return { isValid: false, error: "AI Model not configured on backend" }
+  }
+
+  return { isValid: true }
+}
+
+const handleDirectChat = async (aiModel: any, messages: CoreMessage[], res: Response): Promise<void> => {
+  const { data: directChatResponse, error } = await asyncTryCatch(MCPClient.directChat(aiModel, messages))
+
+  if (error || !directChatResponse) {
+    console.error(`[server /chat - Direct]: Error during direct AI call:`, error)
+    res.status(500).json({ message: `Error processing direct chat: ${error}` })
+    return
+  }
+
+  directChatResponse.headers.forEach((value, key) => {
+    res.setHeader(key, value)
+  })
+  res.status(directChatResponse.status)
+
+  if (directChatResponse.body) {
+    for await (const chunk of directChatResponse.body) {
+      res.write(chunk)
+    }
+  }
+  res.end()
+}
+
+const formatStreamPart = (part: any): { prefix: string; contentJson: string } => {
+  let prefix = ""
+  let contentJson = ""
+
+  switch (part.type) {
+    case "text-delta":
+      prefix = "0"
+      contentJson = JSON.stringify(part.textDelta)
+      break
+    case "tool-call":
+      prefix = "9"
+      contentJson = JSON.stringify({
+        toolCallId: part.toolCallId,
+        toolName: part.toolName,
+        args: part.args,
+      })
+      break
+    case "tool-result":
+      prefix = "a"
+      contentJson = JSON.stringify({
+        toolCallId: part.toolCallId,
+        result: part.result,
+      })
+      break
+    case "finish":
+      prefix = "d"
+      contentJson = JSON.stringify({
+        finishReason: "finished",
+        usage: part.usage,
+      })
+      break
+    case "error":
+      prefix = "3"
+      contentJson = JSON.stringify(part.error)
+      break
+  }
+
+  return { prefix, contentJson }
+}
+
+const handleStreamedChat = async (
+  connectionData: ActiveConnection,
+  aiModel: any,
+  messages: CoreMessage[],
+  res: Response,
+): Promise<void> => {
+  const { data: stream, error } = await asyncTryCatch(connectionData.client.chat(aiModel, messages))
+
+  if (error || !stream) {
+    console.error(`[server]: Error during chat:`, error)
+    res.status(400).json({ message: "Error processing chat message" })
+    return
+  }
+
+  res.setHeader("Content-Type", "text/plain; charset=utf-8")
+  res.setHeader("Transfer-Encoding", "chunked")
+  res.setHeader("X-Vercel-AI-Data-Stream", "v1")
+  res.status(200)
+
+  for await (const part of stream) {
+    const { prefix, contentJson } = formatStreamPart(part)
+    if (prefix && contentJson) {
+      res.write(`${prefix}:${contentJson}\n`)
+    }
+  }
+  res.end()
+}
 
 /* Chat Stream */
 app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, messages, modelId } = req.body
-
   const model = modelId || DEFAULT_MODEL_ID
+
+  console.log(`[server]: /chat request received for sessionId: ${sessionId} using model: ${model}`)
+
+  const validation = validateChatRequest(messages, model)
+
+  if (!validation.isValid) {
+    res.status(validation.error?.includes("configured") ? 500 : 400).json({ message: validation.error })
+    return
+  }
+
   const aiModel = AVAILABLE_AI_MODELS[model].languageModel
-
-  if (!aiModel) {
-    console.error(
-      `[server /chat - Direct]: Cannot process direct chat, AI model not initialized.`,
-    )
-    res.status(500).json({ message: "AI Model not configured on backend." })
-    return
-  }
-
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    console.warn(
-      `[server]: /chat called for ${sessionId} without a valid message array`,
-    )
-    res.status(400).json({ message: "Missing or invalid messages array" })
-    return
-  }
-
-  console.log(
-    `[server]: /chat request received for sessionId: ${sessionId} using model: ${model}`,
-  )
-
   const connectionData = activeConnections.get(sessionId)
 
   if (!connectionData) {
-    console.log(
-      `[server /chat]: No active MCP connection found for sessionId: ${sessionId}. Using direct AI call.`,
-    )
-
-    const { data: directChatResponse, error } = await asyncTryCatch(
-      MCPClient.directChat(aiModel, messages),
-    )
-
-    if (error || !directChatResponse) {
-      console.error(
-        `[server /chat - Direct]: Error during direct AI call:`,
-        error,
-      )
-      res
-        .status(500)
-        .json({ message: `Error processing direct chat: ${error}` })
-      return
-    }
-
-    directChatResponse.headers.forEach((value, key) => {
-      res.setHeader(key, value)
-    })
-    res.status(directChatResponse.status)
-
-    if (directChatResponse.body) {
-      for await (const chunk of directChatResponse.body) {
-        res.write(chunk)
-      }
-      res.end()
-    } else {
-      res.end()
-    }
-
+    console.log(`[server /chat]: No active MCP connection found for sessionId: ${sessionId}. Using direct AI call.`)
+    await handleDirectChat(aiModel, messages as CoreMessage[], res)
     return
   }
 
   connectionData.lastActivityTimestamp = Date.now()
   console.log(`[server]: Updated last activity time for ${sessionId}`)
 
-  const { data: stream, error } = await asyncTryCatch(
-    connectionData.client.chat(aiModel, messages as CoreMessage[]),
-  )
-
-  if (error || !stream) {
-    console.error(`[server]: Error during chat for ${sessionId}:`, error)
-    res.status(400).json({ message: "Error processing chat message" })
-    return
-  }
-
-  res.setHeader("Content-Type", "text/plain; charset=utf-8")
-  res.status(200)
-
-  for await (const chunk of stream) {
-    res.write(chunk)
-  }
-  res.end()
-})
-
-/* Start the server */
-app.listen(port, () => {
-  console.log(`[server]: MCP Service listening on port ${port}`)
-  console.log(
-    `[server]: Initializing with ${activeConnections.size} connections.`,
-  )
-  console.log(
-    `[server]: Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes.`,
-  )
-})
-
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err)
-})
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason)
+  await handleStreamedChat(connectionData, aiModel, messages as CoreMessage[], res)
 })
