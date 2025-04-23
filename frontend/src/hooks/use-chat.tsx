@@ -192,15 +192,61 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         if (done) break
         if (!value) continue
         try {
-          fullResponse += value
-          setMessages((prevMessages) => {
-            const updatedMessages = [...prevMessages]
-            updatedMessages[updatedMessages.length - 1] = {
-              role: "assistant",
-              content: fullResponse,
+          const lines = value.split("\n").filter((line) => line.trim() !== "")
+
+          for (const line of lines) {
+            const match = line.match(/^([0-9a-zA-Z]):(.*)$/)
+            if (match) {
+              const typeId = match[1]
+              const contentJson = match[2]
+              let parsedContent: any
+
+              try {
+                parsedContent = JSON.parse(contentJson!)
+              } catch (err) {
+                fullResponse += `\n[Stream Data Parse Error for type ${typeId}]`
+                continue
+              }
+
+              switch (match[1]) {
+                case "0": // text-delta
+                  fullResponse += parsedContent
+                  break
+                case "9": // tool-call
+                  fullResponse += `\n[Calling tool: ${parsedContent.toolName} with args: ${JSON.stringify(parsedContent.args)}]\n\n`
+                  break
+                case "a": // tool-result
+                  fullResponse += `\n[Tool result: ${JSON.stringify(parsedContent.result)}]`
+                  break
+                case "d": // finish
+                  // fullResponse += `\n[Finished: ${parsedContent.finishReason}]`
+                  // if (parsedContent.usage) {
+                  //   fullResponse += `\n[Usage: ${JSON.stringify(parsedContent.usage)}]`
+                  // }
+                  break
+                case "3": // error
+                  const errorMessage =
+                    typeof parsedContent === "object"
+                      ? JSON.stringify(parsedContent)
+                      : parsedContent
+                  fullResponse += `\n[Error: ${errorMessage}]`
+                  setChatStatus("error")
+                  setChatError(errorMessage)
+                  break
+                default:
+                  console.warn(`Unknown stream part type: ${match[1]}`)
+                  break
+              }
+              setMessages((prevMessages) => {
+                const updatedMessages = [...prevMessages]
+                updatedMessages[updatedMessages.length - 1] = {
+                  role: "assistant",
+                  content: fullResponse,
+                }
+                return updatedMessages
+              })
             }
-            return updatedMessages
-          })
+          }
         } catch (err) {
           console.error("Error parsing stream chunk:", err, "Chunk:", value)
           fullResponse += `\n[Stream Parse Error]`

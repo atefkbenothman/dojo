@@ -87,14 +87,12 @@ export class MCPClient {
   ): CoreMessage[] {
     const updatedMessages = [...currentMessages]
 
-    if (assistantContent.length === 0) {
-      console.warn("[MCPClient.chat] Assistant message content was empty.")
+    if (assistantContent.length > 0) {
+      updatedMessages.push({
+        role: "assistant",
+        content: assistantContent,
+      })
     }
-
-    updatedMessages.push({
-      role: "assistant",
-      content: assistantContent,
-    })
 
     if (toolResults.length > 0) {
       updatedMessages.push({ role: "tool", content: toolResults })
@@ -232,6 +230,7 @@ export class MCPClient {
 
             // Build Assistant Response
             const assistantResponse: Array<{ type: "text"; text: string } | ToolCallPart> = []
+
             if (aiResponseText.trim()) {
               assistantResponse.push({
                 type: "text",
