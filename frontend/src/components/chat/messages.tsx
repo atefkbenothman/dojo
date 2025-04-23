@@ -4,6 +4,13 @@ import ReactMarkdown, { type Components } from "react-markdown"
 import Link from "next/link"
 import { CodeBlock } from "./code-block"
 import { useChatProvider } from "@/hooks/use-chat"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import type { CoreAssistantMessage, ToolCallPart, ToolResultPart } from "ai"
 
 const components: Partial<Components> = {
   // @ts-expect-error
@@ -107,6 +114,42 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   return <ReactMarkdown components={components}>{content}</ReactMarkdown>
 })
 
+function ToolCallMessage({ content }: { content: ToolCallPart }) {
+  return (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value={content.toolCallId}>
+        <AccordionTrigger className="text-sm">
+          {content.toolName}
+        </AccordionTrigger>
+        <AccordionContent>
+          <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+            {JSON.stringify(content.args, null, 2)}
+          </pre>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
+}
+
+function ToolResultMessage({ content }: { content: ToolResultPart }) {
+  return (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value={content.toolCallId}>
+        <AccordionTrigger
+          className={`text-sm ${content.isError ? "text-destructive" : ""}`}
+        >
+          {content.toolName} Result
+        </AccordionTrigger>
+        <AccordionContent>
+          <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+            {JSON.stringify(content.result, null, 2)}
+          </pre>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
+}
+
 export function Messages() {
   const { messages } = useChatProvider()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -156,7 +199,26 @@ export function Messages() {
                   </div>
                 ) : (
                   <div className="text-balanced inline-block w-full max-w-[98%] overflow-auto bg-transparent text-sm wrap-break-word">
-                    <MarkdownRenderer content={msg.content.toString()} />
+                    {Array.isArray(msg.content) ? (
+                      msg.content.map((part, index) => {
+                        if (part.type === "tool-call") {
+                          return (
+                            <ToolCallMessage
+                              key={part.toolCallId}
+                              content={part}
+                            />
+                          )
+                        }
+                        if (part.type === "text") {
+                          return (
+                            <MarkdownRenderer key={index} content={part.text} />
+                          )
+                        }
+                        return null
+                      })
+                    ) : (
+                      <MarkdownRenderer content={msg.content.toString()} />
+                    )}
                   </div>
                 )}
               </div>

@@ -7,7 +7,13 @@ import {
   useCallback,
   useEffect,
 } from "react"
-import type { CoreMessage } from "ai"
+import type {
+  CoreMessage,
+  CoreAssistantMessage,
+  ToolCallPart,
+  ToolResultPart,
+  TextPart,
+} from "ai"
 import {
   connectMCP,
   disconnectMCP,
@@ -181,12 +187,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         return
       }
 
-      setMessages((prevMessages) => {
-        return [...prevMessages, { role: "assistant", content: "" }]
-      })
-
       let fullResponse = ""
-
+      let shouldStartNewMessage = true
       while (true) {
         const { value, done } = await reader.read()
         if (done) break
@@ -211,40 +213,65 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
               switch (match[1]) {
                 case "0": // text-delta
                   fullResponse += parsedContent
+                  setMessages((prevMessages) => {
+                    const updatedMessages = [...prevMessages]
+                    const last = updatedMessages[updatedMessages.length - 1]
+                    if (
+                      shouldStartNewMessage ||
+                      !last ||
+                      last.role !== "assistant"
+                    ) {
+                      updatedMessages.push({
+                        role: "assistant" as const,
+                        content: [
+                          { type: "text", text: fullResponse },
+                        ] as TextPart[],
+                      })
+                    } else {
+                      // Otherwise update the last assistant message
+                      updatedMessages[updatedMessages.length - 1] = {
+                        role: "assistant" as const,
+                        content: [
+                          { type: "text", text: fullResponse },
+                        ] as TextPart[],
+                      }
+                    }
+                    return updatedMessages
+                  })
+                  shouldStartNewMessage = false
                   break
                 case "9": // tool-call
-                  fullResponse += `\n[Calling tool: ${parsedContent.toolName} with args: ${JSON.stringify(parsedContent.args)}]\n\n`
+                  const toolCallPart: ToolCallPart = {
+                    type: "tool-call",
+                    toolCallId: parsedContent.toolCallId,
+                    toolName: parsedContent.toolName,
+                    args: parsedContent.args,
+                  }
+                  setMessages((prevMessages) => {
+                    const updatedMessages = [...prevMessages]
+                    // Create a new message for the tool call
+                    updatedMessages.push({
+                      role: "assistant" as const,
+                      content: [toolCallPart] as (TextPart | ToolCallPart)[],
+                    })
+                    return updatedMessages
+                  })
+                  shouldStartNewMessage = true
                   break
                 case "a": // tool-result
-                  fullResponse += `\n[Tool result: ${JSON.stringify(parsedContent.result)}]`
+                  console.log("tool-result:", parsedContent)
                   break
                 case "d": // finish
-                  // fullResponse += `\n[Finished: ${parsedContent.finishReason}]`
-                  // if (parsedContent.usage) {
-                  //   fullResponse += `\n[Usage: ${JSON.stringify(parsedContent.usage)}]`
-                  // }
                   break
                 case "3": // error
-                  const errorMessage =
-                    typeof parsedContent === "object"
-                      ? JSON.stringify(parsedContent)
-                      : parsedContent
-                  fullResponse += `\n[Error: ${errorMessage}]`
+                  fullResponse += `\n[Error: ${parsedContent}]`
                   setChatStatus("error")
-                  setChatError(errorMessage)
+                  setChatError(parsedContent)
                   break
                 default:
                   console.warn(`Unknown stream part type: ${match[1]}`)
                   break
               }
-              setMessages((prevMessages) => {
-                const updatedMessages = [...prevMessages]
-                updatedMessages[updatedMessages.length - 1] = {
-                  role: "assistant",
-                  content: fullResponse,
-                }
-                return updatedMessages
-              })
             }
           }
         } catch (err) {
