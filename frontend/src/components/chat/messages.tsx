@@ -116,13 +116,13 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
 
 function ToolCallMessage({ content }: { content: ToolCallPart }) {
   return (
-    <Accordion type="single" collapsible className="w-full">
+    <Accordion type="single" collapsible className="bg-muted w-full">
       <AccordionItem value={content.toolCallId}>
-        <AccordionTrigger className="text-sm">
-          {content.toolName}
+        <AccordionTrigger className="p-2 text-xs hover:cursor-pointer">
+          Tool: {content.toolName}
         </AccordionTrigger>
-        <AccordionContent>
-          <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+        <AccordionContent className="py-2">
+          <pre className="overflow-auto p-2 text-xs">
             {JSON.stringify(content.args, null, 2)}
           </pre>
         </AccordionContent>
@@ -176,7 +176,7 @@ export function Messages() {
         style={{ height: `${virtualizer.getTotalSize()}px` }}
       >
         <div
-          className="absolute flex w-full flex-col gap-4 px-2 py-4"
+          className="absolute flex w-full flex-col"
           style={{
             transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
           }}
@@ -188,17 +188,18 @@ export function Messages() {
                 key={vItem.key}
                 data-index={vItem.index}
                 ref={virtualizer.measureElement}
+                className="flex h-fit flex-col py-1"
               >
                 {msg.role === "user" ? (
                   <div className="flex justify-end">
-                    <div className="bg-secondary text-secondary-foreground inline-block max-w-[80%] overflow-auto rounded-lg p-2 text-left wrap-break-word">
+                    <div className="bg-input text-foreground inline-block max-w-[80%] overflow-auto p-2 text-left wrap-break-word">
                       <p className="text-xs leading-6">
                         {msg.content.toString()}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-balanced inline-block w-full max-w-[98%] overflow-auto bg-transparent text-sm wrap-break-word">
+                  <div className="text-balanced inline-block h-fit w-full overflow-auto p-2 text-sm wrap-break-word">
                     {Array.isArray(msg.content) ? (
                       msg.content.map((part, index) => {
                         if (part.type === "tool-call") {
