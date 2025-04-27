@@ -21,23 +21,7 @@ import {
 } from "@/actions/mcp-client-actions"
 import { asyncTryCatch } from "@/lib/utils"
 import type { MCPServerConfig, AIModelInfo } from "@/lib/types"
-
-const AVAILABLE_MODELS: AIModelInfo[] = [
-  {
-    id: "gemini-1.5-flash",
-    name: "Gemini 1.5 Flash",
-  },
-  {
-    id: "gemini-2.0-flash-001",
-    name: "Gemini 2.0 Flash",
-  },
-  {
-    id: "deepseek-r1-distill-llama-70b",
-    name: "Deepseek R1",
-  },
-]
-
-const DEFAULT_MODEL_ID = "gemini-1.5-flash"
+import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/config"
 
 const initialMessages: CoreMessage[] = [
   {

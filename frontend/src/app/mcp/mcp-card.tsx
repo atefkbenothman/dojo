@@ -1,11 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -39,6 +37,7 @@ export function MCPCard({ server }: MCPCardProps) {
         command: defaultConfig.command,
         args: defaultConfig.args,
         env: defaultConfig.env,
+        icon: defaultConfig.icon,
       }
     }
     return {
@@ -82,6 +81,7 @@ export function MCPCard({ server }: MCPCardProps) {
     >
       <CardHeader>
         <div className="flex items-center gap-2">
+          {currentConfig.icon && currentConfig.icon}
           <CardTitle className="text-primary/90 font-medium">
             {server.name}
           </CardTitle>
