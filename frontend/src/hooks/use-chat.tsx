@@ -7,18 +7,7 @@ import {
   useCallback,
   useEffect,
 } from "react"
-import type {
-  CoreMessage,
-  CoreAssistantMessage,
-  ToolCallPart,
-  ToolResultPart,
-  TextPart,
-} from "ai"
-import {
-  connectMCP,
-  disconnectMCP,
-  checkMCPHealth,
-} from "@/actions/mcp-client-actions"
+import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
 import { asyncTryCatch } from "@/lib/utils"
 import type { MCPServerConfig, AIModelInfo } from "@/lib/types"
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/config"
@@ -56,6 +45,11 @@ type AIChatContextType = {
   handleDisconnect: () => Promise<void>
 
   isServerHealthy: boolean
+
+  handleImageGeneration: (
+    modelId: string,
+    prompt: string,
+  ) => Promise<{ images: string[] }>
 }
 
 const AIChatContext = createContext<AIChatContextType | undefined>(undefined)
@@ -87,14 +81,23 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   useEffect(() => {
     const checkServerHealth = async () => {
-      const { success, error } = await checkMCPHealth()
+      const { data, error } = await asyncTryCatch(
+        fetch("/api/mcp/health", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        }),
+      )
 
-      if (error || !success) {
+      if (error || !data) {
         setIsServerHealthy(false)
         return
       }
 
-      setIsServerHealthy(success)
+      const health = await data.json()
+      setIsServerHealthy(health.success)
     }
     checkServerHealth()
   }, [])
@@ -294,12 +297,30 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       setConnectionError(null)
       setConnectedServerId(null)
 
-      const { data: result, error } = await asyncTryCatch(
-        connectMCP(sessionId, config),
+      const serializableConfig = {
+        id: config.id,
+        name: config.name,
+        command: config.command,
+        args: config.args,
+        env: config.env,
+      }
+
+      const { data, error } = await asyncTryCatch(
+        fetch("/api/mcp/connect", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentSessionId: sessionId,
+            config: serializableConfig,
+          }),
+          cache: "no-store",
+        }),
       )
 
-      if (error || !result?.sessionId) {
-        console.error("Connection failed:", error || "result is undefined")
+      if (error || !data) {
+        console.error("Connection failed:", error)
         setConnectionStatus("error")
         setConnectionError("An unexpected error occurred during connecting")
         setSessionId(null)
@@ -307,8 +328,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         return
       }
 
-      console.log("Connection successful. sessionId:", result.sessionId)
-      setSessionId(result.sessionId)
+      const { sessionId: newSessionId } = await data.json()
+      console.log("Connection successful. sessionId:", newSessionId)
+      setSessionId(newSessionId)
       setConnectionStatus("connected")
       setConnectionError(null)
       setConnectedServerId(config.id)
@@ -327,14 +349,31 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
     setConnectedServerId(null)
 
-    const { data: result, error } = await asyncTryCatch(
-      disconnectMCP(sessionId),
+    const { data, error } = await asyncTryCatch(
+      fetch("/api/mcp/disconnect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId }),
+        cache: "no-store",
+      }),
     )
 
-    if (error || result?.error) {
-      console.error("Disconnection failed:", error || result?.error)
+    if (error || !data) {
+      console.error("Disconnection failed:", error)
       setConnectionStatus("error")
-      setConnectionError(`Disconnection error: ${error || result?.error}`)
+      setConnectionError(`Disconnection error: ${error}`)
+      setSessionId(null)
+      setConnectedServerId(null)
+      return
+    }
+
+    const { success } = await data.json()
+    if (!success) {
+      console.error("Disconnection failed")
+      setConnectionStatus("error")
+      setConnectionError("Disconnection failed")
       setSessionId(null)
       setConnectedServerId(null)
       return
@@ -345,9 +384,31 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setConnectionError(null)
     setSessionId(null)
     setConnectedServerId(null)
-
-    console.log(`Attempting to disconnect session: ${sessionId}...`)
   }, [connectionStatus, sessionId, connectedServerId])
+
+  const handleImageGeneration = useCallback(
+    async (modelId: string, prompt: string) => {
+      const { data, error } = await asyncTryCatch(
+        fetch("/api/mcp/image", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ modelId, prompt }),
+          cache: "no-store",
+        }),
+      )
+
+      if (error || !data) {
+        console.error(`[Next Action - Image] /image request failed:`, error)
+        return { images: [] }
+      }
+
+      const { images } = await data.json()
+      return { images }
+    },
+    [],
+  )
 
   const value: AIChatContextType = {
     messages,
@@ -367,6 +428,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     handleDisconnect,
     handleModelChange,
     isServerHealthy,
+    handleImageGeneration,
   }
 
   return (

@@ -9,12 +9,14 @@ export const env = createEnv({
       .default("development"),
   },
   client: {
+    NEXT_PUBLIC_APP_URL: z.string(),
     NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN: z.string(),
     NEXT_PUBLIC_TICKETMASTER_API_KEY: z.string()
   },
   runtimeEnv: {
     MCP_SERVICE_URL: process.env.MCP_SERVICE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN,
     NEXT_PUBLIC_TICKETMASTER_API_KEY: process.env.NEXT_PUBLIC_TICKETMASTER_API_KEY,
   },
