@@ -3,8 +3,8 @@ import "./globals.css"
 
 import { Inter } from "next/font/google"
 
+import { AIChatProviderRoot } from "@/hooks/use-chat"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
-import { AIChatProvider } from "@/hooks/use-chat"
 import { ResizableLayout } from "@/components/layout/resizable-layout"
 import { Toaster } from "sonner"
 
@@ -35,12 +35,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AIChatProvider>
+          <AIChatProviderRoot>
             <ResizableLayout>{children}</ResizableLayout>
             <Toaster
               toastOptions={{ style: { borderRadius: "var(--radius-md)" } }}
             />
-          </AIChatProvider>
+          </AIChatProviderRoot>
         </DarkModeProvider>
       </body>
     </html>

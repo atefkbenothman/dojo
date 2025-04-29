@@ -11,6 +11,14 @@ import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
 import { asyncTryCatch } from "@/lib/utils"
 import type { MCPServerConfig, AIModelInfo } from "@/lib/types"
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/config"
+import {
+  useQuery,
+  QueryClientProvider,
+  QueryClient,
+  useMutation,
+} from "@tanstack/react-query"
+
+const queryClient = new QueryClient()
 
 const initialMessages: CoreMessage[] = [
   {
@@ -73,38 +81,120 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   const [connectedServerId, setConnectedServerId] = useState<string | null>(
     null,
   )
-
   const [selectedModelId, setSelectedModelId] =
     useState<string>(DEFAULT_MODEL_ID)
-
-  const [isServerHealthy, setIsServerHealthy] = useState<boolean>(false)
-
-  useEffect(() => {
-    const checkServerHealth = async () => {
-      const { data, error } = await asyncTryCatch(
-        fetch("/api/mcp/health", {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-          cache: "no-store",
-        }),
-      )
-
-      if (error || !data) {
-        setIsServerHealthy(false)
-        return
-      }
-
-      const health = await data.json()
-      setIsServerHealthy(health.success)
-    }
-    checkServerHealth()
-  }, [])
 
   const handleModelChange = useCallback((modelId: string) => {
     setSelectedModelId(modelId)
   }, [])
+
+  /* Check Server Health */
+  const { data: serverHealth } = useQuery({
+    queryKey: ["server-health"],
+    queryFn: async () => {
+      const response = await fetch("/api/mcp/health", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      })
+      if (!response.ok) {
+        throw new Error("Server health check failed")
+      }
+      return response.json()
+    },
+  })
+
+  const isServerHealthy = serverHealth?.success || false
+
+  /* Connect to MCP Server */
+  const connectMutation = useMutation({
+    mutationFn: async (config: MCPServerConfig) => {
+      const serializableConfig = {
+        id: config.id,
+        name: config.name,
+        command: config.command,
+        args: config.args,
+        env: config.env,
+      }
+
+      const response = await fetch("/api/mcp/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentSessionId: sessionId,
+          config: serializableConfig,
+        }),
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        throw new Error("Connection failed")
+      }
+      return response.json()
+    },
+    onMutate: () => {
+      setConnectionStatus("connecting")
+      setConnectionError(null)
+      setConnectedServerId(null)
+    },
+    onSuccess: (data, variables) => {
+      console.log("Connection successful. sessionId:", data.sessionId)
+      setSessionId(data.sessionId)
+      setConnectionStatus("connected")
+      setConnectionError(null)
+      setConnectedServerId(variables.id)
+    },
+    onError: (error) => {
+      console.error("Connection failed:", error)
+      setConnectionStatus("error")
+      setConnectionError("An unexpected error occurred during connecting")
+      setSessionId(null)
+      setConnectedServerId(null)
+    },
+  })
+
+  /* Disconnect from MCP Server */
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) {
+        throw new Error("No sessionId to disconnect")
+      }
+
+      const response = await fetch("/api/mcp/disconnect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId }),
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        throw new Error("Disconnection failed")
+      }
+      return response.json()
+    },
+    onMutate: () => {
+      setConnectedServerId(null)
+    },
+    onSuccess: () => {
+      console.log("Disconnection successful")
+      setConnectionStatus("disconnected")
+      setConnectionError(null)
+      setSessionId(null)
+    },
+    onError: (err) => {
+      console.error("Disconnection failed:", err)
+      setConnectionStatus("error")
+      setConnectionError(`Disconnection error: ${err}`)
+      setSessionId(null)
+      setConnectedServerId(null)
+    },
+  })
 
   const handleChat = useCallback(
     async (message: string) => {
@@ -239,14 +329,30 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
                     // Create a new message for the tool call
                     updatedMessages.push({
                       role: "assistant" as const,
-                      content: [toolCallPart] as (TextPart | ToolCallPart)[],
+                      content: [toolCallPart],
                     })
                     return updatedMessages
                   })
                   shouldStartNewMessage = true
                   break
                 case "a": // tool-result
-                  console.log("tool-result:", parsedContent)
+                  const toolResultPart: ToolResultPart = {
+                    type: "tool-result",
+                    toolCallId: parsedContent.toolCallId,
+                    toolName: parsedContent.toolName,
+                    result: parsedContent.result,
+                    isError: parsedContent.isError,
+                  }
+                  // console.log("tool-result:", toolResultPart)
+                  // setMessages((prevMessages) => {
+                  //   const updatedMessages = [...prevMessages]
+                  //   updatedMessages.push({
+                  //     role: "tool",
+                  //     content: [toolResultPart],
+                  //   })
+                  //   return updatedMessages
+                  // })
+                  shouldStartNewMessage = true
                   break
                 case "d": // finish
                   break
@@ -287,104 +393,25 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         connectionStatus === "connecting" ||
         connectionStatus === "connected"
       ) {
-        console.log("Connect requested, but already connecting or connected")
         return
       }
 
-      console.log("Attempting to connect...")
-
-      setConnectionStatus("connecting")
-      setConnectionError(null)
-      setConnectedServerId(null)
-
-      const serializableConfig = {
-        id: config.id,
-        name: config.name,
-        command: config.command,
-        args: config.args,
-        env: config.env,
-      }
-
-      const { data, error } = await asyncTryCatch(
-        fetch("/api/mcp/connect", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            currentSessionId: sessionId,
-            config: serializableConfig,
-          }),
-          cache: "no-store",
-        }),
-      )
-
-      if (error || !data) {
-        console.error("Connection failed:", error)
-        setConnectionStatus("error")
-        setConnectionError("An unexpected error occurred during connecting")
-        setSessionId(null)
-        setConnectedServerId(null)
-        return
-      }
-
-      const { sessionId: newSessionId } = await data.json()
-      console.log("Connection successful. sessionId:", newSessionId)
-      setSessionId(newSessionId)
-      setConnectionStatus("connected")
-      setConnectionError(null)
-      setConnectedServerId(config.id)
+      await connectMutation.mutateAsync(config)
     },
-    [connectionStatus, sessionId],
+    [connectionStatus, connectMutation],
   )
 
   const handleDisconnect = useCallback(async () => {
     if (connectionStatus !== "connected" || !sessionId) {
-      console.log("Disconnect requested, but not connected or no sessionID")
+      console.log("Disconnect requested but not connected or no sessionID")
       setConnectionStatus("disconnected")
       setSessionId(null)
       setConnectionError(null)
       return
     }
 
-    setConnectedServerId(null)
-
-    const { data, error } = await asyncTryCatch(
-      fetch("/api/mcp/disconnect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionId }),
-        cache: "no-store",
-      }),
-    )
-
-    if (error || !data) {
-      console.error("Disconnection failed:", error)
-      setConnectionStatus("error")
-      setConnectionError(`Disconnection error: ${error}`)
-      setSessionId(null)
-      setConnectedServerId(null)
-      return
-    }
-
-    const { success } = await data.json()
-    if (!success) {
-      console.error("Disconnection failed")
-      setConnectionStatus("error")
-      setConnectionError("Disconnection failed")
-      setSessionId(null)
-      setConnectedServerId(null)
-      return
-    }
-
-    console.log("Disconnection successful")
-    setConnectionStatus("disconnected")
-    setConnectionError(null)
-    setSessionId(null)
-    setConnectedServerId(null)
-  }, [connectionStatus, sessionId, connectedServerId])
+    await disconnectMutation.mutateAsync()
+  }, [connectionStatus, sessionId, disconnectMutation])
 
   const handleImageGeneration = useCallback(
     async (modelId: string, prompt: string) => {
@@ -442,4 +469,16 @@ export function useChatProvider() {
     throw new Error("useChatProvider must be used within an AIChatProvider")
   }
   return context
+}
+
+export function AIChatProviderRoot({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AIChatProvider>{children}</AIChatProvider>
+    </QueryClientProvider>
+  )
 }
