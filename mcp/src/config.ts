@@ -1,7 +1,8 @@
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai"
 import { createGroq } from "@ai-sdk/groq"
+import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
-import type { AIModelConfig, MCPServer } from "./types"
+import type { AIImageModelConfig, AIModelConfig, MCPServer } from "./types"
 
 export const SYSTEM_PROMPT = `You are a helpful assistant with access to a variety of tools.
 
@@ -21,12 +22,14 @@ Multiple tools can be used in a single response and multiple steps can be used t
 - Use the tools to answer the user's question.
 - If you don't know the answer, use the tools to find the answer or say you don't know.`
 
-// Add debug logging for API keys
 if (!process.env.GOOGLE_API_KEY) {
   console.error("[config] GOOGLE_API_KEY is missing or invalid")
 }
 if (!process.env.GROQ_API_KEY) {
   console.error("[config] GROQ_API_KEY is missing or invalid")
+}
+if (!process.env.OPENAI_API_KEY) {
+  console.error("[config] OPENAI_API_KEY is missing or invalid")
 }
 
 export const AVAILABLE_AI_MODELS: Record<string, AIModelConfig> = {
@@ -53,6 +56,15 @@ export const AVAILABLE_AI_MODELS: Record<string, AIModelConfig> = {
       model: createGroq({ apiKey: process.env.GROQ_API_KEY })("deepseek-r1-distill-llama-70b"),
       middleware: extractReasoningMiddleware({ tagName: "think" }),
     }),
+  },
+} as const
+
+export const AVAILABLE_IMAGE_MODELS: Record<string, AIImageModelConfig> = {
+  "gpt-image-1": {
+    name: "OpenAI Image 1",
+    modelName: "gpt-image-1",
+    imageModel: createOpenAI({ apiKey: process.env.OPENAI_API_KEY }).image("gpt-image-1"),
+    provider: "openai",
   },
 } as const
 
@@ -93,3 +105,6 @@ export const AVAILABLE_MCP_SERVERS: Record<string, MCPServer> = {
     summary: "Collaborative design and prototyping",
   },
 } as const
+
+export const DEFAULT_MODEL_ID = "gemini-1.5-flash"
+export const DEFAULT_IMAGE_MODEL_ID = "gpt-image-1"

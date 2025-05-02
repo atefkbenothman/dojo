@@ -254,6 +254,7 @@ export class MCPClient {
             const toolResults: ToolResultPart[] = []
             for (const toolCall of pendingToolCalls) {
               const result = await mcpClient.processToolCall(toolCall)
+              controller.enqueue(result)
               toolResults.push(result)
             }
 
@@ -274,18 +275,6 @@ export class MCPClient {
         controller.close()
       },
     })
-  }
-
-  /* Direct chat */
-  static async directChat(model: LanguageModel, messages: CoreMessage[]): Promise<Response> {
-    console.log(`[MCPClient] MCPClient.directChat (static): Using direct AI call for ${messages.length} messages`)
-
-    const result = await streamText({
-      model: model,
-      messages: messages,
-    })
-
-    return result.toDataStreamResponse()
   }
 
   public async cleanup() {

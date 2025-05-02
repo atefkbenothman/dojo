@@ -10,7 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import type { CoreAssistantMessage, ToolCallPart, ToolResultPart } from "ai"
+import type { ToolCallPart, ToolResultPart } from "ai"
 
 const components: Partial<Components> = {
   // @ts-expect-error
@@ -133,15 +133,15 @@ function ToolCallMessage({ content }: { content: ToolCallPart }) {
 
 function ToolResultMessage({ content }: { content: ToolResultPart }) {
   return (
-    <Accordion type="single" collapsible className="w-full">
+    <Accordion type="single" collapsible className="bg-muted w-full">
       <AccordionItem value={content.toolCallId}>
         <AccordionTrigger
-          className={`text-sm ${content.isError ? "text-destructive" : ""}`}
+          className={`p-2 text-xs hover:cursor-pointer ${content.isError ? "text-destructive" : ""}`}
         >
           {content.toolName} Result
         </AccordionTrigger>
-        <AccordionContent>
-          <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+        <AccordionContent className="py-2">
+          <pre className="overflow-auto p-2 text-xs">
             {JSON.stringify(content.result, null, 2)}
           </pre>
         </AccordionContent>
@@ -188,37 +188,71 @@ export function Messages() {
                 key={vItem.key}
                 data-index={vItem.index}
                 ref={virtualizer.measureElement}
-                className="flex h-fit flex-col py-1"
+                className="flex h-fit flex-col py-2"
               >
                 {msg.role === "user" ? (
                   <div className="flex justify-end">
-                    <div className="bg-input text-foreground inline-block max-w-[80%] overflow-auto p-2 text-left wrap-break-word">
+                    <div className="bg-primary/10 text-foreground inline-block max-w-[80%] overflow-auto p-2 text-left wrap-break-word">
                       <p className="text-xs leading-6">
                         {msg.content.toString()}
                       </p>
                     </div>
                   </div>
+                ) : msg.role === "tool" ? (
+                  <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
+                    {Array.isArray(msg.content) &&
+                      msg.content[0] &&
+                      "type" in msg.content[0] &&
+                      msg.content[0].type === "tool-result" && (
+                        <ToolResultMessage
+                          key={(msg.content[0] as ToolResultPart).toolCallId}
+                          content={msg.content[0] as ToolResultPart}
+                        />
+                      )}
+                  </div>
                 ) : (
-                  <div className="text-balanced inline-block h-fit w-full overflow-auto p-2 text-sm wrap-break-word">
+                  <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
                     {Array.isArray(msg.content) ? (
                       msg.content.map((part, index) => {
-                        if (part.type === "tool-call") {
-                          return (
-                            <ToolCallMessage
-                              key={part.toolCallId}
-                              content={part}
-                            />
-                          )
+                        console.log(part.type, index)
+                        switch (part.type) {
+                          case "tool-call":
+                            return (
+                              <ToolCallMessage
+                                key={part.toolCallId}
+                                content={part}
+                              />
+                            )
+                          case "text":
+                            return (
+                              <div className="p-2" key={index}>
+                                <MarkdownRenderer content={part.text} />
+                              </div>
+                            )
+                          // @ts-ignore
+                          case "image_display":
+                            console.log(part)
+                            return (
+                              <div
+                                className="flex justify-start p-2"
+                                key={`img-${index}`}
+                              >
+                                <img
+                                  src={`data:image/png;base64,${part["base64"]}`}
+                                  alt={`Generated image ${index + 1}`}
+                                  className="max-h-[256px] max-w-[256px] rounded border object-contain"
+                                />
+                              </div>
+                            )
+                            break
+                          default:
+                            return null
                         }
-                        if (part.type === "text") {
-                          return (
-                            <MarkdownRenderer key={index} content={part.text} />
-                          )
-                        }
-                        return null
                       })
                     ) : (
-                      <MarkdownRenderer content={msg.content.toString()} />
+                      <div className="p-2">
+                        <MarkdownRenderer content={msg.content.toString()} />
+                      </div>
                     )}
                   </div>
                 )}

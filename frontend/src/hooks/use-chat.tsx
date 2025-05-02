@@ -1,12 +1,6 @@
 "use client"
 
-import {
-  useState,
-  createContext,
-  useContext,
-  useCallback,
-  useEffect,
-} from "react"
+import { useState, createContext, useContext, useCallback } from "react"
 import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
 import { asyncTryCatch } from "@/lib/utils"
 import type { MCPServerConfig, AIModelInfo } from "@/lib/types"
@@ -104,6 +98,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       }
       return response.json()
     },
+    retry: false,
   })
 
   const isServerHealthy = serverHealth?.success || false
@@ -196,6 +191,32 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     },
   })
 
+  /* Generate Image */
+  const imageGenerationMutation = useMutation({
+    mutationFn: async ({
+      modelId,
+      prompt,
+    }: {
+      modelId: string
+      prompt: string
+    }) => {
+      const response = await fetch("/api/mcp/image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ modelId, prompt }),
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        throw new Error("Image generation failed")
+      }
+
+      return response.json()
+    },
+  })
+
   const handleChat = useCallback(
     async (message: string) => {
       if (chatStatus === "loading") {
@@ -217,6 +238,44 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       setChatStatus("loading")
       setChatError(null)
 
+      const selectedModel = AVAILABLE_MODELS.find(
+        (m) => m.id === selectedModelId,
+      )
+
+      // Image generation
+      if (selectedModel?.type === "image") {
+        try {
+          const result = await imageGenerationMutation.mutateAsync({
+            modelId: selectedModel.id,
+            prompt: messageToSend,
+          })
+
+          if (result.error) {
+            throw new Error(result.error)
+          }
+
+          if (result.images.images && result.images.images.length > 0) {
+            console.dir(result.images, { depth: null })
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                role: "assistant",
+                content: result.images.images.map((img: any) => ({
+                  type: "image_display",
+                  base64: img.base64,
+                })),
+              },
+            ])
+            setChatStatus("idle")
+          }
+        } catch (err) {
+          setChatStatus("error")
+          setChatError("Image generaton failed")
+        }
+        return
+      }
+
+      // Normal text streaming
       const abortController = new AbortController()
 
       const { data: response, error } = await asyncTryCatch(
@@ -378,7 +437,14 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
       setChatStatus("idle")
     },
-    [connectionStatus, sessionId, context, messages, chatStatus],
+    [
+      connectionStatus,
+      sessionId,
+      context,
+      messages,
+      chatStatus,
+      selectedModelId,
+    ],
   )
 
   const handleNewChat = useCallback(() => {
@@ -415,26 +481,18 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   const handleImageGeneration = useCallback(
     async (modelId: string, prompt: string) => {
-      const { data, error } = await asyncTryCatch(
-        fetch("/api/mcp/image", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ modelId, prompt }),
-          cache: "no-store",
-        }),
-      )
-
-      if (error || !data) {
-        console.error(`[Next Action - Image] /image request failed:`, error)
+      try {
+        const result = await imageGenerationMutation.mutateAsync({
+          modelId,
+          prompt,
+        })
+        return { images: result.images || [] }
+      } catch (err) {
+        console.error(`Image generation failed:`, err)
         return { images: [] }
       }
-
-      const { images } = await data.json()
-      return { images }
     },
-    [],
+    [imageGenerationMutation],
   )
 
   const value: AIChatContextType = {

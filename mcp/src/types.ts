@@ -1,11 +1,4 @@
-import {
-  FinishReason,
-  LanguageModel,
-  TextStreamPart,
-  ToolCallPart,
-  ToolResultPart,
-  ToolSet,
-} from "ai"
+import { FinishReason, ImageModel, LanguageModel, TextStreamPart, ToolCallPart, ToolResultPart, ToolSet } from "ai"
 import { MCPClient } from "./client"
 
 export interface ActiveConnection {
@@ -33,6 +26,13 @@ export interface AIModelConfig {
   languageModel: LanguageModel
 }
 
+export interface AIImageModelConfig {
+  name: string
+  modelName: string
+  imageModel: ImageModel
+  provider: "openai"
+}
+
 export type ChatStreamPart =
   | TextStreamPart<ToolSet>
   | ToolCallPart
@@ -47,3 +47,10 @@ export type ChatStreamPart =
         totalTokens: number
       }
     }
+
+export interface GenerateImageOptions {
+  n?: number
+  size?: string
+  quality?: string
+  style?: string
+}

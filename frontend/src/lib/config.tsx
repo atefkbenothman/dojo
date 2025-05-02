@@ -6,25 +6,28 @@ import {
   SupabaseIcon,
   TicketmasterIcon,
 } from "@/components/icons/icons"
-import type { MCPConfigs } from "./types"
-import { Folder } from "lucide-react"
+import type { AIModelInfo, MCPConfigs } from "./types"
 
-export const AVAILABLE_MODELS = [
+export const AVAILABLE_MODELS: AIModelInfo[] = [
   {
     id: "gemini-1.5-flash",
     name: "Gemini 1.5 Flash",
+    type: "text",
   },
   {
     id: "gemini-2.0-flash-001",
     name: "Gemini 2.0 Flash",
+    type: "text",
   },
   {
     id: "deepseek-r1-distill-llama-70b",
     name: "Deepseek R1",
+    type: "text",
   },
   {
     id: "gpt-image-1",
     name: "GPT Image 1",
+    type: "image",
   },
 ]
 

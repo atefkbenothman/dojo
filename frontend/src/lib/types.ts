@@ -11,6 +11,7 @@ export interface MCPServers {
 export interface AIModelInfo {
   id: string
   name: string
+  type: "text" | "image"
 }
 
 export interface MCPServerConfig {

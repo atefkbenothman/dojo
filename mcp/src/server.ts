@@ -8,13 +8,13 @@ dotenv.config({
 import cors from "cors"
 import express, { Express, Request, Response } from "express"
 import { MCPClient } from "./client"
-import { AVAILABLE_MCP_SERVERS, AVAILABLE_AI_MODELS } from "./config"
+import { directChat, imageChat } from "./core"
+import { DEFAULT_MODEL_ID, AVAILABLE_MCP_SERVERS, AVAILABLE_IMAGE_MODELS, AVAILABLE_AI_MODELS } from "./config"
 import { asyncTryCatch, tryCatch } from "./utils"
 import type { CoreMessage } from "ai"
 import type { ActiveConnection } from "./types"
 
 const PORT = process.env.PORT || 8888
-const DEFAULT_MODEL_ID = "gemini-1.5-flash"
 
 const MAX_CONNECTIONS = 10
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
@@ -32,6 +32,7 @@ app.use(express.json())
 
 console.log("[server]: Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
 console.log("[server]: Available AI Models:", Object.keys(AVAILABLE_AI_MODELS).join(", "))
+console.log("[server]: Available Image Models:", Object.keys(AVAILABLE_IMAGE_MODELS).join(", "))
 
 const activeConnections = new Map<string, ActiveConnection>()
 
@@ -179,7 +180,7 @@ const validateChatRequest = (messages: any, modelId: string): { isValid: boolean
 }
 
 const handleDirectChat = async (aiModel: any, messages: CoreMessage[], res: Response): Promise<void> => {
-  const { data: directChatResponse, error } = await asyncTryCatch(MCPClient.directChat(aiModel, messages))
+  const { data: directChatResponse, error } = await asyncTryCatch(directChat(aiModel, messages))
 
   if (error || !directChatResponse) {
     console.error(`[server /chat - Direct]: Error during direct AI call:`, error)
@@ -234,6 +235,10 @@ const formatStreamPart = (part: any): { prefix: string; contentJson: string } =>
     case "error":
       prefix = "3"
       contentJson = JSON.stringify(part.error)
+      break
+    case "step-start":
+      break
+    case "step-finish":
       break
   }
 
@@ -295,4 +300,22 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   console.log(`[server]: Updated last activity time for ${sessionId}`)
 
   await handleStreamedChat(connectionData, aiModel, messages as CoreMessage[], res)
+})
+
+/* Image */
+app.post("/image", async (req: Request, res: Response): Promise<void> => {
+  const { prompt, modelId, n } = req.body
+
+  console.log(`[server]: /image request received for sessionId: using model: ${modelId}`)
+
+  const options = { n }
+
+  const result = await imageChat(modelId, prompt, options)
+
+  if (result.error) {
+    res.status(500).json({ error: result.error })
+    return
+  }
+
+  res.status(200).json({ images: result.images })
 })
