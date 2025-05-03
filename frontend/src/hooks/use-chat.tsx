@@ -58,32 +58,33 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         cache: "no-store",
       })
       if (!response.ok) throw new Error("Image generation failed")
-      return response.json()
+      const result = await response.json()
+      if (result.error) throw new Error(result.error)
+      return result
+    },
+    onSuccess: (result) => {
+      if (result.images.images && result.images.images.length > 0) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: result.images.images.map((img: any) => ({
+              type: "image_display",
+              base64: img.base64,
+            })),
+          },
+        ])
+        setChatStatus("idle")
+      } else {
+        setChatStatus("error")
+        setChatError("Image generation succeeded but returned no images.")
+      }
+    },
+    onError: (error: Error) => {
+      setChatStatus("error")
+      setChatError(error.message || "Image generation failed")
     },
   })
-
-  const generateImage = async (modelId: string, prompt: string) => {
-    const result = await imageGenerationMutation.mutateAsync({
-      modelId: modelId,
-      prompt: prompt,
-    })
-
-    if (result.error) throw new Error(result.error)
-
-    if (result.images.images && result.images.images.length > 0) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: result.images.images.map((img: any) => ({
-            type: "image_display",
-            base64: img.base64,
-          })),
-        },
-      ])
-      setChatStatus("idle")
-    }
-  }
 
   const handleChat = async (message: string) => {
     if (chatStatus === "loading") return
@@ -101,14 +102,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
     const selectedModel = availableModels.find((m) => m.id === selectedModelId)
 
-    // Image generation
+    // Generate Image
     if (selectedModel?.type === "image") {
-      try {
-        generateImage(selectedModel.id, prompt)
-      } catch {
-        setChatStatus("error")
-        setChatError("Image generaton failed")
-      }
+      imageGenerationMutation.mutate({ modelId: selectedModel.id, prompt })
       return
     }
 
