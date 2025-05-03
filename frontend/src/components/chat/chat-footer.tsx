@@ -13,8 +13,7 @@ interface ChatControlsProps {
 }
 
 const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
-  const { selectedModelId, handleModelChange } = useChatProvider()
-  const { availableModels } = useModelContext()
+  const { availableModels, selectedModelId, handleModelChange } = useModelContext()
 
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">

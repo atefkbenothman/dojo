@@ -26,7 +26,6 @@ type AIChatContextType = {
   chatError: string | null
   handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
-  handleImageGeneration: (modelId: string, prompt: string) => Promise<{ images: string[] }>
 }
 
 const AIChatContext = createContext<AIChatContextType | undefined>(undefined)
@@ -36,13 +35,13 @@ type AIChatProviderProps = {
 }
 
 export function AIChatProvider({ children }: AIChatProviderProps) {
+  const { sessionId } = useConnectionContext()
+  const { availableModels, selectedModelId } = useModelContext()
+
   const [messages, setMessages] = useState<CoreMessage[]>(initialMessages)
   const [context, setContext] = useState<string>("")
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle")
   const [chatError, setChatError] = useState<string | null>(null)
-
-  const { sessionId } = useConnectionContext()
-  const { availableModels, selectedModelId } = useModelContext()
 
   /* Generate Image */
   const imageGenerationMutation = useMutation({
@@ -58,16 +57,39 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     },
   })
 
+  const generateImage = async (modelId: string, prompt: string) => {
+    const result = await imageGenerationMutation.mutateAsync({
+      modelId: modelId,
+      prompt: prompt,
+    })
+
+    if (result.error) throw new Error(result.error)
+
+    if (result.images.images && result.images.images.length > 0) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: result.images.images.map((img: any) => ({
+            type: "image_display",
+            base64: img.base64,
+          })),
+        },
+      ])
+      setChatStatus("idle")
+    }
+  }
+
   const handleChat = async (message: string) => {
     if (chatStatus === "loading") return
 
-    const messageToSend = message.trim()
-    if (!messageToSend) return
+    const prompt = message.trim()
+    if (!prompt) return
 
-    const userMessage: CoreMessage = { role: "user", content: messageToSend }
+    const userMessage: CoreMessage = { role: "user", content: prompt }
     const messagesToSend: CoreMessage[] = [...messages, userMessage]
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages(messagesToSend)
     setContext(message)
     setChatStatus("loading")
     setChatError(null)
@@ -77,24 +99,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     // Image generation
     if (selectedModel?.type === "image") {
       try {
-        const result = await imageGenerationMutation.mutateAsync({
-          modelId: selectedModel.id,
-          prompt: messageToSend,
-        })
-        if (result.error) throw new Error(result.error)
-        if (result.images.images && result.images.images.length > 0) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: result.images.images.map((img: any) => ({
-                type: "image_display",
-                base64: img.base64,
-              })),
-            },
-          ])
-          setChatStatus("idle")
-        }
+        generateImage(selectedModel.id, prompt)
       } catch {
         setChatStatus("error")
         setChatError("Image generaton failed")
@@ -218,15 +223,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setChatError(null)
   }
 
-  const handleImageGeneration = async (modelId: string, prompt: string) => {
-    try {
-      const result = await imageGenerationMutation.mutateAsync({ modelId, prompt })
-      return { images: result.images || [] }
-    } catch {
-      return { images: [] }
-    }
-  }
-
   const value: AIChatContextType = {
     messages,
     context,
@@ -235,7 +231,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     chatError,
     handleChat,
     handleNewChat,
-    handleImageGeneration,
   }
 
   return <AIChatContext.Provider value={value}>{children}</AIChatContext.Provider>
