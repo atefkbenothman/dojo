@@ -1,16 +1,12 @@
 "use client"
 
-import { useState, createContext, useContext, useCallback } from "react"
+import { useState, createContext, useContext } from "react"
 import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
 import { asyncTryCatch } from "@/lib/utils"
-import type { MCPServerConfig, AIModelInfo } from "@/lib/types"
+import type { AIModelInfo } from "@/lib/types"
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/config"
-import {
-  useQuery,
-  QueryClientProvider,
-  QueryClient,
-  useMutation,
-} from "@tanstack/react-query"
+import { useQuery, QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
+import { useConnectionContext } from "@/hooks/use-connection"
 
 const queryClient = new QueryClient()
 
@@ -21,37 +17,21 @@ const initialMessages: CoreMessage[] = [
   },
 ]
 
-type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
 type ChatStatus = "idle" | "loading" | "error"
 
 type AIChatContextType = {
   messages: CoreMessage[]
   context: string
   setContext: (data: string) => void
-
-  sessionId: string | null
-  connectionStatus: ConnectionStatus
-  connectionError: string | null
-  connectedServerId: string | null
-
   chatStatus: ChatStatus
   chatError: string | null
-
   availableModels: AIModelInfo[]
   selectedModelId: string
   handleModelChange: (modelId: string) => void
-
   handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
-  handleConnect: (config: MCPServerConfig) => Promise<void>
-  handleDisconnect: () => Promise<void>
-
   isServerHealthy: boolean
-
-  handleImageGeneration: (
-    modelId: string,
-    prompt: string,
-  ) => Promise<{ images: string[] }>
+  handleImageGeneration: (modelId: string, prompt: string) => Promise<{ images: string[] }>
 }
 
 const AIChatContext = createContext<AIChatContextType | undefined>(undefined)
@@ -63,24 +43,15 @@ type AIChatProviderProps = {
 export function AIChatProvider({ children }: AIChatProviderProps) {
   const [messages, setMessages] = useState<CoreMessage[]>(initialMessages)
   const [context, setContext] = useState<string>("")
-
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [connectionError, setConnectionError] = useState<string | null>(null)
-  const [connectionStatus, setConnectionStatus] =
-    useState<ConnectionStatus>("disconnected")
-
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle")
   const [chatError, setChatError] = useState<string | null>(null)
+  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID)
 
-  const [connectedServerId, setConnectedServerId] = useState<string | null>(
-    null,
-  )
-  const [selectedModelId, setSelectedModelId] =
-    useState<string>(DEFAULT_MODEL_ID)
+  const { sessionId } = useConnectionContext()
 
-  const handleModelChange = useCallback((modelId: string) => {
+  const handleModelChange = (modelId: string) => {
     setSelectedModelId(modelId)
-  }, [])
+  }
 
   /* Check Server Health */
   const { data: serverHealth } = useQuery({
@@ -88,437 +59,215 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     queryFn: async () => {
       const response = await fetch("/api/mcp/health", {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
+        headers: { Accept: "application/json" },
         cache: "no-store",
       })
-      if (!response.ok) {
-        throw new Error("Server health check failed")
-      }
+      if (!response.ok) throw new Error("Server health check failed")
       return response.json()
     },
     retry: false,
   })
-
   const isServerHealthy = serverHealth?.success || false
-
-  /* Connect to MCP Server */
-  const connectMutation = useMutation({
-    mutationFn: async (config: MCPServerConfig) => {
-      const serializableConfig = {
-        id: config.id,
-        name: config.name,
-        command: config.command,
-        args: config.args,
-        env: config.env,
-      }
-
-      const response = await fetch("/api/mcp/connect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentSessionId: sessionId,
-          config: serializableConfig,
-        }),
-        cache: "no-store",
-      })
-
-      if (!response.ok) {
-        throw new Error("Connection failed")
-      }
-      return response.json()
-    },
-    onMutate: () => {
-      setConnectionStatus("connecting")
-      setConnectionError(null)
-      setConnectedServerId(null)
-    },
-    onSuccess: (data, variables) => {
-      console.log("Connection successful. sessionId:", data.sessionId)
-      setSessionId(data.sessionId)
-      setConnectionStatus("connected")
-      setConnectionError(null)
-      setConnectedServerId(variables.id)
-    },
-    onError: (error) => {
-      console.error("Connection failed:", error)
-      setConnectionStatus("error")
-      setConnectionError("An unexpected error occurred during connecting")
-      setSessionId(null)
-      setConnectedServerId(null)
-    },
-  })
-
-  /* Disconnect from MCP Server */
-  const disconnectMutation = useMutation({
-    mutationFn: async () => {
-      if (!sessionId) {
-        throw new Error("No sessionId to disconnect")
-      }
-
-      const response = await fetch("/api/mcp/disconnect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionId }),
-        cache: "no-store",
-      })
-
-      if (!response.ok) {
-        throw new Error("Disconnection failed")
-      }
-      return response.json()
-    },
-    onMutate: () => {
-      setConnectedServerId(null)
-    },
-    onSuccess: () => {
-      console.log("Disconnection successful")
-      setConnectionStatus("disconnected")
-      setConnectionError(null)
-      setSessionId(null)
-    },
-    onError: (err) => {
-      console.error("Disconnection failed:", err)
-      setConnectionStatus("error")
-      setConnectionError(`Disconnection error: ${err}`)
-      setSessionId(null)
-      setConnectedServerId(null)
-    },
-  })
 
   /* Generate Image */
   const imageGenerationMutation = useMutation({
-    mutationFn: async ({
-      modelId,
-      prompt,
-    }: {
-      modelId: string
-      prompt: string
-    }) => {
+    mutationFn: async ({ modelId, prompt }: { modelId: string; prompt: string }) => {
       const response = await fetch("/api/mcp/image", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ modelId, prompt }),
         cache: "no-store",
       })
-
-      if (!response.ok) {
-        throw new Error("Image generation failed")
-      }
-
+      if (!response.ok) throw new Error("Image generation failed")
       return response.json()
     },
   })
 
-  const handleChat = useCallback(
-    async (message: string) => {
-      if (chatStatus === "loading") {
-        console.warn("handleSend called while already loading")
-        return
-      }
+  const handleChat = async (message: string) => {
+    if (chatStatus === "loading") return
 
-      const messageToSend = message.trim()
-      if (!messageToSend) return
+    const messageToSend = message.trim()
+    if (!messageToSend) return
 
-      const userMessage: CoreMessage = {
-        role: "user",
-        content: messageToSend,
-      }
-      const messagesToSend: CoreMessage[] = [...messages, userMessage]
+    const userMessage: CoreMessage = { role: "user", content: messageToSend }
+    const messagesToSend: CoreMessage[] = [...messages, userMessage]
 
-      setMessages((prevMessages) => [...prevMessages, userMessage])
-      setContext(message)
-      setChatStatus("loading")
-      setChatError(null)
-
-      const selectedModel = AVAILABLE_MODELS.find(
-        (m) => m.id === selectedModelId,
-      )
-
-      // Image generation
-      if (selectedModel?.type === "image") {
-        try {
-          const result = await imageGenerationMutation.mutateAsync({
-            modelId: selectedModel.id,
-            prompt: messageToSend,
-          })
-
-          if (result.error) {
-            throw new Error(result.error)
-          }
-
-          if (result.images.images && result.images.images.length > 0) {
-            console.dir(result.images, { depth: null })
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                role: "assistant",
-                content: result.images.images.map((img: any) => ({
-                  type: "image_display",
-                  base64: img.base64,
-                })),
-              },
-            ])
-            setChatStatus("idle")
-          }
-        } catch (err) {
-          setChatStatus("error")
-          setChatError("Image generaton failed")
-        }
-        return
-      }
-
-      // Normal text streaming
-      const abortController = new AbortController()
-
-      const { data: response, error } = await asyncTryCatch(
-        fetch("http://localhost:8888/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionId: sessionId,
-            messages: messagesToSend,
-            modelId: selectedModelId,
-          }),
-          signal: abortController.signal,
-        }),
-      )
-
-      if (error || !response.ok) {
-        console.error("Error during direct streaming chat:", error)
-        setChatStatus("error")
-        setChatError("Chat stream error")
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            role: "assistant",
-            content: `Error: ${error}`,
-          },
-        ])
-        if (!abortController.signal.aborted) {
-          abortController.abort()
-        }
-        return
-      }
-
-      const reader = response.body
-        ?.pipeThrough(new TextDecoderStream())
-        .getReader()
-
-      if (!reader) {
-        setChatStatus("error")
-        setChatError("Could not get reader in response body")
-        if (!abortController.signal.aborted) {
-          abortController.abort()
-        }
-        return
-      }
-
-      let fullResponse = ""
-      let shouldStartNewMessage = true
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        if (!value) continue
-        try {
-          const lines = value.split("\n").filter((line) => line.trim() !== "")
-
-          for (const line of lines) {
-            const match = line.match(/^([0-9a-zA-Z]):(.*)$/)
-            if (match) {
-              const typeId = match[1]
-              const contentJson = match[2]
-              let parsedContent: any
-
-              try {
-                parsedContent = JSON.parse(contentJson!)
-              } catch (err) {
-                fullResponse += `\n[Stream Data Parse Error for type ${typeId}]`
-                continue
-              }
-
-              switch (match[1]) {
-                case "0": // text-delta
-                  fullResponse += parsedContent
-                  setMessages((prevMessages) => {
-                    const updatedMessages = [...prevMessages]
-                    const last = updatedMessages[updatedMessages.length - 1]
-                    if (
-                      shouldStartNewMessage ||
-                      !last ||
-                      last.role !== "assistant"
-                    ) {
-                      updatedMessages.push({
-                        role: "assistant" as const,
-                        content: [
-                          { type: "text", text: fullResponse },
-                        ] as TextPart[],
-                      })
-                    } else {
-                      // Otherwise update the last assistant message
-                      updatedMessages[updatedMessages.length - 1] = {
-                        role: "assistant" as const,
-                        content: [
-                          { type: "text", text: fullResponse },
-                        ] as TextPart[],
-                      }
-                    }
-                    return updatedMessages
-                  })
-                  shouldStartNewMessage = false
-                  break
-                case "9": // tool-call
-                  const toolCallPart: ToolCallPart = {
-                    type: "tool-call",
-                    toolCallId: parsedContent.toolCallId,
-                    toolName: parsedContent.toolName,
-                    args: parsedContent.args,
-                  }
-                  setMessages((prevMessages) => {
-                    const updatedMessages = [...prevMessages]
-                    // Create a new message for the tool call
-                    updatedMessages.push({
-                      role: "assistant" as const,
-                      content: [toolCallPart],
-                    })
-                    return updatedMessages
-                  })
-                  shouldStartNewMessage = true
-                  break
-                case "a": // tool-result
-                  const toolResultPart: ToolResultPart = {
-                    type: "tool-result",
-                    toolCallId: parsedContent.toolCallId,
-                    toolName: parsedContent.toolName,
-                    result: parsedContent.result,
-                    isError: parsedContent.isError,
-                  }
-                  // console.log("tool-result:", toolResultPart)
-                  // setMessages((prevMessages) => {
-                  //   const updatedMessages = [...prevMessages]
-                  //   updatedMessages.push({
-                  //     role: "tool",
-                  //     content: [toolResultPart],
-                  //   })
-                  //   return updatedMessages
-                  // })
-                  shouldStartNewMessage = true
-                  break
-                case "d": // finish
-                  break
-                case "3": // error
-                  fullResponse += `\n[Error: ${parsedContent}]`
-                  setChatStatus("error")
-                  setChatError(parsedContent)
-                  break
-                default:
-                  console.warn(`Unknown stream part type: ${match[1]}`)
-                  break
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error parsing stream chunk:", err, "Chunk:", value)
-          fullResponse += `\n[Stream Parse Error]`
-          if (!abortController.signal.aborted) {
-            abortController.abort()
-          }
-        }
-      }
-
-      setChatStatus("idle")
-    },
-    [
-      connectionStatus,
-      sessionId,
-      context,
-      messages,
-      chatStatus,
-      selectedModelId,
-    ],
-  )
-
-  const handleNewChat = useCallback(() => {
-    setMessages(initialMessages)
-    setChatStatus("idle")
+    setMessages((prev) => [...prev, userMessage])
+    setContext(message)
+    setChatStatus("loading")
     setChatError(null)
-  }, [])
 
-  const handleConnect = useCallback(
-    async (config: MCPServerConfig) => {
-      if (
-        connectionStatus === "connecting" ||
-        connectionStatus === "connected"
-      ) {
-        return
+    const selectedModel = AVAILABLE_MODELS.find((m) => m.id === selectedModelId)
+
+    // Image generation
+    if (selectedModel?.type === "image") {
+      try {
+        const result = await imageGenerationMutation.mutateAsync({
+          modelId: selectedModel.id,
+          prompt: messageToSend,
+        })
+        if (result.error) throw new Error(result.error)
+        if (result.images.images && result.images.images.length > 0) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: result.images.images.map((img: any) => ({
+                type: "image_display",
+                base64: img.base64,
+              })),
+            },
+          ])
+          setChatStatus("idle")
+        }
+      } catch {
+        setChatStatus("error")
+        setChatError("Image generaton failed")
       }
-
-      await connectMutation.mutateAsync(config)
-    },
-    [connectionStatus, connectMutation],
-  )
-
-  const handleDisconnect = useCallback(async () => {
-    if (connectionStatus !== "connected" || !sessionId) {
-      console.log("Disconnect requested but not connected or no sessionID")
-      setConnectionStatus("disconnected")
-      setSessionId(null)
-      setConnectionError(null)
       return
     }
 
-    await disconnectMutation.mutateAsync()
-  }, [connectionStatus, sessionId, disconnectMutation])
+    // Normal text streaming
+    const abortController = new AbortController()
 
-  const handleImageGeneration = useCallback(
-    async (modelId: string, prompt: string) => {
+    const { data: response, error } = await asyncTryCatch(
+      fetch("http://localhost:8888/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          messages: messagesToSend,
+          modelId: selectedModelId,
+        }),
+        signal: abortController.signal,
+      }),
+    )
+    if (error || !response.ok) {
+      setChatStatus("error")
+      setChatError("Chat stream error")
+      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${error}` }])
+      if (!abortController.signal.aborted) abortController.abort()
+      return
+    }
+    const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader()
+    if (!reader) {
+      setChatStatus("error")
+      setChatError("Could not get reader in response body")
+      if (!abortController.signal.aborted) abortController.abort()
+      return
+    }
+    let fullResponse = ""
+    let shouldStartNewMessage = true
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      if (!value) continue
       try {
-        const result = await imageGenerationMutation.mutateAsync({
-          modelId,
-          prompt,
-        })
-        return { images: result.images || [] }
-      } catch (err) {
-        console.error(`Image generation failed:`, err)
-        return { images: [] }
+        const lines = value.split("\n").filter((line) => line.trim() !== "")
+        for (const line of lines) {
+          const match = line.match(/^([0-9a-zA-Z]):(.*)$/)
+          if (match) {
+            const typeId = match[1]
+            const contentJson = match[2]
+            let parsedContent: any
+            try {
+              parsedContent = JSON.parse(contentJson!)
+            } catch {
+              fullResponse += `\n[Stream Data Parse Error for type ${typeId}]`
+              continue
+            }
+            switch (typeId) {
+              case "0": // text-delta
+                fullResponse += parsedContent
+                setMessages((prev) => {
+                  const updated = [...prev]
+                  const last = updated[updated.length - 1]
+                  if (shouldStartNewMessage || !last || last.role !== "assistant") {
+                    updated.push({
+                      role: "assistant" as const,
+                      content: [{ type: "text", text: fullResponse }] as TextPart[],
+                    })
+                  } else {
+                    updated[updated.length - 1] = {
+                      role: "assistant" as const,
+                      content: [{ type: "text", text: fullResponse }] as TextPart[],
+                    }
+                  }
+                  return updated
+                })
+                shouldStartNewMessage = false
+                break
+              case "9": // tool-call
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: "assistant" as const,
+                    content: [
+                      {
+                        type: "tool-call",
+                        toolCallId: parsedContent.toolCallId,
+                        toolName: parsedContent.toolName,
+                        args: parsedContent.args,
+                      },
+                    ],
+                  },
+                ])
+                shouldStartNewMessage = true
+                break
+              case "a": // tool-result
+                shouldStartNewMessage = true
+                break
+              case "d": // finish
+                break
+              case "3": // error
+                fullResponse += `\n[Error: ${parsedContent}]`
+                setChatStatus("error")
+                setChatError(parsedContent)
+                break
+              default:
+                break
+            }
+          }
+        }
+      } catch {
+        fullResponse += `\n[Stream Parse Error]`
+        if (!abortController.signal.aborted) abortController.abort()
       }
-    },
-    [imageGenerationMutation],
-  )
+    }
+    setChatStatus("idle")
+  }
+
+  const handleNewChat = () => {
+    setMessages(initialMessages)
+    setChatStatus("idle")
+    setChatError(null)
+  }
+
+  const handleImageGeneration = async (modelId: string, prompt: string) => {
+    try {
+      const result = await imageGenerationMutation.mutateAsync({ modelId, prompt })
+      return { images: result.images || [] }
+    } catch {
+      return { images: [] }
+    }
+  }
 
   const value: AIChatContextType = {
     messages,
     context,
-    sessionId,
-    connectionStatus,
-    connectionError,
     setContext,
     chatStatus,
     chatError,
-    connectedServerId,
     availableModels: AVAILABLE_MODELS,
     selectedModelId,
     handleChat,
     handleNewChat,
-    handleConnect,
-    handleDisconnect,
     handleModelChange,
     isServerHealthy,
     handleImageGeneration,
   }
 
-  return (
-    <AIChatContext.Provider value={value}>{children}</AIChatContext.Provider>
-  )
+  return <AIChatContext.Provider value={value}>{children}</AIChatContext.Provider>
 }
 
 export function useChatProvider() {
@@ -529,11 +278,7 @@ export function useChatProvider() {
   return context
 }
 
-export function AIChatProviderRoot({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export function AIChatProviderRoot({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AIChatProvider>{children}</AIChatProvider>

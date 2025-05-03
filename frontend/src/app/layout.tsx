@@ -4,6 +4,7 @@ import "./globals.css"
 import { Inter } from "next/font/google"
 
 import { AIChatProviderRoot } from "@/hooks/use-chat"
+import { ConnectionProviderRoot } from "@/hooks/use-connection"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
 import { ResizableLayout } from "@/components/layout/resizable-layout"
 import { Toaster } from "sonner"
@@ -29,18 +30,13 @@ export default function RootLayout({
         /> */}
       </head>
       <body className={`antialiased ${inter.className}`}>
-        <DarkModeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AIChatProviderRoot>
-            <ResizableLayout>{children}</ResizableLayout>
-            <Toaster
-              toastOptions={{ style: { borderRadius: "var(--radius-md)" } }}
-            />
-          </AIChatProviderRoot>
+        <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ConnectionProviderRoot>
+            <AIChatProviderRoot>
+              <ResizableLayout>{children}</ResizableLayout>
+              <Toaster toastOptions={{ style: { borderRadius: "var(--radius-md)" } }} />
+            </AIChatProviderRoot>
+          </ConnectionProviderRoot>
         </DarkModeProvider>
       </body>
     </html>

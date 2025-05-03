@@ -2,30 +2,19 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { MCPServerConfig, Server } from "@/lib/types"
 import { MCPDialog } from "./mcp-dialog"
 import { MCP_CONFIG } from "@/lib/config"
-import { useChatProvider } from "@/hooks/use-chat"
+import { useConnectionContext } from "@/hooks/use-connection"
 
 interface MCPCardProps {
   server: Server
 }
 
 export function MCPCard({ server }: MCPCardProps) {
-  const {
-    connectionStatus,
-    handleConnect,
-    handleDisconnect,
-    connectedServerId,
-  } = useChatProvider()
+  const { connectionStatus, connectedServerId, connect, disconnect } = useConnectionContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
   const [currentConfig, setCurrentConfig] = useState<MCPServerConfig>(() => {
@@ -49,23 +38,18 @@ export function MCPCard({ server }: MCPCardProps) {
     }
   })
 
-  const isConnected =
-    connectionStatus === "connected" && connectedServerId === server.id
+  const isConnected = connectionStatus === "connected" && connectedServerId === server.id
 
   const handleConnectClick = async () => {
     if (isConnected) {
-      handleDisconnect()
+      disconnect()
     } else if (currentConfig) {
       try {
-        await handleConnect(currentConfig)
+        await connect(currentConfig)
       } catch (error) {
         console.error("Failed to connect:", error)
       }
     }
-  }
-
-  const handleConfigureClick = () => {
-    setIsConfigDialogOpen(true)
   }
 
   const handleSaveConfig = (config: MCPServerConfig) => {
@@ -73,21 +57,12 @@ export function MCPCard({ server }: MCPCardProps) {
   }
 
   return (
-    <Card
-      className={cn(
-        "relative h-[10rem] max-h-[10rem] w-full max-w-xs",
-        isConnected && "border",
-      )}
-    >
+    <Card className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-xs", isConnected && "border")}>
       <CardHeader>
         <div className="flex items-center gap-2">
           {currentConfig.icon && currentConfig.icon}
-          <CardTitle className="text-primary/90 font-medium">
-            {server.name}
-          </CardTitle>
-          {isConnected && (
-            <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>
-          )}
+          <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
+          {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
         </div>
         <CardDescription className="w-[90%]">{server.summary}</CardDescription>
       </CardHeader>
@@ -99,9 +74,7 @@ export function MCPCard({ server }: MCPCardProps) {
             disabled={connectionStatus === "connecting"}
             className={cn(
               "border hover:cursor-pointer",
-              isConnected
-                ? "bg-primary hover:bg-primary"
-                : "bg-secondary/80 hover:bg-secondary/90",
+              isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
             )}
           >
             {isConnected ? "Disconnect" : "Connect"}
