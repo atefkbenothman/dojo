@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { MCPServers } from "@/lib/types"
 import { MCPCard } from "./mcp-card"
 import { Input } from "@/components/ui/input"

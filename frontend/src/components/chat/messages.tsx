@@ -1,8 +1,6 @@
+import { useRef, useEffect } from "react"
+import type { CoreMessage, ToolCallPart, ToolResultPart } from "ai"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { useRef, useEffect, memo } from "react"
-import ReactMarkdown, { type Components } from "react-markdown"
-import Link from "next/link"
-import { CodeBlock } from "./code-block"
 import { useChatProvider } from "@/hooks/use-chat"
 import {
   Accordion,
@@ -10,109 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import type { ToolCallPart, ToolResultPart } from "ai"
-
-const components: Partial<Components> = {
-  // @ts-expect-error
-  code: CodeBlock,
-  pre: ({ children }) => <>{children}</>,
-  ol: ({ node, children, ...props }) => {
-    return (
-      <ol className="list-decimal" {...props}>
-        {children}
-      </ol>
-    )
-  },
-  li: ({ node, children, ...props }) => {
-    return (
-      <li className="ml-4 px-2 py-1 text-xs" {...props}>
-        {children}
-      </li>
-    )
-  },
-  ul: ({ node, children, ...props }) => {
-    return (
-      <ul className="ml-4 list-decimal" {...props}>
-        {children}
-      </ul>
-    )
-  },
-  strong: ({ node, children, ...props }) => {
-    return (
-      <span className="text-sm font-medium" {...props}>
-        {children}
-      </span>
-    )
-  },
-  a: ({ node, children, ...props }) => {
-    return (
-      // @ts-expect-error
-      <Link
-        className="text-xs text-blue-500 hover:underline"
-        target="_blank"
-        rel="noreferrer"
-        {...props}
-      >
-        {children}
-      </Link>
-    )
-  },
-  h1: ({ node, children, ...props }) => {
-    return (
-      <h1 className="mt-4 mb-2 text-lg font-medium" {...props}>
-        {children}
-      </h1>
-    )
-  },
-  h2: ({ node, children, ...props }) => {
-    return (
-      <h2 className="mt-4 mb-2 text-lg font-medium" {...props}>
-        {children}
-      </h2>
-    )
-  },
-  h3: ({ node, children, ...props }) => {
-    return (
-      <h3 className="mt-4 mb-2 text-xl font-medium" {...props}>
-        {children}
-      </h3>
-    )
-  },
-  h4: ({ node, children, ...props }) => {
-    return (
-      <h4 className="mt-4 mb-2 text-xl font-medium" {...props}>
-        {children}
-      </h4>
-    )
-  },
-  h5: ({ node, children, ...props }) => {
-    return (
-      <h5 className="mt-4 mb-2 text-xs font-medium" {...props}>
-        {children}
-      </h5>
-    )
-  },
-  h6: ({ node, children, ...props }) => {
-    return (
-      <h6 className="mt-4 mb-2 text-xs font-medium" {...props}>
-        {children}
-      </h6>
-    )
-  },
-  p: ({ node, children, ...props }) => {
-    return <div className="text-xs leading-6">{children}</div>
-  },
-}
-
-interface MarkdownRendererProps {
-  content: string
-}
-
-const MarkdownRenderer = memo(function MarkdownRenderer({
-  content,
-}: MarkdownRendererProps) {
-  return <ReactMarkdown components={components}>{content}</ReactMarkdown>
-})
+import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
 
 function ToolCallMessage({ content }: { content: ToolCallPart }) {
   return (
@@ -150,6 +46,58 @@ function ToolResultMessage({ content }: { content: ToolResultPart }) {
   )
 }
 
+function ImageDisplayPartRenderer({ part }: { part: any }) {
+  return (
+    <div className="flex justify-start p-2">
+      <img
+        src={`data:image/png;base64,${part["base64"]}`}
+        alt={"Generated image"}
+        className="max-h-[256px] max-w-[256px] rounded border object-contain"
+      />
+    </div>
+  )
+}
+
+function MessageItem({ msg }: { msg: CoreMessage }) {
+  if (msg.role === "user") {
+    return (
+      <div className="flex justify-end">
+        <div className="bg-primary/10 text-foreground inline-block max-w-[80%] overflow-auto p-2 text-left wrap-break-word">
+          <p className="text-xs leading-6">{msg.content.toString()}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (typeof msg.content === "string") {
+    return (
+      <div className="p-2">
+        <MarkdownRenderer content={msg.content.toString()} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
+      {msg.content.map((part: any, idx: number) => {
+        switch (part.type) {
+          case "text":
+            return (
+              <div className="p-2" key={idx}>
+                <MarkdownRenderer content={part.text} />
+              </div>
+            )
+          case "tool-call":
+            return <ToolCallMessage key={part.toolCallId} content={part} />
+          // @ts-ignore
+          case "image_display":
+            return <ImageDisplayPartRenderer part={part} key={idx} />
+        }
+      })}
+    </div>
+  )
+}
+
 export function Messages() {
   const { messages } = useChatProvider()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -181,86 +129,41 @@ export function Messages() {
             transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
           }}
         >
-          {virtualItems.map((vItem) => {
-            const msg = messages[vItem.index]!
-            return (
-              <div
-                key={vItem.key}
-                data-index={vItem.index}
-                ref={virtualizer.measureElement}
-                className="flex h-fit flex-col py-2"
-              >
-                {msg.role === "user" ? (
-                  <div className="flex justify-end">
-                    <div className="bg-primary/10 text-foreground inline-block max-w-[80%] overflow-auto p-2 text-left wrap-break-word">
-                      <p className="text-xs leading-6">
-                        {msg.content.toString()}
-                      </p>
-                    </div>
-                  </div>
-                ) : msg.role === "tool" ? (
-                  <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
-                    {Array.isArray(msg.content) &&
-                      msg.content[0] &&
-                      "type" in msg.content[0] &&
-                      msg.content[0].type === "tool-result" && (
-                        <ToolResultMessage
-                          key={(msg.content[0] as ToolResultPart).toolCallId}
-                          content={msg.content[0] as ToolResultPart}
-                        />
-                      )}
-                  </div>
-                ) : (
-                  <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
-                    {Array.isArray(msg.content) ? (
-                      msg.content.map((part, index) => {
-                        console.log(part.type, index)
-                        switch (part.type) {
-                          case "tool-call":
-                            return (
-                              <ToolCallMessage
-                                key={part.toolCallId}
-                                content={part}
-                              />
-                            )
-                          case "text":
-                            return (
-                              <div className="p-2" key={index}>
-                                <MarkdownRenderer content={part.text} />
-                              </div>
-                            )
-                          // @ts-ignore
-                          case "image_display":
-                            console.log(part)
-                            return (
-                              <div
-                                className="flex justify-start p-2"
-                                key={`img-${index}`}
-                              >
-                                <img
-                                  src={`data:image/png;base64,${part["base64"]}`}
-                                  alt={`Generated image ${index + 1}`}
-                                  className="max-h-[256px] max-w-[256px] rounded border object-contain"
-                                />
-                              </div>
-                            )
-                            break
-                          default:
-                            return null
-                        }
-                      })
-                    ) : (
-                      <div className="p-2">
-                        <MarkdownRenderer content={msg.content.toString()} />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {virtualItems.map((vItem) => (
+            <div
+              key={vItem.key}
+              data-index={vItem.index}
+              ref={virtualizer.measureElement}
+              className="flex h-fit flex-col py-2"
+            >
+              <MessageItem msg={messages[vItem.index]!} />
+            </div>
+          ))}
         </div>
       </div>
     </div>
   )
 }
+
+// if (msg.role === "tool") {
+//   return (
+//     <div
+//       key={vItem.key}
+//       data-index={vItem.index}
+//       ref={measureElement}
+//       className="flex h-fit flex-col py-2"
+//     >
+//       <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
+//         {Array.isArray(msg.content) &&
+//           msg.content[0] &&
+//           "type" in msg.content[0] &&
+//           msg.content[0].type === "tool-result" && (
+//             <ToolResultMessage
+//               key={(msg.content[0] as ToolResultPart).toolCallId}
+//               content={msg.content[0] as ToolResultPart}
+//             />
+//           )}
+//       </div>
+//     </div>
+//   )
+// }
