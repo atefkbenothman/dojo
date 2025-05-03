@@ -3,7 +3,7 @@
 import { useState, createContext, useContext } from "react"
 import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
 import { asyncTryCatch } from "@/lib/utils"
-import { useQuery, QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
+import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import { useConnectionContext } from "@/hooks/use-connection"
 import { useModelContext } from "@/hooks/use-model"
 
@@ -24,8 +24,6 @@ type AIChatContextType = {
   setContext: (data: string) => void
   chatStatus: ChatStatus
   chatError: string | null
-  selectedModelId: string
-  handleModelChange: (modelId: string) => void
   handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
   handleImageGeneration: (modelId: string, prompt: string) => Promise<{ images: string[] }>
@@ -44,7 +42,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   const [chatError, setChatError] = useState<string | null>(null)
 
   const { sessionId } = useConnectionContext()
-  const { availableModels, selectedModelId, handleModelChange } = useModelContext()
+  const { availableModels, selectedModelId } = useModelContext()
 
   /* Generate Image */
   const imageGenerationMutation = useMutation({
@@ -235,10 +233,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setContext,
     chatStatus,
     chatError,
-    selectedModelId,
     handleChat,
     handleNewChat,
-    handleModelChange,
     handleImageGeneration,
   }
 
