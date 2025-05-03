@@ -6,10 +6,15 @@ import { asyncTryCatch } from "@/lib/utils"
 import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import { useConnectionContext } from "@/hooks/use-connection"
 import { useModelContext } from "@/hooks/use-model"
+import { SYSTEM_PROMPT } from "@/lib/config"
 
 const queryClient = new QueryClient()
 
 const initialMessages: CoreMessage[] = [
+  {
+    role: "system",
+    content: SYSTEM_PROMPT,
+  },
   {
     role: "assistant",
     content: "Hello. I am an AI assistant",

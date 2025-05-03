@@ -10,7 +10,6 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { CoreMessage, streamText, LanguageModel, Tool, ToolSet, jsonSchema, ToolCallPart, ToolResultPart } from "ai"
 import { asyncTryCatch } from "./utils"
 import { ChatStreamPart, MCPServerConfig } from "./types"
-import { SYSTEM_PROMPT } from "./config"
 
 export class MCPClient {
   private config: MCPServerConfig
@@ -144,7 +143,6 @@ export class MCPClient {
 
     const result = await streamText({
       model: model,
-      system: SYSTEM_PROMPT,
       messages: messages,
       tools: tools,
     })

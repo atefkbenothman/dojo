@@ -4,24 +4,6 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import type { AIImageModelConfig, AIModelConfig, MCPServer } from "./types"
 
-export const SYSTEM_PROMPT = `You are a helpful assistant with access to a variety of tools.
-
-The tools are very powerful, and you can use them to answer the user's question.
-So choose the tool that is most relevant to the user's question.
-
-You can use multiple tools in a single response.
-Always respond after using the tools for better user experience.
-You can run multiple steps using all the tools!
-Make sure to use the right tool to respond to the user's question.
-
-Multiple tools can be used in a single response and multiple steps can be used to answer the user's question.
-
-## Response Format
-- Markdown is supported.
-- Respond according to tool's response.
-- Use the tools to answer the user's question.
-- If you don't know the answer, use the tools to find the answer or say you don't know.`
-
 if (!process.env.GOOGLE_API_KEY) {
   console.error("[config] GOOGLE_API_KEY is missing or invalid")
 }
