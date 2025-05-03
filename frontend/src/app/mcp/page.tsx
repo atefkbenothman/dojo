@@ -7,7 +7,7 @@ import { asyncTryCatch } from "@/lib/utils"
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 export async function Mcp() {
-  const { data, error } = await asyncTryCatch(
+  const { data } = await asyncTryCatch(
     fetch(`${APP_URL}/api/mcp/servers`, {
       method: "GET",
       headers: {
@@ -17,19 +17,17 @@ export async function Mcp() {
     }),
   )
 
-  if (error || !data) {
+  const servers = await data?.json()
+
+  if (!servers.servers) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">
-          Connect to server first
-        </p>
+        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">Connect to server first</p>
       </div>
     )
   }
 
-  const { servers } = await data.json()
-
-  return <MCPList servers={servers} />
+  return <MCPList servers={servers.servers} />
 }
 
 export default async function McpPage() {

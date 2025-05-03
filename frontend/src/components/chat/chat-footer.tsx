@@ -1,25 +1,20 @@
 "use client"
 
+import { memo, useState, useCallback, useRef, useEffect } from "react"
+import { useChatProvider } from "@/hooks/use-chat"
+import { useModelContext } from "@/hooks/use-model"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowUp } from "lucide-react"
-import { useChatProvider } from "@/hooks/use-chat"
-import { memo, useState, useCallback, useRef, useEffect } from "react"
 
 interface ChatControlsProps {
   onSend: () => void
 }
 
 const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
-  const { selectedModelId, handleModelChange, availableModels } =
-    useChatProvider()
+  const { selectedModelId, handleModelChange } = useChatProvider()
+  const { availableModels } = useModelContext()
 
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
@@ -29,21 +24,13 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
         </SelectTrigger>
         <SelectContent className="text-xs" align="start">
           {availableModels.map((model) => (
-            <SelectItem
-              key={model.id}
-              value={model.id}
-              className="hover:cursor-pointer"
-            >
+            <SelectItem key={model.id} value={model.id} className="hover:cursor-pointer">
               {model.name}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <Button
-        className="ml-auto hover:cursor-pointer"
-        variant="outline"
-        onClick={onSend}
-      >
+      <Button className="ml-auto hover:cursor-pointer" variant="outline" onClick={onSend}>
         <ArrowUp className="h-4 w-4" strokeWidth={3} />
       </Button>
     </div>

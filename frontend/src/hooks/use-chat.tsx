@@ -4,9 +4,9 @@ import { useState, createContext, useContext } from "react"
 import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
 import { asyncTryCatch } from "@/lib/utils"
 import type { AIModelInfo } from "@/lib/types"
-import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/config"
 import { useQuery, QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import { useConnectionContext } from "@/hooks/use-connection"
+import { useModelContext } from "@/hooks/use-model"
 
 const queryClient = new QueryClient()
 
@@ -25,7 +25,6 @@ type AIChatContextType = {
   setContext: (data: string) => void
   chatStatus: ChatStatus
   chatError: string | null
-  availableModels: AIModelInfo[]
   selectedModelId: string
   handleModelChange: (modelId: string) => void
   handleChat: (message: string) => Promise<void>
@@ -45,13 +44,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   const [context, setContext] = useState<string>("")
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle")
   const [chatError, setChatError] = useState<string | null>(null)
-  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID)
 
   const { sessionId } = useConnectionContext()
-
-  const handleModelChange = (modelId: string) => {
-    setSelectedModelId(modelId)
-  }
+  const { availableModels, selectedModelId, handleModelChange } = useModelContext()
 
   /* Check Server Health */
   const { data: serverHealth } = useQuery({
@@ -97,7 +92,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setChatStatus("loading")
     setChatError(null)
 
-    const selectedModel = AVAILABLE_MODELS.find((m) => m.id === selectedModelId)
+    const selectedModel = availableModels.find((m) => m.id === selectedModelId)
 
     // Image generation
     if (selectedModel?.type === "image") {
@@ -258,7 +253,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setContext,
     chatStatus,
     chatError,
-    availableModels: AVAILABLE_MODELS,
     selectedModelId,
     handleChat,
     handleNewChat,

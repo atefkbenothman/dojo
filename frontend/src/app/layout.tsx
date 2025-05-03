@@ -8,6 +8,7 @@ import { ConnectionProviderRoot } from "@/hooks/use-connection"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
 import { ResizableLayout } from "@/components/layout/resizable-layout"
 import { Toaster } from "sonner"
+import { ModelProvider } from "@/hooks/use-model"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -32,10 +33,12 @@ export default function RootLayout({
       <body className={`antialiased ${inter.className}`}>
         <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ConnectionProviderRoot>
-            <AIChatProviderRoot>
-              <ResizableLayout>{children}</ResizableLayout>
-              <Toaster toastOptions={{ style: { borderRadius: "var(--radius-md)" } }} />
-            </AIChatProviderRoot>
+            <ModelProvider>
+              <AIChatProviderRoot>
+                <ResizableLayout>{children}</ResizableLayout>
+                <Toaster toastOptions={{ style: { borderRadius: "var(--radius-md)" } }} />
+              </AIChatProviderRoot>
+            </ModelProvider>
           </ConnectionProviderRoot>
         </DarkModeProvider>
       </body>
