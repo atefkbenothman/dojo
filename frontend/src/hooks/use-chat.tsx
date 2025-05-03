@@ -3,7 +3,6 @@
 import { useState, createContext, useContext } from "react"
 import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
 import { asyncTryCatch } from "@/lib/utils"
-import type { AIModelInfo } from "@/lib/types"
 import { useQuery, QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import { useConnectionContext } from "@/hooks/use-connection"
 import { useModelContext } from "@/hooks/use-model"
@@ -29,7 +28,6 @@ type AIChatContextType = {
   handleModelChange: (modelId: string) => void
   handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
-  isServerHealthy: boolean
   handleImageGeneration: (modelId: string, prompt: string) => Promise<{ images: string[] }>
 }
 
@@ -47,22 +45,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   const { sessionId } = useConnectionContext()
   const { availableModels, selectedModelId, handleModelChange } = useModelContext()
-
-  /* Check Server Health */
-  const { data: serverHealth } = useQuery({
-    queryKey: ["server-health"],
-    queryFn: async () => {
-      const response = await fetch("/api/mcp/health", {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      })
-      if (!response.ok) throw new Error("Server health check failed")
-      return response.json()
-    },
-    retry: false,
-  })
-  const isServerHealthy = serverHealth?.success || false
 
   /* Generate Image */
   const imageGenerationMutation = useMutation({
@@ -257,7 +239,6 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     handleChat,
     handleNewChat,
     handleModelChange,
-    isServerHealthy,
     handleImageGeneration,
   }
 

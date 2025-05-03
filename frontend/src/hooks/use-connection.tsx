@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, createContext, useContext } from "react"
-import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { MCPServerConfig } from "@/lib/types"
 
 const queryClient = new QueryClient()
@@ -13,6 +13,22 @@ export function useConnection() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [connectedServerId, setConnectedServerId] = useState<string | null>(null)
+
+  const { data: serverHealth } = useQuery({
+    queryKey: ["server-health"],
+    queryFn: async () => {
+      const response = await fetch("/api/mcp/health", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      })
+      if (!response.ok) throw new Error("Server health check failed")
+      return response.json()
+    },
+    retry: false,
+  })
+
+  const isServerHealthy = serverHealth?.success || false
 
   // Connect mutation
   const connectMutation = useMutation({
@@ -104,6 +120,7 @@ export function useConnection() {
     connectionStatus,
     connectionError,
     connectedServerId,
+    isServerHealthy,
     connect,
     disconnect,
     isConnecting: connectionStatus === "connecting",

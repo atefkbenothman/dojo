@@ -2,25 +2,22 @@ import { useRef, useEffect } from "react"
 import type { CoreMessage, ToolCallPart, ToolResultPart } from "ai"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useChatProvider } from "@/hooks/use-chat"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
+import { Hammer } from "lucide-react"
 
 function ToolCallMessage({ content }: { content: ToolCallPart }) {
   return (
     <Accordion type="single" collapsible className="bg-muted w-full">
       <AccordionItem value={content.toolCallId}>
-        <AccordionTrigger className="p-2 text-xs hover:cursor-pointer">
-          Tool: {content.toolName}
+        <AccordionTrigger className="p-2 hover:cursor-pointer">
+          <div className="flex flex-row items-center gap-2">
+            <Hammer className="h-4 w-4" />
+            <p className="text-xs">{content.toolName}</p>
+          </div>
         </AccordionTrigger>
         <AccordionContent className="py-2">
-          <pre className="overflow-auto p-2 text-xs">
-            {JSON.stringify(content.args, null, 2)}
-          </pre>
+          <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.args, null, 2)}</pre>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -31,15 +28,11 @@ function ToolResultMessage({ content }: { content: ToolResultPart }) {
   return (
     <Accordion type="single" collapsible className="bg-muted w-full">
       <AccordionItem value={content.toolCallId}>
-        <AccordionTrigger
-          className={`p-2 text-xs hover:cursor-pointer ${content.isError ? "text-destructive" : ""}`}
-        >
+        <AccordionTrigger className={`p-2 text-xs hover:cursor-pointer ${content.isError ? "text-destructive" : ""}`}>
           {content.toolName} Result
         </AccordionTrigger>
         <AccordionContent className="py-2">
-          <pre className="overflow-auto p-2 text-xs">
-            {JSON.stringify(content.result, null, 2)}
-          </pre>
+          <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.result, null, 2)}</pre>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -119,10 +112,7 @@ export function Messages() {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
-      <div
-        className="relative flex w-full flex-col"
-        style={{ height: `${virtualizer.getTotalSize()}px` }}
-      >
+      <div className="relative flex w-full flex-col" style={{ height: `${virtualizer.getTotalSize()}px` }}>
         <div
           className="absolute flex w-full flex-col"
           style={{
