@@ -1,4 +1,4 @@
-import { FinishReason, ImageModel, LanguageModel, TextStreamPart, ToolCallPart, ToolResultPart, ToolSet } from "ai"
+import { ImageModel, LanguageModel } from "ai"
 import { MCPClient } from "./client"
 
 export interface ActiveConnection {
@@ -14,7 +14,7 @@ export interface MCPServer {
 
 export interface MCPServerConfig {
   id: string
-  displayName: string
+  name: string
   command: string
   args: string[]
   env?: Record<string, string>
@@ -32,21 +32,6 @@ export interface AIImageModelConfig {
   imageModel: ImageModel
   provider: "openai"
 }
-
-export type ChatStreamPart =
-  | TextStreamPart<ToolSet>
-  | ToolCallPart
-  | ToolResultPart
-  | { type: "error"; error: unknown }
-  | {
-      type: "finish"
-      reason: FinishReason | string
-      usage?: {
-        completionTokens: number
-        promptTokens: number
-        totalTokens: number
-      }
-    }
 
 export interface GenerateImageOptions {
   n?: number

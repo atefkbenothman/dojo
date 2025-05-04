@@ -5,30 +5,19 @@ dotenv.config({
   path: path.resolve(__dirname, "..", ".env"),
 })
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js"
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
-import { CoreMessage, streamText, LanguageModel, Tool, ToolSet, jsonSchema, ToolCallPart, ToolResultPart } from "ai"
+import { Tool, experimental_createMCPClient } from "ai"
+import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
 import { asyncTryCatch } from "./utils"
-import { ChatStreamPart, MCPServerConfig } from "./types"
+import { MCPServerConfig } from "./types"
 
 export class MCPClient {
   private config: MCPServerConfig
-  private client: Client | null = null
-  private transport: StdioClientTransport | null = null
-  private tools: ToolSet | undefined = undefined
+  private client: Awaited<ReturnType<typeof experimental_createMCPClient>> | null = null
+  public tools: { [k: string]: Tool<any, any> } = {}
 
-  constructor(serverConfig: MCPServerConfig) {
-    this.config = serverConfig
-    console.log(`[MCPClient] MCPClient configured for service ${this.config.displayName}`)
-  }
-
-  private initializeClient(): void {
-    if (this.client) return
-
-    this.client = new Client({
-      name: "mcp-client",
-      version: "1.0.0",
-    })
+  constructor(config: MCPServerConfig) {
+    this.config = config
+    console.log(`[MCPClient] MCPClient configured for service ${this.config.name}`)
   }
 
   private setupEnvironment(): Record<string, string> {
@@ -42,16 +31,8 @@ export class MCPClient {
     }
   }
 
-  private setupTransport(envs: Record<string, string>): void {
-    if (!this.config.command) {
-      throw new Error("[MCPClient] Command is required to setup transport")
-    }
-
-    if (!Array.isArray(this.config.args)) {
-      throw new Error("[MCPClient] Args must be an array")
-    }
-
-    this.transport = new StdioClientTransport({
+  private createTransport(envs: Record<string, string>): StdioMCPTransport {
+    return new StdioMCPTransport({
       command: this.config.command,
       args: this.config.args,
       cwd: ".",
@@ -59,228 +40,45 @@ export class MCPClient {
     })
   }
 
-  private async fetchAndConvertTools(): Promise<void> {
-    const { data: allTools, error: allToolsError } = await asyncTryCatch(this.client!.listTools())
-
-    if (allToolsError || !allTools) {
-      console.error("[MCPClient] Failed to fetch tools from MCP server:", allToolsError)
-      this.tools = {} as ToolSet
-      return
-    }
-
-    this.tools = allTools.tools.reduce((acc, tool) => {
-      acc[tool.name] = {
-        description: tool.description,
-        parameters: jsonSchema(tool.inputSchema),
-      } as Tool
-      return acc
-    }, {} as ToolSet)
-
-    console.log("[MCPClient] Connected to server with tools:", Object.keys(this.tools).join(", "))
-  }
-
-  private updateMessageHistory(
-    currentMessages: CoreMessage[],
-    assistantContent: Array<{ type: "text"; text: string } | ToolCallPart>,
-    toolResults: ToolResultPart[],
-  ): CoreMessage[] {
-    const updatedMessages = [...currentMessages]
-
-    if (assistantContent.length > 0) {
-      updatedMessages.push({
-        role: "assistant",
-        content: assistantContent,
-      })
-    }
-
-    if (toolResults.length > 0) {
-      updatedMessages.push({ role: "tool", content: toolResults })
-    }
-
-    return updatedMessages
-  }
-
-  private async processToolCall(toolCall: ToolCallPart): Promise<ToolResultPart> {
-    let resultData: unknown = null
-    let isResultError = false
-
-    const { data, error } = await asyncTryCatch(
-      this.client!.callTool({
-        name: toolCall.toolName,
-        arguments: toolCall.args as { [x: string]: unknown } | undefined,
-      }),
-    )
-
-    if (error || !data) {
-      resultData = `Error: ${error}`
-      isResultError = true
-    } else {
-      resultData = data.content
-    }
-
-    return {
-      type: "tool-result",
-      toolCallId: toolCall.toolCallId,
-      toolName: toolCall.toolName,
-      result: resultData,
-      isError: isResultError,
-    }
-  }
-
-  private async processAIResponse(
-    model: LanguageModel,
-    messages: CoreMessage[],
-    tools: ToolSet,
-    controller: ReadableStreamDefaultController<ChatStreamPart>,
-  ): Promise<{
-    aiResponseText: string
-    pendingToolCalls: ToolCallPart[]
-    hasToolCalls: boolean
-  }> {
-    let aiResponseText = ""
-    let pendingToolCalls: ToolCallPart[] = []
-    let hasToolCalls = false
-
-    const result = await streamText({
-      model: model,
-      messages: messages,
-      tools: tools,
-    })
-
-    for await (const part of result.fullStream) {
-      controller.enqueue(part)
-      switch (part.type) {
-        case "text-delta":
-          aiResponseText += part.textDelta
-          break
-        case "tool-call":
-          hasToolCalls = true
-          pendingToolCalls.push(part)
-          break
-      }
-    }
-
-    return {
-      aiResponseText,
-      pendingToolCalls,
-      hasToolCalls,
-    }
-  }
-
-  /* Start */
   public async start(): Promise<void> {
     if (this.client) return
 
-    this.initializeClient()
+    console.log(`[MCPClient.start] Preparing environment and transport for ${this.config.name}...`)
+
     const envs = this.setupEnvironment()
-    this.setupTransport(envs)
+    const transport = this.createTransport(envs)
 
-    const { error: connectError } = await asyncTryCatch(this.client!.connect(this.transport!))
+    const { data: client, error: clientError } = await asyncTryCatch(experimental_createMCPClient({ transport }))
 
-    if (connectError) {
-      console.error("[MCPClient] Failed to connect MCP client: ", connectError)
+    if (!client || clientError) {
+      console.error("[MCPClient.start] Failed to create MCP client: ", clientError)
       this.client = null
-      this.transport = null
-      throw connectError
+      this.tools = {}
+      return
     }
 
-    await this.fetchAndConvertTools()
-  }
+    this.client = client
+    console.log(`[MCPClient.start] MCP Client created successfully for ${this.config.name}`)
 
-  /* Chat */
-  public async chat(model: LanguageModel, messages: CoreMessage[]): Promise<ReadableStream<ChatStreamPart>> {
-    if (!this.client) {
-      return new ReadableStream({
-        start(controller) {
-          controller.error(new Error("Error: MCP Client not connected"))
-          controller.close()
-        },
-      })
+    const { data: tools, error: toolsError } = await asyncTryCatch(this.client.tools())
+
+    if (!tools || toolsError) {
+      console.error("[MCPClient.start] Failed to fetch MCP tools: ", clientError)
+      this.tools = {}
+      return
     }
 
-    console.log(
-      `[MCPClient] Generating AI response based on ${messages.length} messages. Last message:`,
-      messages[messages.length - 1]?.content,
-    )
-
-    const mcpClient = this
-    let messageHistory = [...messages]
-
-    return new ReadableStream<ChatStreamPart>({
-      async start(controller) {
-        let loopCounter = 0
-
-        while (true) {
-          loopCounter += 1
-          console.log(
-            `[MCPClient.chat] Loop ${loopCounter}: Starting streamText call with ${messageHistory.length} messages.`,
-          )
-
-          try {
-            // Process AI Response
-            const tools = mcpClient.tools || {}
-            const { aiResponseText, pendingToolCalls, hasToolCalls } = await mcpClient.processAIResponse(
-              model,
-              messageHistory,
-              tools,
-              controller,
-            )
-
-            // Build Assistant Response
-            const assistantResponse: Array<{ type: "text"; text: string } | ToolCallPart> = []
-
-            if (aiResponseText.trim()) {
-              assistantResponse.push({
-                type: "text",
-                text: aiResponseText.trim(),
-              })
-            }
-            assistantResponse.push(...pendingToolCalls)
-
-            // Update Message History with Assistant Response
-            messageHistory = mcpClient.updateMessageHistory(messageHistory, assistantResponse, [])
-
-            // Check if we need to execute tools
-            if (!hasToolCalls) {
-              console.log(`[MCPClient.chat] No tool calls in this turn. Ending loop.`)
-              break
-            }
-
-            // Execute Tools
-            console.log(`[MCPClient.chat] Executing ${pendingToolCalls.length} tool(s)...`)
-
-            const toolResults: ToolResultPart[] = []
-            for (const toolCall of pendingToolCalls) {
-              const result = await mcpClient.processToolCall(toolCall)
-              controller.enqueue(result)
-              toolResults.push(result)
-            }
-
-            // Update Message History with Tool Results
-            messageHistory = mcpClient.updateMessageHistory(messageHistory, [], toolResults)
-          } catch (err) {
-            console.error(`[MCPClient.chat] Loop ${loopCounter}: Error during processing:`, err)
-            controller.enqueue({
-              type: "error",
-              error: err,
-            })
-            controller.close()
-            return
-          }
-        }
-
-        console.log("[MCPClient.chat] Loop finished. Stream process complete.")
-        controller.close()
-      },
-    })
+    this.tools = tools
+    console.log(`[MCPClient.getTools] Fetched ${Object.keys(this.tools).length} tools`)
   }
 
-  public async cleanup() {
+  public async cleanup(): Promise<void> {
     if (this.client) {
-      console.log("[MCPClient] Cleaning up and closing MCPClient")
+      console.log(`[MCPClient.cleanup] Closing MCP client...`)
       await this.client.close()
       this.client = null
-      this.transport = null
+      this.tools = {}
+      console.log(`[MCPClient.cleanup] MCP client closed`)
     }
   }
 }

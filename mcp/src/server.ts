@@ -7,12 +7,17 @@ dotenv.config({
 
 import cors from "cors"
 import express, { Express, Request, Response } from "express"
+import { type CoreMessage, streamText, ToolSet, experimental_generateImage as generateImage } from "ai"
 import { MCPClient } from "./client"
-import { directChat, imageChat } from "./core"
-import { DEFAULT_MODEL_ID, AVAILABLE_MCP_SERVERS, AVAILABLE_IMAGE_MODELS, AVAILABLE_AI_MODELS } from "./config"
+import {
+  DEFAULT_MODEL_ID,
+  AVAILABLE_MCP_SERVERS,
+  AVAILABLE_IMAGE_MODELS,
+  AVAILABLE_AI_MODELS,
+  DEFAULT_IMAGE_MODEL_ID,
+} from "./config"
 import { asyncTryCatch, tryCatch } from "./utils"
-import type { CoreMessage } from "ai"
-import type { ActiveConnection } from "./types"
+import type { ActiveConnection, GenerateImageOptions } from "./types"
 
 const PORT = process.env.PORT || 8888
 
@@ -81,12 +86,8 @@ const validateConnection = (sessionId: string): boolean => {
   return true
 }
 
-const findConnection = (sessionId: string): ActiveConnection | null => {
-  return activeConnections.get(sessionId) || null
-}
-
 const cleanupExistingConnection = async (sessionId: string): Promise<void> => {
-  const existingConnection = findConnection(sessionId)
+  const existingConnection = activeConnections.get(sessionId) || null
 
   if (existingConnection) {
     const { error } = await asyncTryCatch(existingConnection.client.cleanup())
@@ -179,143 +180,75 @@ const validateChatRequest = (messages: any, modelId: string): { isValid: boolean
   return { isValid: true }
 }
 
-const handleDirectChat = async (aiModel: any, messages: CoreMessage[], res: Response): Promise<void> => {
-  const { data: directChatResponse, error } = await asyncTryCatch(directChat(aiModel, messages))
-
-  if (error || !directChatResponse) {
-    console.error(`[server /chat - Direct]: Error during direct AI call:`, error)
-    res.status(500).json({ message: `Error processing direct chat: ${error}` })
-    return
-  }
-
-  directChatResponse.headers.forEach((value, key) => {
-    res.setHeader(key, value)
-  })
-  res.status(directChatResponse.status)
-
-  if (directChatResponse.body) {
-    for await (const chunk of directChatResponse.body) {
-      res.write(chunk)
-    }
-  }
-  res.end()
-}
-
-const formatStreamPart = (part: any): { prefix: string; contentJson: string } => {
-  let prefix = ""
-  let contentJson = ""
-
-  switch (part.type) {
-    case "text-delta":
-      prefix = "0"
-      contentJson = JSON.stringify(part.textDelta)
-      break
-    case "tool-call":
-      prefix = "9"
-      contentJson = JSON.stringify({
-        toolCallId: part.toolCallId,
-        toolName: part.toolName,
-        args: part.args,
-      })
-      break
-    case "tool-result":
-      prefix = "a"
-      contentJson = JSON.stringify({
-        toolCallId: part.toolCallId,
-        result: part.result,
-      })
-      break
-    case "finish":
-      prefix = "d"
-      contentJson = JSON.stringify({
-        finishReason: "finished",
-        usage: part.usage,
-      })
-      break
-    case "error":
-      prefix = "3"
-      contentJson = JSON.stringify(part.error)
-      break
-    case "step-start":
-      break
-    case "step-finish":
-      break
-  }
-
-  return { prefix, contentJson }
-}
-
-const handleStreamedChat = async (
-  connectionData: ActiveConnection,
-  aiModel: any,
-  messages: CoreMessage[],
-  res: Response,
-): Promise<void> => {
-  const { data: stream, error } = await asyncTryCatch(connectionData.client.chat(aiModel, messages))
-
-  if (error || !stream) {
-    console.error(`[server]: Error during chat:`, error)
-    res.status(400).json({ message: "Error processing chat message" })
-    return
-  }
-
-  res.setHeader("Content-Type", "text/plain; charset=utf-8")
-  res.setHeader("Transfer-Encoding", "chunked")
-  res.setHeader("X-Vercel-AI-Data-Stream", "v1")
-  res.status(200)
-
-  for await (const part of stream) {
-    const { prefix, contentJson } = formatStreamPart(part)
-    if (prefix && contentJson) {
-      res.write(`${prefix}:${contentJson}\n`)
-    }
-  }
-  res.end()
-}
-
 /* Chat Stream */
 app.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, messages, modelId } = req.body
+
   const model = modelId || DEFAULT_MODEL_ID
 
-  console.log(`[server]: /chat request received for sessionId: ${sessionId} using model: ${model}`)
-
   const validation = validateChatRequest(messages, model)
-
   if (!validation.isValid) {
     res.status(validation.error?.includes("configured") ? 500 : 400).json({ message: validation.error })
     return
   }
 
+  console.log(`[server]: /chat request received for sessionId: ${sessionId} using model: ${model}`)
+
   const aiModel = AVAILABLE_AI_MODELS[model].languageModel
   const connectionData = activeConnections.get(sessionId)
 
-  if (!connectionData) {
-    console.log(`[server /chat]: No active MCP connection found for sessionId: ${sessionId}. Using direct AI call.`)
-    await handleDirectChat(aiModel, messages as CoreMessage[], res)
-    return
+  let tools: ToolSet | undefined = undefined
+
+  if (connectionData) {
+    tools = connectionData.client.tools || {}
+    console.log(`[server /chat]: Using ${Object.keys(tools).length} tools from MCP client.`)
+    connectionData.lastActivityTimestamp = Date.now()
   }
 
-  connectionData.lastActivityTimestamp = Date.now()
-  console.log(`[server]: Updated last activity time for ${sessionId}`)
+  const result = await streamText({
+    model: aiModel,
+    messages: messages as CoreMessage[],
+    tools: tools,
+    maxSteps: 5,
+  })
 
-  await handleStreamedChat(connectionData, aiModel, messages as CoreMessage[], res)
+  const response = result.toDataStreamResponse()
+
+  response.headers.forEach((value, key) => {
+    res.setHeader(key, value)
+  })
+
+  res.status(response.status)
+
+  if (response.body) {
+    for await (const chunk of response.body) {
+      res.write(chunk)
+    }
+    res.end()
+  }
+  res.end()
 })
 
 /* Image */
 app.post("/image", async (req: Request, res: Response): Promise<void> => {
   const { prompt, modelId, n } = req.body
 
-  console.log(`[server]: /image request received for sessionId: using model: ${modelId}`)
+  const aiModel = AVAILABLE_IMAGE_MODELS[modelId] ?? AVAILABLE_IMAGE_MODELS[DEFAULT_IMAGE_MODEL_ID]
+  console.log(`[server]: /image request received using model: ${aiModel.modelName}`)
 
-  const options = { n }
+  try {
+    const options: GenerateImageOptions = { n }
 
-  const result = await imageChat(modelId, prompt, options)
+    const { images } = await generateImage({
+      model: aiModel.imageModel,
+      prompt: prompt,
+      n: options.n,
+    })
 
-  if (result.error) {
-    res.status(500).json({ error: result.error })
-    return
+    const resultImages = images.map((img) => ({ base64: img.base64 }))
+    res.status(200).json({ images: resultImages })
+  } catch (error) {
+    console.error(`[server /image]: Error generating image:`, error)
+    res.status(500).json({ error: "Failed to generate image" })
   }
-
-  res.status(200).json({ images: result.images })
 })
