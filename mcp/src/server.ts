@@ -209,7 +209,7 @@ app.post("/chat", async (req: Request, res: Response): Promise<void> => {
     model: aiModel,
     messages: messages as CoreMessage[],
     tools: tools,
-    maxSteps: 5,
+    maxSteps: 10,
   })
 
   const response = result.toDataStreamResponse()
