@@ -26,7 +26,7 @@ const initialMessages: Message[] = [
 ]
 
 type AIChatContextType = {
-  messages: UIMessage[]
+  messages: (UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } })[]
   context: string
   input: string
   status: "error" | "submitted" | "streaming" | "ready"
@@ -72,25 +72,19 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       return result
     },
     onSuccess: (result) => {
-      // if (result.images.images && result.images.images.length > 0) {
-      //   setMessages((prev) => [
-      //     ...prev,
-      //     {
-      //       role: "assistant",
-      //       content: result.images.images.map((img: any) => ({
-      //         type: "image_display",
-      //         base64: img.base64,
-      //       })),
-      //     },
-      //   ])
-      //   setChatStatus("idle")
-      // } else {
-      //   setChatStatus("error")
-      //   setChatError("Image generation succeeded but returned no images.")
-      // }
-    },
-    onError: (error: Error) => {
-      // setChatStatus("error")
+      const imageData = {
+        type: "generated_image",
+        images: result.images.images,
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nanoid(),
+          role: "assistant",
+          content: "Generated Image(s):",
+          images: imageData,
+        },
+      ])
     },
   })
 
@@ -104,6 +98,14 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       const selectedModel = availableModels.find((m) => m.id === selectedModelId)
 
       if (selectedModel?.type === "image") {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nanoid(),
+            role: "user",
+            content: prompt,
+          },
+        ])
         imageGenerationMutation.mutate({ modelId: selectedModel.id, prompt })
         return
       }
@@ -128,7 +130,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   }, [setMessages])
 
   const value: AIChatContextType = {
-    messages,
+    messages: messages as (UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } })[],
     context,
     status,
     input,

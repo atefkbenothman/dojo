@@ -67,19 +67,26 @@ function ReasoningMessage({ content }: { content: string }) {
   )
 }
 
-function ImageDisplayPartRenderer({ part }: { part: any }) {
+function GeneratedImagesRenderer({ images }: { images: { base64: string }[] }) {
   return (
-    <div className="flex justify-start p-2">
-      <img
-        src={`data:image/png;base64,${part["base64"]}`}
-        alt={"Generated image"}
-        className="max-h-[256px] max-w-[256px] rounded border object-contain"
-      />
+    <div className="flex flex-wrap justify-start gap-2 p-2">
+      {images.map((image, index) => (
+        <img
+          key={index}
+          src={`data:image/png;base64,${image.base64}`}
+          alt={`Generated image ${index + 1}`}
+          className="max-h-[256px] max-w-[256px] rounded border object-contain"
+        />
+      ))}
     </div>
   )
 }
 
-function MessageItem({ msg }: { msg: UIMessage }) {
+function MessageItem({
+  msg,
+}: {
+  msg: UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } }
+}) {
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -96,6 +103,17 @@ function MessageItem({ msg }: { msg: UIMessage }) {
         <MarkdownRenderer content={msg.content.toString()} />
       </div>
     )
+  }
+
+  if (msg.images && msg.images.type === "generated_image") {
+    const images = msg.images.images
+    if (Array.isArray(images)) {
+      return (
+        <div className="p-2">
+          <GeneratedImagesRenderer images={images} />
+        </div>
+      )
+    }
   }
 
   return (
@@ -120,9 +138,6 @@ function MessageItem({ msg }: { msg: UIMessage }) {
                 <ToolInvocationMessage content={part.toolInvocation} />
               </div>
             )
-          // @ts-ignore
-          // case "image_display":
-          //   return <ImageDisplayPartRenderer key={idx} part={part} />
         }
       })}
     </div>
