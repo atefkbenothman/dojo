@@ -1,38 +1,66 @@
 import { useRef, useEffect } from "react"
-import type { CoreMessage, ToolCallPart, ToolResultPart } from "ai"
+import { ToolInvocation, UIMessage } from "ai"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useChatProvider } from "@/hooks/use-chat"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
-import { Hammer } from "lucide-react"
+import { Hammer, Check, Clock, Play, Lightbulb } from "lucide-react"
 
-function ToolCallMessage({ content }: { content: ToolCallPart }) {
+function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
+  const getStateInfo = () => {
+    switch (content.state) {
+      case "partial-call":
+        return { icon: <Clock className="h-4 w-4" />, text: "Preparing" }
+      case "call":
+        return { icon: <Play className="h-4 w-4" />, text: "Calling" }
+      case "result":
+        return { icon: <Check className="h-4 w-4" />, text: "Completed" }
+      default:
+        return { icon: <Hammer className="h-4 w-4" />, text: "" }
+    }
+  }
+
+  const { icon, text } = getStateInfo()
+
   return (
     <Accordion type="single" collapsible className="bg-muted w-full">
       <AccordionItem value={content.toolCallId}>
         <AccordionTrigger className="p-2 hover:cursor-pointer">
           <div className="flex flex-row items-center gap-2">
-            <Hammer className="h-4 w-4" />
+            {icon}
             <p className="text-xs">{content.toolName}</p>
+            {text && <span className="text-muted-foreground ml-2 text-xs">{text}</span>}
           </div>
         </AccordionTrigger>
-        <AccordionContent className="py-2">
-          <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.args, null, 2)}</pre>
+        <AccordionContent className="p-2">
+          {content.state === "result" && "result" in content ? (
+            <div>
+              <div className="text-muted-foreground mb-2 text-xs">Args:</div>
+              <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.args, null, 2)}</pre>
+              <div className="text-muted-foreground mt-4 mb-2 text-xs">Result:</div>
+              <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.result, null, 2)}</pre>
+            </div>
+          ) : (
+            <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.args, null, 2)}</pre>
+          )}
         </AccordionContent>
       </AccordionItem>
     </Accordion>
   )
 }
 
-function ToolResultMessage({ content }: { content: ToolResultPart }) {
+function ReasoningMessage({ content }: { content: string }) {
   return (
     <Accordion type="single" collapsible className="bg-muted w-full">
-      <AccordionItem value={content.toolCallId}>
-        <AccordionTrigger className={`p-2 text-xs hover:cursor-pointer ${content.isError ? "text-destructive" : ""}`}>
-          {content.toolName} Result
+      <AccordionItem value="reasoning">
+        <AccordionTrigger className="p-2 hover:cursor-pointer">
+          <div className="flex flex-row items-center gap-2">
+            <Lightbulb className="h-4 w-4" />
+            <p className="text-xs">Reasoning</p>
+          </div>
         </AccordionTrigger>
-        <AccordionContent className="py-2">
-          <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.result, null, 2)}</pre>
+        <AccordionContent className="p-2">
+          <pre className="overflow-auto p-2 text-xs wrap-break-word whitespace-pre-wrap">{content}</pre>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -51,7 +79,7 @@ function ImageDisplayPartRenderer({ part }: { part: any }) {
   )
 }
 
-function MessageItem({ msg }: { msg: CoreMessage }) {
+function MessageItem({ msg }: { msg: UIMessage }) {
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -62,7 +90,7 @@ function MessageItem({ msg }: { msg: CoreMessage }) {
     )
   }
 
-  if (typeof msg.content === "string") {
+  if (msg.role === "system") {
     return (
       <div className="p-2">
         <MarkdownRenderer content={msg.content.toString()} />
@@ -72,7 +100,7 @@ function MessageItem({ msg }: { msg: CoreMessage }) {
 
   return (
     <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
-      {msg.content.map((part: any, idx: number) => {
+      {msg.parts.map((part, idx: number) => {
         switch (part.type) {
           case "text":
             return (
@@ -80,11 +108,21 @@ function MessageItem({ msg }: { msg: CoreMessage }) {
                 <MarkdownRenderer content={part.text} />
               </div>
             )
-          case "tool-call":
-            return <ToolCallMessage key={part.toolCallId} content={part} />
+          case "reasoning":
+            return (
+              <div className="p-2" key={idx}>
+                <ReasoningMessage content={part.reasoning} />
+              </div>
+            )
+          case "tool-invocation":
+            return (
+              <div className="p-2" key={idx}>
+                <ToolInvocationMessage content={part.toolInvocation} />
+              </div>
+            )
           // @ts-ignore
-          case "image_display":
-            return <ImageDisplayPartRenderer part={part} key={idx} />
+          // case "image_display":
+          //   return <ImageDisplayPartRenderer key={idx} part={part} />
         }
       })}
     </div>
@@ -134,26 +172,3 @@ export function Messages() {
     </div>
   )
 }
-
-// if (msg.role === "tool") {
-//   return (
-//     <div
-//       key={vItem.key}
-//       data-index={vItem.index}
-//       ref={measureElement}
-//       className="flex h-fit flex-col py-2"
-//     >
-//       <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
-//         {Array.isArray(msg.content) &&
-//           msg.content[0] &&
-//           "type" in msg.content[0] &&
-//           msg.content[0].type === "tool-result" && (
-//             <ToolResultMessage
-//               key={(msg.content[0] as ToolResultPart).toolCallId}
-//               content={msg.content[0] as ToolResultPart}
-//             />
-//           )}
-//       </div>
-//     </div>
-//   )
-// }

@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, createContext, useContext } from "react"
-import type { CoreMessage, ToolCallPart, ToolResultPart, TextPart } from "ai"
+import { useState, createContext, useContext, useCallback } from "react"
+import type { UIMessage } from "ai"
+import { useChat, Message } from "@ai-sdk/react"
+import { nanoid } from "nanoid"
 import { asyncTryCatch } from "@/lib/utils"
 import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import { useConnectionContext } from "@/hooks/use-connection"
@@ -10,25 +12,26 @@ import { SYSTEM_PROMPT } from "@/lib/config"
 
 const queryClient = new QueryClient()
 
-const initialMessages: CoreMessage[] = [
+const initialMessages: Message[] = [
   {
+    id: "system",
     role: "system",
     content: SYSTEM_PROMPT,
   },
   {
+    id: "intro",
     role: "assistant",
     content: "Hello. I am an AI assistant",
   },
 ]
 
-type ChatStatus = "idle" | "loading" | "error"
-
 type AIChatContextType = {
-  messages: CoreMessage[]
+  messages: UIMessage[]
   context: string
+  input: string
+  status: "error" | "submitted" | "streaming" | "ready"
+  error: Error | undefined
   setContext: (data: string) => void
-  chatStatus: ChatStatus
-  chatError: string | null
   handleChat: (message: string) => Promise<void>
   handleNewChat: () => void
 }
@@ -43,10 +46,16 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   const { sessionId } = useConnectionContext()
   const { availableModels, selectedModelId } = useModelContext()
 
-  const [messages, setMessages] = useState<CoreMessage[]>(initialMessages)
   const [context, setContext] = useState<string>("")
-  const [chatStatus, setChatStatus] = useState<ChatStatus>("idle")
-  const [chatError, setChatError] = useState<string | null>(null)
+
+  const { messages, status, input, append, setMessages, error } = useChat({
+    api: "/api/mcp/chat",
+    initialMessages: initialMessages as Message[],
+    generateId: () => nanoid(),
+    onError: (err) => {
+      console.error("useChat error:", err)
+    },
+  })
 
   /* Generate Image */
   const imageGenerationMutation = useMutation({
@@ -63,173 +72,68 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       return result
     },
     onSuccess: (result) => {
-      if (result.images.images && result.images.images.length > 0) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: result.images.images.map((img: any) => ({
-              type: "image_display",
-              base64: img.base64,
-            })),
-          },
-        ])
-        setChatStatus("idle")
-      } else {
-        setChatStatus("error")
-        setChatError("Image generation succeeded but returned no images.")
-      }
+      // if (result.images.images && result.images.images.length > 0) {
+      //   setMessages((prev) => [
+      //     ...prev,
+      //     {
+      //       role: "assistant",
+      //       content: result.images.images.map((img: any) => ({
+      //         type: "image_display",
+      //         base64: img.base64,
+      //       })),
+      //     },
+      //   ])
+      //   setChatStatus("idle")
+      // } else {
+      //   setChatStatus("error")
+      //   setChatError("Image generation succeeded but returned no images.")
+      // }
     },
     onError: (error: Error) => {
-      setChatStatus("error")
-      setChatError(error.message || "Image generation failed")
+      // setChatStatus("error")
     },
   })
 
-  const handleChat = async (message: string) => {
-    if (chatStatus === "loading") return
+  const handleChat = useCallback(
+    async (message: string) => {
+      if (status === "streaming") return
 
-    const prompt = message.trim()
-    if (!prompt) return
+      const prompt = message.trim()
+      if (!prompt) return
 
-    const userMessage: CoreMessage = { role: "user", content: prompt }
-    const messagesToSend: CoreMessage[] = [...messages, userMessage]
+      const selectedModel = availableModels.find((m) => m.id === selectedModelId)
 
-    setMessages(messagesToSend)
-    setContext(message)
-    setChatStatus("loading")
-    setChatError(null)
-
-    const selectedModel = availableModels.find((m) => m.id === selectedModelId)
-
-    // Generate Image
-    if (selectedModel?.type === "image") {
-      imageGenerationMutation.mutate({ modelId: selectedModel.id, prompt })
-      return
-    }
-
-    // Normal text streaming
-    const abortController = new AbortController()
-
-    const { data: response, error } = await asyncTryCatch(
-      fetch("http://localhost:8888/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          messages: messagesToSend,
-          modelId: selectedModelId,
-        }),
-        signal: abortController.signal,
-      }),
-    )
-    if (error || !response.ok) {
-      setChatStatus("error")
-      setChatError("Chat stream error")
-      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${error}` }])
-      if (!abortController.signal.aborted) abortController.abort()
-      return
-    }
-    const reader = response.body?.pipeThrough(new TextDecoderStream()).getReader()
-    if (!reader) {
-      setChatStatus("error")
-      setChatError("Could not get reader in response body")
-      if (!abortController.signal.aborted) abortController.abort()
-      return
-    }
-    let fullResponse = ""
-    let shouldStartNewMessage = true
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      if (!value) continue
-      try {
-        const lines = value.split("\n").filter((line) => line.trim() !== "")
-        for (const line of lines) {
-          const match = line.match(/^([0-9a-zA-Z]):(.*)$/)
-          if (match) {
-            const typeId = match[1]
-            const contentJson = match[2]
-            let parsedContent: any
-            try {
-              parsedContent = JSON.parse(contentJson!)
-            } catch {
-              fullResponse += `\n[Stream Data Parse Error for type ${typeId}]`
-              continue
-            }
-            switch (typeId) {
-              case "0": // text-delta
-                fullResponse += parsedContent
-                setMessages((prev) => {
-                  const updated = [...prev]
-                  const last = updated[updated.length - 1]
-                  if (shouldStartNewMessage || !last || last.role !== "assistant") {
-                    updated.push({
-                      role: "assistant" as const,
-                      content: [{ type: "text", text: fullResponse }] as TextPart[],
-                    })
-                  } else {
-                    updated[updated.length - 1] = {
-                      role: "assistant" as const,
-                      content: [{ type: "text", text: fullResponse }] as TextPart[],
-                    }
-                  }
-                  return updated
-                })
-                shouldStartNewMessage = false
-                break
-              case "9": // tool-call
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    role: "assistant" as const,
-                    content: [
-                      {
-                        type: "tool-call",
-                        toolCallId: parsedContent.toolCallId,
-                        toolName: parsedContent.toolName,
-                        args: parsedContent.args,
-                      },
-                    ],
-                  },
-                ])
-                shouldStartNewMessage = true
-                break
-              case "a": // tool-result
-                shouldStartNewMessage = true
-                break
-              case "d": // finish
-                break
-              case "3": // error
-                fullResponse += `\n[Error: ${parsedContent}]`
-                setChatStatus("error")
-                setChatError(parsedContent)
-                break
-              default:
-                break
-            }
-          }
-        }
-      } catch {
-        fullResponse += `\n[Stream Parse Error]`
-        if (!abortController.signal.aborted) abortController.abort()
+      if (selectedModel?.type === "image") {
+        imageGenerationMutation.mutate({ modelId: selectedModel.id, prompt })
+        return
       }
-    }
-    setChatStatus("idle")
-  }
 
-  const handleNewChat = () => {
+      const userMessage: Omit<Message, "id"> = {
+        role: "user",
+        content: prompt,
+      }
+
+      append(userMessage, {
+        body: {
+          sessionId: sessionId,
+          modelId: selectedModelId,
+        },
+      })
+    },
+    [status, availableModels, selectedModelId, append, imageGenerationMutation],
+  )
+
+  const handleNewChat = useCallback(() => {
     setMessages(initialMessages)
-    setChatStatus("idle")
-    setChatError(null)
-  }
+  }, [setMessages])
 
   const value: AIChatContextType = {
     messages,
     context,
+    status,
+    input,
+    error,
     setContext,
-    chatStatus,
-    chatError,
     handleChat,
     handleNewChat,
   }
