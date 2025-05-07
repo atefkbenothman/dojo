@@ -33,7 +33,7 @@ app.use(
   }),
 )
 
-app.use(express.json())
+app.use(express.json({ limit: "10mb" }))
 
 console.log("[server]: Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
 console.log("[server]: Available AI Models:", Object.keys(AVAILABLE_AI_MODELS).join(", "))
