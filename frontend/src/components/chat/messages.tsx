@@ -157,10 +157,10 @@ export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | 
   const virtualItems = virtualizer.getVirtualItems()
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (messages.length > 0) {
+      virtualizer.scrollToIndex(messages.length - 1, { align: "end" })
     }
-  }, [messages])
+  }, [messages, virtualizer])
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
