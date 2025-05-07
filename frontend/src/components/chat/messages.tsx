@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react"
+import { useEffect, RefObject } from "react"
 import { ToolInvocation, UIMessage } from "ai"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useChatProvider } from "@/hooks/use-chat"
@@ -144,9 +144,8 @@ function MessageItem({
   )
 }
 
-export function Messages() {
+export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | null> }) {
   const { messages } = useChatProvider()
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   const virtualizer = useVirtualizer({
     count: messages.length,

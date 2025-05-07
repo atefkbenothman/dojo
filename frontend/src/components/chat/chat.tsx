@@ -1,11 +1,13 @@
 "use client"
 
+import { useRef } from "react"
 import { ChatFooter } from "@/components/chat/chat-footer"
 import { Messages } from "@/components/chat/messages"
 import { useConnectionContext } from "@/hooks/use-connection"
 
 export function Chat() {
   const { isServerHealthy } = useConnectionContext()
+  const scrollRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>
 
   if (!isServerHealthy) {
     return (
@@ -17,9 +19,9 @@ export function Chat() {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex w-full flex-1 justify-center overflow-y-auto">
+      <div className="flex w-full flex-1 justify-center overflow-y-auto" ref={scrollRef}>
         <div className="w-full max-w-4xl">
-          <Messages />
+          <Messages scrollRef={scrollRef} />
         </div>
       </div>
       <div className="flex w-full justify-center">
