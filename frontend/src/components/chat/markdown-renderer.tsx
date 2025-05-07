@@ -30,7 +30,7 @@ const components: Partial<Components> = {
   },
   strong: ({ node, children, ...props }) => {
     return (
-      <span className="text-sm font-medium" {...props}>
+      <span className="bg-blue-200 text-sm font-medium" {...props}>
         {children}
       </span>
     )
@@ -38,12 +38,7 @@ const components: Partial<Components> = {
   a: ({ node, children, ...props }) => {
     return (
       // @ts-expect-error
-      <Link
-        className="text-xs text-blue-500 hover:underline"
-        target="_blank"
-        rel="noreferrer"
-        {...props}
-      >
+      <Link className="text-xs text-blue-500 hover:underline" target="_blank" rel="noreferrer" {...props}>
         {children}
       </Link>
     )
@@ -99,8 +94,6 @@ export interface MarkdownRendererProps {
   content: string
 }
 
-export const MarkdownRenderer = memo(function MarkdownRenderer({
-  content,
-}: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return <ReactMarkdown components={components}>{content}</ReactMarkdown>
 })

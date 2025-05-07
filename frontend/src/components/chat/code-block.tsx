@@ -7,27 +7,19 @@ interface CodeBlockProps {
   children: any
 }
 
-export const CodeBlock = memo(function CodeBlock({
-  node,
-  inline,
-  className,
-  children,
-  ...props
-}: CodeBlockProps) {
-  if (!inline) {
+export const CodeBlock = memo(function CodeBlock({ node, inline, className, children, ...props }: CodeBlockProps) {
+  const isBlock = !inline && className && className.startsWith("language-")
+  if (isBlock) {
     return (
       <div className="not-prose block">
-        <pre {...props} className={`w-full overflow-x-auto text-xs`}>
+        <pre {...props} className="w-full overflow-x-auto text-xs">
           <code className="break-words whitespace-pre-wrap">{children}</code>
         </pre>
       </div>
     )
   } else {
     return (
-      <code
-        className={`${className} rounded-md bg-blue-300 px-1 py-0.5 text-sm`}
-        {...props}
-      >
+      <code className="bg-muted p-1 font-semibold" {...props}>
         {children}
       </code>
     )

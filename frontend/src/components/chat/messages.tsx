@@ -4,7 +4,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useChatProvider } from "@/hooks/use-chat"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
-import { Hammer, Check, Clock, Play, Lightbulb } from "lucide-react"
+import { Hammer, Check, Clock, Play, Lightbulb, Info } from "lucide-react"
 
 function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
   const getStateInfo = () => {
@@ -82,6 +82,24 @@ function GeneratedImagesRenderer({ images }: { images: { base64: string }[] }) {
   )
 }
 
+function SystemMessage({ content }: { content: string }) {
+  return (
+    <Accordion type="single" collapsible className="bg-muted w-full">
+      <AccordionItem value="system-message">
+        <AccordionTrigger className="p-2 hover:cursor-pointer">
+          <div className="flex flex-row items-center gap-2">
+            <Info className="h-4 w-4" />
+            <p className="text-xs">System</p>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="p-1 text-xs">
+          <pre className="p-2 text-xs wrap-break-word whitespace-pre-wrap">{content}</pre>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
+}
+
 function MessageItem({
   msg,
 }: {
@@ -98,18 +116,14 @@ function MessageItem({
   }
 
   if (msg.role === "system") {
-    return (
-      <div className="p-2">
-        <MarkdownRenderer content={msg.content.toString()} />
-      </div>
-    )
+    return <SystemMessage content={msg.content.toString()} />
   }
 
   if (msg.images && msg.images.type === "generated_image") {
     const images = msg.images.images
     if (Array.isArray(images)) {
       return (
-        <div className="p-2">
+        <div className="py-2">
           <GeneratedImagesRenderer images={images} />
         </div>
       )
@@ -122,19 +136,19 @@ function MessageItem({
         switch (part.type) {
           case "text":
             return (
-              <div className="p-2" key={idx}>
+              <div className="py-2" key={idx}>
                 <MarkdownRenderer content={part.text} />
               </div>
             )
           case "reasoning":
             return (
-              <div className="p-2" key={idx}>
+              <div className="py-2" key={idx}>
                 <ReasoningMessage content={part.reasoning} />
               </div>
             )
           case "tool-invocation":
             return (
-              <div className="p-2" key={idx}>
+              <div className="py-2" key={idx}>
                 <ToolInvocationMessage content={part.toolInvocation} />
               </div>
             )

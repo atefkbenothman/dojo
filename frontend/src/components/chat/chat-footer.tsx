@@ -69,7 +69,7 @@ export const ChatFooter = memo(function ChatFooter() {
   }
 
   return (
-    <div className="flex flex-shrink-0 flex-col items-center gap-2 p-2">
+    <div className="flex flex-shrink-0 flex-col items-center gap-2">
       <div className="dark:bg-input/30 relative w-full border bg-transparent">
         <Textarea
           value={input}
