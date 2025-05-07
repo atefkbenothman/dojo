@@ -4,7 +4,6 @@ import { useState, createContext, useContext, useCallback } from "react"
 import type { UIMessage } from "ai"
 import { useChat, Message } from "@ai-sdk/react"
 import { nanoid } from "nanoid"
-import { asyncTryCatch } from "@/lib/utils"
 import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import { useConnectionContext } from "@/hooks/use-connection"
 import { useModelContext } from "@/hooks/use-model"
@@ -53,7 +52,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     initialMessages: initialMessages as Message[],
     generateId: () => nanoid(),
     onError: (err) => {
-      console.error("useChat error:", err)
+      console.error("useChat error:", err.message, err.stack, err)
     },
   })
 
