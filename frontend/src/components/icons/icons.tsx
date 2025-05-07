@@ -1,14 +1,7 @@
 import type { SVGProps } from "react"
 
 export const GitHubIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    width="1em"
-    height="1em"
-    viewBox="0 0 1024 1024"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
+  <svg width="1em" height="1em" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
     <path
       fillRule="evenodd"
       clipRule="evenodd"
@@ -20,13 +13,7 @@ export const GitHubIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export const BlenderIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    viewBox="0.1 16.7 2472.8 1996.5"
-    {...props}
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0.1 16.7 2472.8 1996.5" {...props}>
     <path
       fill="#fff"
       d="M2007 1486a539 539 0 0 1-387 158c-150 0-288-57-387-157-48-49-84-105-106-166a429 429 0 0 1 29-358c29-52 69-100 118-140 96-78 218-120 346-120s250 41 346 119c49 40 89 87 117 140a437 437 0 0 1-77 524z"
@@ -43,14 +30,7 @@ export const BlenderIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export const SupabaseIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    viewBox="0 0 109 113"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    {...props}
-  >
+  <svg viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" {...props}>
     <path
       d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z"
       fill="url(#paint0_linear)"
@@ -92,14 +72,7 @@ export const SupabaseIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export const PlaywrightIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    viewBox="0 0 400 400"
-    fill="none"
-    {...props}
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 400 400" fill="none" {...props}>
     <path
       d="M136.444 221.556C123.558 225.213 115.104 231.625 109.535 238.032C114.869 233.364 122.014 229.08 131.652 226.348C141.51 223.554 149.92 223.574 156.869 224.915V219.481C150.941 218.939 144.145 219.371 136.444 221.556ZM108.946 175.876L61.0895 188.484C61.0895 188.484 61.9617 189.716 63.5767 191.36L104.153 180.668C104.153 180.668 103.578 188.077 98.5847 194.705C108.03 187.559 108.946 175.876 108.946 175.876ZM149.005 288.347C81.6582 306.486 46.0272 228.438 35.2396 187.928C30.2556 169.229 28.0799 155.067 27.5 145.928C27.4377 144.979 27.4665 144.179 27.5336 143.446C24.04 143.657 22.3674 145.473 22.7077 150.721C23.2876 159.855 25.4633 174.016 30.4473 192.721C41.2301 233.225 76.8659 311.273 144.213 293.134C158.872 289.185 169.885 281.992 178.152 272.81C170.532 279.692 160.995 285.112 149.005 288.347ZM161.661 128.11V132.903H188.077C187.535 131.206 186.989 129.677 186.447 128.11H161.661Z"
       fill="#2D4552"
@@ -132,14 +105,7 @@ export const PlaywrightIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export const FigmaIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    width="1em"
-    height="1em"
-    viewBox="0 0 54 80"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
+  <svg width="1em" height="1em" viewBox="0 0 54 80" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
     <g clipPath="url(#clip0_912_3)">
       <path
         d="M13.3333 80.0002C20.6933 80.0002 26.6667 74.0268 26.6667 66.6668V53.3335H13.3333C5.97333 53.3335 0 59.3068 0 66.6668C0 74.0268 5.97333 80.0002 13.3333 80.0002Z"
@@ -171,12 +137,7 @@ export const FigmaIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export const TicketmasterIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    width="1em"
-    height="1em"
-    viewBox="0 0 90 90"
-    xmlns="http://www.w3.org/2000/svg"
-  >
+  <svg width="1em" height="1em" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
     <g fill="none" fillRule="evenodd">
       <path fill="#0067E1" d="M0 0h90v90H0z" />
       <path
@@ -185,5 +146,39 @@ export const TicketmasterIcon = (props: SVGProps<SVGSVGElement>) => (
         fillRule="nonzero"
       />
     </g>
+  </svg>
+)
+
+export const Upstash = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 256 341"
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    preserveAspectRatio="xMidYMid"
+    {...props}
+  >
+    <path
+      fill="#00C98D"
+      d="M0 298.417c56.554 56.553 148.247 56.553 204.801 0 56.554-56.554 56.554-148.247 0-204.801l-25.6 25.6c42.415 42.416 42.415 111.185 0 153.6-42.416 42.416-111.185 42.416-153.601 0L0 298.416Z"
+    />
+    <path
+      fill="#00C98D"
+      d="M51.2 247.216c28.277 28.277 74.123 28.277 102.4 0 28.277-28.276 28.277-74.123 0-102.4l-25.6 25.6c14.14 14.138 14.14 37.061 0 51.2-14.138 14.139-37.061 14.139-51.2 0l-25.6 25.6ZM256 42.415c-56.554-56.553-148.247-56.553-204.8 0-56.555 56.555-56.555 148.247 0 204.801l25.599-25.6c-42.415-42.415-42.415-111.185 0-153.6 42.416-42.416 111.185-42.416 153.6 0L256 42.416Z"
+    />
+    <path
+      fill="#00C98D"
+      d="M204.8 93.616c-28.276-28.277-74.124-28.277-102.4 0-28.278 28.277-28.278 74.123 0 102.4l25.6-25.6c-14.14-14.138-14.14-37.061 0-51.2 14.138-14.139 37.06-14.139 51.2 0l25.6-25.6Z"
+    />
+    <path
+      fill="#FFF"
+      fillOpacity={0.4}
+      d="M256 42.415c-56.554-56.553-148.247-56.553-204.8 0-56.555 56.555-56.555 148.247 0 204.801l25.599-25.6c-42.415-42.415-42.415-111.185 0-153.6 42.416-42.416 111.185-42.416 153.6 0L256 42.416Z"
+    />
+    <path
+      fill="#FFF"
+      fillOpacity={0.4}
+      d="M204.8 93.616c-28.276-28.277-74.124-28.277-102.4 0-28.278 28.277-28.278 74.123 0 102.4l25.6-25.6c-14.14-14.138-14.14-37.061 0-51.2 14.138-14.139 37.06-14.139 51.2 0l25.6-25.6Z"
+    />
   </svg>
 )

@@ -5,6 +5,7 @@ import {
   PlaywrightIcon,
   SupabaseIcon,
   TicketmasterIcon,
+  Upstash,
 } from "@/components/icons/icons"
 import type { AIModelInfo, MCPConfigs } from "@/lib/types"
 
@@ -107,5 +108,12 @@ export const MCP_CONFIG: MCPConfigs = {
     command: "bunx",
     args: ["cursor-talk-to-figma-mcp@latest"],
     icon: <FigmaIcon />,
+  },
+  context7: {
+    id: "context7",
+    name: "Context7",
+    command: "npx",
+    args: ["-y", "@upstash/context7-mcp@latest"],
+    icon: <Upstash />,
   },
 }

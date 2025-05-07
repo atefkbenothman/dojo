@@ -86,6 +86,11 @@ export const AVAILABLE_MCP_SERVERS: Record<string, MCPServer> = {
     name: "Figma",
     summary: "Collaborative design and prototyping",
   },
+  context7: {
+    id: "context7",
+    name: "Context7",
+    summary: "Up-to-date code docs for any prompt",
+  },
 } as const
 
 export const DEFAULT_MODEL_ID = "gemini-1.5-flash"
