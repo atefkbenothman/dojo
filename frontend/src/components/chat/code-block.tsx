@@ -11,8 +11,8 @@ export const CodeBlock = memo(function CodeBlock({ node, inline, className, chil
   const isBlock = !inline && className && className.startsWith("language-")
   if (isBlock) {
     return (
-      <div className="not-prose block">
-        <pre {...props} className="w-full overflow-x-auto text-xs">
+      <div className="not-prose bg-muted my-2 block w-fit p-2 text-xs">
+        <pre {...props} className="w-fit overflow-x-auto text-xs">
           <code className="break-words whitespace-pre-wrap">{children}</code>
         </pre>
       </div>

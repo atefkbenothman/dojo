@@ -30,7 +30,7 @@ const components: Partial<Components> = {
   },
   strong: ({ node, children, ...props }) => {
     return (
-      <span className="bg-blue-200 text-sm font-medium" {...props}>
+      <span className="text-sm font-medium" {...props}>
         {children}
       </span>
     )
@@ -86,7 +86,7 @@ const components: Partial<Components> = {
     )
   },
   p: ({ node, children, ...props }) => {
-    return <div className="text-xs leading-6">{children}</div>
+    return <div className="px-1 text-xs leading-6">{children}</div>
   },
 }
 
