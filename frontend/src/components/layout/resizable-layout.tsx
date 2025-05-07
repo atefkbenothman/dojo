@@ -4,11 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 import { DarkModeToggle } from "@/components/dark-mode-toggle"
 import { Chat } from "@/components/chat/chat"
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { Button } from "@/components/ui/button"
 import {
   ChevronLeft,
@@ -80,10 +76,7 @@ function Nav() {
               <Link
                 href={href}
                 onClick={() => play()}
-                className={cn(
-                  "text-primary/50 group-hover:text-primary",
-                  isActive && "text-primary",
-                )}
+                className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
               >
                 <div
                   className={cn(
@@ -102,29 +95,14 @@ function Nav() {
   )
 }
 
-function MainPanelHeader({
-  onSidebarToggle,
-  isCollapsed,
-}: {
-  onSidebarToggle: () => void
-  isCollapsed: boolean
-}) {
+function MainPanelHeader({ onSidebarToggle, isCollapsed }: { onSidebarToggle: () => void; isCollapsed: boolean }) {
   return (
     <div className="bg-card flex h-12 flex-shrink-0 items-center border-b pr-2 pl-4">
       <p className="flex-1 pr-4 text-base font-medium">Dojo</p>
       <div className="flex flex-row items-center gap-2">
         <DarkModeToggle />
-        <Button
-          onClick={onSidebarToggle}
-          size="icon"
-          variant="outline"
-          className="hover:cursor-pointer"
-        >
-          {isCollapsed ? (
-            <ChevronLeft className="h-4.5 w-4.5" />
-          ) : (
-            <ChevronRight className="h-4.5 w-4.5" />
-          )}
+        <Button onClick={onSidebarToggle} size="icon" variant="outline" className="hover:cursor-pointer">
+          {isCollapsed ? <ChevronLeft className="h-4.5 w-4.5" /> : <ChevronRight className="h-4.5 w-4.5" />}
         </Button>
       </div>
     </div>
@@ -160,17 +138,8 @@ function ChatPanelHeader({
           >
             <Plus className="h-4.5 w-4.5" />
           </Button>
-          <Button
-            onClick={onMaximizeToggle}
-            size="icon"
-            variant="outline"
-            className="mr-2 hover:cursor-pointer"
-          >
-            {isMaximized ? (
-              <Minimize className="h-4.5 w-4.5" />
-            ) : (
-              <Maximize className="h-4.5 w-4.5" />
-            )}
+          <Button onClick={onMaximizeToggle} size="icon" variant="outline" className="mr-2 hover:cursor-pointer">
+            {isMaximized ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
           </Button>
         </>
       )}
@@ -286,12 +255,7 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
             {sidebarCollapsed ? (
               <div className="flex flex-1 items-center justify-center" />
             ) : (
-              <div
-                className={cn(
-                  "flex flex-1 flex-col overflow-hidden p-2",
-                  isMaximized && "mx-auto flex w-full lg:w-[80%] xl:w-[60%]",
-                )}
-              >
+              <div className={cn("flex flex-1 flex-col overflow-hidden p-2", isMaximized && "mx-auto flex w-full")}>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   <Chat />
                 </div>

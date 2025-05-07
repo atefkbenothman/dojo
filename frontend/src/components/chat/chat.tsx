@@ -17,9 +17,15 @@ export function Chat() {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Messages />
-        <ChatFooter />
+      <div className="flex w-full flex-1 justify-center overflow-y-auto">
+        <div className="w-full max-w-4xl">
+          <Messages />
+        </div>
+      </div>
+      <div className="flex w-full justify-center">
+        <div className="w-full max-w-4xl">
+          <ChatFooter />
+        </div>
       </div>
     </div>
   )
