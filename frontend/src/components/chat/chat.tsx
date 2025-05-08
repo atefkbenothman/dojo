@@ -19,7 +19,7 @@ export function Chat() {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex w-full flex-1 justify-center overflow-y-auto" ref={scrollRef}>
+      <div className="no-scrollbar flex w-full flex-1 justify-center overflow-y-auto" ref={scrollRef}>
         <div className="w-full max-w-4xl">
           <Messages scrollRef={scrollRef} />
         </div>
