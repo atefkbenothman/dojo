@@ -17,6 +17,7 @@ import {
   DEFAULT_IMAGE_MODEL_ID,
 } from "./config"
 import { asyncTryCatch, tryCatch } from "./utils"
+import sseRouter from "./file-watcher"
 import type { ActiveConnection, GenerateImageOptions } from "./types"
 
 const PORT = process.env.PORT || 8888
@@ -32,6 +33,9 @@ app.use(
     methods: ["GET", "POST"],
   }),
 )
+
+// SSE router
+app.use("/files", sseRouter)
 
 app.use(express.json({ limit: "10mb" }))
 
