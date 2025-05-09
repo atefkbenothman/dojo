@@ -12,12 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { MCPServerConfig, Server } from "@/lib/types"
 import { MCP_CONFIG } from "@/lib/config"
 import { Settings } from "lucide-react"
@@ -30,13 +25,7 @@ interface MCPDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function MCPDialog({
-  server,
-  onSaveConfig,
-  savedConfig,
-  open,
-  onOpenChange,
-}: MCPDialogProps) {
+export function MCPDialog({ server, onSaveConfig, savedConfig, open, onOpenChange }: MCPDialogProps) {
   const [config, setConfig] = useState<MCPServerConfig>(() => {
     if (savedConfig) {
       return savedConfig
@@ -112,10 +101,7 @@ export function MCPDialog({
             <Settings className="h-4 w-4" />
           </Button>
         </DialogTrigger>
-        <DialogContent
-          className="border sm:max-w-md"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
+        <DialogContent className="border sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Configure {server.name}</DialogTitle>
             <DialogDescription>{server.summary}</DialogDescription>
@@ -138,9 +124,7 @@ export function MCPDialog({
               <Input
                 id="command"
                 value={config.command}
-                onChange={(e) =>
-                  setConfig({ ...config, command: e.target.value })
-                }
+                onChange={(e) => setConfig({ ...config, command: e.target.value })}
                 placeholder="e.g., python3, node, bash"
               />
             </div>
@@ -157,9 +141,7 @@ export function MCPDialog({
             </div>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="environment">
-                <AccordionTrigger className="hover:cursor-pointer">
-                  Environment Variables
-                </AccordionTrigger>
+                <AccordionTrigger className="hover:cursor-pointer">Environment Variables</AccordionTrigger>
                 <AccordionContent>
                   <div className="grid gap-2">
                     <Label htmlFor="env" className="text-primary/80 text-xs">
@@ -178,12 +160,7 @@ export function MCPDialog({
             </Accordion>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleSave}
-              className="hover:cursor-pointer"
-            >
+            <Button type="button" variant="secondary" onMouseDown={handleSave} className="hover:cursor-pointer">
               Save
             </Button>
           </DialogFooter>

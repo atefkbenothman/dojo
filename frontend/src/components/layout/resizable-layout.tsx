@@ -12,10 +12,10 @@ import {
   MessageSquare,
   House,
   Server,
-  LayoutGrid,
   Maximize,
   Minimize,
   Plus,
+  FileText,
 } from "lucide-react"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
@@ -70,12 +70,12 @@ function Nav() {
       </div>
       <div className="flex h-full flex-col gap-4 py-4">
         {navigationItems.map(({ href, icon: Icon }) => {
-          const isActive = pathname === href
+          const isActive = href === "/" ? pathname === href : pathname.startsWith(href)
           return (
             <div key={href} className="flex w-full items-center justify-center">
               <Link
                 href={href}
-                onClick={() => play()}
+                onMouseDown={() => play()}
                 className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
               >
                 <div
@@ -101,7 +101,7 @@ function MainPanelHeader({ onSidebarToggle, isCollapsed }: { onSidebarToggle: ()
       <p className="flex-1 pr-4 text-base font-medium">Dojo</p>
       <div className="flex flex-row items-center gap-2">
         <DarkModeToggle />
-        <Button onClick={onSidebarToggle} size="icon" variant="outline" className="hover:cursor-pointer">
+        <Button onMouseDown={onSidebarToggle} size="icon" variant="outline" className="hover:cursor-pointer">
           {isCollapsed ? <ChevronLeft className="h-4.5 w-4.5" /> : <ChevronRight className="h-4.5 w-4.5" />}
         </Button>
       </div>
@@ -130,7 +130,7 @@ function ChatPanelHeader({
         <>
           <p className="flex-1 px-4 text-base font-medium">Chat</p>
           <Button
-            onClick={onNewChat}
+            onMouseDown={onNewChat}
             size="icon"
             variant="outline"
             className="mr-2 hover:cursor-pointer"
@@ -138,7 +138,7 @@ function ChatPanelHeader({
           >
             <Plus className="h-4.5 w-4.5" />
           </Button>
-          <Button onClick={onMaximizeToggle} size="icon" variant="outline" className="mr-2 hover:cursor-pointer">
+          <Button onMouseDown={onMaximizeToggle} size="icon" variant="outline" className="mr-2 hover:cursor-pointer">
             {isMaximized ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
           </Button>
         </>

@@ -29,7 +29,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
           ))}
         </SelectContent>
       </Select>
-      <Button className="ml-auto hover:cursor-pointer" variant="outline" onClick={onSend}>
+      <Button className="ml-auto hover:cursor-pointer" variant="outline" onMouseDown={onSend}>
         <ArrowUp className="h-4 w-4" strokeWidth={3} />
       </Button>
     </div>

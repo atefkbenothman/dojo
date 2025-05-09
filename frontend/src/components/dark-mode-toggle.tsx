@@ -29,18 +29,10 @@ export function DarkModeToggle() {
       {mounted && (
         <Tabs defaultValue={theme ? theme : ""}>
           <TabsList>
-            <TabsTrigger
-              value="light"
-              onClick={() => handleThemeClick("light")}
-              className="hover:cursor-pointer"
-            >
+            <TabsTrigger value="light" onMouseDown={() => handleThemeClick("light")} className="hover:cursor-pointer">
               <Sun />
             </TabsTrigger>
-            <TabsTrigger
-              value="dark"
-              onClick={() => handleThemeClick("dark")}
-              className="hover:cursor-pointer"
-            >
+            <TabsTrigger value="dark" onMouseDown={() => handleThemeClick("dark")} className="hover:cursor-pointer">
               <Moon />
             </TabsTrigger>
           </TabsList>

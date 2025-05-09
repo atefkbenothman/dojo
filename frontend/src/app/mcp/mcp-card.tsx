@@ -70,7 +70,7 @@ export function MCPCard({ server }: MCPCardProps) {
         <div className="flex items-center gap-2">
           <Button
             variant={isConnected ? "default" : "secondary"}
-            onClick={handleConnectClick}
+            onMouseDown={handleConnectClick}
             disabled={connectionStatus === "connecting"}
             className={cn(
               "border hover:cursor-pointer",
