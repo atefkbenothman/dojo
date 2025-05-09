@@ -50,9 +50,9 @@ const navigationItems = [
     label: "MCP",
   },
   {
-    href: "/tools",
-    icon: LayoutGrid,
-    label: "Tools",
+    href: "/files",
+    icon: FileText,
+    label: "Files",
   },
 ] as const
 
