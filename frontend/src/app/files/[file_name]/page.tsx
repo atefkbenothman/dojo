@@ -28,8 +28,7 @@ export default async function FilePage({ params }: FilePageProps) {
   const content = await data.text()
 
   return (
-    <div>
-      <h1>File: {file}</h1>
+    <div className="bg-card h-full border p-2">
       <FileContent file={file} initialContent={content} />
     </div>
   )
