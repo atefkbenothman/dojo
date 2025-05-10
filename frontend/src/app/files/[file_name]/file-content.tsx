@@ -56,13 +56,14 @@ export default function FileContent({ file, initialContent }: FileContentClientP
   }, [file, fetchContent])
 
   if (loading) return <p>Loading...</p>
+
   return <FileContentDisplay content={content} />
 }
 
 function FileContentDisplay({ content }: { content: string }) {
   return (
-    <div className="">
-      <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{content}</pre>
+    <div className="bg-background min-h-full p-4">
+      <pre className="font-mono text-sm break-words whitespace-pre-wrap">{content}</pre>
     </div>
   )
 }

@@ -14,8 +14,14 @@ export async function FilesList() {
     }),
   )
 
-  if (error || !data.ok) {
-    return <p>Error: {error?.message || "Failed to fetch files"}</p>
+  if (error || !data?.ok) {
+    return (
+      <div className="p-2 text-sm">
+        <div className="bg-destructive/10 text-destructive rounded-md p-3">
+          <p>Error: {error?.message || (data && data.statusText) || "Failed to fetch files"}</p>
+        </div>
+      </div>
+    )
   }
 
   const json = await data.json()
@@ -23,5 +29,10 @@ export async function FilesList() {
 
   if (!files.length) return <p>No files found.</p>
 
-  return <FileListUI files={files} />
+  return (
+    <div>
+      <p className="text-md w-full border-b px-4 py-2 font-semibold">Files</p>
+      <FileListUI files={files} />
+    </div>
+  )
 }

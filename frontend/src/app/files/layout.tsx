@@ -7,10 +7,12 @@ export default async function FilesLayout({ children }: { children: React.ReactN
   return (
     <div className="flex h-full w-full">
       <div className="flex h-full w-full flex-row gap-4">
-        <Suspense fallback={<p>Loading...</p>}>
-          <FilesList />
-        </Suspense>
-        <main className="flex-1">{children}</main>
+        <aside className="bg-card h-full overflow-y-auto rounded-md border shadow-sm">
+          <Suspense fallback={<p>Loading files...</p>}>
+            <FilesList />
+          </Suspense>
+        </aside>
+        <main className="bg-card flex-1 overflow-y-auto border">{children}</main>
       </div>
     </div>
   )

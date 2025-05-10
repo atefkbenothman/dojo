@@ -28,8 +28,11 @@ export default async function FilePage({ params }: FilePageProps) {
   const content = await data.text()
 
   return (
-    <div className="bg-card h-full border p-2">
-      <FileContent file={file} initialContent={content} />
+    <div className="flex h-full w-full flex-col">
+      <p className="text-md w-full border-b px-4 py-2 font-semibold">{file}</p>
+      <div className="h-full flex-1 overflow-auto">
+        <FileContent file={file} initialContent={content} />
+      </div>
     </div>
   )
 }
