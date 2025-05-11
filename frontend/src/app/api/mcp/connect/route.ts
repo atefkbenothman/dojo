@@ -8,9 +8,7 @@ export async function POST(request: Request) {
   const { currentSessionId, config } = await request.json()
   let sessionId = currentSessionId || uuid4()
 
-  console.log(
-    `[MCP API] Connecting to server '${config.name}' with session ID: ${sessionId}`,
-  )
+  console.log(`[MCP API] Connecting to server '${config.name}' (${config.id}) with session ID: ${sessionId}`)
 
   const { data, error } = await asyncTryCatch(
     fetch(`${MCP_SERVICE_URL}/connect`, {
@@ -24,24 +22,17 @@ export async function POST(request: Request) {
   )
 
   if (error || !data) {
-    console.error(
-      `[MCP API] Connection failed for session ${sessionId}:`,
-      error,
-    )
-    return NextResponse.json({ sessionId: undefined }, { status: 503 })
+    console.error(`[MCP API] Connection failed for session ${sessionId} to server '${config.id}':`, error)
+    return NextResponse.json({ sessionId: undefined, error: "Failed to connect to MCP server" }, { status: 503 })
   }
 
-  const connection = await data.json()
+  const response = await data.json()
 
-  if (connection.message === "Already connected") {
-    console.log(
-      `[MCP API] Session ${sessionId} is already connected to server '${config.name}'`,
-    )
-  } else {
-    console.log(
-      `[MCP API] Successfully connected session ${sessionId} to server '${config.name}'`,
-    )
+  if (response.message === "Connection successful") {
+    console.log(`[MCP API] Successfully connected session ${sessionId} to server '${config.id}'`)
+    return NextResponse.json({ sessionId, serverId: config.id })
   }
 
-  return NextResponse.json({ sessionId })
+  console.error(`[MCP API] Connection failed for session ${sessionId} to server '${config.id}': ${response.message}`)
+  return NextResponse.json({ sessionId, error: response.message }, { status: data.status })
 }

@@ -8,11 +8,17 @@ const queryClient = new QueryClient()
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
 
+export interface ActiveConnection {
+  serverId: string
+  name: string
+  toolCount: number
+}
+
 export function useConnection() {
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
-  const [connectionError, setConnectionError] = useState<string | null>(null)
-  const [connectedServerId, setConnectedServerId] = useState<string | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
+  const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
+  const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([])
 
   const { data: serverHealth } = useQuery({
     queryKey: ["server-health"],
@@ -49,84 +55,156 @@ export function useConnection() {
         }),
         cache: "no-store",
       })
-      if (!response.ok) throw new Error("Connection failed")
-      return response.json()
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Connection failed")
+      }
+
+      return data
     },
-    onMutate: () => {
-      setConnectionStatus("connecting")
-      setConnectionError(null)
-      setConnectedServerId(null)
+    onMutate: (config) => {
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [config.id]: "connecting",
+      }))
+      setConnectionError((prev) => ({
+        ...prev,
+        [config.id]: null,
+      }))
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data, config) => {
       setSessionId(data.sessionId)
-      setConnectionStatus("connected")
-      setConnectionError(null)
-      setConnectedServerId(variables.id)
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [config.id]: "connected",
+      }))
+      setConnectionError((prev) => ({
+        ...prev,
+        [config.id]: null,
+      }))
+
+      // Add the new connection to activeConnections
+      const newConnection: ActiveConnection = {
+        serverId: config.id,
+        name: config.name,
+        toolCount: 0,
+      }
+
+      setActiveConnections((prev) => {
+        const exists = prev.some((conn) => conn.serverId === config.id)
+        if (exists) return prev
+        return [...prev, newConnection]
+      })
     },
-    onError: (error) => {
-      setConnectionStatus("error")
-      setConnectionError("An unexpected error occurred during connecting")
-      setSessionId(null)
-      setConnectedServerId(null)
+    onError: (error, config) => {
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [config.id]: "error",
+      }))
+      setConnectionError((prev) => ({
+        ...prev,
+        [config.id]: error.message || "An unexpected error occurred during connecting",
+      }))
     },
   })
 
   // Disconnect mutation
   const disconnectMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (serverId: string) => {
       if (!sessionId) throw new Error("No sessionId to disconnect")
+
       const response = await fetch("/api/mcp/disconnect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ sessionId, serverId }),
         cache: "no-store",
       })
+
       if (!response.ok) throw new Error("Disconnection failed")
       return response.json()
     },
-    onMutate: () => {
-      setConnectedServerId(null)
+    onMutate: (serverId) => {
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [serverId]: "disconnected",
+      }))
     },
-    onSuccess: () => {
-      setConnectionStatus("disconnected")
-      setConnectionError(null)
-      setSessionId(null)
+    onSuccess: (data, serverId) => {
+      setConnectionError((prev) => ({
+        ...prev,
+        [serverId]: null,
+      }))
+
+      // Remove from active connections
+      setActiveConnections((prev) => prev.filter((conn) => conn.serverId !== serverId))
     },
-    onError: (err) => {
-      setConnectionStatus("error")
-      setConnectionError(`Disconnection error: ${err}`)
-      setSessionId(null)
-      setConnectedServerId(null)
+    onError: (error, serverId) => {
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [serverId]: "error",
+      }))
+      setConnectionError((prev) => ({
+        ...prev,
+        [serverId]: error.message || "Disconnection failed",
+      }))
     },
   })
 
   const connect = async (config: MCPServerConfig) => {
-    if (connectionStatus === "connecting" || connectionStatus === "connected") return
+    if (connectionStatus[config.id] === "connecting") return
     await connectMutation.mutateAsync(config)
   }
 
-  const disconnect = async () => {
-    if (connectionStatus !== "connected" || !sessionId) {
-      setConnectionStatus("disconnected")
-      setSessionId(null)
-      setConnectionError(null)
+  const disconnect = async (serverId: string) => {
+    if (!sessionId) {
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [serverId]: "disconnected",
+      }))
+      setConnectionError((prev) => ({
+        ...prev,
+        [serverId]: null,
+      }))
       return
     }
-    await disconnectMutation.mutateAsync()
+
+    await disconnectMutation.mutateAsync(serverId)
+  }
+
+  const disconnectAll = async () => {
+    if (!sessionId || activeConnections.length === 0) return
+    for (const conn of activeConnections) {
+      await disconnect(conn.serverId)
+    }
+  }
+
+  const getConnectionStatus = (serverId: string): ConnectionStatus => {
+    return connectionStatus[serverId] || "disconnected"
+  }
+
+  const getConnectionError = (serverId: string): string | null => {
+    return connectionError[serverId] || null
+  }
+
+  const isConnected = (serverId: string): boolean => {
+    return connectionStatus[serverId] === "connected"
   }
 
   return {
     sessionId,
     connectionStatus,
     connectionError,
-    connectedServerId,
+    activeConnections,
     isServerHealthy,
     connect,
     disconnect,
-    isConnecting: connectionStatus === "connecting",
-    isConnected: connectionStatus === "connected",
-    isDisconnected: connectionStatus === "disconnected",
-    isError: connectionStatus === "error",
+    disconnectAll,
+    getConnectionStatus,
+    getConnectionError,
+    isConnected,
+    hasActiveConnections: activeConnections.length > 0,
   }
 }
 

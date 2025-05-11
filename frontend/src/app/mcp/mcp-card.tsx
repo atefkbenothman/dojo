@@ -14,7 +14,7 @@ interface MCPCardProps {
 }
 
 export function MCPCard({ server }: MCPCardProps) {
-  const { connectionStatus, connectedServerId, connect, disconnect } = useConnectionContext()
+  const { getConnectionStatus, isConnected, connect, disconnect } = useConnectionContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
   const [currentConfig, setCurrentConfig] = useState<MCPServerConfig>(() => {
@@ -38,11 +38,13 @@ export function MCPCard({ server }: MCPCardProps) {
     }
   })
 
-  const isConnected = connectionStatus === "connected" && connectedServerId === server.id
+  const serverConnected = isConnected(server.id)
+  const connectionStatus = getConnectionStatus(server.id)
+  const isConnecting = connectionStatus === "connecting"
 
   const handleConnectClick = async () => {
-    if (isConnected) {
-      disconnect()
+    if (serverConnected) {
+      await disconnect(server.id)
     } else if (currentConfig) {
       try {
         await connect(currentConfig)
@@ -57,27 +59,27 @@ export function MCPCard({ server }: MCPCardProps) {
   }
 
   return (
-    <Card className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-xs", isConnected && "border")}>
+    <Card className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-xs", serverConnected && "border")}>
       <CardHeader>
         <div className="flex items-center gap-2">
           {currentConfig.icon && currentConfig.icon}
           <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
-          {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
+          {serverConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
         </div>
         <CardDescription className="w-[90%]">{server.summary}</CardDescription>
       </CardHeader>
       <CardFooter className="mt-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
-            variant={isConnected ? "default" : "secondary"}
+            variant={serverConnected ? "default" : "secondary"}
             onMouseDown={handleConnectClick}
-            disabled={connectionStatus === "connecting"}
+            disabled={isConnecting}
             className={cn(
               "border hover:cursor-pointer",
-              isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
+              serverConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
             )}
           >
-            {isConnected ? "Disconnect" : "Connect"}
+            {serverConnected ? "Disconnect" : "Connect"}
           </Button>
           <MCPDialog
             server={server}
