@@ -101,7 +101,12 @@ export function MCPCard({ server }: MCPCardProps) {
   }
 
   return (
-    <Card className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-xs", serverConnected && "border")}>
+    <Card
+      className={cn(
+        "relative h-[10rem] max-h-[10rem] w-full max-w-xs border-dashed",
+        serverConnected ? "border-primary/80 bg-muted/50" : "",
+      )}
+    >
       <CardHeader>
         <div className="flex items-center gap-2">
           {currentConfig.icon && currentConfig.icon}
