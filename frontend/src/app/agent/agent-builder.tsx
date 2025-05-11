@@ -11,6 +11,7 @@ import { useModelContext } from "@/hooks/use-model"
 import { useConnectionContext } from "@/hooks/use-connection"
 import { MCP_CONFIG } from "@/lib/config"
 import { cn } from "@/lib/utils"
+import { AgentConfig, MCPServerConfig } from "@/lib/types"
 import {
   Dialog,
   DialogContent,
@@ -26,10 +27,11 @@ type ServiceTypes = keyof typeof MCP_CONFIG
 interface AgentBuilderProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onAddAgent?: (agent: AgentConfig) => void
   trigger?: React.ReactNode
 }
 
-export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps) {
+export function AgentBuilder({ open, onOpenChange, onAddAgent, trigger }: AgentBuilderProps) {
   const { availableModels, selectedModelId, handleModelChange } = useModelContext()
   const { connect, disconnect, isConnected } = useConnectionContext()
 
@@ -51,13 +53,29 @@ export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps)
   }
 
   const handleCreateAgent = () => {
-    console.log("Creating agent with:", {
+    const selectedServices = serviceOptions
+      .filter((service) => isConnected(String(service)))
+      .map((service) => MCP_CONFIG[service]) as MCPServerConfig[]
+
+    const newAgent: AgentConfig = {
+      id: `${agentName.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}`,
       name: agentName,
-      model: selectedModelId,
-      persona,
-      maxSteps,
-      services: serviceOptions.filter((service) => isConnected(String(service))),
-    })
+      modelId: selectedModelId,
+      systemPrompt: persona,
+      mcpServers: selectedServices,
+      maxExecutionSteps: maxSteps,
+    }
+
+    if (onAddAgent) {
+      onAddAgent(newAgent)
+    }
+
+    // Reset form
+    setAgentName("")
+    setPersona("")
+    setMaxSteps(10)
+
+    // Close dialog
     onOpenChange(false)
   }
 

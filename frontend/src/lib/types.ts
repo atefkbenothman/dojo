@@ -26,3 +26,16 @@ export interface MCPServerConfig {
 export interface MCPConfigs {
   [k: string]: MCPServerConfig
 }
+
+export interface AgentConfig {
+  id: string
+  name: string
+  modelId: string
+  systemPrompt: string
+  mcpServers: MCPServerConfig[]
+  maxExecutionSteps: number
+}
+
+export interface AgentConfigs {
+  [k: string]: AgentConfig
+}

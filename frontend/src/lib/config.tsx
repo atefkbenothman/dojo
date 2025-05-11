@@ -7,7 +7,7 @@ import {
   TicketmasterIcon,
   Upstash,
 } from "@/components/icons/icons"
-import type { AIModelInfo, MCPConfigs } from "@/lib/types"
+import type { AgentConfig, AgentConfigs, AIModelInfo, MCPConfigs } from "@/lib/types"
 
 export const SYSTEM_PROMPT = `You are a helpful assistant with access to a variety of tools.
 
@@ -115,5 +115,20 @@ export const MCP_CONFIG: MCPConfigs = {
     command: "npx",
     args: ["-y", "@upstash/context7-mcp@latest"],
     icon: <Upstash />,
+  },
+}
+
+export const AGENT_CONFIG: AgentConfigs = {
+  data_analysis: {
+    id: "data_analysis_agent",
+    name: "Data Analyst",
+    modelId: "gemini-2.0-flash-001",
+    systemPrompt: `You are an AI assistant that helps analyze data and code.
+    1. Use the Supabase tools to query database information when asked about data.
+    2. Use the Filesystem tools to read, write, or list project files as needed to understand code or create reports.
+    3. Synthesize information from both sources to answer user queries comprehensively.
+    4. If asked to modify files, always ask for confirmation first unless explicitly told to proceed.`,
+    mcpServers: [MCP_CONFIG["supabase"]!, MCP_CONFIG["filesystem"]!],
+    maxExecutionSteps: 10,
   },
 }

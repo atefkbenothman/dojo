@@ -1,26 +1,29 @@
-"use client"
+"use server"
 
-import { useState } from "react"
-import { Card } from "@/components/ui/card"
-import { Plus } from "lucide-react"
-import { AgentBuilder } from "./agent-builder"
+import { Suspense } from "react"
+import { AgentList } from "./agent-list"
+import { AGENT_CONFIG } from "@/lib/config"
 
-export default function AgentPage() {
-  const [dialogOpen, setDialogOpen] = useState(false)
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
-  return (
-    <div className="space-y-6">
-      <AgentBuilder open={dialogOpen} onOpenChange={setDialogOpen} />
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card
-          className="hover:bg-accent/50 flex h-[250px] cursor-pointer flex-col items-center justify-center border-dashed p-6 text-center transition-colors"
-          onClick={() => setDialogOpen(true)}
-        >
-          <Plus className="text-muted-foreground mb-4 h-12 w-12" />
-          <h3 className="mb-1 text-lg font-medium">Create New Agent</h3>
-          <p className="text-muted-foreground text-sm">Configure and deploy a custom AI agent</p>
-        </Card>
+export async function Agents() {
+  const agents = AGENT_CONFIG
+
+  if (!agents || Object.keys(agents).length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">No agents available</p>
       </div>
-    </div>
+    )
+  }
+
+  return <AgentList agents={agents} />
+}
+
+export default async function AgentPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <Agents />
+    </Suspense>
   )
 }

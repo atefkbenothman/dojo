@@ -5,7 +5,7 @@ import { MCPServers, MCPServerConfig, Server } from "@/lib/types"
 import { MCPCard } from "./mcp-card"
 import { AddMCPDialog } from "./add-mcp-dialog"
 import { Input } from "@/components/ui/input"
-import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlusIcon } from "lucide-react"
 import { MCP_CONFIG } from "@/lib/config"
 
@@ -35,15 +35,10 @@ export function MCPList({ servers }: MCPListProps) {
   }, [searchInput, servers, customServers])
 
   const handleAddServer = (newServer: Server, config: MCPServerConfig) => {
-    // Add the new server to our custom servers
     setCustomServers((prev) => ({
       ...prev,
       [newServer.id]: newServer,
     }))
-
-    // Update MCP_CONFIG with the new server configuration
-    // Note: In a real application, this would be persisted to a database or localStorage
-    // For now we're just adding it to memory
     MCP_CONFIG[newServer.id] = config
   }
 
