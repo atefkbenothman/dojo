@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useChatProvider } from "@/hooks/use-chat"
+import { useConnectionContext } from "@/hooks/use-connection"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 const panelConfig = {
   mainPanel: {
@@ -109,6 +111,54 @@ function MainPanelHeader({ onSidebarToggle, isCollapsed }: { onSidebarToggle: ()
   )
 }
 
+function MCPServersPopover() {
+  const { activeConnections } = useConnectionContext()
+  const connectedServers = activeConnections.length
+  const { play, AudioComponent } = useSoundEffect("./hover.mp3", {
+    volume: 0.5,
+  })
+
+  return (
+    <Popover>
+      {AudioComponent}
+      <PopoverTrigger asChild>
+        <Button
+          size="icon"
+          variant="outline"
+          className="relative mr-2 hover:cursor-pointer"
+          title="MCP Servers"
+          onMouseDown={() => play()}
+        >
+          <Server className="h-4.5 w-4.5" />
+          {connectedServers > 0 && (
+            <span className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center text-[8px] font-medium opacity-75">
+              {connectedServers}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-3" align="start" side="left">
+        <div className="space-y-2">
+          <p className="text-xs">MCP Servers</p>
+          {connectedServers > 0 ? (
+            <div className="flex flex-col gap-2">
+              {activeConnections.map((conn) => (
+                <div key={conn.serverId} className="flex items-center gap-2">
+                  <div className="h-2 w-2 bg-green-500"></div>
+                  <span className="text-xs">{conn.name}</span>
+                  <span className="text-muted-foreground text-xs">({Object.keys(conn.tools || {}).length} tools)</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-xs">No connections</p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function ChatPanelHeader({
   isCollapsed,
   isMaximized,
@@ -138,6 +188,9 @@ function ChatPanelHeader({
           >
             <Plus className="h-4.5 w-4.5" />
           </Button>
+
+          <MCPServersPopover />
+
           <Button onMouseDown={onMaximizeToggle} size="icon" variant="outline" className="mr-2 hover:cursor-pointer">
             {isMaximized ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
           </Button>
