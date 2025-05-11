@@ -14,6 +14,9 @@ if (!process.env.OPENAI_API_KEY) {
   console.error("[config] OPENAI_API_KEY is missing or invalid")
 }
 
+export const DEFAULT_MODEL_ID = "gemini-1.5-flash"
+export const DEFAULT_IMAGE_MODEL_ID = "gpt-image-1"
+
 export const AVAILABLE_AI_MODELS: Record<string, AIModelConfig> = {
   "gemini-1.5-flash": {
     name: "Google Gemini 1.5 Flash",
@@ -92,6 +95,3 @@ export const AVAILABLE_MCP_SERVERS: Record<string, MCPServer> = {
     summary: "Up-to-date code docs for any prompt",
   },
 } as const
-
-export const DEFAULT_MODEL_ID = "gemini-1.5-flash"
-export const DEFAULT_IMAGE_MODEL_ID = "gpt-image-1"
