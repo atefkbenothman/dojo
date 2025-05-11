@@ -14,7 +14,7 @@ export async function FilesList() {
     }),
   )
 
-  if (error || !data?.ok) {
+  if (error || !data || !data.ok) {
     return (
       <div className="p-2 text-sm">
         <div className="bg-destructive/10 text-destructive rounded-md p-3">

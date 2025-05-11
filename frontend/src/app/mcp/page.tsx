@@ -7,7 +7,7 @@ import { asyncTryCatch } from "@/lib/utils"
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 export async function Mcp() {
-  const { data } = await asyncTryCatch(
+  const { data, error } = await asyncTryCatch(
     fetch(`${APP_URL}/api/mcp/servers`, {
       method: "GET",
       headers: {
@@ -17,12 +17,20 @@ export async function Mcp() {
     }),
   )
 
+  if (error || !data || !data.ok) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">Server is offline</p>
+      </div>
+    )
+  }
+
   const servers = await data?.json()
 
   if (!servers.servers) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">Connect to server first</p>
+        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">No MCP servers available</p>
       </div>
     )
   }
