@@ -25,6 +25,7 @@ import { usePathname } from "next/navigation"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useConnectionContext } from "@/hooks/use-connection"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 
 const panelConfig = {
   mainPanel: {
@@ -77,24 +78,31 @@ function Nav() {
         <p className="text-base font-medium">⛩️</p>
       </div>
       <div className="flex h-full flex-col gap-4 py-4">
-        {navigationItems.map(({ href, icon: Icon }) => {
+        {navigationItems.map(({ href, icon: Icon, label }) => {
           const isActive = href === "/" ? pathname === href : pathname.startsWith(href)
           return (
             <div key={href} className="flex w-full items-center justify-center">
-              <Link
-                href={href}
-                onMouseDown={() => play()}
-                className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
-              >
-                <div
-                  className={cn(
-                    "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
-                    isActive && "bg-muted border-border border",
-                  )}
-                >
-                  <Icon className="h-5.5 w-5.5" />
-                </div>
-              </Link>
+              <TooltipProvider>
+                <Tooltip delayDuration={800}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={href}
+                      onMouseDown={() => play()}
+                      className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
+                    >
+                      <div
+                        className={cn(
+                          "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
+                          isActive && "bg-muted border-border border",
+                        )}
+                      >
+                        <Icon className="h-5.5 w-5.5" />
+                      </div>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{label}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )
         })}
