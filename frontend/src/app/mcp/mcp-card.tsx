@@ -8,13 +8,52 @@ import { MCPServerConfig, Server } from "@/lib/types"
 import { MCPDialog } from "./mcp-dialog"
 import { MCP_CONFIG } from "@/lib/config"
 import { useConnectionContext } from "@/hooks/use-connection"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Wrench } from "lucide-react"
+
+interface ToolsPopoverProps {
+  tools: Record<string, any>
+}
+
+function ToolsPopover({ tools }: ToolsPopoverProps) {
+  const toolNames = Object.keys(tools)
+
+  if (toolNames.length === 0) return null
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="secondary"
+          size="icon"
+          className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
+          title={`Tools (${toolNames.length})`}
+        >
+          <Wrench className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-4" align="start">
+        <div className="space-y-2">
+          <h4 className="font-medium">Available Tools ({toolNames.length})</h4>
+          <div className="flex max-w-[250px] flex-wrap gap-2">
+            {toolNames.map((toolName) => (
+              <div key={toolName} className="bg-secondary/40 text-foreground rounded-md px-2 py-1 text-xs">
+                {toolName}
+              </div>
+            ))}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 interface MCPCardProps {
   server: Server
 }
 
 export function MCPCard({ server }: MCPCardProps) {
-  const { getConnectionStatus, isConnected, connect, disconnect } = useConnectionContext()
+  const { getConnectionStatus, isConnected, connect, disconnect, activeConnections } = useConnectionContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
   const [currentConfig, setCurrentConfig] = useState<MCPServerConfig>(() => {
@@ -42,6 +81,9 @@ export function MCPCard({ server }: MCPCardProps) {
   const connectionStatus = getConnectionStatus(server.id)
   const isConnecting = connectionStatus === "connecting"
 
+  const serverConnection = activeConnections.find((conn) => conn.serverId === server.id)
+  const tools = serverConnection?.tools || {}
+
   const handleConnectClick = async () => {
     if (serverConnected) {
       await disconnect(server.id)
@@ -68,6 +110,7 @@ export function MCPCard({ server }: MCPCardProps) {
         </div>
         <CardDescription className="w-[90%]">{server.summary}</CardDescription>
       </CardHeader>
+
       <CardFooter className="mt-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
@@ -81,6 +124,7 @@ export function MCPCard({ server }: MCPCardProps) {
           >
             {serverConnected ? "Disconnect" : "Connect"}
           </Button>
+
           <MCPDialog
             server={server}
             onSaveConfig={handleSaveConfig}
@@ -88,6 +132,8 @@ export function MCPCard({ server }: MCPCardProps) {
             open={isConfigDialogOpen}
             onOpenChange={setIsConfigDialogOpen}
           />
+
+          {serverConnected && <ToolsPopover tools={tools} />}
         </div>
       </CardFooter>
     </Card>

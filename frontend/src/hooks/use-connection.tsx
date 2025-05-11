@@ -11,7 +11,7 @@ export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "er
 export interface ActiveConnection {
   serverId: string
   name: string
-  toolCount: number
+  tools: Record<string, any>
 }
 
 export function useConnection() {
@@ -89,7 +89,7 @@ export function useConnection() {
       const newConnection: ActiveConnection = {
         serverId: config.id,
         name: config.name,
-        toolCount: 0,
+        tools: data.tools || {},
       }
 
       setActiveConnections((prev) => {

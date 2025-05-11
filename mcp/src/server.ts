@@ -191,7 +191,10 @@ app.post("/connect", async (req: Request, res: Response): Promise<void> => {
   console.log(
     `[server] Connection established for ${sessionId}, server ${config.id}. Total connections: ${totalConnections}`,
   )
-  res.status(200).json({ message: "Connection successful" })
+
+  const tools = mcpClient.tools
+
+  res.status(200).json({ tools })
 })
 
 /* Disconnect */

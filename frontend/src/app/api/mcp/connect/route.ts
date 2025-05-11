@@ -28,9 +28,9 @@ export async function POST(request: Request) {
 
   const response = await data.json()
 
-  if (response.message === "Connection successful") {
+  if (data.ok) {
     console.log(`[MCP API] Successfully connected session ${sessionId} to server '${config.id}'`)
-    return NextResponse.json({ sessionId, serverId: config.id })
+    return NextResponse.json({ sessionId, serverId: config.id, tools: response.tools })
   }
 
   console.error(`[MCP API] Connection failed for session ${sessionId} to server '${config.id}': ${response.message}`)
