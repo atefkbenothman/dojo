@@ -16,6 +16,7 @@ import {
   Minimize,
   Plus,
   FileText,
+  Bot,
 } from "lucide-react"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
@@ -55,6 +56,11 @@ const navigationItems = [
     href: "/files",
     icon: FileText,
     label: "Files",
+  },
+  {
+    href: "/agent",
+    icon: Bot,
+    label: "Agent",
   },
 ] as const
 
