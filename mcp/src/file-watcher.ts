@@ -147,8 +147,7 @@ watcher
     console.log("[File Watcher] Initial scan complete. Ready for changes.")
     const watched = watcher.getWatched()
     const allFiles = Object.entries(watched).flatMap(([dir, files]) => files.map((f) => path.join(dir, f)))
-    console.log(`[File Watcher] Watching ${allFiles.length} files:`)
-    allFiles.forEach((file) => console.log(`  - ${file}`))
+    console.log(`[File Watcher] Watching ${allFiles.length} files`)
   })
 
 process.on("SIGINT", () =>

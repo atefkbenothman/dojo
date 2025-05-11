@@ -1,11 +1,6 @@
 import { ImageModel, LanguageModel } from "ai"
 import { MCPClient } from "./client"
 
-export interface ActiveConnection {
-  client: MCPClient
-  lastActivityTimestamp: number
-}
-
 export interface MCPServer {
   id: string
   name: string
@@ -38,4 +33,13 @@ export interface GenerateImageOptions {
   size?: string
   quality?: string
   style?: string
+}
+
+export interface ActiveMcpClient {
+  client: MCPClient
+  config: MCPServerConfig
+}
+
+export interface UserSession {
+  activeMcpClients: Map<string, ActiveMcpClient>
 }
