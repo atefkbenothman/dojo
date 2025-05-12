@@ -1,13 +1,13 @@
 {
-  "name": "mcp-service",
+  "name": "mcp-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "src/server.ts",
+  "main": "src/core.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "npm run build && node dist/server.js",
-    "dev": "nodemon src/server.ts",
+    "start": "npm run build && node dist/core.js",
+    "dev": "nodemon src/core.ts",
     "format": "prettier --write \"src/**/*.{ts,js}\""
   },
   "keywords": [],

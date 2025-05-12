@@ -17,7 +17,7 @@ export class MCPClient {
 
   constructor(config: MCPServerConfig) {
     this.config = config
-    console.log(`[MCPClient] MCPClient configured for service ${this.config.name}`)
+    console.log(`[MCP] MCPClient configured for service ${this.config.name}`)
   }
 
   private setupEnvironment(): Record<string, string> {
@@ -43,7 +43,7 @@ export class MCPClient {
   public async start(): Promise<void> {
     if (this.client) return
 
-    console.log(`[MCPClient.start] Preparing environment and transport for ${this.config.name}...`)
+    console.log(`[MCP.start] Preparing environment and transport for ${this.config.name}...`)
 
     const envs = this.setupEnvironment()
     const transport = this.createTransport(envs)
@@ -51,34 +51,34 @@ export class MCPClient {
     const { data: client, error: clientError } = await asyncTryCatch(experimental_createMCPClient({ transport }))
 
     if (!client || clientError) {
-      console.error("[MCPClient.start] Failed to create MCP client: ", clientError)
+      console.error("[MCP.start] Failed to create MCP client: ", clientError)
       this.client = null
       this.tools = {}
       return
     }
 
     this.client = client
-    console.log(`[MCPClient.start] MCP Client created successfully for ${this.config.name}`)
+    console.log(`[MCP.start] MCP Client created successfully for ${this.config.name}`)
 
     const { data: tools, error: toolsError } = await asyncTryCatch(this.client.tools())
 
     if (!tools || toolsError) {
-      console.error("[MCPClient.start] Failed to fetch MCP tools: ", clientError)
+      console.error("[MCP.start] Failed to fetch MCP tools: ", clientError)
       this.tools = {}
       return
     }
 
     this.tools = tools
-    console.log(`[MCPClient.getTools] Fetched ${Object.keys(this.tools).length} tools`)
+    console.log(`[MCP.getTools] Fetched ${Object.keys(this.tools).length} tools`)
   }
 
   public async cleanup(): Promise<void> {
     if (this.client) {
-      console.log(`[MCPClient.cleanup] Closing MCP client...`)
+      console.log(`[MCP.cleanup] Closing MCP client...`)
       await this.client.close()
       this.client = null
       this.tools = {}
-      console.log(`[MCPClient.cleanup] MCP client closed`)
+      console.log(`[MCP.cleanup] MCP client closed`)
     }
   }
 }

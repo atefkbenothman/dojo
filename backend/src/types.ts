@@ -1,5 +1,5 @@
 import { ImageModel, LanguageModel } from "ai"
-import { MCPClient } from "./client"
+import { MCPClient } from "./mcp-client"
 
 export interface MCPServer {
   id: string
@@ -42,4 +42,16 @@ export interface ActiveMcpClient {
 
 export interface UserSession {
   activeMcpClients: Map<string, ActiveMcpClient>
+}
+
+export type FileChangeType = "add" | "change" | "unlink"
+
+export interface FileChangeEvent {
+  type: FileChangeType
+  path: string
+}
+
+export interface FileBatchChangeEvent {
+  event: "fileBatchChanged"
+  changes: FileChangeEvent[]
 }

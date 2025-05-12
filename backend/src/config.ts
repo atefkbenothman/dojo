@@ -1,8 +1,14 @@
+import * as path from "path"
+import dotenv from "dotenv"
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import type { AIImageModelConfig, AIModelConfig, MCPServer } from "./types"
+
+dotenv.config({
+  path: path.resolve(__dirname, "..", ".env"),
+})
 
 if (!process.env.GOOGLE_API_KEY) {
   console.error("[config] GOOGLE_API_KEY is missing or invalid")
@@ -13,6 +19,8 @@ if (!process.env.GROQ_API_KEY) {
 if (!process.env.OPENAI_API_KEY) {
   console.error("[config] OPENAI_API_KEY is missing or invalid")
 }
+
+export const WATCH_DIRECTORY_PATH = process.env.WATCH_DIRECTORY || path.resolve(__dirname, "../data")
 
 export const DEFAULT_MODEL_ID = "gemini-1.5-flash"
 export const DEFAULT_IMAGE_MODEL_ID = "gpt-image-1"
