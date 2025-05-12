@@ -18,14 +18,14 @@ interface UseAgentLogicReturn {
 const AgentContext = createContext<UseAgentLogicReturn | undefined>(undefined)
 
 export function AgentProvider({ children }: { children: ReactNode }) {
-  const { sessionId: currentSessionIdFromContext } = useConnectionContext()
+  const { sessionId } = useConnectionContext()
 
   const agentRunMutation = useMutation<any, Error, AgentConfig>({
     mutationFn: async (agentConfig: AgentConfig) => {
       const response = await fetch("/api/agent/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: currentSessionIdFromContext, config: agentConfig }),
+        body: JSON.stringify({ sessionId: sessionId, config: agentConfig }),
       })
 
       if (!response.ok) {

@@ -7,6 +7,7 @@ import { MCPClient } from "./client"
 import { asyncTryCatch, tryCatch } from "./utils"
 import sseRouter from "./file-watcher"
 import type { GenerateImageOptions, UserSession, ActiveMcpClient } from "./types"
+import agentRouter from "./agent"
 
 dotenv.config({
   path: path.resolve(__dirname, "..", ".env"),
@@ -34,10 +35,10 @@ app.use(
   }),
 )
 
-// SSE router
-app.use("/files", sseRouter)
-
 app.use(express.json({ limit: "10mb" }))
+
+app.use("/files", sseRouter)
+app.use("/agent", agentRouter)
 
 console.log("[server] Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
 console.log("[server] Available AI Models:", Object.keys(AVAILABLE_AI_MODELS).join(", "))
