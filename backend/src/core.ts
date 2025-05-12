@@ -10,7 +10,7 @@ import imageRouter from "./routes/image"
 import chatRouter from "./routes/chat"
 import connectionRouter from "./routes/connection"
 import filesRouter from "./routes/files"
-import agentRouter from "./agent"
+import agentRouter from "./routes/agent"
 
 const PORT = process.env.PORT || 8888
 

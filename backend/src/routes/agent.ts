@@ -11,7 +11,7 @@ agentRouter.post("/run", (req: Request, res: Response) => {
     return
   }
 
-  console.log(`[agentRouter] Placeholder run for agent '${config.id}' in session '${sessionId}'`)
+  console.log(`[Agent] Placeholder run for agent '${config.id}' in session '${sessionId}'`)
 
   res.status(200).json({ success: true, message: `Agent '${config.id}' run for session '${sessionId}'` })
   return

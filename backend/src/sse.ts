@@ -13,16 +13,15 @@ export function addSseClient(res: Response): void {
   res.flushHeaders()
 
   sseClients.add(res)
-  console.log(`[SSE Service] Client connected. Total clients: ${sseClients.size}`)
+  console.log(`[SSE] Client connected. Total clients: ${sseClients.size}`)
 }
 
 export function removeSseClient(res: Response): void {
   sseClients.delete(res)
-  console.log(`[SSE Service] Client disconnected. Total clients: ${sseClients.size}`)
+  console.log(`[SSE] Client disconnected. Total clients: ${sseClients.size}`)
 }
 
 export function broadcastSseEvent(eventData: FileBatchChangeEvent): void {
-  // Use imported type
   if (sseClients.size === 0) {
     return
   }
@@ -30,7 +29,7 @@ export function broadcastSseEvent(eventData: FileBatchChangeEvent): void {
   const formattedData = JSON.stringify(eventData)
   const message = `data: ${formattedData}\n\n`
 
-  console.log(`[SSE Service] Broadcasting event to ${sseClients.size} clients:`, formattedData)
+  console.log(`[SSE] Broadcasting event to ${sseClients.size} clients:`, formattedData)
 
   const clientsToRemove = new Set<Response>()
 
@@ -38,7 +37,7 @@ export function broadcastSseEvent(eventData: FileBatchChangeEvent): void {
     try {
       client.write(message)
     } catch (error) {
-      console.error("[SSE Service] Error writing to client, marking for removal:", error)
+      console.error("[SSE] Error writing to client, marking for removal:", error)
       clientsToRemove.add(client)
     }
   })

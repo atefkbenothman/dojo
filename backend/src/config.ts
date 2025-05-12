@@ -11,13 +11,13 @@ dotenv.config({
 })
 
 if (!process.env.GOOGLE_API_KEY) {
-  console.error("[config] GOOGLE_API_KEY is missing or invalid")
+  console.error("[Config] GOOGLE_API_KEY is missing or invalid")
 }
 if (!process.env.GROQ_API_KEY) {
-  console.error("[config] GROQ_API_KEY is missing or invalid")
+  console.error("[Config] GROQ_API_KEY is missing or invalid")
 }
 if (!process.env.OPENAI_API_KEY) {
-  console.error("[config] OPENAI_API_KEY is missing or invalid")
+  console.error("[Config] OPENAI_API_KEY is missing or invalid")
 }
 
 export const WATCH_DIRECTORY_PATH = process.env.WATCH_DIRECTORY || path.resolve(__dirname, "../data")

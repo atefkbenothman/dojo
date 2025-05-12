@@ -20,7 +20,7 @@ router.get("/file-content", async (req: Request, res: Response): Promise<void> =
   const watchDirectory = WATCH_DIRECTORY_PATH
 
   if (!watchDirectory) {
-    console.error("[Files Route] Watch directory path is not configured")
+    console.error("[Files] Watch directory path is not configured")
     res.status(500).json({ error: "Server configuration error: Watch directory not set" })
     return
   }
@@ -38,7 +38,7 @@ router.get("/file-content", async (req: Request, res: Response): Promise<void> =
       return
     }
 
-    console.log(`[Files Route] Reading file: ${requestedAbsolutePath}`)
+    console.log(`[Files] Reading file: ${requestedAbsolutePath}`)
     const fileContent = await fs.promises.readFile(requestedAbsolutePath, "utf-8")
 
     const ext = path.extname(relativePath).toLowerCase()
@@ -63,7 +63,7 @@ router.get("/file-content", async (req: Request, res: Response): Promise<void> =
     res.setHeader("Content-Type", contentType)
     res.status(200).send(fileContent)
   } catch (error) {
-    console.error(`[Files Route] Error reading file '${relativePath}':`, error)
+    console.error(`[Files] Error reading file '${relativePath}':`, error)
     res.status(500).json({ error: `Failed to read file: ${relativePath}` })
   }
 })
@@ -73,7 +73,7 @@ router.get("/list-files", (req: Request, res: Response) => {
   const watchDirectory = WATCH_DIRECTORY_PATH
 
   if (!watchDirectory) {
-    console.error("[Files Route] Watch directory path is not configured")
+    console.error("[Files] Watch directory path is not configured")
     res.status(500).json({ error: "Server configuration error: Watch directory not set" })
     return
   }
@@ -95,11 +95,11 @@ router.get("/list-files", (req: Request, res: Response) => {
   }
 
   try {
-    console.log(`[Files Route] Listing files in: ${watchDirectory}`)
+    console.log(`[Files] Listing files in: ${watchDirectory}`)
     const files = walkDir(watchDirectory)
     res.status(200).json({ files })
   } catch (error) {
-    console.error(`[Files Route] Error listing files in '${watchDirectory}':`, error)
+    console.error(`[Files] Error listing files in '${watchDirectory}':`, error)
     res.status(500).json({ error: "Failed to list files" })
   }
 })
