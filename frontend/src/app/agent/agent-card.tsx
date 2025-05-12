@@ -30,7 +30,7 @@ export function AgentCard({ agent, onEdit, onDelete }: AgentCardProps) {
 
   return (
     <Card
-      className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-xs border-dashed", {
+      className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-xs border", {
         "border-destructive": !!errorMessage,
       })}
     >

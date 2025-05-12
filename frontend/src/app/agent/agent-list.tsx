@@ -26,7 +26,7 @@ export function AgentList({ agents }: AgentListProps) {
   function AddAgentCard() {
     return (
       <Card
-        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border border-dashed transition-colors"
+        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border transition-colors"
         onClick={() => setIsAddDialogOpen(true)}
       >
         <CardHeader className="flex h-full items-center justify-center">
