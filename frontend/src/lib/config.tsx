@@ -7,7 +7,7 @@ import {
   TicketmasterIcon,
   Upstash,
 } from "@/components/icons/icons"
-import type { AgentConfig, AgentConfigs, AIModelInfo, MCPConfigs } from "@/lib/types"
+import type { AgentConfigs, AIModelInfo, MCPConfigs } from "@/lib/types"
 
 export const SYSTEM_PROMPT = `You are a helpful assistant with access to a variety of tools.
 
@@ -52,20 +52,29 @@ export const AVAILABLE_MODELS: AIModelInfo[] = [
 
 export const DEFAULT_MODEL_ID = "gemini-1.5-flash"
 
+export const MCP_CONFIG_ICONS: Record<string, React.ReactNode | null> = {
+  filesystem: null,
+  github: <GitHubIcon />,
+  blender: <BlenderIcon />,
+  supabase: <SupabaseIcon />,
+  playwright: <PlaywrightIcon />,
+  ticketmaster: <TicketmasterIcon />,
+  figma: <FigmaIcon />,
+  context7: <Upstash />,
+}
+
 export const MCP_CONFIG: MCPConfigs = {
   github: {
     id: "github",
     name: "Github",
     command: "docker-compose",
     args: ["run", "--rm", "github-mcp-server"],
-    icon: <GitHubIcon />,
   },
   blender: {
     id: "blender",
     name: "Blender",
     command: "uvx",
     args: ["blender-mcp"],
-    icon: <BlenderIcon />,
   },
   supabase: {
     id: "supabase",
@@ -77,7 +86,6 @@ export const MCP_CONFIG: MCPConfigs = {
       "--access-token",
       process.env.NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN || "",
     ],
-    icon: <SupabaseIcon />,
   },
   filesystem: {
     id: "filesystem",
@@ -90,7 +98,6 @@ export const MCP_CONFIG: MCPConfigs = {
     name: "Playwright",
     command: "npx",
     args: ["-y", "@playwright/mcp@latest", "--browser", "chrome"],
-    icon: <PlaywrightIcon />,
   },
   ticketmaster: {
     id: "ticketmaster",
@@ -100,21 +107,18 @@ export const MCP_CONFIG: MCPConfigs = {
     env: {
       TICKETMASTER_API_KEY: process.env.NEXT_PUBLIC_TICKETMASTER_API_KEY || "",
     },
-    icon: <TicketmasterIcon />,
   },
   figma: {
     id: "figma",
     name: "Figma",
     command: "bunx",
     args: ["cursor-talk-to-figma-mcp@latest"],
-    icon: <FigmaIcon />,
   },
   context7: {
     id: "context7",
     name: "Context7",
     command: "npx",
     args: ["-y", "@upstash/context7-mcp@latest"],
-    icon: <Upstash />,
   },
 }
 

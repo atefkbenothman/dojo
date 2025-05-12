@@ -6,7 +6,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/comp
 import { cn } from "@/lib/utils"
 import { MCPServerConfig, Server } from "@/lib/types"
 import { MCPDialog } from "./mcp-dialog"
-import { MCP_CONFIG } from "@/lib/config"
+import { MCP_CONFIG, MCP_CONFIG_ICONS } from "@/lib/config"
 import { useConnectionContext } from "@/hooks/use-connection"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Wrench } from "lucide-react"
@@ -65,7 +65,6 @@ export function MCPCard({ server }: MCPCardProps) {
         command: defaultConfig.command,
         args: defaultConfig.args,
         env: defaultConfig.env,
-        icon: defaultConfig.icon,
       }
     }
     return {
@@ -109,7 +108,7 @@ export function MCPCard({ server }: MCPCardProps) {
     >
       <CardHeader>
         <div className="flex items-center gap-2">
-          {currentConfig.icon && currentConfig.icon}
+          {MCP_CONFIG_ICONS[server.id]}
           <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
           {serverConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
         </div>

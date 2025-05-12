@@ -55,3 +55,14 @@ export interface FileBatchChangeEvent {
   event: "fileBatchChanged"
   changes: FileChangeEvent[]
 }
+
+export interface AgentConfig {
+  id: string
+  name: string
+  modelId: string
+  systemPrompt: string
+  mcpServers: MCPServerConfig[]
+  maxExecutionSteps: number
+}
+
+export type AgentConfigs = Record<string, AgentConfig>
