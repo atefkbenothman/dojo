@@ -49,6 +49,11 @@ const navigationItems = [
     label: "Home",
   },
   {
+    href: "/agent",
+    icon: Bot,
+    label: "Agent",
+  },
+  {
     href: "/mcp",
     icon: Server,
     label: "MCP",
@@ -57,11 +62,6 @@ const navigationItems = [
     href: "/files",
     icon: FileText,
     label: "Files",
-  },
-  {
-    href: "/agent",
-    icon: Bot,
-    label: "Agent",
   },
 ] as const
 
