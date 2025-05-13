@@ -1,15 +1,7 @@
 import { Router, Request, Response } from "express"
-import { MCPClient } from "../mcp-client"
-import { asyncTryCatch, tryCatch } from "../utils"
-import type { MCPServerConfig, ActiveMcpClient } from "../types"
-import {
-  sessions,
-  getOrCreateUserSession,
-  totalConnections,
-  MAX_CONNECTIONS,
-  incrementTotalConnections,
-  decrementTotalConnections,
-} from "../core"
+import type { MCPServerConfig } from "../types"
+import { totalConnections } from "../core"
+import { establishMcpConnection, cleanupExistingConnection } from "../mcp-connection"
 
 const router = Router()
 
@@ -18,38 +10,6 @@ export const validateReqBody = (sessionId: any, config: any): boolean => {
   if (!config || typeof config !== "object") return false
   if (!config.id || typeof config.id !== "string") return false
   return true
-}
-
-export const validateServerConnection = (sessionId: string, serverId: string): boolean => {
-  const userSession = sessions.get(sessionId)
-  if (!userSession) return true
-  if (userSession.activeMcpClients.has(serverId)) {
-    console.log(`[Connection] Session ${sessionId} already has a connection to server ${serverId}`)
-    return false
-  }
-  return true
-}
-
-export const cleanupExistingConnection = async (sessionId: string, mcpServerId: string): Promise<void> => {
-  const userSession = sessions.get(sessionId)
-  if (!userSession) return
-
-  const existingClient = userSession.activeMcpClients.get(mcpServerId)
-  if (existingClient) {
-    const { error } = await asyncTryCatch(existingClient.client.cleanup())
-    if (error) {
-      console.error(
-        `[Connection /cleanup]: Error cleaning up client for session ${sessionId}, server ${mcpServerId}:`,
-        error,
-      )
-    }
-    userSession.activeMcpClients.delete(mcpServerId)
-    const currentTotal = totalConnections
-    console.log(
-      `[Connection /cleanup]: Cleaned up connection for ${sessionId}, server ${mcpServerId}. Total connections before cleanup: ${currentTotal}`,
-    )
-    decrementTotalConnections()
-  }
 }
 
 /* Connect */
@@ -63,53 +23,18 @@ router.post("/connect", async (req: Request, res: Response): Promise<void> => {
 
   console.log(`[Connection] /connect request received for sessionId: ${sessionId}, mcpServer: ${config.id}`)
 
-  if (!validateServerConnection(sessionId, config.id)) {
-    res.status(400).json({ message: `Server ${config.id} is already connected for this session` })
-    return
-  }
-
+  // Explicitly clean up any potentially existing connection before establishing a new one via /connect
   await cleanupExistingConnection(sessionId, config.id)
 
-  if (totalConnections >= MAX_CONNECTIONS) {
-    res.status(503).json({ message: "Service busy, connection limit reached" })
+  const result = await establishMcpConnection(sessionId, config as MCPServerConfig)
+
+  if (!result.success) {
+    const statusCode = result.error?.includes("limit reached") ? 503 : 500
+    res.status(statusCode).json({ message: result.error || "Failed to establish connection" })
     return
   }
 
-  const userSession = getOrCreateUserSession(sessionId)
-
-  const { data: mcpClient, error: mcpClientError } = tryCatch(new MCPClient(config as MCPServerConfig))
-
-  if (!mcpClient || mcpClientError) {
-    console.error(`[Connection] Error establishing connection for ${sessionId}, server ${config.id}:`, mcpClientError)
-    res.status(500).json({ message: "Failed to establish connection" })
-    return
-  }
-
-  console.log(`[Connection] Starting MCPClient connection for ${sessionId}, server ${config.id}...`)
-
-  const { error: mcpStartError } = await asyncTryCatch(mcpClient.start())
-
-  if (mcpStartError) {
-    console.error(`[Connection] Error starting MCPClient for ${sessionId}, server ${config.id}`, mcpStartError)
-    await asyncTryCatch(mcpClient.cleanup())
-    res.status(500).json({ message: "Failed to start MCPClient" })
-    return
-  }
-
-  const activeMcpClient: ActiveMcpClient = {
-    client: mcpClient,
-    config: config as MCPServerConfig,
-  }
-
-  userSession.activeMcpClients.set(config.id, activeMcpClient)
-  incrementTotalConnections()
-
-  console.log(
-    `[Connection] Connection established for ${sessionId}, server ${config.id}. Total connections: ${totalConnections}`,
-  )
-
-  const tools = mcpClient.tools
-
+  const tools = result.client?.client.tools || {}
   res.status(200).json({ tools })
 })
 
@@ -132,7 +57,7 @@ router.post("/disconnect", async (req: Request, res: Response): Promise<void> =>
   await cleanupExistingConnection(sessionId, serverId)
 
   console.log(
-    `[Connection] Connection closed for ${sessionId}, server: ${serverId}. Total connections: ${totalConnections}`,
+    `[Connection] Connection closed for ${sessionId}, server: ${serverId}. Total connections now: ${totalConnections}`,
   )
   res.status(200).json({ message: "Disconnection successful" })
 })
