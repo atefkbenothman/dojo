@@ -1,7 +1,7 @@
 "use server"
 
 import { Suspense } from "react"
-import { AgentList } from "./agent-list"
+import { AgentList } from "@/app/agent/agent-list"
 import { AGENT_CONFIG } from "@/lib/config"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"

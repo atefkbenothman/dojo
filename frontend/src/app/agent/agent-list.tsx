@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { AgentConfig, AgentConfigs } from "@/lib/types"
-import { AgentCard } from "./agent-card"
-import { AgentBuilder } from "./agent-builder"
+import { AgentCard } from "@/app/agent/agent-card"
+import { AgentBuilder } from "@/app/agent/agent-builder"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlusIcon } from "lucide-react"
 
