@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, createContext, useContext } from "react"
+import { v4 as uuid4 } from "uuid"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { MCPServerConfig } from "@/lib/types"
 
@@ -36,9 +37,19 @@ export function useConnection() {
 
   const isServerHealthy = serverHealth?.success || false
 
+  const getOrCreateSessionId = (): string => {
+    if (sessionId) {
+      return sessionId
+    }
+    const newSessionId = uuid4()
+    setSessionId(newSessionId)
+    return newSessionId
+  }
+
   // Connect mutation
   const connectMutation = useMutation({
     mutationFn: async (config: MCPServerConfig) => {
+      const currentSessionId = getOrCreateSessionId()
       const serializableConfig = {
         id: config.id,
         name: config.name,
@@ -50,7 +61,7 @@ export function useConnection() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentSessionId: sessionId,
+          sessionId: currentSessionId,
           config: serializableConfig,
         }),
         cache: "no-store",
@@ -75,7 +86,6 @@ export function useConnection() {
       }))
     },
     onSuccess: (data, config) => {
-      setSessionId(data.sessionId)
       setConnectionStatus((prev) => ({
         ...prev,
         [config.id]: "connected",
@@ -204,7 +214,9 @@ export function useConnection() {
     getConnectionStatus,
     getConnectionError,
     isConnected,
+    setSessionId,
     hasActiveConnections: activeConnections.length > 0,
+    getOrCreateSessionId,
   }
 }
 

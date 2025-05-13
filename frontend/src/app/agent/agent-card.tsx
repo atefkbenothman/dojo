@@ -4,9 +4,9 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { Trash2Icon, PlayIcon, AlertCircleIcon } from "lucide-react"
+import { Trash2Icon, PlayIcon, StopCircleIcon, AlertCircleIcon } from "lucide-react"
 import { AgentConfig } from "@/lib/types"
-import { AgentDialog } from "./agent-dialog"
+import { AgentDialog } from "@/app/agent/agent-dialog"
 import { useAgentProvider } from "@/hooks/use-agent"
 
 interface AgentCardProps {
@@ -15,16 +15,24 @@ interface AgentCardProps {
   onDelete?: (agentId: string) => void
 }
 
-export function AgentCard({ agent, onEdit, onDelete }: AgentCardProps) {
+export function AgentCard({ agent, onDelete }: AgentCardProps) {
+  const { runAgent, errorMessage, stopAgent, isStopping, isAgentRunning, isLoading } = useAgentProvider()
+
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const { runAgent, isRunning, errorMessage, resetAgentState, isSuccess } = useAgentProvider()
 
   const handleRunAgentClick = async () => {
-    resetAgentState()
     try {
       await runAgent(agent)
     } catch (error) {
       console.error("Agent run initiation failed (locally in card):", error)
+    }
+  }
+
+  const handleStopAgentClick = async () => {
+    try {
+      await stopAgent()
+    } catch (error) {
+      console.error("Failed to stop agent connections:", error)
     }
   }
 
@@ -40,12 +48,12 @@ export function AgentCard({ agent, onEdit, onDelete }: AgentCardProps) {
           <div
             className={cn(
               "ml-2 h-2 w-2 rounded-full",
-              isRunning
+              isAgentRunning || isStopping
                 ? "animate-pulse bg-green-500"
                 : errorMessage
                   ? "bg-red-500"
-                  : isSuccess
-                    ? "bg-green-500"
+                  : isLoading
+                    ? "bg-blue-500"
                     : "bg-blue-500",
             )}
           ></div>
@@ -62,15 +70,29 @@ export function AgentCard({ agent, onEdit, onDelete }: AgentCardProps) {
 
       <CardFooter className="mt-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
-            onClick={handleRunAgentClick}
-            disabled={isRunning}
-          >
-            {isRunning ? "Running..." : "Run"}
-            <PlayIcon className="ml-2 h-4 w-4" />
-          </Button>
+          {!isAgentRunning && !isStopping && (
+            <Button
+              variant="secondary"
+              className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
+              onClick={handleRunAgentClick}
+              disabled={isLoading}
+            >
+              {isLoading ? "Starting..." : "Run"}
+              <PlayIcon className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+
+          {isAgentRunning && (
+            <Button
+              variant="destructive"
+              className="border hover:cursor-pointer"
+              onClick={handleStopAgentClick}
+              disabled={isStopping}
+            >
+              {isStopping ? "Stopping..." : "Stop"}
+              <StopCircleIcon className="ml-2 h-4 w-4" />
+            </Button>
+          )}
 
           <AgentDialog agent={agent} open={isDialogOpen} onOpenChange={setIsDialogOpen} />
 

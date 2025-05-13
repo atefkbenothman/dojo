@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server"
-import { v4 as uuid4 } from "uuid"
 import { asyncTryCatch } from "@/lib/utils"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
-  const { currentSessionId, config } = await request.json()
-  let sessionId = currentSessionId || uuid4()
+  const { sessionId, config } = await request.json()
 
   console.log(`[MCP API] Connecting to server '${config.name}' (${config.id}) with session ID: ${sessionId}`)
 
