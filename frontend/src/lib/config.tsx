@@ -91,7 +91,7 @@ export const MCP_CONFIG: MCPConfigs = {
     id: "filesystem",
     name: "Filesystem",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem"],
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/kai/dev/dojo/backend/data"],
   },
   playwright: {
     id: "playwright",
