@@ -2,6 +2,7 @@ import {
   BlenderIcon,
   FigmaIcon,
   GitHubIcon,
+  NotionIcon,
   PlaywrightIcon,
   SupabaseIcon,
   TicketmasterIcon,
@@ -39,6 +40,11 @@ export const AVAILABLE_MODELS: AIModelInfo[] = [
     type: "text",
   },
   {
+    id: "qwen-qwq-32b",
+    name: "Qwen-qwq-32b",
+    type: "text",
+  },
+  {
     id: "deepseek-r1-distill-llama-70b",
     name: "Deepseek R1",
     type: "text",
@@ -61,6 +67,7 @@ export const MCP_CONFIG_ICONS: Record<string, React.ReactNode | null> = {
   ticketmaster: <TicketmasterIcon />,
   figma: <FigmaIcon />,
   context7: <Upstash />,
+  notion: <NotionIcon />,
 }
 
 export const MCP_CONFIG: MCPConfigs = {
@@ -92,6 +99,15 @@ export const MCP_CONFIG: MCPConfigs = {
     name: "Filesystem",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/kai/dev/dojo/backend/data"],
+  },
+  notion: {
+    id: "notion",
+    name: "Notion",
+    command: "npx",
+    args: ["-y", "@notionhq/notion-mcp-server"],
+    env: {
+      OPENAPI_MCP_HEADERS: `{"Authorization": "Bearer ${process.env.NEXT_PUBLIC_NOTION_API_KEY}", "Notion-Version": "2022-06-28" }`,
+    },
   },
   playwright: {
     id: "playwright",

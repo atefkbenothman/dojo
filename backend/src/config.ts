@@ -42,6 +42,14 @@ export const AVAILABLE_AI_MODELS: Record<string, AIModelConfig> = {
       middleware: extractReasoningMiddleware({ tagName: "think" }),
     }),
   },
+  "qwen-qwq-32b": {
+    name: "Qwen QWQ 32B",
+    modelName: "qwen-qwq-32b",
+    languageModel: wrapLanguageModel({
+      model: createGroq({ apiKey: process.env.GROQ_API_KEY })("qwen-qwq-32b"),
+      middleware: extractReasoningMiddleware({ tagName: "think" }),
+    }),
+  },
   "deepseek-r1-distill-llama-70b": {
     name: "Deepseek",
     modelName: "deepseek-r1-distill-llama-70b",
@@ -81,6 +89,11 @@ export const AVAILABLE_MCP_SERVERS: Record<string, MCPServer> = {
     id: "filesystem",
     name: "Filesystem",
     summary: "Secure file operations with configurable access controls",
+  },
+  notion: {
+    id: "notion",
+    name: "Notion",
+    summary: "Interact with the Notion API",
   },
   playwright: {
     id: "playwright",
