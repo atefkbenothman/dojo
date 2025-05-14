@@ -1,7 +1,10 @@
 import { Router, Request, Response } from "express"
+import { type CoreMessage, type ToolSet } from "ai"
 import { establishMcpConnection, cleanupExistingConnection } from "../mcp-connection"
-import { sessions } from "../core"
+import { sessions, getOrCreateUserSession } from "../core"
+import { streamAiResponse } from "../ai"
 import type { AgentConfig } from "../types"
+import { AVAILABLE_AI_MODELS } from "../config"
 
 const agentRouter = Router()
 
@@ -48,14 +51,46 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
     console.log(
       `[Agent] Successfully established all ${agentConfig.mcpServers.length} MCP connections for agent ${agentConfig.id}`,
     )
-    // TODO: Implement actual agent execution logic here
-    res.status(200).json({ success: true, message: `Agent '${agentConfig.id}' connections ready` })
-    return
+
+    const aiModel = AVAILABLE_AI_MODELS[agentConfig.modelId]?.languageModel
+
+    if (!aiModel) {
+      console.error(`[Agent] AI Model '${agentConfig.modelId}' not found or not configured`)
+      await rollbackConnections(sessionId, agentConfig)
+      res.status(500).json({ success: false, message: `AI Model '${agentConfig.modelId}' not configured on backend` })
+      return
+    }
+
+    const messages: CoreMessage[] = [{ role: "user", content: agentConfig.systemPrompt }]
+    const agentTools: ToolSet = {}
+    const userSession = getOrCreateUserSession(sessionId)
+
+    for (const serverConfig of agentConfig.mcpServers) {
+      const activeClient = userSession.activeMcpClients.get(serverConfig.id)
+      if (activeClient?.client.tools) {
+        Object.assign(agentTools, activeClient.client.tools)
+      }
+    }
+
+    console.log(
+      `[Agent] Starting agent execution for '${agentConfig.id}' with model '${agentConfig.modelId}' and ${Object.keys(agentTools).length} tools`,
+    )
+
+    await streamAiResponse({
+      res,
+      languageModel: aiModel,
+      messages,
+      tools: agentTools,
+      maxSteps: agentConfig.maxExecutionSteps,
+    })
   } catch (error) {
-    console.error(`[Agent] Unexpected error during agent run setup for session ${sessionId}:`, error)
+    console.error(`[Agent] Unexpected error during agent run setup or execution for session ${sessionId}:`, error)
     await rollbackConnections(sessionId, agentConfig)
-    res.status(500).json({ success: false, message: "An unexpected error occurred during agent setup" })
-    return
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "An unexpected error occurred during agent execution" })
+    } else if (!res.writableEnded) {
+      res.end()
+    }
   }
 })
 
@@ -68,34 +103,30 @@ agentRouter.post("/stop", async (req: Request, res: Response): Promise<void> => 
     return
   }
 
-  console.log(`[Agent /stop] Request to stop all connections for session '${sessionId}'`)
+  console.log(`[Agent] Request to stop all connections for session '${sessionId}'`)
 
   const userSession = sessions.get(sessionId)
 
   if (!userSession || userSession.activeMcpClients.size === 0) {
-    console.log(`[Agent /stop] No active session or no connections found for session '${sessionId}'. Nothing to stop.`)
-    res
-      .status(200)
-      .json({ success: true, message: "No active connections found for session or session does not exist." })
+    console.log(`[Agent] No active session or no connections found for session '${sessionId}'. Nothing to stop`)
+    res.status(200).json({ success: true, message: "No active connections found for session or session does not exis" })
     return
   }
 
   const serverIdsToStop = [...userSession.activeMcpClients.keys()]
   console.log(
-    `[Agent /stop] Found ${serverIdsToStop.length} connections to stop for session '${sessionId}': ${serverIdsToStop.join(", ")}`,
+    `[Agent] Found ${serverIdsToStop.length} connections to stop for session '${sessionId}': ${serverIdsToStop.join(", ")}`,
   )
 
   try {
     for (const serverId of serverIdsToStop) {
       await cleanupExistingConnection(sessionId, serverId)
     }
-    console.log(
-      `[Agent /stop] Successfully stopped all ${serverIdsToStop.length} connections for session '${sessionId}'.`,
-    )
-    res.status(200).json({ success: true, message: `All connections for session '${sessionId}' stopped successfully.` })
+    console.log(`[Agent] Successfully stopped all ${serverIdsToStop.length} connections for session '${sessionId}'`)
+    res.status(200).json({ success: true, message: `All connections for session '${sessionId}' stopped successfully` })
   } catch (error) {
-    console.error(`[Agent /stop] Unexpected error while stopping connections for session ${sessionId}:`, error)
-    res.status(500).json({ success: false, message: "An unexpected error occurred while stopping connections." })
+    console.error(`[Agent] Unexpected error while stopping connections for session ${sessionId}:`, error)
+    res.status(500).json({ success: false, message: "An unexpected error occurred while stopping connections" })
   }
 })
 
