@@ -22,6 +22,14 @@ export async function streamAiResponse(options: StreamAiResponseOptions): Promis
       messages: messages,
       tools: tools,
       maxSteps: maxSteps,
+      onError: (error) => {
+        console.error("[AI] Error during AI stream processing:", error)
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Error processing AI stream" })
+        } else {
+          res.end()
+        }
+      },
     })
 
     const responseStream = result.toDataStreamResponse()
