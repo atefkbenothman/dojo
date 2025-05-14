@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, createContext, useContext, useCallback } from "react"
+import { useState, createContext, useContext, useCallback, useEffect } from "react"
 import type { UIMessage } from "ai"
 import { useChat, Message } from "@ai-sdk/react"
 import { nanoid } from "nanoid"
@@ -24,35 +24,31 @@ const initialMessages: Message[] = [
   },
 ]
 
-type AIChatContextType = {
-  messages: (UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } })[]
-  context: string
-  input: string
-  status: "error" | "submitted" | "streaming" | "ready"
-  error: Error | undefined
-  setContext: (data: string) => void
-  handleChat: (message: string) => Promise<void>
-  handleNewChat: () => void
-}
-
-const AIChatContext = createContext<AIChatContextType | undefined>(undefined)
-
-type AIChatProviderProps = {
-  children: React.ReactNode
-}
-
-export function AIChatProvider({ children }: AIChatProviderProps) {
+export function useAIChat() {
   const { sessionId } = useConnectionContext()
   const { availableModels, selectedModelId } = useModelContext()
 
   const [context, setContext] = useState<string>("")
+  const [currentInteractionType, setCurrentInteractionType] = useState<string | null>(null)
 
-  const { messages, status, input, append, setMessages, error } = useChat({
+  const {
+    messages,
+    status,
+    input,
+    append: originalAppend,
+    setMessages,
+    error,
+    stop,
+  } = useChat({
     api: "/api/mcp/chat",
     initialMessages: initialMessages as Message[],
     generateId: () => nanoid(),
     onError: (err) => {
       console.error("useChat error:", err.message, err.stack, err)
+      setCurrentInteractionType(null)
+    },
+    onFinish: () => {
+      setCurrentInteractionType(null)
     },
   })
 
@@ -87,6 +83,40 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     },
   })
 
+  const unifiedAppend = useCallback(
+    async (
+      messageToRelay: Message | Omit<Message, "id">,
+      options: {
+        body: Record<string, any>
+        interactionType: string
+        initialDisplayMessage?: {
+          id?: string
+          role: "assistant" | "system" | "user" | "function" | "tool"
+          content: string
+        }
+      },
+    ) => {
+      setCurrentInteractionType(options.interactionType)
+
+      if (options.initialDisplayMessage) {
+        const initialMsg = options.initialDisplayMessage
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: initialMsg.id || nanoid(),
+            role: initialMsg.role,
+            content: initialMsg.content,
+          } as Message,
+        ])
+      }
+
+      await originalAppend(messageToRelay, {
+        body: options.body,
+      })
+    },
+    [originalAppend, setMessages, setCurrentInteractionType],
+  )
+
   const handleChat = useCallback(
     async (message: string) => {
       if (status === "streaming") return
@@ -114,32 +144,49 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
         content: prompt,
       }
 
-      append(userMessage, {
+      await unifiedAppend(userMessage, {
         body: {
           sessionId: sessionId,
           modelId: selectedModelId,
+          interactionType: "chat",
         },
+        interactionType: "chat",
       })
     },
-    [status, availableModels, selectedModelId, append, imageGenerationMutation],
+    [status, availableModels, selectedModelId, unifiedAppend, imageGenerationMutation, setMessages, sessionId],
   )
 
   const handleNewChat = useCallback(() => {
     setMessages(initialMessages)
   }, [setMessages])
 
-  const value: AIChatContextType = {
+  return {
     messages: messages as (UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } })[],
     context,
     status,
     input,
     error,
+    currentInteractionType,
     setContext,
     handleChat,
     handleNewChat,
+    unifiedAppend,
+    stop,
+    setMessages,
   }
+}
 
-  return <AIChatContext.Provider value={value}>{children}</AIChatContext.Provider>
+type AIChatContextType = ReturnType<typeof useAIChat>
+
+const AIChatContext = createContext<AIChatContextType | undefined>(undefined)
+
+type AIChatProviderProps = {
+  children: React.ReactNode
+}
+
+export function AIChatProvider({ children }: AIChatProviderProps) {
+  const chatState = useAIChat()
+  return <AIChatContext.Provider value={chatState}>{children}</AIChatContext.Provider>
 }
 
 export function useChatProvider() {

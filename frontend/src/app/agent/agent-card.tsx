@@ -16,7 +16,7 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, onDelete }: AgentCardProps) {
-  const { runAgent, errorMessage, stopAgent, isStopping, isAgentRunning, isLoading } = useAgentProvider()
+  const { runAgent, errorMessage, stopAgent, isStopping, isAgentRunning, isAgentStreaming } = useAgentProvider()
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -48,13 +48,7 @@ export function AgentCard({ agent, onDelete }: AgentCardProps) {
           <div
             className={cn(
               "ml-2 h-2 w-2 rounded-full",
-              isAgentRunning || isStopping
-                ? "animate-pulse bg-green-500"
-                : errorMessage
-                  ? "bg-red-500"
-                  : isLoading
-                    ? "bg-blue-500"
-                    : "bg-blue-500",
+              isAgentRunning || isStopping ? "animate-pulse bg-green-500" : errorMessage ? "bg-red-500" : "bg-blue-500",
             )}
           ></div>
         </div>
@@ -75,9 +69,9 @@ export function AgentCard({ agent, onDelete }: AgentCardProps) {
               variant="secondary"
               className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
               onClick={handleRunAgentClick}
-              disabled={isLoading}
+              disabled={isAgentRunning || isStopping}
             >
-              {isLoading ? "Starting..." : "Run"}
+              {isAgentRunning && !isAgentStreaming && !isStopping ? "Starting..." : "Run"}
               <PlayIcon className="ml-2 h-4 w-4" />
             </Button>
           )}

@@ -1,7 +1,8 @@
 import { Router, Request, Response } from "express"
-import { type CoreMessage, streamText, ToolSet } from "ai"
+import { type CoreMessage, type ToolSet } from "ai"
 import { DEFAULT_MODEL_ID, AVAILABLE_AI_MODELS } from "../config"
 import { sessions } from "../core"
+import { streamAiResponse } from "../ai"
 
 const router = Router()
 
@@ -34,28 +35,13 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
 
   console.log(`[Core /chat]: Using ${Object.keys(combinedTools).length} total tools`)
 
-  const result = await streamText({
-    model: aiModel,
+  await streamAiResponse({
+    res,
+    languageModel: aiModel,
     messages: messages as CoreMessage[],
     tools: combinedTools,
     maxSteps: 10,
   })
-
-  const response = result.toDataStreamResponse()
-
-  response.headers.forEach((value, key) => {
-    res.setHeader(key, value)
-  })
-
-  res.status(response.status)
-
-  if (response.body) {
-    for await (const chunk of response.body) {
-      res.write(chunk)
-    }
-    res.end()
-  }
-  res.end()
 })
 
 export default router

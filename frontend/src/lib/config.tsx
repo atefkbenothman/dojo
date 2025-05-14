@@ -124,15 +124,16 @@ export const MCP_CONFIG: MCPConfigs = {
 
 export const AGENT_CONFIG: AgentConfigs = {
   data_analysis: {
-    id: "data_analysis_agent",
-    name: "Data Analyst",
+    id: "sports_event_analyst_agent",
+    name: "Sports Event Analyst",
     modelId: "gemini-2.0-flash-001",
     systemPrompt: `You are an AI assistant that helps analyze data and code.
-    1. Use the Supabase tools to query database information when asked about data.
-    2. Use the Filesystem tools to read, write, or list project files as needed to understand code or create reports.
-    3. Synthesize information from both sources to answer user queries comprehensively.
-    4. If asked to modify files, always ask for confirmation first unless explicitly told to proceed.`,
-    mcpServers: [MCP_CONFIG["supabase"]!, MCP_CONFIG["filesystem"]!],
-    maxExecutionSteps: 10,
+    1. Use the Ticketmaster tools to find all sport events in San Francisco happening between May 19, 2025 and May 27, 2025.
+    2. Use the Supabase tools to create a new table in the database.
+    3. Insert the data retrieved from the Ticketmaster API into the newly created Supabase table.
+    4. Synthesize information from these sources to answer user queries comprehensively.
+    5. If asked to modify files or database tables, always ask for confirmation first unless explicitly told to proceed.`,
+    mcpServers: [MCP_CONFIG["supabase"]!, MCP_CONFIG["ticketmaster"]!],
+    maxExecutionSteps: 15,
   },
 }

@@ -35,11 +35,11 @@ export default function RootLayout({
         <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ConnectionProviderRoot>
             <ModelProvider>
-              <AgentProviderRoot>
-                <AIChatProviderRoot>
+              <AIChatProviderRoot>
+                <AgentProviderRoot>
                   <ResizableLayout>{children}</ResizableLayout>
-                </AIChatProviderRoot>
-              </AgentProviderRoot>
+                </AgentProviderRoot>
+              </AIChatProviderRoot>
             </ModelProvider>
           </ConnectionProviderRoot>
         </DarkModeProvider>

@@ -1,109 +1,130 @@
 "use client"
 
-import { createContext, useContext, useCallback, ReactNode, useState } from "react"
+import { createContext, useContext, useCallback, ReactNode, useState, useEffect } from "react"
 import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useConnectionContext } from "@/hooks/use-connection"
+import { useChatProvider } from "@/hooks/use-chat"
 import { AgentConfig } from "@/lib/types"
 
 const agentQueryClient = new QueryClient()
 
-interface UseAgentLogicReturn {
-  runAgent: (agentConfig: AgentConfig) => Promise<any>
-  stopAgent: () => Promise<any>
-  isLoading: boolean
-  isAgentRunning: boolean
-  isStopping: boolean
-  errorMessage: string | null
-}
-
-const AgentContext = createContext<UseAgentLogicReturn | undefined>(undefined)
-
-export function AgentProvider({ children }: { children: ReactNode }) {
+function useAgentLogic() {
   const { getOrCreateSessionId } = useConnectionContext()
+  const { unifiedAppend, stop: stopSdkStream, status: globalStatus, currentInteractionType } = useChatProvider()
 
-  const [isAgentRunning, setIsAgentRunning] = useState(false)
+  const [isAgentRunAttempted, setIsAgentRunAttempted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Run agent mutation
-  const agentRunMutation = useMutation<any, Error, AgentConfig>({
-    mutationFn: async (agentConfig: AgentConfig) => {
-      const sessionId = getOrCreateSessionId()
-      const response = await fetch("/api/agent/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, config: agentConfig }),
-      })
+  const isAgentStreaming = globalStatus === "streaming" && currentInteractionType === "agent"
 
-      const data = await response.json()
+  useEffect(() => {
+    if (isAgentRunAttempted || isAgentStreaming) {
+      setErrorMessage(null)
+    }
+  }, [isAgentRunAttempted, isAgentStreaming])
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to run agent")
-      }
+  useEffect(() => {
+    if (
+      !isAgentStreaming &&
+      globalStatus !== "streaming" &&
+      currentInteractionType !== "agent" &&
+      isAgentRunAttempted
+    ) {
+      setIsAgentRunAttempted(false)
+    }
+  }, [globalStatus, currentInteractionType, isAgentRunAttempted, isAgentStreaming])
 
-      return data
-    },
-    onSuccess: () => {
-      setIsAgentRunning(true)
-    },
-    onError: (error: Error) => {
-      setErrorMessage(error.message)
-      setIsAgentRunning(false)
-    },
-    onMutate: () => {
-      setIsAgentRunning(false)
-    },
-  })
-
-  // Stop agent mutation
   const agentStopMutation = useMutation<any, Error, void>({
     mutationFn: async () => {
-      const sessionId = getOrCreateSessionId()
+      const currentSessionId = getOrCreateSessionId()
+      if (!currentSessionId) {
+        throw new Error("Failed to get Session ID for stopping agent.")
+      }
+
+      console.log(`[Agent Hook] Stopping backend connections for session: ${currentSessionId}...`)
       const response = await fetch("/api/agent/stop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ sessionId: currentSessionId }),
       })
-
       const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to stop agent")
-      }
-
+      if (!response.ok) throw new Error(data.message || "Failed to stop agent backend")
       return data
     },
     onSuccess: () => {
-      setErrorMessage(null)
-      setIsAgentRunning(false)
+      setIsAgentRunAttempted(false)
     },
-    onError: (error: Error) => {
-      setErrorMessage(error.message)
-    },
-    onMutate: () => {
-      setErrorMessage(null)
-    },
+    onError: (error: Error) => setErrorMessage(error.message),
+    onMutate: () => setErrorMessage(null),
   })
 
   const runAgent = useCallback(
     async (agentConfig: AgentConfig) => {
-      return agentRunMutation.mutateAsync(agentConfig)
+      const currentSessionId = getOrCreateSessionId()
+
+      if (!currentSessionId) {
+        setErrorMessage("Failed to get Session ID. Cannot run agent")
+        return
+      }
+
+      setErrorMessage(null)
+      setIsAgentRunAttempted(true)
+
+      try {
+        await unifiedAppend(
+          { role: "user", content: agentConfig.systemPrompt },
+          {
+            body: {
+              sessionId: currentSessionId,
+              config: agentConfig,
+              interactionType: "agent",
+            },
+            interactionType: "agent",
+            initialDisplayMessage: {
+              role: "assistant",
+              id: "agent-display-start-" + Date.now(),
+              content: `Agent \"${agentConfig.name}\" is starting...`,
+            },
+          },
+        )
+      } catch (err: any) {
+        console.error("[Agent Hook] Error calling unifiedAppend for agent run:", err)
+        setErrorMessage(err.message || "Failed to initiate agent run via unifiedAppend")
+        setIsAgentRunAttempted(false)
+      }
     },
-    [agentRunMutation],
+    [unifiedAppend, getOrCreateSessionId],
   )
 
   const stopAgent = useCallback(async () => {
-    return agentStopMutation.mutateAsync()
-  }, [agentStopMutation])
+    try {
+      await agentStopMutation.mutateAsync()
+      if (isAgentStreaming) {
+        stopSdkStream()
+      }
+    } catch (error) {
+      console.error("[Agent Hook] Error during agentStopMutation or stopping SDK stream:", error)
+    } finally {
+      setIsAgentRunAttempted(false)
+    }
+  }, [agentStopMutation, stopSdkStream, isAgentStreaming])
 
-  const agentLogic: UseAgentLogicReturn = {
+  return {
     runAgent,
     stopAgent,
-    isLoading: agentRunMutation.isPending || agentStopMutation.isPending,
-    isAgentRunning,
+    isAgentRunning: isAgentStreaming || isAgentRunAttempted,
+    isAgentStreaming,
     isStopping: agentStopMutation.isPending,
     errorMessage,
   }
+}
 
+type AgentContextType = ReturnType<typeof useAgentLogic>
+
+const AgentContext = createContext<AgentContextType | undefined>(undefined)
+
+export function AgentProvider({ children }: { children: ReactNode }) {
+  const agentLogic = useAgentLogic()
   return <AgentContext.Provider value={agentLogic}>{children}</AgentContext.Provider>
 }
 
