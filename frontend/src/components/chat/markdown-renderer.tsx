@@ -95,5 +95,13 @@ export interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  return <ReactMarkdown components={components}>{content}</ReactMarkdown>
+  try {
+    const parsedJson = JSON.parse(content)
+    if (typeof parsedJson === "object" && parsedJson !== null) {
+      return <pre className="overflow-auto p-2 text-xs whitespace-pre-wrap">{JSON.stringify(parsedJson, null, 2)}</pre>
+    }
+    return <ReactMarkdown components={components}>{content}</ReactMarkdown>
+  } catch (error) {
+    return <ReactMarkdown components={components}>{content}</ReactMarkdown>
+  }
 })
