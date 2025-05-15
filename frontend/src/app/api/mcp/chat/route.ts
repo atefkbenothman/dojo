@@ -56,14 +56,21 @@ export async function POST(request: Request) {
 
       console.log(`[API Router /mcp/chat] Successfully initiated CHAT stream via CHAT service for session ${sessionId}`)
 
+      const chatResponseHeaders = new Headers()
+      chatResponseHeaders.set("Content-Type", chatData.headers.get("Content-Type") || "text/plain; charset=utf-8")
+      if (chatData.headers.get("Transfer-Encoding")) {
+        chatResponseHeaders.set("Transfer-Encoding", chatData.headers.get("Transfer-Encoding")!)
+      }
+      if (chatData.headers.get("x-vercel-ai-data-stream")) {
+        chatResponseHeaders.set("x-vercel-ai-data-stream", chatData.headers.get("x-vercel-ai-data-stream")!)
+      }
+
       return new Response(chatData.body, {
         status: chatData.status,
         statusText: chatData.statusText,
-        headers: {
-          "Content-Type": chatData.headers.get("Content-Type") || "text/plain; charset=utf-8",
-          "Transfer-Encoding": chatData.headers.get("Transfer-Encoding") || "chunked",
-        },
+        headers: chatResponseHeaders,
       })
+
     case "agent":
       if (!messages || !config) {
         console.error(
@@ -106,14 +113,21 @@ export async function POST(request: Request) {
         `[API Router /mcp/chat] Successfully initiated AGENT stream via AGENT service for session ${sessionId}, agent '${config.id}'`,
       )
 
+      const agentResponseHeaders = new Headers()
+      agentResponseHeaders.set("Content-Type", agentData.headers.get("Content-Type") || "text/plain; charset=utf-8")
+      if (agentData.headers.get("Transfer-Encoding")) {
+        agentResponseHeaders.set("Transfer-Encoding", agentData.headers.get("Transfer-Encoding")!)
+      }
+      if (agentData.headers.get("x-vercel-ai-data-stream")) {
+        agentResponseHeaders.set("x-vercel-ai-data-stream", agentData.headers.get("x-vercel-ai-data-stream")!)
+      }
+
       return new Response(agentData.body, {
         status: agentData.status,
         statusText: agentData.statusText,
-        headers: {
-          "Content-Type": agentData.headers.get("Content-Type") || "text/plain; charset=utf-8",
-          "Transfer-Encoding": agentData.headers.get("Transfer-Encoding") || "chunked",
-        },
+        headers: agentResponseHeaders,
       })
+
     default:
       console.error(`[API Router /mcp/chat] Unknown 'interactionType': ${interactionType}`)
       return NextResponse.json(

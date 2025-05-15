@@ -50,7 +50,9 @@ export async function streamAiResponse(options: StreamAiResponseOptions): Promis
     if (!res.headersSent) {
       res.status(500).json({ message: "Error processing AI stream" })
     } else {
-      res.end()
+      if (!res.writableEnded) {
+        res.end()
+      }
     }
   }
 }

@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express"
-import { type CoreMessage, type ToolSet } from "ai"
+import { type CoreMessage, type ToolSet, type LanguageModel } from "ai"
 import { establishMcpConnection, cleanupExistingConnection } from "../mcp-connection"
 import { sessions, getOrCreateUserSession } from "../core"
-import { streamAiResponse } from "../ai"
+import { handleAiChainRequest } from "../agents/orchestrator"
 import type { AgentConfig } from "../types"
 import { AVAILABLE_AI_MODELS } from "../config"
 
@@ -17,7 +17,43 @@ async function rollbackConnections(sessionId: string, agentConfig: AgentConfig):
   }
 }
 
-/* Run agent */
+/* Helper function to establish MCP connections for an agent */
+async function establishMcpConnectionsForAgent(
+  sessionId: string,
+  agentConfig: AgentConfig,
+): Promise<{ success: boolean; error?: string }> {
+  const connectionPromises = agentConfig.mcpServers.map(async (mcpServerConfig) => {
+    console.log(`[Agent] Attempting connection to MCP server: ${mcpServerConfig.id} for agent ${agentConfig.id}...`)
+    const result = await establishMcpConnection(sessionId, mcpServerConfig)
+    if (!result.success) {
+      const errorMessage = `Failed to establish connection to ${mcpServerConfig.id}: ${result.error}`
+      console.error(
+        `[Agent] Failed to establish connection for ${mcpServerConfig.id} (Agent: ${agentConfig.id}): ${result.error}`,
+      )
+      throw new Error(errorMessage)
+    }
+    console.log(`[Agent] Successfully established connection to ${mcpServerConfig.id}`)
+    return { serverId: mcpServerConfig.id, success: true }
+  })
+
+  try {
+    await Promise.all(connectionPromises)
+    console.log(
+      `[Agent] Successfully established all ${agentConfig.mcpServers.length} MCP connections for agent ${agentConfig.id}`,
+    )
+    return { success: true }
+  } catch (error) {
+    console.error(
+      `[Agent] Failed to establish one or more MCP connections for agent ${agentConfig.id}. First error: ${error}`,
+    )
+    return {
+      success: false,
+      error: `Failed to establish one or more connections: ${error}`,
+    }
+  }
+}
+
+/* Run agent and stream response using a chain of AI agents (Planner, Worker, etc.) */
 agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
   const { sessionId, config } = req.body
 
@@ -30,29 +66,16 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
   console.log(`[Agent] Request for agent '${agentConfig.id}' in session '${sessionId}'`)
 
   try {
-    for (const mcpServerConfig of agentConfig.mcpServers) {
-      console.log(`[Agent] Attempting connection to MCP server: ${mcpServerConfig.id} for agent ${agentConfig.id}...`)
-      const result = await establishMcpConnection(sessionId, mcpServerConfig)
+    const connectionResult = await establishMcpConnectionsForAgent(sessionId, agentConfig)
 
-      if (!result.success) {
-        console.error(
-          `[Agent] Failed to establish connection for ${mcpServerConfig.id} (Agent: ${agentConfig.id}): ${result.error}`,
-        )
-        await rollbackConnections(sessionId, agentConfig)
-        const statusCode = result.error?.includes("limit reached") ? 503 : 500
-        res
-          .status(statusCode)
-          .json({ success: false, message: `Failed to establish connection to ${mcpServerConfig.id}: ${result.error}` })
-        return
-      }
-      console.log(`[Agent] Successfully established connection to ${mcpServerConfig.id}`)
+    if (!connectionResult.success) {
+      await rollbackConnections(sessionId, agentConfig)
+      const statusCode = connectionResult.error?.includes("limit reached") ? 503 : 500
+      res.status(statusCode).json({ success: false, message: connectionResult.error })
+      return
     }
 
-    console.log(
-      `[Agent] Successfully established all ${agentConfig.mcpServers.length} MCP connections for agent ${agentConfig.id}`,
-    )
-
-    const aiModel = AVAILABLE_AI_MODELS[agentConfig.modelId]?.languageModel
+    const aiModel: LanguageModel | undefined = AVAILABLE_AI_MODELS[agentConfig.modelId]?.languageModel
 
     if (!aiModel) {
       console.error(`[Agent] AI Model '${agentConfig.modelId}' not found or not configured`)
@@ -61,9 +84,8 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    const messages: CoreMessage[] = [{ role: "user", content: agentConfig.systemPrompt }]
-    const agentTools: ToolSet = {}
     const userSession = getOrCreateUserSession(sessionId)
+    const agentTools: ToolSet = {}
 
     for (const serverConfig of agentConfig.mcpServers) {
       const activeClient = userSession.activeMcpClients.get(serverConfig.id)
@@ -73,18 +95,17 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
     }
 
     console.log(
-      `[Agent] Starting agent execution for '${agentConfig.id}' with model '${agentConfig.modelId}' and ${Object.keys(agentTools).length} tools`,
+      `[Agent] Starting AI agent chain for '${agentConfig.id}' with model '${agentConfig.modelId}' and ${Object.keys(agentTools).length} tools`,
     )
 
-    await streamAiResponse({
-      res,
-      languageModel: aiModel,
-      messages,
-      tools: agentTools,
-      maxSteps: agentConfig.maxExecutionSteps,
-    })
+    const initialChainMessages: CoreMessage[] = [{ role: "user", content: agentConfig.systemPrompt }]
+
+    await handleAiChainRequest(req, res, aiModel, initialChainMessages, agentTools)
   } catch (error) {
-    console.error(`[Agent] Unexpected error during agent run setup or execution for session ${sessionId}:`, error)
+    console.error(
+      `[Agent] Unexpected error during agent run setup or AI chain execution for session ${sessionId}:`,
+      error,
+    )
     await rollbackConnections(sessionId, agentConfig)
     if (!res.headersSent) {
       res.status(500).json({ success: false, message: "An unexpected error occurred during agent execution" })
@@ -109,7 +130,9 @@ agentRouter.post("/stop", async (req: Request, res: Response): Promise<void> => 
 
   if (!userSession || userSession.activeMcpClients.size === 0) {
     console.log(`[Agent] No active session or no connections found for session '${sessionId}'. Nothing to stop`)
-    res.status(200).json({ success: true, message: "No active connections found for session or session does not exis" })
+    res
+      .status(200)
+      .json({ success: true, message: "No active connections found for session or session does not exist" })
     return
   }
 
