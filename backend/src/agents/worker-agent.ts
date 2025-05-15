@@ -26,6 +26,7 @@ export class WorkerAgent implements IAgent<YourPlanSchema, void> {
         model: input.languageModel,
         messages: messages,
         tools: input.tools,
+        maxSteps: 20,
         onError: (error) => {
           console.error(`[${this.name}] Error during AI stream processing:`, error)
           if (!res.headersSent) {
@@ -38,19 +39,22 @@ export class WorkerAgent implements IAgent<YourPlanSchema, void> {
         },
       })
 
-      const responseStream = result.toDataStreamResponse()
+      const dataStream = result.toDataStream()
 
-      responseStream.headers.forEach((value, key) => {
-        res.setHeader(key, value)
-      })
-      res.status(responseStream.status)
-
-      if (responseStream.body) {
-        for await (const chunk of responseStream.body) {
-          res.write(chunk)
+      if (dataStream) {
+        const reader = dataStream.getReader()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) {
+            break
+          }
+          res.write(value)
         }
       }
-      res.end()
+
+      if (!res.writableEnded) {
+        res.end()
+      }
     } catch (error) {
       console.error(`[${this.name}] Critical error during execution:`, error)
       if (!res.headersSent) {
