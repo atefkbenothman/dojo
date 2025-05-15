@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express"
-import type { MCPServerConfig } from "../types"
-import { totalConnections } from "../core"
-import { establishMcpConnection, cleanupExistingConnection } from "../mcp-connection"
+import type { MCPServerConfig } from "@/types"
+import { totalConnections } from "@/core"
+import { establishMcpConnection, cleanupExistingConnection } from "@/mcp-connection"
 
 const router = Router()
 

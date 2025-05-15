@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express"
 import { type CoreMessage, type ToolSet } from "ai"
 import { DEFAULT_MODEL_ID, AVAILABLE_AI_MODELS } from "../config"
 import { sessions } from "../core"
-import { streamAiResponse } from "../ai"
+import { streamAiResponse } from "../ai-stream"
 
 const router = Router()
 

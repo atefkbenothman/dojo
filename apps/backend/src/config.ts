@@ -4,7 +4,7 @@ import { wrapLanguageModel, extractReasoningMiddleware } from "ai"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
-import type { AIImageModelConfig, AIModelConfig, MCPServer } from "./types"
+import type { AIImageModelConfig, AIModelConfig, MCPServer } from "@/types"
 
 dotenv.config({
   path: path.resolve(__dirname, "..", ".env"),

@@ -8,7 +8,7 @@ dotenv.config({
 import { asyncTryCatch } from "@dojo/shared-utils"
 import { Tool, experimental_createMCPClient } from "ai"
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
-import { MCPServerConfig } from "./types"
+import { MCPServerConfig } from "@/types"
 
 export class MCPClient {
   private config: MCPServerConfig

@@ -2,8 +2,8 @@ import fs from "fs"
 import path from "path"
 import chokidar, { FSWatcher } from "chokidar"
 import { EventEmitter } from "events"
-import { FileChangeEvent, FileBatchChangeEvent } from "../types"
-import { WATCH_DIRECTORY_PATH } from "../config"
+import { FileChangeEvent, FileBatchChangeEvent } from "@/types"
+import { WATCH_DIRECTORY_PATH } from "@/config"
 
 const DEBOUNCE_INTERVAL = 300
 

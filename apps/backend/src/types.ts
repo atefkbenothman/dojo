@@ -1,5 +1,5 @@
 import { ImageModel, LanguageModel } from "ai"
-import { MCPClient } from "./mcp-client"
+import { MCPClient } from "@/mcp-client"
 
 export interface MCPServer {
   id: string

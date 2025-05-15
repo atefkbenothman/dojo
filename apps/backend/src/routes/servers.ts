@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express"
-import { AVAILABLE_MCP_SERVERS } from "../config"
+import { AVAILABLE_MCP_SERVERS } from "@/config"
 
 const router = Router()
 

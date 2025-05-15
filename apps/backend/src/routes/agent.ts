@@ -1,10 +1,10 @@
 import { Router, Request, Response } from "express"
 import { type CoreMessage, type ToolSet, type LanguageModel } from "ai"
-import { establishMcpConnection, cleanupExistingConnection } from "../mcp-connection"
-import { sessions, getOrCreateUserSession } from "../core"
-import { handleAiChainRequest } from "../agents/orchestrator"
-import type { AgentConfig } from "../types"
-import { AVAILABLE_AI_MODELS } from "../config"
+import { establishMcpConnection, cleanupExistingConnection } from "@/mcp-connection"
+import { sessions, getOrCreateUserSession } from "@/core"
+import { handleAiChainRequest } from "@/agents/orchestrator"
+import type { AgentConfig } from "@/types"
+import { AVAILABLE_AI_MODELS } from "@/config"
 
 const agentRouter = Router()
 
