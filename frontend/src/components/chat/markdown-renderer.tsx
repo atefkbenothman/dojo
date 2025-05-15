@@ -98,7 +98,11 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: Mark
   try {
     const parsedJson = JSON.parse(content)
     if (typeof parsedJson === "object" && parsedJson !== null) {
-      return <pre className="overflow-auto p-2 text-xs whitespace-pre-wrap">{JSON.stringify(parsedJson, null, 2)}</pre>
+      return (
+        <div className="overflow-auto p-2 font-sans text-xs whitespace-pre-wrap">
+          {JSON.stringify(parsedJson, null, 2)}
+        </div>
+      )
     }
     return <ReactMarkdown components={components}>{content}</ReactMarkdown>
   } catch (error) {
