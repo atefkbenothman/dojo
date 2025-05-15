@@ -1,21 +1,19 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@dojo/tsconfig/nextjs.json",
   "compilerOptions": {
-    "allowJs": true,
-    "moduleDetection": "force",
-    "lib": ["dom", "dom.iterable", "ES2022"],
-    "noEmit": true,
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "jsx": "preserve",
     "plugins": [{ "name": "next" }],
-    "incremental": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules"],
-  "references": [{ "path": "../../packages/shared-utils" }]
+  "include": [
+    "next-env.d.ts",
+    "next.config.mjs",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
 }

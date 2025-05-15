@@ -27,5 +27,8 @@
     "prettier-plugin-tailwindcss": "^0.6.11",
     "turbo": "latest",
     "typescript-eslint": "^8.32.1"
+  },
+  "dependencies": {
+    "@dojo/tsconfig": "^0.0.0"
   }
 }

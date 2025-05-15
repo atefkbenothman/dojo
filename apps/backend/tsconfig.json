@@ -1,12 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@dojo/tsconfig/node.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
+    "lib": ["ES2022"],
+    "rootDir": "./src",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"]
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../../packages/shared-utils" }]
+  "exclude": ["node_modules", "dist"]
 }
