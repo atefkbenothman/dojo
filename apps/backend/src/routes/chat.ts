@@ -1,6 +1,6 @@
-import { streamAiResponse } from "../ai-stream"
-import { DEFAULT_MODEL_ID, AVAILABLE_AI_MODELS } from "../config"
-import { sessions } from "../core"
+import { streamAiResponse } from "@/ai-stream"
+import { DEFAULT_MODEL_ID, AVAILABLE_AI_MODELS } from "@/config"
+import { sessions } from "@/core"
 import { type CoreMessage, type ToolSet } from "ai"
 import { Router, Request, Response } from "express"
 
