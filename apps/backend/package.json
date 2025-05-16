@@ -24,6 +24,8 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@dojo/eslint-config": "0.0.0",
+    "@dojo/tsconfig": "0.0.0",
     "@types/chokidar": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",

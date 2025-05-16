@@ -45,6 +45,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@dojo/eslint-config": "0.0.0",
+    "@dojo/tsconfig": "0.0.0",
     "@tailwindcss/postcss": "^4",
     "@tanstack/eslint-plugin-query": "^5.74.7",
     "@types/node": "^20.17.30",

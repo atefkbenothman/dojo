@@ -1,9 +1,3 @@
-import baseConfig from "../../eslint.base.config.mjs"
+import config from "@dojo/eslint-config/node.js";
 
-export default [
-  ...baseConfig,
-  {
-    files: ["**/*.{ts,js}"],
-    rules: {},
-  },
-]
+export default config;

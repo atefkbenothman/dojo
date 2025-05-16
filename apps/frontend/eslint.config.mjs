@@ -1,22 +1,12 @@
-import { dirname } from "path"
-import { fileURLToPath } from "url"
-import { FlatCompat } from "@eslint/eslintrc"
-import baseConfig from "../../eslint.base.config.mjs"
+import { FlatCompat } from '@eslint/eslintrc';
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  resolvePluginsRelativeTo: __dirname,
-})
+const compat = new FlatCompat();
 
 export default [
-  ...baseConfig,
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...compat.extends('next/core-web-vitals', 'prettier', 'next/typescript'),
   {
     rules: {
-      "@next/next/no-img-element": "off",
+      '@next/next/no-img-element': 'off',
     },
   },
-]
+];

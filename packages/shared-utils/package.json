@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "type": "commonjs",
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc -b --watch",
@@ -10,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@dojo/eslint-config": "0.0.0",
+    "@dojo/tsconfig": "0.0.0",
     "typescript": "latest"
   }
 }
