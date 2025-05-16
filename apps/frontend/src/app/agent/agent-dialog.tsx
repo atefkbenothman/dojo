@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { AgentConfig } from "@/lib/types"
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { AgentConfig } from "@/lib/types"
 import { Settings } from "lucide-react"
 
 interface AgentDialogProps {

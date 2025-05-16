@@ -1,10 +1,10 @@
 "use client"
 
-import { createContext, useContext, useCallback, ReactNode, useState, useEffect } from "react"
-import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useConnectionContext } from "@/hooks/use-connection"
 import { useChatProvider } from "@/hooks/use-chat"
+import { useConnectionContext } from "@/hooks/use-connection"
 import { AgentConfig } from "@/lib/types"
+import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { createContext, useContext, useCallback, ReactNode, useState, useEffect } from "react"
 
 interface AgentStopResponse {
   success: boolean

@@ -1,9 +1,9 @@
 "use client"
 
-import { useRef } from "react"
 import { ChatFooter } from "@/components/chat/chat-footer"
 import { Messages } from "@/components/chat/messages"
 import { useConnectionContext } from "@/hooks/use-connection"
+import { useRef } from "react"
 
 export function Chat() {
   const { isServerHealthy } = useConnectionContext()

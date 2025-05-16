@@ -1,8 +1,8 @@
+import { type AgentInput, type AgentInternalOutput, type IAgent } from "@/agents/types"
 import { streamObject } from "ai"
-import { z } from "zod"
 import { type Response as ExpressResponse } from "express"
 import { TextEncoder } from "util"
-import { type AgentInput, type AgentInternalOutput, type IAgent } from "@/agents/types"
+import { z } from "zod"
 
 export const PlanSchema = z.object({
   objective: z.string().describe("The overall objective of the plan."),

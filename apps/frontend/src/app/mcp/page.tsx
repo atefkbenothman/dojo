@@ -1,12 +1,12 @@
 "use server"
 
-import { Suspense } from "react"
 import { MCPList } from "@/app/mcp/mcp-list"
 import { asyncTryCatch } from "@dojo/shared-utils"
+import { Suspense } from "react"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
-export async function Mcp() {
+async function Mcp() {
   const { data, error } = await asyncTryCatch(
     fetch(`${APP_URL}/api/mcp/servers`, {
       method: "GET",

@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { MCPDialog } from "./mcp-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { MCPServerConfig, Server } from "@/lib/types"
-import { MCPDialog } from "./mcp-dialog"
-import { MCP_CONFIG, MCP_CONFIG_ICONS } from "@/lib/config"
-import { useConnectionContext } from "@/hooks/use-connection"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useConnectionContext } from "@/hooks/use-connection"
+import { MCP_CONFIG, MCP_CONFIG_ICONS } from "@/lib/config"
+import { MCPServerConfig, Server } from "@/lib/types"
+import { cn } from "@/lib/utils"
 import { Wrench } from "lucide-react"
+import { useState } from "react"
 
 interface ToolsPopoverProps {
   tools: Record<string, unknown>

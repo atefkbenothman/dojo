@@ -1,17 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useModelContext } from "@/hooks/use-model"
-import { useConnectionContext } from "@/hooks/use-connection"
-import { MCP_CONFIG } from "@/lib/config"
-import { cn } from "@/lib/utils"
-import { AgentConfig, MCPServerConfig } from "@/lib/types"
 import {
   Dialog,
   DialogContent,
@@ -21,6 +11,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { useConnectionContext } from "@/hooks/use-connection"
+import { useModelContext } from "@/hooks/use-model"
+import { MCP_CONFIG } from "@/lib/config"
+import { AgentConfig, MCPServerConfig } from "@/lib/types"
+import { cn } from "@/lib/utils"
+import { useState } from "react"
 
 type ServiceTypes = keyof typeof MCP_CONFIG
 

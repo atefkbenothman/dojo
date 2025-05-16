@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { AgentConfig, AgentConfigs } from "@/lib/types"
-import { AgentCard } from "@/app/agent/agent-card"
 import { AgentBuilder } from "@/app/agent/agent-builder"
+import { AgentCard } from "@/app/agent/agent-card"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { AgentConfig, AgentConfigs } from "@/lib/types"
 import { PlusIcon } from "lucide-react"
+import { useState } from "react"
 
 interface AgentListProps {
   agents: AgentConfigs

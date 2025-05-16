@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useTheme } from "next-themes"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sun, Moon } from "lucide-react"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
+import { Sun, Moon } from "lucide-react"
+import { useTheme } from "next-themes"
+import { useState, useEffect } from "react"
 
 export function DarkModeToggle() {
   const { setTheme, theme } = useTheme()

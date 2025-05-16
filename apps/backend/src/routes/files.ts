@@ -1,8 +1,8 @@
+import { WATCH_DIRECTORY_PATH } from "@/config"
+import { addSseClient, removeSseClient } from "@/sse"
 import { Router, Request, Response } from "express"
 import fs from "fs"
 import path from "path"
-import { addSseClient, removeSseClient } from "@/sse"
-import { WATCH_DIRECTORY_PATH } from "@/config"
 
 const router = Router()
 

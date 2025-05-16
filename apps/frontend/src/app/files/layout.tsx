@@ -1,7 +1,7 @@
 "use server"
 
-import React, { Suspense } from "react"
 import { FilesList } from "@/app/files/files-list"
+import React, { Suspense } from "react"
 
 export default async function FilesLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -2,6 +2,7 @@
 
 import { FileListUI } from "@/app/files/file-list-ui"
 import { asyncTryCatch } from "@dojo/shared-utils"
+
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function FilesList() {

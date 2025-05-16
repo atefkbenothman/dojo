@@ -2,8 +2,9 @@
   "extends": "@dojo/tsconfig/nextjs.json",
   "compilerOptions": {
     "plugins": [{ "name": "next" }],
+    "baseUrl": "src",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["*"]
     }
   },
   "include": [

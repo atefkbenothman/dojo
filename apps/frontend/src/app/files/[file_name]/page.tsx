@@ -1,16 +1,16 @@
 "use server"
 
+import FileContent from "@/app/files/file-content"
 import { asyncTryCatch } from "@dojo/shared-utils"
-import FileContent from "@/app/files/[file_name]/file-content"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 interface FilePageProps {
-  params: { file_name: string }
+  params: Promise<{ file_name: string }>
 }
 
 export default async function FilePage({ params }: FilePageProps) {
-  const { file_name } = params
+  const { file_name } = await params
   const file = decodeURIComponent(file_name)
 
   const { data, error } = await asyncTryCatch(

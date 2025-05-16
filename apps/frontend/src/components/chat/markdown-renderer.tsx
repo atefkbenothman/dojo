@@ -1,7 +1,7 @@
-import { memo } from "react"
-import Link from "next/link"
-import ReactMarkdown, { type Components } from "react-markdown"
 import { CodeBlock } from "@/components/chat/code-block"
+import Link from "next/link"
+import { memo } from "react"
+import ReactMarkdown, { type Components } from "react-markdown"
 
 const components: Partial<Components> = {
   // @ts-expect-error - CodeBlock props are compatible with react-markdown's code component

@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { AgentDialog } from "@/app/agent/agent-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAgentProvider } from "@/hooks/use-agent"
+import { AgentConfig } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Trash2Icon, PlayIcon, StopCircleIcon, AlertCircleIcon } from "lucide-react"
-import { AgentConfig } from "@/lib/types"
-import { AgentDialog } from "@/app/agent/agent-dialog"
-import { useAgentProvider } from "@/hooks/use-agent"
+import { useState } from "react"
 
 interface AgentCardProps {
   agent: AgentConfig

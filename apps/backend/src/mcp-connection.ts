@@ -1,6 +1,3 @@
-import { asyncTryCatch } from "@dojo/shared-utils"
-import { MCPClient } from "@/mcp-client"
-import type { MCPServerConfig, ActiveMcpClient } from "@/types"
 import {
   getOrCreateUserSession,
   sessions,
@@ -9,6 +6,9 @@ import {
   incrementTotalConnections,
   decrementTotalConnections,
 } from "@/core"
+import { MCPClient } from "@/mcp-client"
+import type { MCPServerConfig, ActiveMcpClient } from "@/types"
+import { asyncTryCatch } from "@dojo/shared-utils"
 
 /**
  * Establishes an MCP connection for a given session and server config.

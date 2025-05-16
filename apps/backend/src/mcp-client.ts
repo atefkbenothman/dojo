@@ -1,14 +1,13 @@
-import * as path from "path"
+import { MCPServerConfig } from "@/types"
+import { asyncTryCatch } from "@dojo/shared-utils"
+import { Tool, experimental_createMCPClient } from "ai"
+import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
 import dotenv from "dotenv"
+import * as path from "path"
 
 dotenv.config({
   path: path.resolve(__dirname, "..", ".env"),
 })
-
-import { asyncTryCatch } from "@dojo/shared-utils"
-import { Tool, experimental_createMCPClient } from "ai"
-import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
-import { MCPServerConfig } from "@/types"
 
 export class MCPClient {
   private config: MCPServerConfig

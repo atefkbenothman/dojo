@@ -98,7 +98,7 @@ export const MCP_CONFIG: MCPConfigs = {
     id: "filesystem",
     name: "Filesystem",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/kai/dev/dojo/backend/data"],
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/kai/dev/dojo/apps/backend/data"],
   },
   notion: {
     id: "notion",

@@ -1,5 +1,5 @@
-import { Response } from "express"
 import { FileBatchChangeEvent } from "@/types"
+import { Response } from "express"
 
 // Store active SSE client connections
 const sseClients = new Set<Response>()

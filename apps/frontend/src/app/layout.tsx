@@ -1,15 +1,13 @@
-import type { Metadata } from "next"
 import "./globals.css"
-
-import { Inter } from "next/font/google"
-
+import { ResizableLayout } from "@/components/layout/resizable-layout"
+import { AgentProviderRoot } from "@/hooks/use-agent"
 import { AIChatProviderRoot } from "@/hooks/use-chat"
 import { ConnectionProviderRoot } from "@/hooks/use-connection"
-import { AgentProviderRoot } from "@/hooks/use-agent"
-import { DarkModeProvider } from "@/providers/dark-mode-provider"
-import { ResizableLayout } from "@/components/layout/resizable-layout"
-import { Toaster } from "sonner"
 import { ModelProvider } from "@/hooks/use-model"
+import { DarkModeProvider } from "@/providers/dark-mode-provider"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 

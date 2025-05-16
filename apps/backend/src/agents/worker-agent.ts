@@ -1,7 +1,7 @@
-import { streamText } from "ai"
-import { type Response as ExpressResponse } from "express"
 import { type YourPlanSchema } from "@/agents/planner-agent"
 import { type AgentInput, type AgentInternalOutput, type IAgent } from "@/agents/types"
+import { streamText } from "ai"
+import { type Response as ExpressResponse } from "express"
 
 export class WorkerAgent implements IAgent<YourPlanSchema, void> {
   name = "WorkerAgent"

@@ -1,10 +1,10 @@
-import { useEffect, RefObject } from "react"
-import { ToolInvocation, UIMessage } from "ai"
-import { useVirtualizer } from "@tanstack/react-virtual"
-import { useChatProvider } from "@/hooks/use-chat"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { useChatProvider } from "@/hooks/use-chat"
+import { useVirtualizer } from "@tanstack/react-virtual"
+import { ToolInvocation, UIMessage } from "ai"
 import { Hammer, Check, Clock, Play, Lightbulb, Info } from "lucide-react"
+import { useEffect, RefObject } from "react"
 
 function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
   const getStateInfo = () => {

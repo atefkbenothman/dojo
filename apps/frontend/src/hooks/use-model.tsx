@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, createContext, useContext } from "react"
-import type { AIModelInfo } from "@/lib/types"
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/config"
+import type { AIModelInfo } from "@/lib/types"
+import { useState, createContext, useContext } from "react"
 
 interface ModelContextType {
   availableModels: AIModelInfo[]

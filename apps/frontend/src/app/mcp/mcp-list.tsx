@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { MCPServers, MCPServerConfig, Server } from "@/lib/types"
-import { MCPCard } from "./mcp-card"
 import { AddMCPDialog } from "./add-mcp-dialog"
-import { Input } from "@/components/ui/input"
+import { MCPCard } from "./mcp-card"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusIcon } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { MCP_CONFIG } from "@/lib/config"
+import { MCPServers, MCPServerConfig, Server } from "@/lib/types"
+import { PlusIcon } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface MCPListProps {
   servers: MCPServers

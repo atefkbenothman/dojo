@@ -7,11 +7,7 @@
     "esModuleInterop": true,
     "incremental": false,
     "isolatedModules": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.iterable"],
     "module": "NodeNext",
     "moduleDetection": "force",
     "moduleResolution": "NodeNext",

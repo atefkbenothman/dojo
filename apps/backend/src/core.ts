@@ -1,16 +1,15 @@
-import cors from "cors"
-import express, { Express, Request, Response } from "express"
-import { startWatching, watcherEmitter } from "@/files/watcher"
-import { broadcastSseEvent } from "@/sse"
 import { AVAILABLE_MCP_SERVERS, AVAILABLE_IMAGE_MODELS, AVAILABLE_AI_MODELS, WATCH_DIRECTORY_PATH } from "@/config"
-import type { UserSession, ActiveMcpClient, FileBatchChangeEvent } from "@/types"
-
-import serversRouter from "@/routes/servers"
-import imageRouter from "@/routes/image"
+import { startWatching, watcherEmitter } from "@/files/watcher"
+import agentRouter from "@/routes/agent"
 import chatRouter from "@/routes/chat"
 import connectionRouter from "@/routes/connection"
 import filesRouter from "@/routes/files"
-import agentRouter from "@/routes/agent"
+import imageRouter from "@/routes/image"
+import serversRouter from "@/routes/servers"
+import { broadcastSseEvent } from "@/sse"
+import type { UserSession, ActiveMcpClient, FileBatchChangeEvent } from "@/types"
+import cors from "cors"
+import express, { Express, Request, Response } from "express"
 
 const PORT = process.env.PORT || 8888
 

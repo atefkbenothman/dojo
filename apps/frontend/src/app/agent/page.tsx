@@ -1,8 +1,8 @@
 "use server"
 
-import { Suspense } from "react"
 import { AgentList } from "@/app/agent/agent-list"
 import { AGENT_CONFIG } from "@/lib/config"
+import { Suspense } from "react"
 
 async function Agents() {
   const agents = AGENT_CONFIG

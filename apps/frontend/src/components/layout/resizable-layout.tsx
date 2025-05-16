@@ -1,11 +1,15 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { ImperativePanelHandle } from "react-resizable-panels"
-import { DarkModeToggle } from "@/components/dark-mode-toggle"
 import { Chat } from "@/components/chat/chat"
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
+import { DarkModeToggle } from "@/components/dark-mode-toggle"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { useChatProvider } from "@/hooks/use-chat"
+import { useConnectionContext } from "@/hooks/use-connection"
+import { useSoundEffect } from "@/hooks/use-sound-effect"
+import { cn } from "@/lib/utils"
 import {
   ChevronLeft,
   ChevronRight,
@@ -18,14 +22,10 @@ import {
   FileText,
   Bot,
 } from "lucide-react"
-import { useSoundEffect } from "@/hooks/use-sound-effect"
-import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useChatProvider } from "@/hooks/use-chat"
-import { useConnectionContext } from "@/hooks/use-connection"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { useState, useRef, useEffect } from "react"
+import { ImperativePanelHandle } from "react-resizable-panels"
 
 const panelConfig = {
   mainPanel: {

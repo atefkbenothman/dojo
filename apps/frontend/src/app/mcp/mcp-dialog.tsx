@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,10 +12,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { MCPServerConfig, Server } from "@/lib/types"
 import { MCP_CONFIG } from "@/lib/config"
+import { MCPServerConfig, Server } from "@/lib/types"
 import { Settings } from "lucide-react"
+import { useState } from "react"
 
 interface MCPDialogProps {
   server: Server
