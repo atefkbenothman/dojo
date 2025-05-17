@@ -1,7 +1,7 @@
 "use server"
 
 import FileContent from "@/app/files/file-content"
-import { asyncTryCatch } from "@dojo/shared-utils"
+import { asyncTryCatch } from "@dojo/utils"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 

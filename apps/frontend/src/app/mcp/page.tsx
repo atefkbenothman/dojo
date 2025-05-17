@@ -1,7 +1,7 @@
 "use server"
 
 import { MCPList } from "@/app/mcp/mcp-list"
-import { asyncTryCatch } from "@dojo/shared-utils"
+import { asyncTryCatch } from "@dojo/utils"
 import { Suspense } from "react"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"

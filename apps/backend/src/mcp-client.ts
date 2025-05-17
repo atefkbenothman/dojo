@@ -1,5 +1,5 @@
 import { MCPServerConfig } from "@/types"
-import { asyncTryCatch } from "@dojo/shared-utils"
+import { asyncTryCatch } from "@dojo/utils"
 import { Tool, experimental_createMCPClient } from "ai"
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
 import dotenv from "dotenv"

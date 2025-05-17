@@ -1,4 +1,4 @@
-import { asyncTryCatch } from "@dojo/shared-utils"
+import { asyncTryCatch } from "@dojo/utils"
 import { NextRequest, NextResponse } from "next/server"
 
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"

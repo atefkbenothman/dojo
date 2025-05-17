@@ -8,7 +8,7 @@ import {
 } from "@/core"
 import { MCPClient } from "@/mcp-client"
 import type { MCPServerConfig, ActiveMcpClient } from "@/types"
-import { asyncTryCatch } from "@dojo/shared-utils"
+import { asyncTryCatch } from "@dojo/utils"
 
 /**
  * Establishes an MCP connection for a given session and server config.
