@@ -3,7 +3,30 @@
 import { FilesList } from "@/app/files/files-list"
 import React, { Suspense } from "react"
 
+async function isMcpServiceHealthy(): Promise<boolean> {
+  try {
+    const response = await fetch(`${process.env.MCP_SERVICE_URL}/health`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    return response.ok
+  } catch (error) {
+    console.error("MCP service health check failed:", error)
+    return false
+  }
+}
+
 export default async function FilesLayout({ children }: { children: React.ReactNode }) {
+  const isHealthy = await isMcpServiceHealthy()
+
+  if (!isHealthy) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">Server is offline</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full w-full">
       <div className="flex h-full w-full flex-row gap-4">
