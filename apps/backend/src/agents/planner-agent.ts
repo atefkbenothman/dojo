@@ -22,12 +22,14 @@ export class PlannerAgent implements IAgent<void, YourPlanSchema> {
     const streamObjectPayload = {
       model: input.languageModel,
       schema: PlanSchema,
-      prompt: input.messages.map((m) => m.content).join("\n\n"),
+      prompt: input.messages
+        .map((m) => (typeof m.content === "string" ? m.content : JSON.stringify(m.content)))
+        .join("\n\n"),
       system:
         "You are an expert planning assistant. Analyze the user's request and formulate a detailed, step-by-step plan. The plan should be structured according to the provided schema.",
     }
 
-    const { fullStream, object: finalPlanPromise } = streamObject(streamObjectPayload)
+    const { fullStream, object } = streamObject(streamObjectPayload)
 
     try {
       for await (const part of fullStream) {
@@ -36,7 +38,7 @@ export class PlannerAgent implements IAgent<void, YourPlanSchema> {
         }
       }
 
-      const finalPlan = await finalPlanPromise
+      const finalPlan = await object
 
       const finishPayload = {
         finishReason: "stop" as const,
@@ -49,7 +51,7 @@ export class PlannerAgent implements IAgent<void, YourPlanSchema> {
     } catch (error) {
       console.error(`[${this.name}] Error during plan text streaming:`, error)
       if (!res.writableEnded) {
-        const errorMsg = `Error processing plan: ${error}`
+        const errorMsg = `Error processing plan: ${String(error)}`
         res.write(encoder.encode(`0:${JSON.stringify(errorMsg)}\n`))
 
         const finishErrorPayload = {
