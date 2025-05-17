@@ -1,30 +1,15 @@
 "use client"
 
+import { ChatPanelHeader } from "./chat-panel-header"
+import { MainPanelHeader } from "./main-panel-header"
+import { SideNav } from "./side-nav"
 import { Chat } from "@/components/chat/chat"
-import { DarkModeToggle } from "@/components/dark-mode-toggle"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { useChatProvider } from "@/hooks/use-chat"
-import { useConnectionContext } from "@/hooks/use-connection"
+import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import {
-  ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-  House,
-  Server,
-  Maximize,
-  Minimize,
-  Plus,
-  FileText,
-  Bot,
-} from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState, useRef, useEffect } from "react"
+import { useRef } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 
 const panelConfig = {
@@ -37,262 +22,45 @@ const panelConfig = {
     defaultSize: 30,
     collapsedSize: 3,
     minWidth: 42,
-    collapsedWidth: 8,
-    expandedWidth: 30,
+    collapsedWidthPercentage: 8,
+    expandedWidthPercentage: 30,
   },
-}
-
-const navigationItems = [
-  {
-    href: "/",
-    icon: House,
-    label: "Home",
-  },
-  {
-    href: "/agent",
-    icon: Bot,
-    label: "Agent",
-  },
-  {
-    href: "/mcp",
-    icon: Server,
-    label: "MCP",
-  },
-  {
-    href: "/files",
-    icon: FileText,
-    label: "Files",
-  },
-] as const
-
-function Nav() {
-  const pathname = usePathname()
-  const { play } = useSoundEffect("./hover.mp3", {
-    volume: 0.5,
-  })
-
-  return (
-    <div className="bg-card w-[42px] flex-shrink-0 border-r">
-      <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b">
-        <p className="text-base font-medium">⛩️</p>
-      </div>
-      <div className="flex h-full flex-col gap-4 py-4">
-        {navigationItems.map(({ href, icon: Icon, label }) => {
-          const isActive = href === "/" ? pathname === href : pathname.startsWith(href)
-          return (
-            <div key={href} className="flex w-full items-center justify-center">
-              <TooltipProvider>
-                <Tooltip delayDuration={800}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={href}
-                      onMouseDown={() => play()}
-                      className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
-                    >
-                      <div
-                        className={cn(
-                          "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
-                          isActive && "bg-muted border-border border",
-                        )}
-                      >
-                        <Icon className="h-5.5 w-5.5" />
-                      </div>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{label}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function MainPanelHeader({ onSidebarToggle, isCollapsed }: { onSidebarToggle: () => void; isCollapsed: boolean }) {
-  return (
-    <div className="bg-card flex h-12 flex-shrink-0 items-center border-b pr-2 pl-4">
-      <p className="flex-1 pr-4 text-base font-medium">Dojo</p>
-      <div className="flex flex-row items-center gap-2">
-        <DarkModeToggle />
-        <Button onMouseDown={onSidebarToggle} size="icon" variant="outline" className="hover:cursor-pointer">
-          {isCollapsed ? <ChevronLeft className="h-4.5 w-4.5" /> : <ChevronRight className="h-4.5 w-4.5" />}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function MCPServersPopover() {
-  const { activeConnections } = useConnectionContext()
-  const { play } = useSoundEffect("./hover.mp3", {
-    volume: 0.5,
-  })
-
-  const connectedServers = activeConnections.length
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          size="icon"
-          variant="outline"
-          className="relative mr-2 hover:cursor-pointer"
-          title="MCP Servers"
-          onMouseDown={() => play()}
-        >
-          <Server className="h-4.5 w-4.5" />
-          {connectedServers > 0 && (
-            <span className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center text-[8px] font-medium opacity-75">
-              {connectedServers}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start" side="left">
-        <div className="space-y-2">
-          <p className="text-xs">MCP Servers</p>
-          {connectedServers > 0 ? (
-            <div className="flex flex-col gap-2">
-              {activeConnections.map((conn) => (
-                <div key={conn.serverId} className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500"></div>
-                  <span className="text-xs">{conn.name}</span>
-                  <span className="text-muted-foreground text-xs">({Object.keys(conn.tools || {}).length} tools)</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-xs">No connections</p>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-function ChatPanelHeader({
-  isCollapsed,
-  isMaximized,
-  onMaximizeToggle,
-  onNewChat,
-}: {
-  isCollapsed: boolean
-  isMaximized: boolean
-  onMaximizeToggle: () => void
-  onNewChat: () => void
-}) {
-  return (
-    <div className="bg-card flex h-12 flex-shrink-0 items-center border-b">
-      {isCollapsed ? (
-        <div className="flex w-full items-center justify-center">
-          <MessageSquare className="h-4.5 w-4.5" />
-        </div>
-      ) : (
-        <>
-          <p className="flex-1 px-4 text-base font-medium">Chat</p>
-          <Button
-            onMouseDown={onNewChat}
-            size="icon"
-            variant="outline"
-            className="mr-2 hover:cursor-pointer"
-            title="New Chat"
-          >
-            <Plus className="h-4.5 w-4.5" />
-          </Button>
-
-          <MCPServersPopover />
-
-          <Button onMouseDown={onMaximizeToggle} size="icon" variant="outline" className="mr-2 hover:cursor-pointer">
-            {isMaximized ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
-          </Button>
-        </>
-      )}
-    </div>
-  )
 }
 
 export function ResizableLayout({ children }: { children: React.ReactNode }) {
+  const { handleNewChat } = useChatProvider()
+
   const { play } = useSoundEffect("./hover.mp3", {
     volume: 0.5,
   })
-  const { handleNewChat } = useChatProvider()
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false)
-  const [isSmallScreen, setIsSmallScreen] = useState<boolean>(false)
-  const [isMaximized, setIsMaximized] = useState<boolean>(false)
 
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const small = window.innerWidth < 640
-      setIsSmallScreen(small)
-
-      if (small && sidebarCollapsed) {
-        setSidebarCollapsed(false)
-        resizeChatPanel(panelConfig.chatPanel.minSize)
-      }
-    }
-
-    checkScreenSize()
-    window.addEventListener("resize", checkScreenSize)
-    return () => window.removeEventListener("resize", checkScreenSize)
-  }, [sidebarCollapsed])
-
-  const resizeChatPanel = (newSize: number) => {
-    if (chatPanelRef.current) {
-      chatPanelRef.current.resize(newSize)
-    } else {
-      console.warn("chat panel ref not yet available.")
-    }
-  }
+  const { isChatPanelCollapsed, isMaximized, handleChatPanelToggle, handleMaximizeToggle } = useResizableChatPanel({
+    chatPanelRef,
+    play,
+    config: {
+      defaultSizePercentage: panelConfig.chatPanel.defaultSize,
+      collapsedWidthPercentage: panelConfig.chatPanel.collapsedWidthPercentage,
+      expandedWidthPercentage: panelConfig.chatPanel.expandedWidthPercentage,
+    },
+  })
 
   const newChat = () => {
     play()
     handleNewChat()
   }
 
-  const handleSidebarClick = (mode: boolean) => {
-    if (isSmallScreen && mode) {
-      return
-    }
-
-    play()
-
-    if (mode) {
-      resizeChatPanel(panelConfig.chatPanel.collapsedWidth)
-    } else {
-      resizeChatPanel(panelConfig.chatPanel.expandedWidth)
-    }
-    setSidebarCollapsed(mode)
-  }
-
-  const handleMaximizeToggle = () => {
-    if (isMaximized) {
-      // Restore to default sizes
-      resizeChatPanel(panelConfig.chatPanel.defaultSize)
-    } else {
-      // Maximize chat panel
-      resizeChatPanel(100)
-    }
-    setIsMaximized(!isMaximized)
-    play()
-  }
-
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">
-      <Nav />
+      <SideNav />
       <ResizablePanelGroup direction="horizontal">
         <ResizablePanel
           defaultSize={panelConfig.mainPanel.defaultSize}
           className={cn("hidden sm:block", isMaximized && "hidden")}
         >
           <div className="flex h-full flex-col">
-            <MainPanelHeader
-              onSidebarToggle={() => handleSidebarClick(!sidebarCollapsed)}
-              isCollapsed={sidebarCollapsed}
-            />
+            <MainPanelHeader onChatPanelToggle={() => handleChatPanelToggle()} isCollapsed={isChatPanelCollapsed} />
             <div className="flex-1 overflow-auto p-4">{children}</div>
           </div>
         </ResizablePanel>
@@ -306,20 +74,20 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
           defaultSize={panelConfig.chatPanel.defaultSize}
           collapsible
           collapsedSize={panelConfig.chatPanel.collapsedSize}
-          onCollapse={() => handleSidebarClick(true)}
-          onExpand={() => handleSidebarClick(false)}
+          onCollapse={() => handleChatPanelToggle(true)}
+          onExpand={() => handleChatPanelToggle(false)}
           style={{
             minWidth: `${panelConfig.chatPanel.minWidth}px`,
           }}
         >
           <div className="flex h-full w-full flex-col">
             <ChatPanelHeader
-              isCollapsed={sidebarCollapsed}
+              isCollapsed={isChatPanelCollapsed}
               isMaximized={isMaximized}
               onMaximizeToggle={handleMaximizeToggle}
               onNewChat={newChat}
             />
-            {sidebarCollapsed ? (
+            {isChatPanelCollapsed ? (
               <div className="flex flex-1 items-center justify-center" />
             ) : (
               <div className={cn("flex flex-1 flex-col overflow-hidden p-2", isMaximized && "mx-auto flex w-full")}>
