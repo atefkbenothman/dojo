@@ -39,7 +39,7 @@ export const nextJsConfig = [
       "react/prop-types": "off",
       "@next/next/no-img-element": "off",
       "react/react-in-jsx-scope": "off",
-      "turbo/no-undeclared-env-vars": "off",
+      "turbo/no-undeclared-env-vars": "warn",
     },
   },
 ];
