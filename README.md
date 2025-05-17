@@ -1,8 +1,6 @@
 # Dojo
 
-Your Local AI Workbench
-
-Build, Chain, and Run Custom Tool-Augmented LLM Agents.
+Build, Run, and Chain Custom Tool-Augmented LLM Agents.
 
 <img width="1552" alt="Dojo Interface Screenshot" src="https://github.com/user-attachments/assets/4a9fe38a-90a5-4916-b6e9-daf4828086b1" />
 
