@@ -12,8 +12,8 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx}\"",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx}\""
+    "format": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx}\"",
+    "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx}\""
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
@@ -22,7 +22,7 @@
     "turbo": "latest"
   },
   "dependencies": {
-    "@dojo/eslint-config": "0.0.0",
+    "@dojo/eslint": "0.0.0",
     "@dojo/tsconfig": "0.0.0"
   }
 }
