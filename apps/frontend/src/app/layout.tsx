@@ -1,5 +1,4 @@
 import "./globals.css"
-import { VideoPopup } from "@/components/dialog/video-popup"
 import { ResizableLayout } from "@/components/layout/resizable-layout"
 import { AgentProviderRoot } from "@/hooks/use-agent"
 import { AIChatProviderRoot } from "@/hooks/use-chat"
@@ -38,7 +37,6 @@ export default function RootLayout({
               <AIChatProviderRoot>
                 <AgentProviderRoot>
                   <ResizableLayout>{children}</ResizableLayout>
-                  <VideoPopup />
                 </AgentProviderRoot>
               </AIChatProviderRoot>
             </ModelProvider>
