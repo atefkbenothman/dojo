@@ -8,7 +8,7 @@ import { useState, useEffect } from "react"
 
 export function DarkModeToggle() {
   const { setTheme, theme } = useTheme()
-  const { play, AudioComponent } = useSoundEffect("./hover.mp3", {
+  const { play } = useSoundEffect("./hover.mp3", {
     volume: 0.5,
   })
 
@@ -25,7 +25,6 @@ export function DarkModeToggle() {
 
   return (
     <div>
-      {AudioComponent}
       {mounted && (
         <Tabs defaultValue={theme ? theme : ""}>
           <TabsList>

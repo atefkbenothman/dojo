@@ -67,13 +67,12 @@ const navigationItems = [
 
 function Nav() {
   const pathname = usePathname()
-  const { play, AudioComponent } = useSoundEffect("./hover.mp3", {
+  const { play } = useSoundEffect("./hover.mp3", {
     volume: 0.5,
   })
 
   return (
     <div className="bg-card w-[42px] flex-shrink-0 border-r">
-      {AudioComponent}
       <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b">
         <p className="text-base font-medium">⛩️</p>
       </div>
@@ -127,14 +126,14 @@ function MainPanelHeader({ onSidebarToggle, isCollapsed }: { onSidebarToggle: ()
 
 function MCPServersPopover() {
   const { activeConnections } = useConnectionContext()
-  const connectedServers = activeConnections.length
-  const { play, AudioComponent } = useSoundEffect("./hover.mp3", {
+  const { play } = useSoundEffect("./hover.mp3", {
     volume: 0.5,
   })
 
+  const connectedServers = activeConnections.length
+
   return (
     <Popover>
-      {AudioComponent}
       <PopoverTrigger asChild>
         <Button
           size="icon"
@@ -215,7 +214,7 @@ function ChatPanelHeader({
 }
 
 export function ResizableLayout({ children }: { children: React.ReactNode }) {
-  const { play, AudioComponent } = useSoundEffect("./hover.mp3", {
+  const { play } = useSoundEffect("./hover.mp3", {
     volume: 0.5,
   })
   const { handleNewChat } = useChatProvider()
@@ -283,7 +282,6 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">
-      {AudioComponent}
       <Nav />
       <ResizablePanelGroup direction="horizontal">
         <ResizablePanel
