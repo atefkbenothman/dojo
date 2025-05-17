@@ -1,30 +1,40 @@
 # Dojo
 
-A local web-based chat interface that enables interaction with Large Language Models (LLMs) connected to various external tools and services via the Model Context Protocol (MCP).
+Your Local AI Workbench
 
-<img width="1552" alt="Screenshot 2025-04-18 at 9 26 48 PM" src="https://github.com/user-attachments/assets/4a9fe38a-90a5-4916-b6e9-daf4828086b1" />
+Build, Chain, and Run Custom Tool-Augmented LLM Agents.
 
-## Features
+<img width="1552" alt="Dojo Interface Screenshot" src="https://github.com/user-attachments/assets/4a9fe38a-90a5-4916-b6e9-daf4828086b1" />
 
-- Chat interface for interacting with LLMs
-- Connect to external services (GitHub, Supabase, Filesystem, etc.) via MCP
-- Support for streaming responses and multi-step tool calls
-- User-defined configurations for MCP server connections
-- Local development environment
+## What is Dojo?
 
-## Architecture
+Dojo is your local AI workbench for building, chaining, and running custom tool-augmented LLM agents. It enables you to design sophisticated, multi-agent workflows to automate complex tasks by combining LLMs and specialized tools—all within your local environment.
 
-Dojo consists of two main components:
+## Key Capabilities
 
-- **Frontend**: Next.js application handling the UI and conversation state
-- **Backend**: Node.js/Express service managing MCP connections and AI interactions
+- **Build & Chain Custom Agents:** Define agents by selecting an LLM, crafting a system prompt (its goal/persona), and assigning it specific tools. Orchestrate sequences of these custom agents.
+- **Dynamic Tool Integration (MCP):** Equip your agents (or use directly in chat) with _any_ command-line tool by defining how it's launched (command, arguments, environment).
+- **Interactive LLM Chat:** Direct conversational access to LLMs, also capable of using your configured tools.
+- **Local & Extensible:** Ensures privacy and allows deep customization of agents and tools.
 
-## Getting Started
+## Tech Stack & Architecture
 
-1. Clone the repository
-2. Set up environment variables in `mcp-service/.env`
-3. Install dependencies and start both services
+Dojo is a Turborepo-managed monorepo with a distinct frontend, backend, and shared packages:
 
-## License
+- **`apps/frontend` (Next.js 15, React 19, TypeScript):** The UI for all user interactions:
+  - Defining, configuring, and chaining custom AI agents (LLM, system prompt, tools).
+  - Managing tool (MCP Server) configurations (command, arguments, environment).
+  - Interactive chat with LLMs and their connected tools.
+- **`apps/backend` (Node.js, Express.js, TypeScript):** The orchestration engine:
+  - Manages external tool (MCP Server) lifecycles via Vercel AI SDK's Stdio mechanism.
+  - Executes AI agent logic (single and chained).
+  - Handles direct chat and LLM tool usage.
+- **`packages/*`:** Shared utilities (`@dojo/utils`), ESLint (`@dojo/eslint`), and TypeScript (`@dojo/tsconfig`) configurations.
 
-MIT
+**Key Technologies:**
+
+- **AI/LLM:** Vercel AI SDK (with `@ai-sdk/google`, `@ai-sdk/groq`, `@ai-sdk/openai` integrations)
+- **Frontend:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Shadcn UI, Radix UI
+- **Backend:** Node.js, Express.js (v5), TypeScript, Zod
+- **Monorepo & Tooling:** Turborepo, ESLint, Prettier
+- **Key Services:** Chokidar (backend file monitoring)
