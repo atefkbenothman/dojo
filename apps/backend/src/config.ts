@@ -70,46 +70,46 @@ export const AVAILABLE_IMAGE_MODELS: Record<string, AIImageModelConfig> = {
 } as const
 
 export const AVAILABLE_MCP_SERVERS: Record<string, MCPServer> = {
-  github: {
-    id: "github",
-    name: "Github",
-    summary: "Repository management, file operations, and GitHub API integration",
-  },
-  blender: {
-    id: "blender",
-    name: "Blender",
-    summary: "Enable prompt assisted 3D modeling, scene creation, and manipulation",
-  },
+  // github: {
+  //   id: "github",
+  //   name: "Github",
+  //   summary: "Repository management, file operations, and GitHub API integration",
+  // },
+  // blender: {
+  //   id: "blender",
+  //   name: "Blender",
+  //   summary: "Enable prompt assisted 3D modeling, scene creation, and manipulation",
+  // },
   supabase: {
     id: "supabase",
     name: "Supabase",
     summary: "Connect directly to the cloud platform to access your database",
   },
-  filesystem: {
-    id: "filesystem",
-    name: "Filesystem",
-    summary: "Secure file operations with configurable access controls",
-  },
+  // filesystem: {
+  //   id: "filesystem",
+  //   name: "Filesystem",
+  //   summary: "Secure file operations with configurable access controls",
+  // },
   notion: {
     id: "notion",
     name: "Notion",
     summary: "Interact with the Notion API",
   },
-  playwright: {
-    id: "playwright",
-    name: "Playwright",
-    summary: "Run browser automation and webscraping",
-  },
+  // playwright: {
+  //   id: "playwright",
+  //   name: "Playwright",
+  //   summary: "Run browser automation and webscraping",
+  // },
   ticketmaster: {
     id: "ticketmaster",
     name: "Ticketmaster",
     summary: "Manage ticket sales and event management",
   },
-  figma: {
-    id: "figma",
-    name: "Figma",
-    summary: "Collaborative design and prototyping",
-  },
+  // figma: {
+  //   id: "figma",
+  //   name: "Figma",
+  //   summary: "Collaborative design and prototyping",
+  // },
   context7: {
     id: "context7",
     name: "Context7",

@@ -71,18 +71,18 @@ export const MCP_CONFIG_ICONS: Record<string, React.ReactNode | null> = {
 }
 
 export const MCP_CONFIG: MCPConfigs = {
-  github: {
-    id: "github",
-    name: "Github",
-    command: "docker-compose",
-    args: ["run", "--rm", "github-mcp-server"],
-  },
-  blender: {
-    id: "blender",
-    name: "Blender",
-    command: "uvx",
-    args: ["blender-mcp"],
-  },
+  // github: {
+  //   id: "github",
+  //   name: "Github",
+  //   command: "docker-compose",
+  //   args: ["run", "--rm", "github-mcp-server"],
+  // },
+  // blender: {
+  //   id: "blender",
+  //   name: "Blender",
+  //   command: "uvx",
+  //   args: ["blender-mcp"],
+  // },
   supabase: {
     id: "supabase",
     name: "Supabase",
@@ -94,12 +94,12 @@ export const MCP_CONFIG: MCPConfigs = {
       process.env.NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN || "",
     ],
   },
-  filesystem: {
-    id: "filesystem",
-    name: "Filesystem",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/kai/dev/dojo/apps/backend/data"],
-  },
+  // filesystem: {
+  //   id: "filesystem",
+  //   name: "Filesystem",
+  //   command: "npx",
+  //   args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/kai/dev/dojo/apps/backend/data"],
+  // },
   notion: {
     id: "notion",
     name: "Notion",
@@ -109,12 +109,12 @@ export const MCP_CONFIG: MCPConfigs = {
       OPENAPI_MCP_HEADERS: `{"Authorization": "Bearer ${process.env.NEXT_PUBLIC_NOTION_API_KEY}", "Notion-Version": "2022-06-28" }`,
     },
   },
-  playwright: {
-    id: "playwright",
-    name: "Playwright",
-    command: "npx",
-    args: ["-y", "@playwright/mcp@latest", "--browser", "chrome"],
-  },
+  // playwright: {
+  //   id: "playwright",
+  //   name: "Playwright",
+  //   command: "npx",
+  //   args: ["-y", "@playwright/mcp@latest", "--browser", "chrome"],
+  // },
   ticketmaster: {
     id: "ticketmaster",
     name: "Ticketmaster",
@@ -124,12 +124,12 @@ export const MCP_CONFIG: MCPConfigs = {
       TICKETMASTER_API_KEY: process.env.NEXT_PUBLIC_TICKETMASTER_API_KEY || "",
     },
   },
-  figma: {
-    id: "figma",
-    name: "Figma",
-    command: "bunx",
-    args: ["cursor-talk-to-figma-mcp@latest"],
-  },
+  // figma: {
+  //   id: "figma",
+  //   name: "Figma",
+  //   command: "bunx",
+  //   args: ["cursor-talk-to-figma-mcp@latest"],
+  // },
   context7: {
     id: "context7",
     name: "Context7",
