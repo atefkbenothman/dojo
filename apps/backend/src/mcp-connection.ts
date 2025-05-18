@@ -1,45 +1,45 @@
-import {
-  getOrCreateUserSession,
-  sessions,
-  totalConnections,
-  MAX_CONNECTIONS,
-  incrementTotalConnections,
-  decrementTotalConnections,
-} from "@/core"
+import { totalConnections, MAX_CONNECTIONS, incrementTotalConnections, decrementTotalConnections } from "@/core"
 import { MCPClient } from "@/mcp-client"
-import type { MCPServerConfig, ActiveMcpClient } from "@/types"
-import { asyncTryCatch } from "@dojo/utils"
+import type { MCPServerConfig, ActiveMcpClient, UserSession } from "@/types"
 
 /**
- * Establishes an MCP connection for a given session and server config.
+ * Establishes an MCP connection for a given user session and server config.
  * Handles connection limits, client creation/start, session storage, and connection counting.
  */
 export async function establishMcpConnection(
-  sessionId: string,
+  userSession: UserSession,
   config: MCPServerConfig,
 ): Promise<{ success: boolean; client?: ActiveMcpClient; error?: string }> {
   if (totalConnections >= MAX_CONNECTIONS) {
     return { success: false, error: "Service busy, connection limit reached" }
   }
 
-  const userSession = getOrCreateUserSession(sessionId)
-
   let mcpClient: MCPClient
   try {
     mcpClient = new MCPClient(config)
   } catch (mcpClientError) {
-    const errorMessage = `Failed to instantiate MCPClient for ${sessionId}, server ${config.id}`
+    const errorMessage = `Failed to instantiate MCPClient for user ${userSession.userId}, server ${config.id}`
     console.error(`[Connection] ${errorMessage}:`, mcpClientError)
     return { success: false, error: errorMessage }
   }
 
-  console.log(`[Connection] Starting MCPClient connection for ${sessionId}, server ${config.id}...`)
-  const { error: mcpStartError } = await asyncTryCatch(mcpClient.start())
-
-  if (mcpStartError) {
-    const errorMessage = `Failed to start MCPClient for ${sessionId}, server ${config.id}`
-    console.error(`[Connection] ${errorMessage}:`, mcpStartError)
-    await asyncTryCatch(mcpClient.cleanup()) // Attempt cleanup on start failure
+  console.log(`[Connection] Starting MCPClient connection for user ${userSession.userId}, server ${config.id}...`)
+  try {
+    await mcpClient.start()
+  } catch (mcpStartErrorCaught) {
+    const errorMessage = `Failed to start MCPClient for user ${userSession.userId}, server ${config.id}`
+    console.error(`[Connection] ${errorMessage}:`, mcpStartErrorCaught)
+    try {
+      await mcpClient.cleanup()
+      console.log(
+        `[Connection] Cleaned up MCPClient after start failure for user ${userSession.userId}, server ${config.id}.`,
+      )
+    } catch (cleanupAfterStartError) {
+      console.error(
+        `[Connection] Error during cleanup after MCPClient start failure for user ${userSession.userId}, server ${config.id}:`,
+        cleanupAfterStartError,
+      )
+    }
     return { success: false, error: errorMessage }
   }
 
@@ -49,31 +49,35 @@ export async function establishMcpConnection(
   incrementTotalConnections()
 
   console.log(
-    `[Connection] Connection established for ${sessionId}, server ${config.id}. Total connections: ${totalConnections}`,
+    `[Connection] Connection established for user ${userSession.userId}, server ${config.id}. Total connections: ${totalConnections}`,
   )
 
   return { success: true, client: activeMcpClient }
 }
 
 /**
- * Cleans up a specific MCP connection for a given session and server ID.
+ * Cleans up a specific MCP connection for a given user session and server ID.
  * Handles client cleanup, session map removal, and connection count decrementing.
  */
-export const cleanupExistingConnection = async (sessionId: string, mcpServerId: string): Promise<void> => {
-  const userSession = sessions.get(sessionId)
+export const cleanupExistingConnection = async (userSession: UserSession, mcpServerId: string): Promise<void> => {
   if (!userSession) return
 
   const existingClient = userSession.activeMcpClients.get(mcpServerId)
+
   if (existingClient) {
-    console.log(`[Connection] Cleaning up connection for session ${sessionId}, server ${mcpServerId}...`)
-    const { error } = await asyncTryCatch(existingClient.client.cleanup())
-    if (error) {
-      console.error(`[Connection]: Error cleaning up client ${mcpServerId} for session ${sessionId}:`, error)
+    console.log(`[Connection] Cleaning up connection for user ${userSession.userId}, server ${mcpServerId}...`)
+    try {
+      await existingClient.client.cleanup()
+    } catch (cleanupError) {
+      console.error(
+        `[Connection]: Error cleaning up client ${mcpServerId} for user ${userSession.userId}:`,
+        cleanupError,
+      )
     }
     userSession.activeMcpClients.delete(mcpServerId)
     decrementTotalConnections()
     console.log(
-      `[Connection]: Cleaned up and decremented connection count for ${sessionId}, server ${mcpServerId}. Total connections now: ${totalConnections}`,
+      `[Connection]: Cleaned up and decremented connection count for user ${userSession.userId}, server ${mcpServerId}. Total connections now: ${totalConnections}`,
     )
   }
 }

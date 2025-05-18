@@ -1,50 +1,51 @@
 import { handleAiChainRequest } from "@/agents/orchestrator"
 import { AVAILABLE_AI_MODELS } from "@/config"
-import { sessions, getOrCreateUserSession } from "@/core"
 import { establishMcpConnection, cleanupExistingConnection } from "@/mcp-connection"
-import type { AgentConfig } from "@/types"
+import type { AgentConfig, RequestWithUserContext, UserSession } from "@/types"
 import { type CoreMessage, type ToolSet, type LanguageModel } from "ai"
 import { Router, Request, Response } from "express"
 
 const agentRouter = Router()
 
-async function rollbackConnections(sessionId: string, agentConfig: AgentConfig): Promise<void> {
-  console.log(`[Agent] Rolling back connections for agent '${agentConfig.id}' in session '${sessionId}'...`)
+async function rollbackConnections(userSession: UserSession, agentConfig: AgentConfig): Promise<void> {
+  console.log(`[Agent] Rolling back connections for agent '${agentConfig.id}' for user '${userSession.userId}'...`)
   for (const serverToClean of agentConfig.mcpServers) {
     if (serverToClean && typeof serverToClean === "object" && serverToClean.id) {
-      await cleanupExistingConnection(sessionId, serverToClean.id)
+      await cleanupExistingConnection(userSession, serverToClean.id)
     }
   }
 }
 
 /* Helper function to establish MCP connections for an agent */
 async function establishMcpConnectionsForAgent(
-  sessionId: string,
+  userSession: UserSession,
   agentConfig: AgentConfig,
 ): Promise<{ success: boolean; error?: string }> {
   const connectionPromises = agentConfig.mcpServers.map(async (mcpServerConfig) => {
-    console.log(`[Agent] Attempting connection to MCP server: ${mcpServerConfig.id} for agent ${agentConfig.id}...`)
-    const result = await establishMcpConnection(sessionId, mcpServerConfig)
+    console.log(
+      `[Agent] Attempting connection to MCP server: ${mcpServerConfig.id} for agent ${agentConfig.id} for user ${userSession.userId}...`,
+    )
+    const result = await establishMcpConnection(userSession, mcpServerConfig)
     if (!result.success) {
       const errorMessage = `Failed to establish connection to ${mcpServerConfig.id}: ${result.error}`
       console.error(
-        `[Agent] Failed to establish connection for ${mcpServerConfig.id} (Agent: ${agentConfig.id}): ${result.error}`,
+        `[Agent] Failed to establish connection for ${mcpServerConfig.id} (Agent: ${agentConfig.id}, User: ${userSession.userId}): ${result.error}`,
       )
       throw new Error(errorMessage)
     }
-    console.log(`[Agent] Successfully established connection to ${mcpServerConfig.id}`)
+    console.log(`[Agent] Successfully established connection to ${mcpServerConfig.id} for user ${userSession.userId}`)
     return { serverId: mcpServerConfig.id, success: true }
   })
 
   try {
     await Promise.all(connectionPromises)
     console.log(
-      `[Agent] Successfully established all ${agentConfig.mcpServers.length} MCP connections for agent ${agentConfig.id}`,
+      `[Agent] Successfully established all ${agentConfig.mcpServers.length} MCP connections for agent ${agentConfig.id} for user ${userSession.userId}`,
     )
     return { success: true }
   } catch (error) {
     console.error(
-      `[Agent] Failed to establish one or more MCP connections for agent ${agentConfig.id}. First error: ${error}`,
+      `[Agent] Failed to establish one or more MCP connections for agent ${agentConfig.id} for user ${userSession.userId}. First error: ${error}`,
     )
     return {
       success: false,
@@ -54,22 +55,26 @@ async function establishMcpConnectionsForAgent(
 }
 
 /* Run agent and stream response using a chain of AI agents (Planner, Worker, etc.) */
-agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId, config } = req.body
+agentRouter.post("/run", async (expressReq: Request, res: Response): Promise<void> => {
+  const req = expressReq as RequestWithUserContext
 
-  if (!config || typeof config !== "object" || !Array.isArray(config.mcpServers)) {
+  const { userSession, body } = req
+
+  const config = body.config as AgentConfig
+
+  if (!config || typeof config !== "object" || !config.id || !Array.isArray(config.mcpServers)) {
     res.status(400).json({ success: false, message: "Invalid agent configuration: Missing id or mcpServers array" })
     return
   }
 
-  const agentConfig = config as AgentConfig
-  console.log(`[Agent] Request for agent '${agentConfig.id}' in session '${sessionId}'`)
+  const agentConfig = config
+  console.log(`[Agent] Request for agent '${agentConfig.id}' for user '${userSession.userId}'`)
 
   try {
-    const connectionResult = await establishMcpConnectionsForAgent(sessionId, agentConfig)
+    const connectionResult = await establishMcpConnectionsForAgent(userSession, agentConfig)
 
     if (!connectionResult.success) {
-      await rollbackConnections(sessionId, agentConfig)
+      await rollbackConnections(userSession, agentConfig)
       const statusCode = connectionResult.error?.includes("limit reached") ? 503 : 500
       res.status(statusCode).json({ success: false, message: connectionResult.error })
       return
@@ -78,13 +83,14 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
     const aiModel: LanguageModel | undefined = AVAILABLE_AI_MODELS[agentConfig.modelId]?.languageModel
 
     if (!aiModel) {
-      console.error(`[Agent] AI Model '${agentConfig.modelId}' not found or not configured`)
-      await rollbackConnections(sessionId, agentConfig)
+      console.error(
+        `[Agent] AI Model '${agentConfig.modelId}' not found or not configured for user '${userSession.userId}'`,
+      )
+      await rollbackConnections(userSession, agentConfig)
       res.status(500).json({ success: false, message: `AI Model '${agentConfig.modelId}' not configured on backend` })
       return
     }
 
-    const userSession = getOrCreateUserSession(sessionId)
     const agentTools: ToolSet = {}
 
     for (const serverConfig of agentConfig.mcpServers) {
@@ -95,7 +101,7 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
     }
 
     console.log(
-      `[Agent] Starting AI agent chain for '${agentConfig.id}' with model '${agentConfig.modelId}' and ${Object.keys(agentTools).length} tools`,
+      `[Agent] Starting AI agent chain for '${agentConfig.id}' (User: '${userSession.userId}') with model '${agentConfig.modelId}' and ${Object.keys(agentTools).length} tools`,
     )
 
     const initialChainMessages: CoreMessage[] = [{ role: "user", content: agentConfig.systemPrompt }]
@@ -103,10 +109,12 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
     await handleAiChainRequest(req, res, aiModel, initialChainMessages, agentTools)
   } catch (error) {
     console.error(
-      `[Agent] Unexpected error during agent run setup or AI chain execution for session ${sessionId}:`,
+      `[Agent] Unexpected error during agent run setup or AI chain execution for user ${userSession.userId}:`,
       error,
     )
-    await rollbackConnections(sessionId, agentConfig)
+    if (agentConfig) {
+      await rollbackConnections(userSession, agentConfig)
+    }
     if (!res.headersSent) {
       res.status(500).json({ success: false, message: "An unexpected error occurred during agent execution" })
     } else if (!res.writableEnded) {
@@ -115,40 +123,39 @@ agentRouter.post("/run", async (req: Request, res: Response): Promise<void> => {
   }
 })
 
-/* Stop all agent connections for a session */
-agentRouter.post("/stop", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId } = req.body
+/* Stop all agent connections for a user */
+agentRouter.post("/stop", async (expressReq: Request, res: Response): Promise<void> => {
+  const req = expressReq as RequestWithUserContext
 
-  if (!sessionId || typeof sessionId !== "string") {
-    res.status(400).json({ success: false, message: "Missing or invalid sessionId" })
-    return
-  }
+  const { userSession } = req
 
-  console.log(`[Agent] Request to stop all connections for session '${sessionId}'`)
-
-  const userSession = sessions.get(sessionId)
+  console.log(`[Agent] Request to stop all connections for user '${userSession.userId}'`)
 
   if (!userSession || userSession.activeMcpClients.size === 0) {
-    console.log(`[Agent] No active session or no connections found for session '${sessionId}'. Nothing to stop`)
+    console.log(`[Agent] No active session or no connections found for user '${userSession.userId}'. Nothing to stop`)
     res
       .status(200)
-      .json({ success: true, message: "No active connections found for session or session does not exist" })
+      .json({ success: true, message: "No active connections found for user or user session does not exist" })
     return
   }
 
   const serverIdsToStop = [...userSession.activeMcpClients.keys()]
   console.log(
-    `[Agent] Found ${serverIdsToStop.length} connections to stop for session '${sessionId}': ${serverIdsToStop.join(", ")}`,
+    `[Agent] Found ${serverIdsToStop.length} connections to stop for user '${userSession.userId}': ${serverIdsToStop.join(", ")}`,
   )
 
   try {
     for (const serverId of serverIdsToStop) {
-      await cleanupExistingConnection(sessionId, serverId)
+      await cleanupExistingConnection(userSession, serverId)
     }
-    console.log(`[Agent] Successfully stopped all ${serverIdsToStop.length} connections for session '${sessionId}'`)
-    res.status(200).json({ success: true, message: `All connections for session '${sessionId}' stopped successfully` })
+    console.log(
+      `[Agent] Successfully stopped all ${serverIdsToStop.length} connections for user '${userSession.userId}'`,
+    )
+    res
+      .status(200)
+      .json({ success: true, message: `All connections for user '${userSession.userId}' stopped successfully` })
   } catch (error) {
-    console.error(`[Agent] Unexpected error while stopping connections for session ${sessionId}:`, error)
+    console.error(`[Agent] Unexpected error while stopping connections for user ${userSession.userId}:`, error)
     res.status(500).json({ success: false, message: "An unexpected error occurred while stopping connections" })
   }
 })

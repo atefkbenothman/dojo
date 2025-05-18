@@ -1,32 +1,35 @@
 import { totalConnections } from "@/core"
 import { establishMcpConnection, cleanupExistingConnection } from "@/mcp-connection"
-import type { MCPServerConfig } from "@/types"
+import { userContextMiddleware } from "@/middleware/user-context"
+import type { MCPServerConfig, RequestWithUserContext } from "@/types"
 import { Router, Request, Response } from "express"
 
 const router = Router()
 
-export const validateReqBody = (sessionId: string, config: Partial<MCPServerConfig>): boolean => {
-  if (!sessionId || typeof sessionId !== "string") return false
+export const validateConnectConfigBody = (config: Partial<MCPServerConfig>): boolean => {
   if (!config || typeof config !== "object") return false
   if (!config.id || typeof config.id !== "string") return false
   return true
 }
 
 /* Connect */
-router.post("/connect", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId, config } = req.body
+router.post("/connect", userContextMiddleware, async (expressReq: Request, res: Response): Promise<void> => {
+  const req = expressReq as RequestWithUserContext
 
-  if (!validateReqBody(sessionId, config)) {
-    res.status(400).json({ message: "Missing or invalid sessionId or config" })
+  const { userSession, body } = req
+
+  const config = body.config as Partial<MCPServerConfig>
+
+  if (!validateConnectConfigBody(config)) {
+    res.status(400).json({ message: "Missing or invalid config" })
     return
   }
 
-  console.log(`[Connection] /connect request received for sessionId: ${sessionId}, mcpServer: ${config.id}`)
+  console.log(`[Connection] /connect request received for userId: ${userSession.userId}, mcpServer: ${config.id}`)
 
-  // Explicitly clean up any potentially existing connection before establishing a new one via /connect
-  await cleanupExistingConnection(sessionId, config.id)
+  await cleanupExistingConnection(userSession, config.id!)
 
-  const result = await establishMcpConnection(sessionId, config as MCPServerConfig)
+  const result = await establishMcpConnection(userSession, config as MCPServerConfig)
 
   if (!result.success) {
     const statusCode = result.error?.includes("limit reached") ? 503 : 500
@@ -39,25 +42,24 @@ router.post("/connect", async (req: Request, res: Response): Promise<void> => {
 })
 
 /* Disconnect */
-router.post("/disconnect", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId, serverId } = req.body
+router.post("/disconnect", userContextMiddleware, async (expressReq: Request, res: Response): Promise<void> => {
+  const req = expressReq as RequestWithUserContext
 
-  if (!sessionId || typeof sessionId !== "string") {
-    res.status(400).json({ message: "Missing or invalid sessionId" })
-    return
-  }
+  const { userSession, body } = req
+
+  const serverId = body.serverId as string
 
   if (!serverId || typeof serverId !== "string") {
     res.status(400).json({ message: "Missing or invalid serverId" })
     return
   }
 
-  console.log(`[Connection] /disconnect request received for sessionId: ${sessionId}, server: ${serverId}`)
+  console.log(`[Connection] /disconnect request received for userId: ${userSession.userId}, server: ${serverId}`)
 
-  await cleanupExistingConnection(sessionId, serverId)
+  await cleanupExistingConnection(userSession, serverId)
 
   console.log(
-    `[Connection] Connection closed for ${sessionId}, server: ${serverId}. Total connections now: ${totalConnections}`,
+    `[Connection] Connection closed for userId: ${userSession.userId}, server: ${serverId}. Total connections now: ${totalConnections}`,
   )
   res.status(200).json({ message: "Disconnection successful" })
 })

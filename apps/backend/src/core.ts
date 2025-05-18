@@ -1,5 +1,6 @@
 import { AVAILABLE_MCP_SERVERS, AVAILABLE_IMAGE_MODELS, AVAILABLE_AI_MODELS, WATCH_DIRECTORY_PATH } from "@/config"
 import { startWatching, watcherEmitter } from "@/files/watcher"
+import { userContextMiddleware } from "@/middleware/user-context"
 import agentRouter from "@/routes/agent"
 import chatRouter from "@/routes/chat"
 import connectionRouter from "@/routes/connection"
@@ -33,7 +34,7 @@ app.use("/", chatRouter)
 app.use("/", connectionRouter)
 
 app.use("/files", filesRouter)
-app.use("/agent", agentRouter)
+app.use("/agent", userContextMiddleware, agentRouter)
 
 console.log("[Core] Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
 console.log("[Core] Available AI Models:", Object.keys(AVAILABLE_AI_MODELS).join(", "))
@@ -41,11 +42,11 @@ console.log("[Core] Available Image Models:", Object.keys(AVAILABLE_IMAGE_MODELS
 
 export const sessions = new Map<string, UserSession>()
 
-export function getOrCreateUserSession(sessionId: string): UserSession {
-  if (!sessions.has(sessionId)) {
-    sessions.set(sessionId, { activeMcpClients: new Map<string, ActiveMcpClient>() })
+export function getOrCreateUserSession(userId: string): UserSession {
+  if (!sessions.has(userId)) {
+    sessions.set(userId, { userId: userId, activeMcpClients: new Map<string, ActiveMcpClient>() })
   }
-  return sessions.get(sessionId)!
+  return sessions.get(userId)!
 }
 
 export let totalConnections = 0

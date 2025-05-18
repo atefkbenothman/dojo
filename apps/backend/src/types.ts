@@ -1,5 +1,6 @@
 import { MCPClient } from "@/mcp-client"
 import { ImageModel, LanguageModel } from "ai"
+import { Request } from "express"
 
 export interface MCPServer {
   id: string
@@ -41,6 +42,7 @@ export interface ActiveMcpClient {
 }
 
 export interface UserSession {
+  userId: string
   activeMcpClients: Map<string, ActiveMcpClient>
 }
 
@@ -66,3 +68,8 @@ export interface AgentConfig {
 }
 
 export type AgentConfigs = Record<string, AgentConfig>
+
+export interface RequestWithUserContext extends Request {
+  userId: string
+  userSession: UserSession
+}

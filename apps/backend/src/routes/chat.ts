@@ -1,14 +1,19 @@
 import { streamAiResponse } from "@/ai-stream"
 import { DEFAULT_MODEL_ID, AVAILABLE_AI_MODELS } from "@/config"
-import { sessions } from "@/core"
+import { userContextMiddleware } from "@/middleware/user-context"
+import type { RequestWithUserContext } from "@/types"
 import { type CoreMessage, type ToolSet } from "ai"
 import { Router, Request, Response } from "express"
 
 const router = Router()
 
 /* Chat */
-router.post("/chat", async (req: Request, res: Response): Promise<void> => {
-  const { sessionId, messages, modelId } = req.body
+router.post("/chat", userContextMiddleware, async (expressReq: Request, res: Response): Promise<void> => {
+  const req = expressReq as RequestWithUserContext
+
+  const { userSession, body } = req
+
+  const { messages, modelId } = body
 
   const model = modelId || DEFAULT_MODEL_ID
 
@@ -18,27 +23,25 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
     return
   }
 
-  console.log(`[Core /chat] request received for sessionId: ${sessionId}, using model: ${model}`)
+  console.log(`[Core /chat] request received for userId: ${userSession.userId}, using model: ${model}`)
 
   const aiModel = AVAILABLE_AI_MODELS[model]!.languageModel
 
-  const userSession = sessions.get(sessionId)
-
   const combinedTools: ToolSet = {}
 
-  if (userSession) {
+  if (userSession && userSession.activeMcpClients) {
     for (const mcpClient of userSession.activeMcpClients.values()) {
       const clientTools = mcpClient.client.tools || {}
       Object.assign(combinedTools, clientTools)
     }
   }
 
-  console.log(`[Core /chat]: Using ${Object.keys(combinedTools).length} total tools`)
+  console.log(`[Core /chat]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userSession.userId}`)
 
   await streamAiResponse({
     res,
     languageModel: aiModel,
-    messages: messages as CoreMessage[],
+    messages: messages,
     tools: combinedTools,
     maxSteps: 10,
   })
