@@ -12,22 +12,17 @@ import { cn } from "@/lib/utils"
 import { useRef } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 
-const panelConfig = {
-  mainPanel: {
-    defaultSize: 70,
-  },
-  chatPanel: {
-    minSize: 20,
-    maxSize: 100,
-    defaultSize: 30,
-    collapsedSize: 3,
-    minWidth: 42,
-    collapsedWidthPercentage: 8,
-    expandedWidthPercentage: 30,
-  },
+interface ResizableLayoutProps {
+  children: React.ReactNode
+  defaultLayout: [number, number]
 }
 
-export function ResizableLayout({ children }: { children: React.ReactNode }) {
+const CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE = 3
+const CHAT_PANEL_EXPANDED_WIDTH_PERCENTAGE = 30
+const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
+const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 100
+
+export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProps) {
   const { handleNewChat } = useChatProvider()
 
   const { play } = useSoundEffect("./hover.mp3", {
@@ -36,29 +31,32 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
 
-  const { isChatPanelCollapsed, isMaximized, handleChatPanelToggle, handleMaximizeToggle } = useResizableChatPanel({
-    chatPanelRef,
-    play,
-    config: {
-      defaultSizePercentage: panelConfig.chatPanel.defaultSize,
-      collapsedWidthPercentage: panelConfig.chatPanel.collapsedWidthPercentage,
-      expandedWidthPercentage: panelConfig.chatPanel.expandedWidthPercentage,
-    },
-  })
+  const { isChatPanelCollapsed, isMaximized, handleChatPanelToggle, handleMaximizeToggle, syncPanelCollapsedState } =
+    useResizableChatPanel({
+      chatPanelRef,
+      play,
+      config: {
+        defaultSizePercentage: defaultLayout[1],
+        expandedWidthPercentage: CHAT_PANEL_EXPANDED_WIDTH_PERCENTAGE,
+        collapsedSizePercentage: CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE,
+      },
+      initialIsMaximized: Math.round(defaultLayout[1]) === 100,
+    })
 
   const newChat = () => {
     play()
     handleNewChat()
   }
 
+  const onLayout = (sizes: number[]) => {
+    document.cookie = `react-resizable-panels:layout=${JSON.stringify(sizes)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`
+  }
+
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">
       <SideNav />
-      <ResizablePanelGroup direction="horizontal">
-        <ResizablePanel
-          defaultSize={panelConfig.mainPanel.defaultSize}
-          className={cn("hidden sm:block", isMaximized && "hidden")}
-        >
+      <ResizablePanelGroup direction="horizontal" onLayout={onLayout}>
+        <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
           <div className="flex h-full flex-col">
             <MainPanelHeader onChatPanelToggle={() => handleChatPanelToggle()} isCollapsed={isChatPanelCollapsed} />
             <div className="flex-1 overflow-auto p-4">{children}</div>
@@ -68,16 +66,16 @@ export function ResizableLayout({ children }: { children: React.ReactNode }) {
         <ResizablePanel
           id="chat-panel"
           ref={chatPanelRef}
-          className="bg-card h-full w-full flex-shrink-0"
-          minSize={panelConfig.chatPanel.minSize}
-          maxSize={panelConfig.chatPanel.maxSize}
-          defaultSize={panelConfig.chatPanel.defaultSize}
           collapsible
-          collapsedSize={panelConfig.chatPanel.collapsedSize}
-          onCollapse={() => handleChatPanelToggle(true)}
-          onExpand={() => handleChatPanelToggle(false)}
+          collapsedSize={CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE}
+          defaultSize={defaultLayout[1]}
+          minSize={CHAT_PANEL_MIN_SIZE_PERCENTAGE}
+          maxSize={CHAT_PANEL_MAX_SIZE_PERCENTAGE}
+          className="bg-card h-full w-full flex-shrink-0"
+          onCollapse={() => syncPanelCollapsedState(true)}
+          onExpand={() => syncPanelCollapsedState(false)}
           style={{
-            minWidth: `${panelConfig.chatPanel.minWidth}px`,
+            minWidth: "42px",
           }}
         >
           <div className="flex h-full w-full flex-col">

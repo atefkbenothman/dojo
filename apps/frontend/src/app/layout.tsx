@@ -8,6 +8,7 @@ import { DarkModeProvider } from "@/providers/dark-mode-provider"
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { cookies } from "next/headers"
 import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -17,11 +18,22 @@ export const metadata: Metadata = {
   description: "Dojo",
 }
 
-export default function RootLayout({
+async function getDefaultLayout() {
+  const cookieStore = await cookies()
+  const layout = cookieStore.get("react-resizable-panels:layout")
+  if (layout) {
+    return JSON.parse(layout.value)
+  }
+  return [70, 30]
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const defaultLayout = await getDefaultLayout()
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -36,7 +48,7 @@ export default function RootLayout({
             <ModelProvider>
               <AIChatProviderRoot>
                 <AgentProviderRoot>
-                  <ResizableLayout>{children}</ResizableLayout>
+                  <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
                 </AgentProviderRoot>
               </AIChatProviderRoot>
             </ModelProvider>

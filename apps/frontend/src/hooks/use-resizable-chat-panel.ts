@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, RefObject } from "react"
+import { useState, useCallback, RefObject } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 
 export interface UseResizableChatPanelProps {
@@ -6,12 +6,10 @@ export interface UseResizableChatPanelProps {
   play: () => void
   config: {
     defaultSizePercentage: number
-    collapsedWidthPercentage: number
     expandedWidthPercentage: number
-    smallScreenWidthThreshold?: number
+    collapsedSizePercentage: number
   }
-  initialCollapsed?: boolean
-  initialMaximized?: boolean
+  initialIsMaximized?: boolean
 }
 
 export interface UseResizableChatPanelReturn {
@@ -19,102 +17,104 @@ export interface UseResizableChatPanelReturn {
   isMaximized: boolean
   handleChatPanelToggle: (forceState?: boolean) => void
   handleMaximizeToggle: () => void
+  syncPanelCollapsedState: (isCollapsed: boolean) => void
 }
 
 export function useResizableChatPanel({
   chatPanelRef,
   play,
   config,
-  initialCollapsed = false,
-  initialMaximized = false,
+  initialIsMaximized,
 }: UseResizableChatPanelProps): UseResizableChatPanelReturn {
-  const [isChatPanelCollapsed, setIsChatPanelCollapsed] = useState<boolean>(initialCollapsed)
-  const [isSmallScreen, setIsSmallScreen] = useState<boolean>(false)
-  const [isMaximized, setIsMaximized] = useState<boolean>(initialMaximized)
+  const { defaultSizePercentage, expandedWidthPercentage, collapsedSizePercentage } = config
 
-  const {
-    defaultSizePercentage,
-    collapsedWidthPercentage,
-    expandedWidthPercentage,
-    smallScreenWidthThreshold = 640,
-  } = config
+  const initialIsCollapsed = defaultSizePercentage <= collapsedSizePercentage
+
+  const [isChatPanelCollapsed, setIsChatPanelCollapsed] = useState<boolean>(initialIsCollapsed)
+  const [isMaximized, setIsMaximized] = useState<boolean>(initialIsMaximized ?? false)
+
+  const syncPanelCollapsedState = useCallback(
+    (isCollapsed: boolean) => {
+      setIsChatPanelCollapsed(isCollapsed)
+      if (isCollapsed && isMaximized) {
+        setIsMaximized(false)
+      }
+    },
+    [isMaximized],
+  )
 
   const resizeChatPanel = useCallback(
     (newSize: number) => {
-      if (chatPanelRef.current) {
-        chatPanelRef.current.resize(newSize)
-      } else {
-        console.warn("Chat panel ref not yet available for resize.")
-      }
+      chatPanelRef.current?.resize(newSize)
     },
     [chatPanelRef],
   )
 
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const small = window.innerWidth < smallScreenWidthThreshold
-      setIsSmallScreen(small)
-
-      if (small && isChatPanelCollapsed) {
-        setIsChatPanelCollapsed(false)
-        resizeChatPanel(expandedWidthPercentage)
-      }
-    }
-
-    checkScreenSize()
-    window.addEventListener("resize", checkScreenSize)
-    return () => window.removeEventListener("resize", checkScreenSize)
-  }, [isChatPanelCollapsed, resizeChatPanel, expandedWidthPercentage, smallScreenWidthThreshold])
-
-  const handleChatPanelToggle = useCallback(
-    (forceState?: boolean) => {
-      const targetCollapsedState = forceState !== undefined ? forceState : !isChatPanelCollapsed
-
-      if (isSmallScreen && targetCollapsedState) {
-        return
-      }
-
-      play()
-
-      if (targetCollapsedState) {
-        resizeChatPanel(collapsedWidthPercentage)
-      } else {
-        if (isMaximized) {
-          setIsMaximized(false)
-        }
-        resizeChatPanel(expandedWidthPercentage)
-      }
-      setIsChatPanelCollapsed(targetCollapsedState)
-    },
-    [
-      isChatPanelCollapsed,
-      isSmallScreen,
-      isMaximized,
-      play,
-      resizeChatPanel,
-      collapsedWidthPercentage,
-      expandedWidthPercentage,
-    ],
-  )
-
   const handleMaximizeToggle = useCallback(() => {
-    const targetMaximizedState = !isMaximized
+    const panel = chatPanelRef.current
+    if (!panel) return
+
     play()
+    const targetMaximizedState = !isMaximized
+
     if (targetMaximizedState) {
       resizeChatPanel(100)
       if (isChatPanelCollapsed) {
-        setIsChatPanelCollapsed(false)
       }
     } else {
-      resizeChatPanel(defaultSizePercentage)
+      if (isChatPanelCollapsed) {
+        panel.collapse()
+      } else {
+        resizeChatPanel(expandedWidthPercentage)
+      }
     }
     setIsMaximized(targetMaximizedState)
-  }, [isMaximized, isChatPanelCollapsed, play, resizeChatPanel, defaultSizePercentage])
+  }, [isMaximized, isChatPanelCollapsed, play, chatPanelRef, expandedWidthPercentage, resizeChatPanel])
+
+  const handleChatPanelToggle = useCallback(
+    (forceState?: boolean) => {
+      const panel = chatPanelRef.current
+      if (!panel) return
+
+      play()
+
+      let targetCollapsedState: boolean
+      if (forceState !== undefined) {
+        targetCollapsedState = forceState
+      } else {
+        targetCollapsedState = !isChatPanelCollapsed
+      }
+
+      if (isMaximized && !targetCollapsedState) {
+        handleMaximizeToggle()
+        return
+      } else if (isMaximized && targetCollapsedState) {
+        resizeChatPanel(expandedWidthPercentage)
+        setIsMaximized(false)
+      }
+
+      if (targetCollapsedState) {
+        panel.collapse()
+      } else {
+        panel.resize(expandedWidthPercentage)
+      }
+    },
+    [
+      isChatPanelCollapsed,
+      isMaximized,
+      play,
+      chatPanelRef,
+      expandedWidthPercentage,
+      handleMaximizeToggle,
+      resizeChatPanel,
+    ],
+  )
 
   return {
     isChatPanelCollapsed,
     isMaximized,
     handleChatPanelToggle,
     handleMaximizeToggle,
+    syncPanelCollapsedState,
   }
 }
