@@ -4,11 +4,11 @@ import { NextResponse } from "next/server"
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
-  const { sessionId, serverId } = await request.json()
+  const { userId, serverId } = await request.json()
 
-  if (!sessionId) {
-    console.log("[MCP API] No sessionId provided for disconnect")
-    return NextResponse.json({ success: false, error: "Missing sessionId" }, { status: 400 })
+  if (!userId) {
+    console.log("[MCP API] No userId provided for disconnect")
+    return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 })
   }
 
   if (!serverId) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "Missing serverId" }, { status: 400 })
   }
 
-  console.log(`[MCP API] Disconnecting session ${sessionId} from server ${serverId}`)
+  console.log(`[MCP API] Disconnecting user ${userId} from server ${serverId}`)
 
   const { data, error } = await asyncTryCatch(
     fetch(`${MCP_SERVICE_URL}/disconnect`, {
@@ -24,16 +24,16 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ sessionId, serverId }),
+      body: JSON.stringify({ userId, serverId }),
       cache: "no-store",
     }),
   )
 
   if (error || !data) {
-    console.error(`[MCP API] Disconnect failed for session ${sessionId} from server ${serverId}:`, error)
+    console.error(`[MCP API] Disconnect failed for user ${userId} from server ${serverId}:`, error)
     return NextResponse.json({ success: false, error: "Disconnect failed" }, { status: 503 })
   }
 
-  console.log(`[MCP API] Successfully disconnected session ${sessionId} from server ${serverId}`)
+  console.log(`[MCP API] Successfully disconnected user ${userId} from server ${serverId}`)
   return NextResponse.json({ success: true })
 }

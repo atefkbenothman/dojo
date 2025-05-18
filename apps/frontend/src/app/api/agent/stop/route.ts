@@ -4,14 +4,14 @@ import { NextResponse } from "next/server"
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
-  const { sessionId } = await request.json()
+  const { userId } = await request.json()
 
-  if (!sessionId || typeof sessionId !== "string") {
-    console.error("[Agent Stop API] Missing or invalid sessionId")
-    return NextResponse.json({ success: false, error: "Missing or invalid sessionId" }, { status: 400 })
+  if (!userId || typeof userId !== "string") {
+    console.error("[Agent Stop API] Missing or invalid userId")
+    return NextResponse.json({ success: false, error: "Missing or invalid userId" }, { status: 400 })
   }
 
-  console.log(`[Agent Stop API] Stopping agent connections for session ID: ${sessionId}`)
+  console.log(`[Agent Stop API] Stopping agent connections for user ID: ${userId}`)
 
   const { data, error } = await asyncTryCatch(
     fetch(`${MCP_SERVICE_URL}/agent/stop`, {
@@ -19,25 +19,25 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ userId }),
       cache: "no-store",
     }),
   )
 
   if (error || !data) {
-    console.error(`[Agent Stop API] Agent stop call failed for session ${sessionId}:`, error)
+    console.error(`[Agent Stop API] Agent stop call failed for user ${userId}:`, error)
     return NextResponse.json({ success: false, error: "Failed to call agent stop service" }, { status: 503 })
   }
 
   const response = await data.json()
 
   if (data.ok) {
-    console.log(`[Agent Stop API] Successfully stopped agent connections for session ${sessionId}`)
+    console.log(`[Agent Stop API] Successfully stopped agent connections for user ${userId}`)
     return NextResponse.json(response)
   }
 
   console.error(
-    `[Agent Stop API] Agent stop call failed for session ${sessionId} - Backend response: ${response.message || "Unknown error"}`,
+    `[Agent Stop API] Agent stop call failed for user ${userId} - Backend response: ${response.message || "Unknown error"}`,
   )
   return NextResponse.json({ success: false, error: response.message || "Agent stop failed" }, { status: data.status })
 }

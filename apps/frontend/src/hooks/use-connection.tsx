@@ -1,10 +1,10 @@
 "use client"
 
+import { useUserContext } from "@/hooks/use-user-id"
 import type { MCPServerConfig } from "@/lib/types"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { Tool } from "ai"
 import { useState, createContext, useContext } from "react"
-import { v4 as uuid4 } from "uuid"
 import type { ZodTypeAny } from "zod"
 
 const queryClient = new QueryClient()
@@ -18,7 +18,8 @@ export interface ActiveConnection {
 }
 
 export function useConnection() {
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  const userId = useUserContext()
+
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
   const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
   const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([])
@@ -39,19 +40,10 @@ export function useConnection() {
 
   const isServerHealthy = serverHealth?.success || false
 
-  const getOrCreateSessionId = (): string => {
-    if (sessionId) {
-      return sessionId
-    }
-    const newSessionId = uuid4()
-    setSessionId(newSessionId)
-    return newSessionId
-  }
-
   // Connect mutation
   const connectMutation = useMutation({
     mutationFn: async (config: MCPServerConfig) => {
-      const currentSessionId = getOrCreateSessionId()
+      if (!userId) throw new Error("User ID is not available")
       const serializableConfig = {
         id: config.id,
         name: config.name,
@@ -63,7 +55,7 @@ export function useConnection() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: currentSessionId,
+          userId,
           config: serializableConfig,
         }),
         cache: "no-store",
@@ -125,12 +117,12 @@ export function useConnection() {
   // Disconnect mutation
   const disconnectMutation = useMutation({
     mutationFn: async (serverId: string) => {
-      if (!sessionId) throw new Error("No sessionId to disconnect")
+      if (!userId) throw new Error("No userId to disconnect")
 
       const response = await fetch("/api/mcp/disconnect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, serverId }),
+        body: JSON.stringify({ userId, serverId }),
         cache: "no-store",
       })
 
@@ -166,11 +158,17 @@ export function useConnection() {
 
   const connect = async (config: MCPServerConfig) => {
     if (connectionStatus[config.id] === "connecting") return
+    if (!userId) {
+      console.error("Cannot connect without a userId")
+      setConnectionStatus((prev) => ({ ...prev, [config.id]: "error" }))
+      setConnectionError((prev) => ({ ...prev, [config.id]: "User ID not available" }))
+      return
+    }
     await connectMutation.mutateAsync(config)
   }
 
   const disconnect = async (serverId: string) => {
-    if (!sessionId) {
+    if (!userId) {
       setConnectionStatus((prev) => ({
         ...prev,
         [serverId]: "disconnected",
@@ -186,7 +184,7 @@ export function useConnection() {
   }
 
   const disconnectAll = async () => {
-    if (!sessionId || activeConnections.length === 0) return
+    if (!userId || activeConnections.length === 0) return
     for (const conn of activeConnections) {
       await disconnect(conn.serverId)
     }
@@ -205,7 +203,6 @@ export function useConnection() {
   }
 
   return {
-    sessionId,
     connectionStatus,
     connectionError,
     activeConnections,
@@ -216,9 +213,8 @@ export function useConnection() {
     getConnectionStatus,
     getConnectionError,
     isConnected,
-    setSessionId,
     hasActiveConnections: activeConnections.length > 0,
-    getOrCreateSessionId,
+    userId,
   }
 }
 

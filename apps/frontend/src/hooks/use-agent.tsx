@@ -14,7 +14,7 @@ interface AgentStopResponse {
 const agentQueryClient = new QueryClient()
 
 function useAgentLogic() {
-  const { getOrCreateSessionId } = useConnectionContext()
+  const { userId } = useConnectionContext()
   const { unifiedAppend, stop: stopSdkStream, status: globalStatus, currentInteractionType } = useChatProvider()
 
   const [isAgentRunAttempted, setIsAgentRunAttempted] = useState(false)
@@ -41,16 +41,15 @@ function useAgentLogic() {
 
   const agentStopMutation = useMutation<AgentStopResponse, Error, void>({
     mutationFn: async () => {
-      const currentSessionId = getOrCreateSessionId()
-      if (!currentSessionId) {
-        throw new Error("Failed to get SessionID for stopping agent.")
+      if (!userId) {
+        throw new Error("Failed to get UserID for stopping agent.")
       }
 
-      console.log(`[Agent Hook] Stopping backend connections for session: ${currentSessionId}...`)
+      console.log(`[Agent Hook] Stopping backend connections for session: ${userId}...`)
       const response = await fetch("/api/agent/stop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: currentSessionId }),
+        body: JSON.stringify({ userId }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.message || "Failed to stop agent backend")
@@ -65,10 +64,8 @@ function useAgentLogic() {
 
   const runAgent = useCallback(
     async (agentConfig: AgentConfig) => {
-      const currentSessionId = getOrCreateSessionId()
-
-      if (!currentSessionId) {
-        setErrorMessage("Failed to get SessionID. Cannot run agent")
+      if (!userId) {
+        setErrorMessage("Failed to get UserID. Cannot run agent")
         return
       }
 
@@ -80,7 +77,7 @@ function useAgentLogic() {
           { role: "user", content: agentConfig.systemPrompt },
           {
             body: {
-              sessionId: currentSessionId,
+              userId: userId,
               config: agentConfig,
               interactionType: "agent",
             },
@@ -98,7 +95,7 @@ function useAgentLogic() {
         setIsAgentRunAttempted(false)
       }
     },
-    [unifiedAppend, getOrCreateSessionId],
+    [unifiedAppend, userId],
   )
 
   const stopAgent = useCallback(async () => {

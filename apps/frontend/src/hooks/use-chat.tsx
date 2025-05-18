@@ -11,7 +11,7 @@ import { nanoid } from "nanoid"
 import { useState, createContext, useContext, useCallback } from "react"
 
 interface ChatRequestOptionsBody {
-  sessionId: string | null
+  userId: string | null
   modelId?: string
   interactionType: string
   config?: AgentConfig
@@ -33,7 +33,7 @@ const initialMessages: Message[] = [
 ]
 
 export function useAIChat() {
-  const { sessionId } = useConnectionContext()
+  const { userId } = useConnectionContext()
   const { availableModels, selectedModelId } = useModelContext()
 
   const [context, setContext] = useState<string>("")
@@ -48,7 +48,7 @@ export function useAIChat() {
     error,
     stop,
   } = useChat({
-    api: "/api/mcp/chat",
+    api: "/api/chat",
     initialMessages: initialMessages as Message[],
     generateId: () => nanoid(),
     onError: (err) => {
@@ -63,7 +63,7 @@ export function useAIChat() {
   /* Generate Image */
   const imageGenerationMutation = useMutation({
     mutationFn: async ({ modelId, prompt }: { modelId: string; prompt: string }) => {
-      const response = await fetch("/api/mcp/image", {
+      const response = await fetch("/api/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ modelId, prompt }),
@@ -154,14 +154,14 @@ export function useAIChat() {
 
       await unifiedAppend(userMessage, {
         body: {
-          sessionId: sessionId,
+          userId: userId,
           modelId: selectedModelId,
           interactionType: "chat",
         } as ChatRequestOptionsBody,
         interactionType: "chat",
       })
     },
-    [status, availableModels, selectedModelId, unifiedAppend, imageGenerationMutation, setMessages, sessionId],
+    [status, availableModels, selectedModelId, unifiedAppend, imageGenerationMutation, setMessages, userId],
   )
 
   const handleNewChat = useCallback(() => {

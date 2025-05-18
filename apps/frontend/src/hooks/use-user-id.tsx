@@ -6,7 +6,13 @@ import { v4 as uuidv4 } from "uuid"
 
 const USER_ID_STORAGE_KEY = "dojo-user-id"
 
-function initializeUserId(): string | null {
+const UserContext = createContext<string | null | undefined>(undefined)
+
+interface UserProviderProps {
+  children: ReactNode
+}
+
+export function UserProvider({ children }: UserProviderProps) {
   const [userId, setUserId] = useLocalStorage<string | null>(USER_ID_STORAGE_KEY, null)
 
   const [mounted, setMounted] = useState(false)
@@ -22,17 +28,6 @@ function initializeUserId(): string | null {
     }
   }, [userId, mounted, setUserId])
 
-  return userId
-}
-
-const UserContext = createContext<string | null | undefined>(undefined)
-
-interface UserProviderProps {
-  children: ReactNode
-}
-
-export function UserProvider({ children }: UserProviderProps) {
-  const userId = initializeUserId()
   return <UserContext.Provider value={userId}>{children}</UserContext.Provider>
 }
 
