@@ -59,8 +59,6 @@ export function useResizableChatPanel({
 
     if (targetMaximizedState) {
       resizeChatPanel(100)
-      if (isChatPanelCollapsed) {
-      }
     } else {
       if (isChatPanelCollapsed) {
         panel.collapse()

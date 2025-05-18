@@ -1,4 +1,4 @@
-import { useRef, useCallback, useMemo, useState, useEffect } from "react"
+import { useRef, useCallback, useState, useEffect } from "react"
 
 interface UseSoundEffectOptions {
   volume?: number
@@ -94,7 +94,7 @@ export function useSoundEffect(soundSrc: string, options: UseSoundEffectOptions 
       setIsReady(false)
       interactionNeeded.current = false
     }
-  }, [soundSrc, preload, soundEnabled, volume, playbackRate])
+  }, [soundSrc, preload, soundEnabled, volume, playbackRate, isReady])
 
   const play = useCallback(() => {
     if (!soundEnabled) {
