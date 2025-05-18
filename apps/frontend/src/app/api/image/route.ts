@@ -4,7 +4,12 @@ import { NextResponse } from "next/server"
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
-  const { modelId, prompt } = await request.json()
+  const { userId, prompt, modelId, n } = await request.json()
+
+  if (!userId || typeof userId !== "string") {
+    console.error("[Image API] Missing or invalid userId")
+    return NextResponse.json({ error: "Missing or invalid userId" }, { status: 400 })
+  }
 
   const { data, error } = await asyncTryCatch(
     fetch(`${MCP_SERVICE_URL}/image`, {
@@ -12,14 +17,22 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ prompt, modelId }),
+      body: JSON.stringify({ userId, prompt, modelId, n }),
       cache: "no-store",
     }),
   )
 
   if (error || !data) {
-    console.error(`[MCP API] Image generation failed:`, error)
-    return NextResponse.json({ error: `Image generation failed with err: ${error}` }, { status: 503 })
+    console.error(`[Image API] Image generation failed for user ${userId}:`, error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error during fetch"
+    return NextResponse.json({ error: `Image generation failed: ${errorMessage}` }, { status: 503 })
+  }
+
+  if (!data.ok) {
+    console.error(
+      `[Image API] Backend image generation failed for user ${userId}. Status: ${data.status}. Error: ${error}`,
+    )
+    return NextResponse.json({ error: `Image generation failed with status ${data.status}` }, { status: data.status })
   }
 
   const images = await data.json()

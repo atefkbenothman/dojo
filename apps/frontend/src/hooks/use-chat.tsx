@@ -66,10 +66,14 @@ export function useAIChat() {
       const response = await fetch("/api/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modelId, prompt }),
+        body: JSON.stringify({ userId, modelId, prompt }),
         cache: "no-store",
       })
-      if (!response.ok) throw new Error("Image generation failed")
+      if (!response.ok) {
+        throw new Error(
+          `There was an error generating the image. Status: ${response.status}. Error: ${response.statusText}`,
+        )
+      }
       const result = await response.json()
       if (result.error) throw new Error(result.error)
       return result
