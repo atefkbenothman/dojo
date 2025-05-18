@@ -4,6 +4,7 @@ import { AgentProviderRoot } from "@/hooks/use-agent"
 import { AIChatProviderRoot } from "@/hooks/use-chat"
 import { ConnectionProviderRoot } from "@/hooks/use-connection"
 import { ModelProvider } from "@/hooks/use-model"
+import { UserProvider } from "@/hooks/use-user-id"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next"
@@ -44,15 +45,17 @@ export default async function RootLayout({
       </head>
       <body className={`antialiased ${inter.className}`}>
         <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <ConnectionProviderRoot>
-            <ModelProvider>
-              <AIChatProviderRoot>
-                <AgentProviderRoot>
-                  <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
-                </AgentProviderRoot>
-              </AIChatProviderRoot>
-            </ModelProvider>
-          </ConnectionProviderRoot>
+          <UserProvider>
+            <ConnectionProviderRoot>
+              <ModelProvider>
+                <AIChatProviderRoot>
+                  <AgentProviderRoot>
+                    <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
+                  </AgentProviderRoot>
+                </AIChatProviderRoot>
+              </ModelProvider>
+            </ConnectionProviderRoot>
+          </UserProvider>
         </DarkModeProvider>
         <Toaster toastOptions={{ style: { borderRadius: "var(--radius-md)" } }} />
         <Analytics />

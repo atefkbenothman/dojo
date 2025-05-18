@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, Dispatch, SetStateAction } from "react"
 
 type SetValue<T> = Dispatch<SetStateAction<T>>
