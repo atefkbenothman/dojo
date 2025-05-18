@@ -4,10 +4,10 @@ import { NextResponse } from "next/server"
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
-  const { messages, sessionId, modelId, config, interactionType } = await request.json()
+  const { messages, userId, modelId, config, interactionType } = await request.json()
 
   if (!interactionType) {
-    console.error("[API Router /mcp/chat] Missing 'interactionType' in request body")
+    console.error("[API Router /chat] Missing 'interactionType' in request body")
     return NextResponse.json(
       {
         error: "Missing 'interactionType' in request body. Cannot route request.",
@@ -16,14 +16,12 @@ export async function POST(request: Request) {
     )
   }
 
-  console.log(`[API Router /mcp/chat] Received interactionType: ${interactionType}, Session: ${sessionId}`)
+  console.log(`[API Router /chat] Received interactionType: ${interactionType}, User: ${userId}`)
 
   switch (interactionType) {
     case "chat": {
       if (!messages || !modelId) {
-        console.error(
-          "[API Router /mcp/chat] Missing 'messages' or 'modelId' for CHAT interaction. SessionId check implicit.",
-        )
+        console.error("[API Router /chat] Missing 'messages' or 'modelId' for CHAT interaction. UserId check implicit.")
         return NextResponse.json(
           {
             error: "Missing 'messages' or 'modelId' for CHAT interaction.",
@@ -32,20 +30,18 @@ export async function POST(request: Request) {
         )
       }
 
-      console.log(
-        `[API Router /mcp/chat] Routing to CHAT service. Model: ${modelId}, Messages Count: ${messages.length}`,
-      )
+      console.log(`[API Router /chat] Routing to CHAT service. Model: ${modelId}, Messages Count: ${messages.length}`)
 
       const { data: chatData, error: chatError } = await asyncTryCatch(
         fetch(`${MCP_SERVICE_URL}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, sessionId, modelId }),
+          body: JSON.stringify({ messages, userId, modelId }),
         }),
       )
 
       if (!chatData?.body || chatError) {
-        console.error(`[API Router /mcp/chat] CHAT service backend responded with error: ${chatError}`)
+        console.error(`[API Router /chat] CHAT service backend responded with error: ${chatError}`)
         return NextResponse.json(
           {
             error: `CHAT service backend failed: ${chatError}`,
@@ -54,7 +50,7 @@ export async function POST(request: Request) {
         )
       }
 
-      console.log(`[API Router /mcp/chat] Successfully initiated CHAT stream via CHAT service for session ${sessionId}`)
+      console.log(`[API Router /chat] Successfully initiated CHAT stream via CHAT service for user ${userId}`)
 
       const chatResponseHeaders = new Headers()
       chatResponseHeaders.set("Content-Type", chatData.headers.get("Content-Type") || "text/plain; charset=utf-8")
@@ -73,9 +69,7 @@ export async function POST(request: Request) {
     }
     case "agent": {
       if (!messages || !config) {
-        console.error(
-          "[API Router /mcp/chat] Missing 'messages' or 'config' for AGENT interaction. SessionId check implicit.",
-        )
+        console.error("[API Router /chat] Missing 'messages' or 'config' for AGENT interaction. UserId check implicit.")
         return NextResponse.json(
           {
             error: "Missing 'messages' or 'config' for AGENT interaction.",
@@ -85,20 +79,20 @@ export async function POST(request: Request) {
       }
 
       console.log(
-        `[API Router /mcp/chat] Routing to AGENT service. Agent: '${config.name}', Messages Count: ${messages.length}`,
+        `[API Router /chat] Routing to AGENT service. Agent: '${config.name}', Messages Count: ${messages.length}`,
       )
 
       const { data: agentData, error: agentError } = await asyncTryCatch(
         fetch(`${MCP_SERVICE_URL}/agent/run`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, sessionId, config }),
+          body: JSON.stringify({ messages, userId, config }),
         }),
       )
 
       if (!agentData?.body || agentError) {
         console.error(
-          `[API Router /mcp/chat] AGENT service backend responded with error for agent '${config.id}':`,
+          `[API Router /chat] AGENT service backend responded with error for agent '${config.id}':`,
           agentError || "Response body missing",
         )
         return NextResponse.json(
@@ -110,7 +104,7 @@ export async function POST(request: Request) {
       }
 
       console.log(
-        `[API Router /mcp/chat] Successfully initiated AGENT stream via AGENT service for session ${sessionId}, agent '${config.id}'`,
+        `[API Router /chat] Successfully initiated AGENT stream via AGENT service for user ${userId}, agent '${config.id}'`,
       )
 
       const agentResponseHeaders = new Headers()
@@ -129,7 +123,7 @@ export async function POST(request: Request) {
       })
     }
     default:
-      console.error(`[API Router /mcp/chat] Unknown 'interactionType': ${interactionType}`)
+      console.error(`[API Router /chat] Unknown 'interactionType': ${interactionType}`)
       return NextResponse.json(
         {
           error: `Unknown 'interactionType': ${interactionType}. Cannot route request.`,
