@@ -1,7 +1,7 @@
 "use client"
 
 import { useUserContext } from "@/hooks/use-user-id"
-import type { MCPServerConfig } from "@/lib/types"
+import type { MCPServer } from "@dojo/config"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { Tool } from "ai"
 import { useState, createContext, useContext } from "react"
@@ -17,7 +17,7 @@ export interface ActiveConnection {
   tools: Record<string, Tool<ZodTypeAny, unknown>>
 }
 
-export function useConnection() {
+export function useConnection(mcpServers: Record<string, MCPServer>) {
   const userId = useUserContext()
 
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
@@ -42,74 +42,60 @@ export function useConnection() {
 
   // Connect mutation
   const connectMutation = useMutation({
-    mutationFn: async (config: MCPServerConfig) => {
-      if (!userId) throw new Error("User ID is not available")
-      const serializableConfig = {
-        id: config.id,
-        name: config.name,
-        command: config.command,
-        args: config.args,
-        env: config.env,
-      }
+    mutationFn: async ({ server }: { server: MCPServer }) => {
+      if (!userId || typeof userId !== "string" || userId.trim() === "") throw new Error("User ID is not available")
+      if (!server || typeof server.id !== "string" || !server.config)
+        throw new Error("Invalid server object: missing id or config")
       const response = await fetch("/api/mcp/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          config: serializableConfig,
-        }),
+        body: JSON.stringify({ userId, server }),
         cache: "no-store",
       })
-
       const data = await response.json()
-
       if (!response.ok) {
         throw new Error(data.error || "Connection failed")
       }
-
-      return data
+      return { ...data, server }
     },
-    onMutate: (config) => {
+    onMutate: ({ server }: { server: MCPServer }) => {
       setConnectionStatus((prev) => ({
         ...prev,
-        [config.id]: "connecting",
+        [server.id]: "connecting",
       }))
       setConnectionError((prev) => ({
         ...prev,
-        [config.id]: null,
+        [server.id]: null,
       }))
     },
-    onSuccess: (data, config) => {
+    onSuccess: (data: any, { server }: { server: MCPServer }) => {
       setConnectionStatus((prev) => ({
         ...prev,
-        [config.id]: "connected",
+        [server.id]: "connected",
       }))
       setConnectionError((prev) => ({
         ...prev,
-        [config.id]: null,
+        [server.id]: null,
       }))
-
-      // Add the new connection to activeConnections
       const newConnection: ActiveConnection = {
-        serverId: config.id,
-        name: config.name,
+        serverId: server.id,
+        name: server.name,
         tools: data.tools || {},
       }
-
       setActiveConnections((prev) => {
-        const exists = prev.some((conn) => conn.serverId === config.id)
+        const exists = prev.some((conn) => conn.serverId === server.id)
         if (exists) return prev
         return [...prev, newConnection]
       })
     },
-    onError: (error, config) => {
+    onError: (error, { server }: { server: MCPServer }) => {
       setConnectionStatus((prev) => ({
         ...prev,
-        [config.id]: "error",
+        [server.id]: "error",
       }))
       setConnectionError((prev) => ({
         ...prev,
-        [config.id]: error.message || "An unexpected error occurred during connecting",
+        [server.id]: error.message || "An unexpected error occurred during connecting",
       }))
     },
   })
@@ -117,15 +103,15 @@ export function useConnection() {
   // Disconnect mutation
   const disconnectMutation = useMutation({
     mutationFn: async (serverId: string) => {
-      if (!userId) throw new Error("No userId to disconnect")
-
+      if (!userId || typeof userId !== "string" || userId.trim() === "") throw new Error("No userId to disconnect")
+      if (!serverId || typeof serverId !== "string" || serverId.trim() === "")
+        throw new Error("No serverId to disconnect")
       const response = await fetch("/api/mcp/disconnect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, serverId }),
         cache: "no-store",
       })
-
       if (!response.ok) throw new Error("Disconnection failed")
       return response.json()
     },
@@ -156,15 +142,15 @@ export function useConnection() {
     },
   })
 
-  const connect = async (config: MCPServerConfig) => {
-    if (connectionStatus[config.id] === "connecting") return
+  const connect = async ({ server }: { server: MCPServer }) => {
+    if (connectionStatus[server.id] === "connecting") return
     if (!userId) {
       console.error("Cannot connect without a userId")
-      setConnectionStatus((prev) => ({ ...prev, [config.id]: "error" }))
-      setConnectionError((prev) => ({ ...prev, [config.id]: "User ID not available" }))
+      setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
+      setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available" }))
       return
     }
-    await connectMutation.mutateAsync(config)
+    await connectMutation.mutateAsync({ server })
   }
 
   const disconnect = async (serverId: string) => {
@@ -198,10 +184,6 @@ export function useConnection() {
     return connectionError[serverId] || null
   }
 
-  const isConnected = (serverId: string): boolean => {
-    return connectionStatus[serverId] === "connected"
-  }
-
   return {
     connectionStatus,
     connectionError,
@@ -212,9 +194,9 @@ export function useConnection() {
     disconnectAll,
     getConnectionStatus,
     getConnectionError,
-    isConnected,
     hasActiveConnections: activeConnections.length > 0,
     userId,
+    mcpServers,
   }
 }
 
@@ -222,15 +204,27 @@ type ConnectionContextType = ReturnType<typeof useConnection>
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined)
 
-export function ConnectionProvider({ children }: { children: React.ReactNode }) {
-  const value = useConnection()
+export function ConnectionProvider({
+  children,
+  mcpServers,
+}: {
+  children: React.ReactNode
+  mcpServers: Record<string, MCPServer>
+}) {
+  const value = useConnection(mcpServers)
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>
 }
 
-export function ConnectionProviderRoot({ children }: { children: React.ReactNode }) {
+export function ConnectionProviderRoot({
+  children,
+  mcpServers,
+}: {
+  children: React.ReactNode
+  mcpServers: Record<string, MCPServer>
+}) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConnectionProvider>{children}</ConnectionProvider>
+      <ConnectionProvider mcpServers={mcpServers}>{children}</ConnectionProvider>
     </QueryClientProvider>
   )
 }

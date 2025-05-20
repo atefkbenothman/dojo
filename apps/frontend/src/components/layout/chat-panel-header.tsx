@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { useConnectionContext } from "@/hooks/use-connection"
+import { useConnectionContext } from "@/hooks/use-mcp"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 import { MessageSquare, Server, Maximize, Minimize, Plus } from "lucide-react"
 

@@ -13,8 +13,9 @@ interface UserProviderProps {
 }
 
 export function UserProvider({ children }: UserProviderProps) {
-  const [userId, setUserId] = useLocalStorage<string | null>(USER_ID_STORAGE_KEY, null)
+  const { readStorage, writeStorage } = useLocalStorage()
 
+  const [userId, setUserIdState] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -22,11 +23,17 @@ export function UserProvider({ children }: UserProviderProps) {
   }, [])
 
   useEffect(() => {
-    if (mounted && userId === null) {
-      const newUserId = uuidv4()
-      setUserId(newUserId)
+    if (mounted) {
+      const storedUserId = readStorage<string>(USER_ID_STORAGE_KEY)
+      if (storedUserId === null) {
+        const newUserId = uuidv4()
+        writeStorage(USER_ID_STORAGE_KEY, newUserId)
+        setUserIdState(newUserId)
+      } else {
+        setUserIdState(storedUserId)
+      }
     }
-  }, [userId, mounted, setUserId])
+  }, [mounted, readStorage, writeStorage])
 
   return <UserContext.Provider value={userId}>{children}</UserContext.Provider>
 }

@@ -2,7 +2,7 @@
 
 import { ChatFooter } from "@/components/chat/chat-footer"
 import { Messages } from "@/components/chat/messages"
-import { useConnectionContext } from "@/hooks/use-connection"
+import { useConnectionContext } from "@/hooks/use-mcp"
 import { useRef } from "react"
 
 export function Chat() {

@@ -18,8 +18,10 @@ const defaultOptions: Required<
   preload: "auto",
 }
 
+// Singleton audio cache
+const audioCache: Record<string, HTMLAudioElement> = {}
+
 export function useSoundEffect(soundSrc: string, options: UseSoundEffectOptions = {}) {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const { volume, playbackRate, interrupt, preload, soundEnabled } = {
     ...defaultOptions,
     ...options,
@@ -27,23 +29,31 @@ export function useSoundEffect(soundSrc: string, options: UseSoundEffectOptions 
 
   const [isReady, setIsReady] = useState(false)
   const interactionNeeded = useRef(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      if (audioRef.current.parentNode) {
-        audioRef.current.parentNode.removeChild(audioRef.current)
+    if (!soundSrc || !soundEnabled) {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
       }
-      audioRef.current = null
       setIsReady(false)
       interactionNeeded.current = false
-    }
-
-    if (!soundSrc || !soundEnabled) {
       return
     }
 
-    const audio = document.createElement("audio")
+    let audio = audioCache[soundSrc]
+    let isNew = false
+    if (!audio) {
+      audio = document.createElement("audio")
+      audio.src = soundSrc
+      audio.preload = preload
+      audio.style.display = "none"
+      audio.setAttribute("aria-hidden", "true")
+      document.body.appendChild(audio)
+      audioCache[soundSrc] = audio
+      isNew = true
+    }
     audioRef.current = audio
 
     const handleCanPlayThrough = () => {
@@ -60,11 +70,6 @@ export function useSoundEffect(soundSrc: string, options: UseSoundEffectOptions 
       setIsReady(false)
     }
 
-    audio.src = soundSrc
-    audio.preload = preload
-    audio.style.display = "none"
-    audio.setAttribute("aria-hidden", "true")
-
     audio.addEventListener("canplaythrough", handleCanPlayThrough)
     audio.addEventListener("error", handleError)
     audio.addEventListener("loadedmetadata", () => {
@@ -73,7 +78,10 @@ export function useSoundEffect(soundSrc: string, options: UseSoundEffectOptions 
       }
     })
 
-    document.body.appendChild(audio)
+    // Set options on every mount
+    audio.volume = Math.max(0, Math.min(1, volume ?? defaultOptions.volume))
+    audio.playbackRate = playbackRate ?? defaultOptions.playbackRate
+    audio.preload = preload
 
     if (audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
       handleCanPlayThrough()
@@ -84,17 +92,11 @@ export function useSoundEffect(soundSrc: string, options: UseSoundEffectOptions 
     return () => {
       audio.removeEventListener("canplaythrough", handleCanPlayThrough)
       audio.removeEventListener("error", handleError)
-
-      if (audio.parentNode) {
-        audio.parentNode.removeChild(audio)
-      }
-      if (audioRef.current === audio) {
-        audioRef.current = null
-      }
+      // Do not remove from DOM or cache, just clean up listeners
       setIsReady(false)
       interactionNeeded.current = false
     }
-  }, [soundSrc, preload, soundEnabled, volume, playbackRate, isReady])
+  }, [soundSrc, preload, soundEnabled, volume, playbackRate])
 
   const play = useCallback(() => {
     if (!soundEnabled) {

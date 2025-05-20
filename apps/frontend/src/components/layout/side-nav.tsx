@@ -23,11 +23,11 @@ const navigationItems = [
     icon: Server,
     label: "MCP",
   },
-  {
-    href: "/files",
-    icon: FileText,
-    label: "Files",
-  },
+  // {
+  //   href: "/files",
+  //   icon: FileText,
+  //   label: "Files",
+  // },
 ] as const
 
 export function SideNav() {
