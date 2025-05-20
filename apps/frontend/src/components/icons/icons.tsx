@@ -1,6 +1,6 @@
 import type { SVGProps } from "react"
 
-export const GitHubIcon = (props: SVGProps<SVGSVGElement>) => (
+const GitHubIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg width="1em" height="1em" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
     <path
       fillRule="evenodd"
@@ -12,7 +12,7 @@ export const GitHubIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-export const BlenderIcon = (props: SVGProps<SVGSVGElement>) => (
+const BlenderIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0.1 16.7 2472.8 1996.5" {...props}>
     <path
       fill="#fff"
@@ -29,7 +29,7 @@ export const BlenderIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-export const SupabaseIcon = (props: SVGProps<SVGSVGElement>) => (
+const SupabaseIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" {...props}>
     <path
       d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z"
@@ -71,7 +71,7 @@ export const SupabaseIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-export const PlaywrightIcon = (props: SVGProps<SVGSVGElement>) => (
+const PlaywrightIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 400 400" fill="none" {...props}>
     <path
       d="M136.444 221.556C123.558 225.213 115.104 231.625 109.535 238.032C114.869 233.364 122.014 229.08 131.652 226.348C141.51 223.554 149.92 223.574 156.869 224.915V219.481C150.941 218.939 144.145 219.371 136.444 221.556ZM108.946 175.876L61.0895 188.484C61.0895 188.484 61.9617 189.716 63.5767 191.36L104.153 180.668C104.153 180.668 103.578 188.077 98.5847 194.705C108.03 187.559 108.946 175.876 108.946 175.876ZM149.005 288.347C81.6582 306.486 46.0272 228.438 35.2396 187.928C30.2556 169.229 28.0799 155.067 27.5 145.928C27.4377 144.979 27.4665 144.179 27.5336 143.446C24.04 143.657 22.3674 145.473 22.7077 150.721C23.2876 159.855 25.4633 174.016 30.4473 192.721C41.2301 233.225 76.8659 311.273 144.213 293.134C158.872 289.185 169.885 281.992 178.152 272.81C170.532 279.692 160.995 285.112 149.005 288.347ZM161.661 128.11V132.903H188.077C187.535 131.206 186.989 129.677 186.447 128.11H161.661Z"
@@ -104,7 +104,7 @@ export const PlaywrightIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-export const FigmaIcon = (props: SVGProps<SVGSVGElement>) => (
+const FigmaIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg width="1em" height="1em" viewBox="0 0 54 80" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
     <g clipPath="url(#clip0_912_3)">
       <path
@@ -136,7 +136,7 @@ export const FigmaIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-export const TicketmasterIcon = (props: SVGProps<SVGSVGElement>) => (
+const TicketmasterIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg width="1em" height="1em" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg" {...props}>
     <g fill="none" fillRule="evenodd">
       <path fill="#0067E1" d="M0 0h90v90H0z" />
@@ -149,7 +149,7 @@ export const TicketmasterIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-export const Upstash = (props: SVGProps<SVGSVGElement>) => (
+const Upstash = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 256 341"
     xmlns="http://www.w3.org/2000/svg"
@@ -183,7 +183,7 @@ export const Upstash = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-export const NotionIcon = (props: SVGProps<SVGSVGElement>) => (
+const NotionIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -199,3 +199,14 @@ export const NotionIcon = (props: SVGProps<SVGSVGElement>) => (
     <path d="M164.09.608 16.092 11.538C4.155 12.573 0 20.374 0 29.726v162.245c0 7.284 2.585 13.516 8.826 21.843l34.789 45.237c5.715 7.284 10.912 8.844 21.825 8.327l171.864-10.404c14.532-1.035 18.696-7.801 18.696-19.24V55.207c0-5.911-2.336-7.614-9.21-12.66l-1.185-.856L198.37 8.409C186.94.1 182.27-.952 164.09.608ZM69.327 52.22c-14.033.945-17.216 1.159-25.186-5.323L23.876 30.778c-2.06-2.086-1.026-4.69 4.163-5.207l142.274-10.395c11.947-1.043 18.17 3.12 22.842 6.758l24.401 17.68c1.043.525 3.638 3.637.517 3.637L71.146 52.095l-1.819.125Zm-16.36 183.954V81.222c0-6.767 2.077-9.887 8.3-10.413L230.02 60.93c5.724-.517 8.31 3.12 8.31 9.879v153.917c0 6.767-1.044 12.49-10.387 13.008l-161.487 9.361c-9.343.517-13.489-2.594-13.489-10.921ZM212.377 89.53c1.034 4.681 0 9.362-4.681 9.897l-7.783 1.542v114.404c-6.758 3.637-12.981 5.715-18.18 5.715-8.308 0-10.386-2.604-16.609-10.396l-50.898-80.079v77.476l16.1 3.646s0 9.362-12.989 9.362l-35.814 2.077c-1.043-2.086 0-7.284 3.63-8.318l9.351-2.595V109.823l-12.98-1.052c-1.044-4.68 1.55-11.439 8.826-11.965l38.426-2.585 52.958 81.113v-71.76l-13.498-1.552c-1.043-5.733 3.111-9.896 8.3-10.404l35.84-2.087Z" />
   </svg>
 )
+
+export const MCP_SERVER_ICONS: Record<string, React.ComponentType | null> = {
+  github: GitHubIcon,
+  blender: BlenderIcon,
+  supabase: SupabaseIcon,
+  playwright: PlaywrightIcon,
+  ticketmaster: TicketmasterIcon,
+  figma: FigmaIcon,
+  context7: Upstash,
+  notion: NotionIcon,
+}
