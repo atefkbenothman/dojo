@@ -2,15 +2,17 @@
   "name": "@dojo/backend",
   "version": "1.0.0",
   "main": "src/core.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "start": "npm run build && node dist/core.js",
-    "dev": "nodemon -r tsconfig-paths/register src/core.ts",
+    "dev": "nodemon --exec \"node --loader ts-node/esm --no-warnings -r tsconfig-paths/register\" src/core.ts",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit"
   },
   "license": "ISC",
   "dependencies": {
+    "@dojo/config": "1.0.0",
     "@dojo/utils": "1.0.0",
     "@ai-sdk/google": "^1.2.8",
     "@ai-sdk/groq": "^1.2.5",
