@@ -6,14 +6,14 @@ const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 export async function POST(request: Request) {
   const { userId, serverId } = await request.json()
 
-  if (!userId) {
+  if (!userId || typeof userId !== "string" || userId.trim() === "") {
     console.log("[MCP API] No userId provided for disconnect")
-    return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 })
+    return NextResponse.json({ success: false, error: "Missing or invalid userId" }, { status: 400 })
   }
 
-  if (!serverId) {
+  if (!serverId || typeof serverId !== "string" || serverId.trim() === "") {
     console.log("[MCP API] No serverId provided for disconnect")
-    return NextResponse.json({ success: false, error: "Missing serverId" }, { status: 400 })
+    return NextResponse.json({ success: false, error: "Missing or invalid serverId" }, { status: 400 })
   }
 
   console.log(`[MCP API] Disconnecting user ${userId} from server ${serverId}`)

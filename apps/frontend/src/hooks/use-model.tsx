@@ -1,34 +1,40 @@
 "use client"
 
-import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/config"
-import type { AIModelInfo } from "@/lib/types"
-import { useState, createContext, useContext } from "react"
+import type { AIModel } from "@dojo/config"
+import { createContext, useContext, useMemo, useState } from "react"
 
-interface ModelContextType {
-  availableModels: AIModelInfo[]
-  selectedModelId: string
-  handleModelChange: (modelId: string) => void
+export interface ModelContextType {
+  models: AIModel[]
+  selectedModel: AIModel | null
+  setSelectedModelId: (id: string) => void
 }
 
 const ModelContext = createContext<ModelContextType | undefined>(undefined)
 
-export function useModelManager() {
-  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID)
+export function ModelProvider({
+  children,
+  aiModels,
+}: {
+  children: React.ReactNode
+  aiModels: Record<string, AIModel>
+}) {
+  const [selectedModelId, setSelectedModelId] = useState<string>("gemini-1.5-flash")
 
-  const handleModelChange = (modelId: string) => {
-    setSelectedModelId(modelId)
-  }
+  const selectedModel = useMemo((): AIModel | null => {
+    return aiModels[selectedModelId as keyof typeof aiModels]!
+  }, [selectedModelId, aiModels])
 
-  return {
-    availableModels: AVAILABLE_MODELS,
-    selectedModelId,
-    handleModelChange,
-  }
-}
-
-export function ModelProvider({ children }: { children: React.ReactNode }) {
-  const value = useModelManager()
-  return <ModelContext.Provider value={value}>{children}</ModelContext.Provider>
+  return (
+    <ModelContext.Provider
+      value={{
+        models: Object.values(aiModels),
+        selectedModel,
+        setSelectedModelId,
+      }}
+    >
+      {children}
+    </ModelContext.Provider>
+  )
 }
 
 export function useModelContext() {

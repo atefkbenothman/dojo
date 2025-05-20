@@ -13,16 +13,16 @@ interface ChatControlsProps {
 }
 
 const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
-  const { availableModels, selectedModelId, handleModelChange } = useModelContext()
+  const { models, selectedModel, setSelectedModelId } = useModelContext()
 
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
-      <Select value={selectedModelId} onValueChange={handleModelChange}>
+      <Select value={selectedModel?.id} onValueChange={setSelectedModelId}>
         <SelectTrigger className="hover:cursor-pointer">
           <SelectValue placeholder="Model" />
         </SelectTrigger>
         <SelectContent className="text-xs" align="start">
-          {availableModels.map((model) => (
+          {models.map((model) => (
             <SelectItem key={model.id} value={model.id} className="hover:cursor-pointer">
               {model.name}
             </SelectItem>

@@ -1,10 +1,10 @@
 "use client"
 
-import { useConnectionContext } from "@/hooks/use-connection"
+import { useConnectionContext } from "@/hooks/use-mcp"
 import { useModelContext } from "@/hooks/use-model"
 import { SYSTEM_PROMPT } from "@/lib/config"
-import type { AgentConfig } from "@/lib/types"
 import { useChat, Message } from "@ai-sdk/react"
+import type { AgentConfig } from "@dojo/config"
 import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
@@ -34,7 +34,7 @@ const initialMessages: Message[] = [
 
 export function useAIChat() {
   const { userId } = useConnectionContext()
-  const { availableModels, selectedModelId } = useModelContext()
+  const { models, selectedModel } = useModelContext()
 
   const [context, setContext] = useState<string>("")
   const [currentInteractionType, setCurrentInteractionType] = useState<string | null>(null)
@@ -136,8 +136,6 @@ export function useAIChat() {
       const prompt = message.trim()
       if (!prompt) return
 
-      const selectedModel = availableModels.find((m) => m.id === selectedModelId)
-
       if (selectedModel?.type === "image") {
         setMessages((prev) => [
           ...prev,
@@ -159,13 +157,13 @@ export function useAIChat() {
       await unifiedAppend(userMessage, {
         body: {
           userId: userId,
-          modelId: selectedModelId,
+          modelId: selectedModel?.id,
           interactionType: "chat",
         } as ChatRequestOptionsBody,
         interactionType: "chat",
       })
     },
-    [status, availableModels, selectedModelId, unifiedAppend, imageGenerationMutation, setMessages, userId],
+    [status, selectedModel, unifiedAppend, imageGenerationMutation, setMessages, userId],
   )
 
   const handleNewChat = useCallback(() => {
