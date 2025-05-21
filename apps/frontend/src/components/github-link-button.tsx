@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useSoundEffect } from "@/hooks/use-sound-effect"
 import { Github } from "lucide-react"
 
-export function GitHubLinkButton() {
+export function GithubLinkButton() {
   const { play } = useSoundEffect("./hover.mp3", {
     volume: 0.5,
   })
