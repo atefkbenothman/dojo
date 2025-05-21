@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
-  const { messages, userId, modelId, config, interactionType } = await request.json()
+  const { messages, userId, modelId, config, interactionType, apiKey } = await request.json()
 
   if (!interactionType) {
     console.error("[API Router /chat] Missing 'interactionType' in request body")
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         fetch(`${MCP_SERVICE_URL}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, userId, modelId }),
+          body: JSON.stringify({ messages, userId, modelId, apiKey }),
         }),
       )
 
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
         fetch(`${MCP_SERVICE_URL}/agent/run`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, userId, config }),
+          body: JSON.stringify({ messages, userId, config, apiKey }),
         }),
       )
 

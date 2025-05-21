@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
-  const { userId, prompt, modelId, n } = await request.json()
+  const { userId, prompt, modelId, n, apiKey } = await request.json()
 
   if (!userId || typeof userId !== "string") {
     console.error("[Image API] Missing or invalid userId")
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ userId, prompt, modelId, n }),
+      body: JSON.stringify({ userId, prompt, modelId, n, apiKey }),
       cache: "no-store",
     }),
   )
