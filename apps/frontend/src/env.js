@@ -3,14 +3,17 @@ import { z } from "zod"
 
 export const env = createEnv({
   server: {
-    MCP_SERVICE_URL: z.string(),
+    MCP_SERVICE_URL: z.string().url().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   },
   client: {
-    NEXT_PUBLIC_APP_URL: z.string(),
-    NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN: z.string(),
-    NEXT_PUBLIC_TICKETMASTER_API_KEY: z.string(),
-    NEXT_PUBLIC_NOTION_API_KEY: z.string(),
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN: z.string().optional(),
+    NEXT_PUBLIC_TICKETMASTER_API_KEY: z.string().optional(),
+    NEXT_PUBLIC_NOTION_API_KEY: z.string().optional(),
+    NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
+    NEXT_PUBLIC_GOOGLE_API_KEY: z.string().optional(),
+    NEXT_PUBLIC_GROQ_API_KEY: z.string().optional(),
   },
   runtimeEnv: {
     MCP_SERVICE_URL: process.env.MCP_SERVICE_URL,
@@ -19,6 +22,9 @@ export const env = createEnv({
     NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN,
     NEXT_PUBLIC_TICKETMASTER_API_KEY: process.env.NEXT_PUBLIC_TICKETMASTER_API_KEY,
     NEXT_PUBLIC_NOTION_API_KEY: process.env.NEXT_PUBLIC_NOTION_API_KEY,
+    NEXT_PUBLIC_OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+    NEXT_PUBLIC_GOOGLE_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
+    NEXT_PUBLIC_GROQ_API_KEY: process.env.NEXT_PUBLIC_GROQ_API_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

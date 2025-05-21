@@ -1,5 +1,22 @@
 import type { AIModel, AgentConfig, MCPServer } from "./types.js"
 
+export const PROVIDERS = {
+  google: {
+    id: "google",
+    name: "Google",
+  },
+  openai: {
+    id: "openai",
+    name: "OpenAI",
+  },
+  groq: {
+    id: "groq",
+    name: "Groq",
+  },
+} as const
+
+export type ProviderId = keyof typeof PROVIDERS
+
 export const AI_MODELS: Record<string, AIModel> = {
   "gemini-1.5-flash": {
     id: "gemini-1.5-flash",
@@ -81,6 +98,11 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
       args: ["-y", "@upstash/context7-mcp@latest"],
     },
   },
+  playwright: {
+    id: "playwright",
+    name: "Playwright",
+    summary: "Run browser automation and webscraping",
+  },
   // github: {
   //   id: "github",
   //   name: "Github",
@@ -95,11 +117,6 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
   //   id: "filesystem",
   //   name: "Filesystem",
   //   summary: "Secure file operations with configurable access controls",
-  // },
-  // playwright: {
-  //   id: "playwright",
-  //   name: "Playwright",
-  //   summary: "Run browser automation and webscraping",
   // },
   // figma: {
   //   id: "figma",

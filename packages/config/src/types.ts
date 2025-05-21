@@ -1,9 +1,11 @@
+import type { ProviderId } from "./config.js"
+
 export interface AIModel {
   id: string
   name: string
   modelName: string
   type: "text" | "image"
-  provider: string
+  provider: ProviderId
 }
 
 export interface MCPServer {
