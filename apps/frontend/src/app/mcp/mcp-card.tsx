@@ -1,15 +1,17 @@
 "use client"
 
-import { MCPDialog } from "./mcp-dialog"
+import { MCPDialog } from "@/app/mcp/mcp-dialog"
+import { MCP_SERVER_ICONS } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { useConnectionContext } from "@/hooks/use-connection"
-import { MCP_CONFIG, MCP_CONFIG_ICONS } from "@/lib/config"
-import { MCPServerConfig, Server } from "@/lib/types"
-import { cn } from "@/lib/utils"
+import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useConnectionContext } from "@/hooks/use-mcp"
+import { cn, getServerConfigWithEnv } from "@/lib/utils"
+import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
 import { Wrench } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { toast } from "sonner"
 
 interface ToolsPopoverProps {
   tools: Record<string, unknown>
@@ -49,68 +51,83 @@ function ToolsPopover({ tools }: ToolsPopoverProps) {
 }
 
 interface MCPCardProps {
-  server: Server
+  server: MCPServer
 }
 
 export function MCPCard({ server }: MCPCardProps) {
-  const { getConnectionStatus, isConnected, connect, disconnect, activeConnections } = useConnectionContext()
+  const { readStorage, writeStorage } = useLocalStorage()
+  const { getConnectionStatus, getConnectionError, connect, disconnect, activeConnections } = useConnectionContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
-  const [currentConfig, setCurrentConfig] = useState<MCPServerConfig>(() => {
-    const defaultConfig = MCP_CONFIG[server.id]
-    if (defaultConfig) {
-      return {
-        id: server.id,
-        name: server.name,
-        command: defaultConfig.command,
-        args: defaultConfig.args,
-        env: defaultConfig.env,
-      }
-    }
-    return {
-      id: server.id,
-      name: server.name,
-      command: "",
-      args: [],
-      env: {},
-    }
+  const [config, setConfig] = useState<MCPServerConfig | undefined>(() => {
+    const storedConfig = readStorage<MCPServerConfig>(`mcp_config_${server.id}`)
+    return storedConfig || server.config
   })
 
-  const serverConnected = isConnected(server.id)
+  useEffect(() => {
+    const storedConfig = readStorage<MCPServerConfig>(`mcp_config_${server.id}`)
+    if (storedConfig) setConfig(storedConfig)
+  }, [server.id, readStorage])
+
   const connectionStatus = getConnectionStatus(server.id)
-  const isConnecting = connectionStatus === "connecting"
+  const connectionError = getConnectionError(server.id)
+
+  useEffect(() => {
+    if (connectionError) {
+      toast.error(connectionError, {
+        id: `mcp-error-${server.id}`,
+        duration: 5000,
+        position: "bottom-center",
+      })
+    }
+  }, [connectionError, server.id])
 
   const serverConnection = activeConnections.find((conn) => conn.serverId === server.id)
-  const tools = serverConnection?.tools || {}
+  const isConnected = connectionStatus === "connected"
 
   const handleConnectClick = async () => {
-    if (serverConnected) {
+    if (isConnected) {
       await disconnect(server.id)
-    } else if (currentConfig) {
-      try {
-        await connect(currentConfig)
-      } catch (error) {
-        console.error("Failed to connect:", error)
-      }
+      return
     }
+    const configToUse = getServerConfigWithEnv({ ...server, config })
+    const serverToConnect: MCPServer = {
+      ...server,
+      config: configToUse,
+    }
+    await connect({ server: serverToConnect })
   }
 
-  const handleSaveConfig = (config: MCPServerConfig) => {
-    setCurrentConfig(config)
+  const handleSaveConfig = (newConfig: MCPServerConfig) => {
+    const prevConfig = config || server.config
+    const requiredEnvKeys = server.config?.requiresEnv || []
+    const mergedEnv: Record<string, string> = {}
+    for (const key of requiredEnvKeys) {
+      mergedEnv[key] = newConfig.env?.[key] ?? prevConfig?.env?.[key] ?? ""
+    }
+    const mergedConfig: MCPServerConfig = {
+      ...prevConfig,
+      ...newConfig,
+      env: mergedEnv,
+    }
+    setConfig(mergedConfig)
+    writeStorage(`mcp_config_${server.id}`, mergedConfig)
   }
+
+  const Icon = MCP_SERVER_ICONS[server.id]
 
   return (
     <Card
       className={cn(
         "relative h-[10rem] max-h-[10rem] w-full max-w-xs border",
-        serverConnected ? "border-primary/80 bg-muted/50" : "",
+        isConnected ? "border-primary/80 bg-muted/50" : "",
       )}
     >
       <CardHeader>
         <div className="flex items-center gap-2">
-          {MCP_CONFIG_ICONS[server.id]}
+          {Icon && <Icon />}
           <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
-          {serverConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
+          {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
         </div>
         <CardDescription className="w-[90%]">{server.summary}</CardDescription>
       </CardHeader>
@@ -118,26 +135,25 @@ export function MCPCard({ server }: MCPCardProps) {
       <CardFooter className="mt-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
-            variant={serverConnected ? "default" : "secondary"}
+            variant={isConnected ? "default" : "secondary"}
             onMouseDown={handleConnectClick}
-            disabled={isConnecting}
+            disabled={connectionStatus === "connecting"}
             className={cn(
               "border hover:cursor-pointer",
-              serverConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
+              isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
             )}
           >
-            {serverConnected ? "Disconnect" : "Connect"}
+            {isConnected ? "Disconnect" : "Connect"}
           </Button>
 
           <MCPDialog
-            server={server}
+            server={{ ...server, config }}
             onSaveConfig={handleSaveConfig}
-            savedConfig={currentConfig}
             open={isConfigDialogOpen}
             onOpenChange={setIsConfigDialogOpen}
           />
 
-          {serverConnected && <ToolsPopover tools={tools} />}
+          {isConnected && <ToolsPopover tools={serverConnection?.tools || {}} />}
         </div>
       </CardFooter>
     </Card>

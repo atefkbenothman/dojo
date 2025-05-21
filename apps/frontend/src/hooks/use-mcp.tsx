@@ -46,16 +46,24 @@ export function useConnection(mcpServers: Record<string, MCPServer>) {
       if (!userId || typeof userId !== "string" || userId.trim() === "") throw new Error("User ID is not available")
       if (!server || typeof server.id !== "string" || !server.config)
         throw new Error("Invalid server object: missing id or config")
+
       const response = await fetch("/api/mcp/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, server }),
         cache: "no-store",
       })
-      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error(data.error || "Connection failed")
+        let errorMessage = `Connection failed: ${response.statusText || "Unknown error"}`
+        const errorData = await response.json()
+        if (errorData && typeof errorData.error === "string" && errorData.error.trim() !== "") {
+          errorMessage = errorData.error
+        }
+        throw new Error(errorMessage)
       }
+
+      const data = await response.json()
       return { ...data, server }
     },
     onMutate: ({ server }: { server: MCPServer }) => {
@@ -150,7 +158,11 @@ export function useConnection(mcpServers: Record<string, MCPServer>) {
       setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available" }))
       return
     }
-    await connectMutation.mutateAsync({ server })
+    try {
+      await connectMutation.mutateAsync({ server })
+    } catch (error) {
+      console.warn("Connection attempt for server", server.id)
+    }
   }
 
   const disconnect = async (serverId: string) => {

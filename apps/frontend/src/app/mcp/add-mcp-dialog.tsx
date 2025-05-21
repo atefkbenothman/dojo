@@ -3,68 +3,137 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { MCPServerConfig, Server } from "@/lib/types"
+import type { MCPServer, MCPServerConfig } from "@dojo/config"
 import { useState } from "react"
 
 interface AddMCPDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddServer: (server: Server, config: MCPServerConfig) => void
+  onAddServer: (server: MCPServer) => void
+}
+
+interface EnvPair {
+  key: string
+  value: string
+}
+
+function EnvInputFields({
+  envPairs,
+  onEnvChange,
+  onAddKey,
+  onRemoveKey,
+  onKeyNameChange,
+  onValueChange,
+}: {
+  envPairs: EnvPair[]
+  onEnvChange: (idx: number, value: string) => void
+  onAddKey: () => void
+  onRemoveKey: (idx: number) => void
+  onKeyNameChange: (idx: number, newKey: string) => void
+  onValueChange: (idx: number, newValue: string) => void
+}) {
+  return (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="environment">
+        <AccordionTrigger className="hover:cursor-pointer">Environment Variables</AccordionTrigger>
+        <AccordionContent className="p-2">
+          <div className="grid gap-2">
+            {envPairs.map((pair, idx) => (
+              <div className="flex gap-2 items-center" key={idx}>
+                <Input
+                  value={pair.key}
+                  onChange={(e) => onKeyNameChange(idx, e.target.value)}
+                  className="w-1/2 bg-muted/70 text-xs text-primary/90"
+                  placeholder="KEY_NAME"
+                />
+                <Input
+                  value={pair.value}
+                  onChange={(e) => onValueChange(idx, e.target.value)}
+                  className="w-1/2 bg-muted/50"
+                  placeholder="Value"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="ml-1 text-destructive"
+                  onClick={() => onRemoveKey(idx)}
+                  tabIndex={-1}
+                  aria-label={`Remove ${pair.key}`}
+                >
+                  ×
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="secondary" className="w-full mt-2" onClick={onAddKey}>
+              + Add Key
+            </Button>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
 }
 
 export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogProps) {
-  const [serverId, setServerId] = useState<string>("")
-  const [serverName, setServerName] = useState<string>("")
-  const [serverSummary, setServerSummary] = useState<string>("")
-  const [command, setCommand] = useState<string>("")
-  const [argsString, setArgsString] = useState<string>("")
-  const [envString, setEnvString] = useState<string>("")
+  const [serverName, setServerName] = useState("")
+  const [serverSummary, setServerSummary] = useState("")
+  const [command, setCommand] = useState("")
+  const [argsString, setArgsString] = useState("")
+  const [envPairs, setEnvPairs] = useState<EnvPair[]>([])
+
+  function handleAddKey() {
+    setEnvPairs((prev) => [...prev, { key: "API_KEY", value: "" }])
+  }
+
+  function handleRemoveKey(idx: number) {
+    setEnvPairs((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function handleKeyNameChange(idx: number, newKey: string) {
+    setEnvPairs((prev) => prev.map((pair, i) => (i === idx ? { ...pair, key: newKey } : pair)))
+  }
+
+  function handleValueChange(idx: number, newValue: string) {
+    setEnvPairs((prev) => prev.map((pair, i) => (i === idx ? { ...pair, value: newValue } : pair)))
+  }
+
+  const isFormValid = !!serverName && !!command
 
   const handleSave = () => {
-    if (!serverId || !serverName || !serverSummary || !command) {
-      return
-    }
-
+    if (!isFormValid) return
     const args = argsString
       .split(",")
       .map((arg) => arg.trim())
       .filter(Boolean)
-
     const env: Record<string, string> = {}
-    envString.split("\n").forEach((line) => {
-      const [key, value] = line.split("=").map((part) => part.trim())
-      if (key && value) {
-        env[key] = value
-      }
+    envPairs.forEach((pair) => {
+      env[pair.key] = pair.value
     })
-
-    const newServer: Server = {
-      id: serverId,
-      name: serverName,
-      summary: serverSummary,
-    }
-
-    const newConfig: MCPServerConfig = {
-      id: serverId,
-      name: serverName,
+    const serverId = serverName.toLowerCase().replace(/\s+/g, "-")
+    const config: MCPServerConfig = {
       command,
       args,
-      env: Object.keys(env).length > 0 ? env : undefined,
+      env: envPairs.length > 0 ? env : undefined,
+      requiresEnv: envPairs.length > 0 ? envPairs.map((pair) => pair.key) : undefined,
     }
-
-    onAddServer(newServer, newConfig)
+    const newServer: MCPServer = {
+      id: serverId,
+      name: serverName,
+      ...(serverSummary ? { summary: serverSummary } : {}),
+      config,
+    }
+    onAddServer(newServer)
     resetForm()
     onOpenChange(false)
   }
 
   const resetForm = () => {
-    setServerId("")
     setServerName("")
     setServerSummary("")
     setCommand("")
     setArgsString("")
-    setEnvString("")
+    setEnvPairs([])
   }
 
   return (
@@ -81,22 +150,11 @@ export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogPr
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="serverId" className="text-primary/80 text-xs">
-              Server ID
-            </Label>
-            <Input
-              id="serverId"
-              value={serverId}
-              onChange={(e) => setServerId(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
-              placeholder="unique-server-id"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="displayName" className="text-primary/80 text-xs">
+            <Label htmlFor="serverName" className="text-primary/80 text-xs">
               Name
             </Label>
             <Input
-              id="displayName"
+              id="serverName"
               value={serverName}
               onChange={(e) => setServerName(e.target.value)}
               placeholder="Server Name"
@@ -104,14 +162,13 @@ export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogPr
           </div>
           <div className="grid gap-2">
             <Label htmlFor="summary" className="text-primary/80 text-xs">
-              Summary
+              Summary (optional)
             </Label>
-            <Textarea
+            <Input
               id="summary"
               value={serverSummary}
               onChange={(e) => setServerSummary(e.target.value)}
               placeholder="Short description of the server capabilities"
-              rows={2}
             />
           </div>
           <div className="grid gap-2">
@@ -136,28 +193,23 @@ export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogPr
               placeholder="Comma separated, e.g: -f,file.py,--verbose"
             />
           </div>
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="environment">
-              <AccordionTrigger className="hover:cursor-pointer">Environment Variables</AccordionTrigger>
-              <AccordionContent>
-                <div className="grid gap-2">
-                  <Label htmlFor="env" className="text-primary/80 text-xs">
-                    Environment
-                  </Label>
-                  <Textarea
-                    id="env"
-                    value={envString}
-                    onChange={(e) => setEnvString(e.target.value)}
-                    placeholder="KEY=value&#10;ANOTHER_KEY=another_value"
-                    rows={3}
-                  />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <EnvInputFields
+            envPairs={envPairs}
+            onEnvChange={handleValueChange}
+            onAddKey={handleAddKey}
+            onRemoveKey={handleRemoveKey}
+            onKeyNameChange={handleKeyNameChange}
+            onValueChange={handleValueChange}
+          />
         </div>
         <DialogFooter>
-          <Button type="button" variant="secondary" onMouseDown={handleSave} className="hover:cursor-pointer">
+          <Button
+            type="button"
+            variant="secondary"
+            onMouseDown={handleSave}
+            className="hover:cursor-pointer"
+            disabled={!isFormValid}
+          >
             Create Server
           </Button>
         </DialogFooter>

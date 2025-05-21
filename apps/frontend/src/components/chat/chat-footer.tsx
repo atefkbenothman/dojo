@@ -17,7 +17,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
 
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
-      <Select value={selectedModel?.id} onValueChange={setSelectedModelId}>
+      <Select value={selectedModel.id} onValueChange={setSelectedModelId}>
         <SelectTrigger className="hover:cursor-pointer">
           <SelectValue placeholder="Model" />
         </SelectTrigger>
@@ -70,7 +70,7 @@ export const ChatFooter = memo(function ChatFooter() {
 
   return (
     <div className="flex flex-shrink-0 flex-col items-center gap-2">
-      <div className="dark:bg-input/30 relative w-full border bg-transparent">
+      <div className="bg-background/80 dark:bg-input/30 relative w-full border">
         <Textarea
           value={input}
           onChange={handleInputChange}

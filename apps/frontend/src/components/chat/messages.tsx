@@ -3,7 +3,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useChatProvider } from "@/hooks/use-chat"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"
-import { Hammer, Check, Clock, Play, Lightbulb, Info } from "lucide-react"
+import { Hammer, Check, Clock, Play, Lightbulb, Info, AlertTriangle } from "lucide-react"
 import { useEffect, RefObject } from "react"
 
 function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
@@ -100,6 +100,32 @@ function SystemMessage({ content }: { content: string }) {
   )
 }
 
+function ErrorMessage({ errorMessage }: { errorMessage: string }) {
+  if (!errorMessage) return null
+  return (
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue="error-message"
+      className="bg-red-200 dark:bg-red-800 w-full rounded-md border border-red-500/50"
+    >
+      <AccordionItem value="error-message" className="border-b-0">
+        <AccordionTrigger className="p-2 hover:cursor-pointer hover:no-underline">
+          <div className="flex flex-row items-center gap-2 text-red-700 dark:text-white">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <p className="text-xs font-semibold">Error</p>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="pt-0 p-2 text-xs text-red-700 dark:text-white">
+          <pre className="p-2 text-xs wrap-break-word whitespace-pre-wrap bg-background/80 dark:bg-background/50 rounded-sm">
+            {errorMessage}
+          </pre>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
+}
+
 function MessageItem({
   msg,
 }: {
@@ -159,7 +185,7 @@ function MessageItem({
 }
 
 export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | null> }) {
-  const { messages } = useChatProvider()
+  const { messages, chatError } = useChatProvider()
 
   const virtualizer = useVirtualizer({
     count: messages.length,
@@ -197,6 +223,12 @@ export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | 
           ))}
         </div>
       </div>
+      {/* Display chatError if it exists */}
+      {chatError && (
+        <div className="py-2">
+          <ErrorMessage errorMessage={chatError} />
+        </div>
+      )}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { createContext, useContext, useMemo, useState } from "react"
 
 export interface ModelContextType {
   models: AIModel[]
-  selectedModel: AIModel | null
+  selectedModel: AIModel
   setSelectedModelId: (id: string) => void
 }
 
@@ -20,7 +20,7 @@ export function ModelProvider({
 }) {
   const [selectedModelId, setSelectedModelId] = useState<string>("gemini-1.5-flash")
 
-  const selectedModel = useMemo((): AIModel | null => {
+  const selectedModel = useMemo((): AIModel => {
     return aiModels[selectedModelId as keyof typeof aiModels]!
   }, [selectedModelId, aiModels])
 

@@ -1,10 +1,12 @@
 "use client"
 
+import { env } from "@/env"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useConnectionContext } from "@/hooks/use-mcp"
 import { useModelContext } from "@/hooks/use-model"
 import { SYSTEM_PROMPT } from "@/lib/config"
 import { useChat, Message } from "@ai-sdk/react"
-import type { AgentConfig } from "@dojo/config"
+import type { AgentConfig, AIModel } from "@dojo/config"
 import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
@@ -12,9 +14,10 @@ import { useState, createContext, useContext, useCallback } from "react"
 
 interface ChatRequestOptionsBody {
   userId: string | null
-  modelId?: string
+  modelId: string
   interactionType: string
   config?: AgentConfig
+  apiKey?: string | null
 }
 
 const queryClient = new QueryClient()
@@ -34,10 +37,26 @@ const initialMessages: Message[] = [
 
 export function useAIChat() {
   const { userId } = useConnectionContext()
-  const { models, selectedModel } = useModelContext()
+  const { selectedModel } = useModelContext()
+  const { readStorage } = useLocalStorage()
 
   const [context, setContext] = useState<string>("")
   const [currentInteractionType, setCurrentInteractionType] = useState<string | null>(null)
+  const [chatError, setChatError] = useState<string | null>(null)
+
+  const getApiKeyForModel = async (model: AIModel): Promise<string | null> => {
+    const localStorageKey = `${model.provider.toUpperCase()}_API_KEY`
+    let apiKey = readStorage<string>(localStorageKey)
+
+    if (!apiKey) {
+      const envJsKey = `NEXT_PUBLIC_${model.provider.toUpperCase()}_API_KEY` as keyof typeof env
+      const envValue = env[envJsKey]
+      if (envValue) {
+        apiKey = envValue
+      }
+    }
+    return apiKey
+  }
 
   const {
     messages,
@@ -52,7 +71,7 @@ export function useAIChat() {
     initialMessages: initialMessages as Message[],
     generateId: () => nanoid(),
     onError: (err) => {
-      console.error("useChat error:", err.message, err.stack, err)
+      setChatError(err.message || "An unexpected error occurred during the chat.")
       setCurrentInteractionType(null)
     },
     onFinish: () => {
@@ -62,20 +81,29 @@ export function useAIChat() {
 
   /* Generate Image */
   const imageGenerationMutation = useMutation({
-    mutationFn: async ({ modelId, prompt }: { modelId: string; prompt: string }) => {
+    mutationFn: async ({ modelId, prompt, apiKey }: { modelId: string; prompt: string; apiKey: string | null }) => {
+      if (!apiKey) {
+        const errorMsg = `API key for image generation with model ${selectedModel.id} not provided.`
+        setChatError(errorMsg)
+        throw new Error(errorMsg)
+      }
       const response = await fetch("/api/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, modelId, prompt }),
+        body: JSON.stringify({ userId, modelId, prompt, apiKey }),
         cache: "no-store",
       })
       if (!response.ok) {
-        throw new Error(
-          `There was an error generating the image. Status: ${response.status}. Error: ${response.statusText}`,
-        )
+        const errorText = await response.text()
+        const errorMsg = `There was an error generating the image. Status: ${response.status}. Error: ${errorText || response.statusText}`
+        setChatError(errorMsg)
+        throw new Error(errorMsg)
       }
       const result = await response.json()
-      if (result.error) throw new Error(result.error)
+      if (result.error) {
+        setChatError(result.error)
+        throw new Error(result.error)
+      }
       return result
     },
     onSuccess: (result) => {
@@ -136,7 +164,11 @@ export function useAIChat() {
       const prompt = message.trim()
       if (!prompt) return
 
-      if (selectedModel?.type === "image") {
+      setChatError(null)
+
+      const apiKey = await getApiKeyForModel(selectedModel)
+
+      if (selectedModel.type === "image") {
         setMessages((prev) => [
           ...prev,
           {
@@ -145,7 +177,7 @@ export function useAIChat() {
             content: prompt,
           },
         ])
-        imageGenerationMutation.mutate({ modelId: selectedModel.id, prompt })
+        imageGenerationMutation.mutate({ modelId: selectedModel.id, prompt, apiKey })
         return
       }
 
@@ -157,17 +189,19 @@ export function useAIChat() {
       await unifiedAppend(userMessage, {
         body: {
           userId: userId,
-          modelId: selectedModel?.id,
+          modelId: selectedModel.id,
           interactionType: "chat",
+          apiKey: apiKey,
         } as ChatRequestOptionsBody,
         interactionType: "chat",
       })
     },
-    [status, selectedModel, unifiedAppend, imageGenerationMutation, setMessages, userId],
+    [status, selectedModel, unifiedAppend, imageGenerationMutation, setMessages, userId, getApiKeyForModel],
   )
 
   const handleNewChat = useCallback(() => {
     setMessages(initialMessages)
+    setChatError(null) // Clear errors on new chat
   }, [setMessages])
 
   return {
@@ -177,6 +211,7 @@ export function useAIChat() {
     input,
     error,
     currentInteractionType,
+    chatError,
     setContext,
     handleChat,
     handleNewChat,
