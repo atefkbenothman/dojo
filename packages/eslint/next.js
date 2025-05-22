@@ -1,12 +1,12 @@
-import js from "@eslint/js";
-import eslintConfigPrettier from "eslint-config-prettier";
-import tseslint from "typescript-eslint";
-import pluginReactHooks from "eslint-plugin-react-hooks";
-import pluginReact from "eslint-plugin-react";
-import globals from "globals";
-import pluginNext from "@next/eslint-plugin-next";
-import pluginReactCompiler from "babel-plugin-react-compiler";
-import { config as baseConfig } from "./base.js";
+import { config as baseConfig } from "./base.js"
+import js from "@eslint/js"
+import pluginNext from "@next/eslint-plugin-next"
+import pluginReactCompiler from "babel-plugin-react-compiler"
+import eslintConfigPrettier from "eslint-config-prettier"
+import pluginReact from "eslint-plugin-react"
+import pluginReactHooks from "eslint-plugin-react-hooks"
+import globals from "globals"
+import tseslint from "typescript-eslint"
 
 /**
  * A custom ESLint configuration for libraries that use Next.js.
@@ -44,4 +44,4 @@ export const nextJsConfig = [
       "turbo/no-undeclared-env-vars": "warn",
     },
   },
-];
+]

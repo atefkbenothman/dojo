@@ -1,8 +1,8 @@
+import { config as baseConfig } from "./base.js"
 import tseslint from "@typescript-eslint/eslint-plugin"
 import tsParser from "@typescript-eslint/parser"
 import prettier from "eslint-config-prettier"
 import importPlugin from "eslint-plugin-import"
-import { config as baseConfig } from "./base.js";
 
 export default [
   ...baseConfig,
