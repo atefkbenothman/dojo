@@ -14,14 +14,14 @@ const navigationItems = [
     label: "Home",
   },
   {
-    href: "/agent",
-    icon: Bot,
-    label: "Agent",
-  },
-  {
     href: "/mcp",
     icon: Server,
     label: "MCP",
+  },
+  {
+    href: "/agent",
+    icon: Bot,
+    label: "Agent",
   },
   // {
   //   href: "/files",

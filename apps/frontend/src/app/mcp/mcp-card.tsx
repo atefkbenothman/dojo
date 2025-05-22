@@ -12,7 +12,6 @@ import { cn, getServerConfigWithEnv } from "@/lib/utils"
 import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
 import { Wrench } from "lucide-react"
 import { useState, useEffect } from "react"
-import { toast } from "sonner"
 
 interface ToolsPopoverProps {
   tools: Record<string, unknown>
@@ -63,7 +62,7 @@ export function MCPCard({ server }: MCPCardProps) {
   const { play: playSave } = useSoundEffectContext()
 
   const { readStorage, writeStorage } = useLocalStorage()
-  const { getConnectionStatus, getConnectionError, connect, disconnect, activeConnections } = useMCPContext()
+  const { getConnectionStatus, connect, disconnect, activeConnections } = useMCPContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
   const [config, setConfig] = useState<MCPServerConfig | undefined>(() => {
@@ -77,25 +76,6 @@ export function MCPCard({ server }: MCPCardProps) {
   }, [server.id, readStorage])
 
   const connectionStatus = getConnectionStatus(server.id)
-  const connectionError = getConnectionError(server.id)
-
-  useEffect(() => {
-    if (connectionError) {
-      toast.error(connectionError, {
-        icon: null,
-        id: `mcp-error-${server.id}`,
-        duration: 5000,
-        position: "bottom-center",
-        style: {
-          backgroundColor: "#9f0712",
-          border: "1px solid #fb2c36",
-          color: "#fff",
-          height: "1.5rem",
-          fontWeight: 800,
-        },
-      })
-    }
-  }, [connectionError, server.id])
 
   const serverConnection = activeConnections.find((conn) => conn.serverId === server.id)
   const isConnected = connectionStatus === "connected"

@@ -5,7 +5,8 @@ import { useUserContext } from "@/hooks/use-user-id"
 import type { MCPServer } from "@dojo/config"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { Tool } from "ai"
-import { useState, createContext, useContext } from "react"
+import { useState, createContext, useContext, useEffect } from "react"
+import { toast } from "sonner"
 import type { ZodTypeAny } from "zod"
 
 const queryClient = new QueryClient()
@@ -109,6 +110,19 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         [server.id]: error.message || "An unexpected error occurred during connecting",
       }))
       play("./error.mp3", { volume: 0.5 })
+      toast.error(error.message, {
+        icon: null,
+        id: `mcp-error-${server.id}`,
+        duration: 5000,
+        position: "bottom-center",
+        style: {
+          backgroundColor: "#9f0712",
+          border: "1px solid #fb2c36",
+          color: "#fff",
+          height: "1.5rem",
+          fontWeight: 800,
+        },
+      })
     },
   })
 
@@ -160,15 +174,28 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
       setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available" }))
       return
     }
+    if (!isServerHealthy) {
+      play("./error.mp3", { volume: 0.5 })
+      toast.error("Server is offline", {
+        icon: null,
+        id: `mcp-error-${server.id}`,
+        duration: 5000,
+        position: "bottom-center",
+        style: {
+          backgroundColor: "#9f0712",
+          border: "1px solid #fb2c36",
+          color: "#fff",
+          height: "1.5rem",
+          fontWeight: 800,
+        },
+      })
+      return
+    }
     try {
       await connectMutation.mutateAsync({ server })
     } catch {
       setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
-      if (!isServerHealthy) {
-        setConnectionError((prev) => ({ ...prev, [server.id]: "Server is offline" }))
-      } else {
-        setConnectionError((prev) => ({ ...prev, [server.id]: "Connection failed" }))
-      }
+      setConnectionError((prev) => ({ ...prev, [server.id]: "Connection failed" }))
     }
   }
 
