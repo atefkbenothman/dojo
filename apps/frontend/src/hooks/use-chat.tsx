@@ -1,9 +1,10 @@
 "use client"
 
+import { useUserContext } from "./use-user-id"
 import { env } from "@/env"
 import { useLocalStorage } from "@/hooks/use-local-storage"
-import { useConnectionContext } from "@/hooks/use-mcp"
 import { useModelContext } from "@/hooks/use-model"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { SYSTEM_PROMPT } from "@/lib/config"
 import { useChat, Message } from "@ai-sdk/react"
 import type { AgentConfig, AIModel } from "@dojo/config"
@@ -36,45 +37,45 @@ const initialMessages: Message[] = [
 ]
 
 export function useAIChat() {
-  const { userId } = useConnectionContext()
+  const userId = useUserContext()
+
   const { selectedModel } = useModelContext()
   const { readStorage } = useLocalStorage()
+
+  const { play } = useSoundEffectContext()
 
   const [context, setContext] = useState<string>("")
   const [currentInteractionType, setCurrentInteractionType] = useState<string | null>(null)
   const [chatError, setChatError] = useState<string | null>(null)
 
-  const getApiKeyForModel = async (model: AIModel): Promise<string | null> => {
-    const localStorageKey = `${model.provider.toUpperCase()}_API_KEY`
-    let apiKey = readStorage<string>(localStorageKey)
+  const getApiKeyForModel = useCallback(
+    async (model: AIModel): Promise<string | null> => {
+      const localStorageKey = `${model.provider.toUpperCase()}_API_KEY`
+      let apiKey = readStorage<string>(localStorageKey)
 
-    if (!apiKey) {
-      const envJsKey = `NEXT_PUBLIC_${model.provider.toUpperCase()}_API_KEY` as keyof typeof env
-      const envValue = env[envJsKey]
-      if (envValue) {
-        apiKey = envValue
+      if (!apiKey) {
+        const envJsKey = `NEXT_PUBLIC_${model.provider.toUpperCase()}_API_KEY` as keyof typeof env
+        const envValue = env[envJsKey]
+        if (envValue) {
+          apiKey = envValue
+        }
       }
-    }
-    return apiKey
-  }
+      return apiKey
+    },
+    [readStorage],
+  )
 
-  const {
-    messages,
-    status,
-    input,
-    append: originalAppend,
-    setMessages,
-    error,
-    stop,
-  } = useChat({
+  const { messages, status, input, append, setMessages, error, stop } = useChat({
     api: "/api/chat",
     initialMessages: initialMessages as Message[],
     generateId: () => nanoid(),
     onError: (err) => {
+      play("./error.mp3", { volume: 0.5 })
       setChatError(err.message || "An unexpected error occurred during the chat.")
       setCurrentInteractionType(null)
     },
     onFinish: () => {
+      play("./done.mp3", { volume: 0.5 })
       setCurrentInteractionType(null)
     },
   })
@@ -150,11 +151,11 @@ export function useAIChat() {
         ])
       }
 
-      await originalAppend(messageToRelay, {
+      await append(messageToRelay, {
         body: options.body,
       })
     },
-    [originalAppend, setMessages, setCurrentInteractionType],
+    [append, setMessages, setCurrentInteractionType],
   )
 
   const handleChat = useCallback(
@@ -167,6 +168,8 @@ export function useAIChat() {
       setChatError(null)
 
       const apiKey = await getApiKeyForModel(selectedModel)
+
+      play("./chat.mp3", { volume: 0.5 })
 
       if (selectedModel.type === "image") {
         setMessages((prev) => [
@@ -196,12 +199,12 @@ export function useAIChat() {
         interactionType: "chat",
       })
     },
-    [status, selectedModel, unifiedAppend, imageGenerationMutation, setMessages, userId, getApiKeyForModel],
+    [status, selectedModel, unifiedAppend, imageGenerationMutation, setMessages, userId, getApiKeyForModel, play],
   )
 
   const handleNewChat = useCallback(() => {
     setMessages(initialMessages)
-    setChatError(null) // Clear errors on new chat
+    setChatError(null)
   }, [setMessages])
 
   return {
@@ -218,6 +221,7 @@ export function useAIChat() {
     unifiedAppend,
     stop,
     setMessages,
+    isImageGenerating: imageGenerationMutation.isPending,
   }
 }
 

@@ -1,5 +1,6 @@
 "use client"
 
+import { useSoundEffectContext } from "./use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
 import type { MCPServer } from "@dojo/config"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
@@ -17,8 +18,9 @@ export interface ActiveConnection {
   tools: Record<string, Tool<ZodTypeAny, unknown>>
 }
 
-export function useConnection(mcpServers: Record<string, MCPServer>) {
+function useMCP(mcpServers: Record<string, MCPServer>) {
   const userId = useUserContext()
+  const { play } = useSoundEffectContext()
 
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
   const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
@@ -76,7 +78,7 @@ export function useConnection(mcpServers: Record<string, MCPServer>) {
         [server.id]: null,
       }))
     },
-    onSuccess: (data: any, { server }: { server: MCPServer }) => {
+    onSuccess: (data, { server }: { server: MCPServer }) => {
       setConnectionStatus((prev) => ({
         ...prev,
         [server.id]: "connected",
@@ -160,8 +162,10 @@ export function useConnection(mcpServers: Record<string, MCPServer>) {
     }
     try {
       await connectMutation.mutateAsync({ server })
-    } catch (error) {
-      console.warn("Connection attempt for server", server.id)
+      play("./connect.mp3", { volume: 0.5 })
+    } catch {
+      setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
+      setConnectionError((prev) => ({ ...prev, [server.id]: "Connection failed" }))
     }
   }
 
@@ -179,6 +183,7 @@ export function useConnection(mcpServers: Record<string, MCPServer>) {
     }
 
     await disconnectMutation.mutateAsync(serverId)
+    play("./disconnect.mp3", { volume: 0.5 })
   }
 
   const disconnectAll = async () => {
@@ -207,27 +212,26 @@ export function useConnection(mcpServers: Record<string, MCPServer>) {
     getConnectionStatus,
     getConnectionError,
     hasActiveConnections: activeConnections.length > 0,
-    userId,
     mcpServers,
   }
 }
 
-type ConnectionContextType = ReturnType<typeof useConnection>
+type MCPContextType = ReturnType<typeof useMCP>
 
-const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined)
+const MCPContext = createContext<MCPContextType | undefined>(undefined)
 
-export function ConnectionProvider({
+export function MCPProvider({
   children,
   mcpServers,
 }: {
   children: React.ReactNode
   mcpServers: Record<string, MCPServer>
 }) {
-  const value = useConnection(mcpServers)
-  return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>
+  const value = useMCP(mcpServers)
+  return <MCPContext.Provider value={value}>{children}</MCPContext.Provider>
 }
 
-export function ConnectionProviderRoot({
+export function MCPProviderRoot({
   children,
   mcpServers,
 }: {
@@ -236,15 +240,15 @@ export function ConnectionProviderRoot({
 }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConnectionProvider mcpServers={mcpServers}>{children}</ConnectionProvider>
+      <MCPProvider mcpServers={mcpServers}>{children}</MCPProvider>
     </QueryClientProvider>
   )
 }
 
-export function useConnectionContext() {
-  const ctx = useContext(ConnectionContext)
+export function useMCPContext() {
+  const ctx = useContext(MCPContext)
   if (!ctx) {
-    throw new Error("useConnectionContext must be used within a ConnectionProvider")
+    throw new Error("useMCPContext must be used within a MCPProvider")
   }
   return ctx
 }

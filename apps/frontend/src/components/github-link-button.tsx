@@ -1,16 +1,14 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { useSoundEffect } from "@/hooks/use-sound-effect"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { Github } from "lucide-react"
 
 export function GithubLinkButton() {
-  const { play } = useSoundEffect("./hover.mp3", {
-    volume: 0.5,
-  })
+  const { play } = useSoundEffectContext()
 
   const handleClick = () => {
-    play()
+    play("./click.mp3", { volume: 0.5 })
   }
 
   return (

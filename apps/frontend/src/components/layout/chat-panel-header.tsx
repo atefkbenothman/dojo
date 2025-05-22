@@ -2,15 +2,14 @@
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { useConnectionContext } from "@/hooks/use-mcp"
-import { useSoundEffect } from "@/hooks/use-sound-effect"
+import { useMCPContext } from "@/hooks/use-mcp"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { MessageSquare, Server, Maximize, Minimize, Plus } from "lucide-react"
+import { memo } from "react"
 
 function MCPServersPopover() {
-  const { activeConnections } = useConnectionContext()
-  const { play } = useSoundEffect("./hover.mp3", {
-    volume: 0.5,
-  })
+  const { activeConnections } = useMCPContext()
+  const { play } = useSoundEffectContext()
 
   const connectedServers = activeConnections.length
 
@@ -22,7 +21,7 @@ function MCPServersPopover() {
           variant="outline"
           className="relative mr-2 hover:cursor-pointer"
           title="MCP Servers"
-          onMouseDown={() => play()}
+          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
         >
           <Server className="h-4.5 w-4.5" />
           {connectedServers > 0 && (
@@ -61,7 +60,12 @@ interface ChatPanelHeaderProps {
   onNewChat: () => void
 }
 
-export function ChatPanelHeader({ isCollapsed, isMaximized, onMaximizeToggle, onNewChat }: ChatPanelHeaderProps) {
+export const ChatPanelHeader = memo(function ChatPanelHeader({
+  isCollapsed,
+  isMaximized,
+  onMaximizeToggle,
+  onNewChat,
+}: ChatPanelHeaderProps) {
   return (
     <div className="bg-card flex h-12 flex-shrink-0 items-center border-b">
       {isCollapsed ? (
@@ -90,4 +94,4 @@ export function ChatPanelHeader({ isCollapsed, isMaximized, onMaximizeToggle, on
       )}
     </div>
   )
-}
+})

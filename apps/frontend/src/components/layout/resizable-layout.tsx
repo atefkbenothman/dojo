@@ -7,9 +7,9 @@ import { Chat } from "@/components/chat/chat"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
-import { useSoundEffect } from "@/hooks/use-sound-effect"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import { useRef } from "react"
+import { useRef, useCallback, useMemo } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 
 interface ResizableLayoutProps {
@@ -17,7 +17,7 @@ interface ResizableLayoutProps {
   defaultLayout: [number, number]
 }
 
-const CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE = 3
+const CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE = 2
 const CHAT_PANEL_EXPANDED_WIDTH_PERCENTAGE = 30
 const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
 const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 100
@@ -25,16 +25,13 @@ const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 100
 export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProps) {
   const { handleNewChat } = useChatProvider()
 
-  const { play } = useSoundEffect("./hover.mp3", {
-    volume: 0.5,
-  })
+  const { play } = useSoundEffectContext()
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
 
   const { isChatPanelCollapsed, isMaximized, handleChatPanelToggle, handleMaximizeToggle, syncPanelCollapsedState } =
     useResizableChatPanel({
       chatPanelRef,
-      play,
       config: {
         defaultSizePercentage: defaultLayout[1],
         expandedWidthPercentage: CHAT_PANEL_EXPANDED_WIDTH_PERCENTAGE,
@@ -43,14 +40,20 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
       initialIsMaximized: Math.round(defaultLayout[1]) === 100,
     })
 
-  const newChat = () => {
-    play()
+  const newChat = useCallback(() => {
+    play("./click.mp3", { volume: 0.5 })
     handleNewChat()
-  }
+  }, [play, handleNewChat])
 
-  const onLayout = (sizes: number[]) => {
+  const onLayout = useCallback((sizes: number[]) => {
     document.cookie = `react-resizable-panels:layout=${JSON.stringify(sizes)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`
-  }
+  }, [])
+
+  const onCollapse = useCallback(() => syncPanelCollapsedState(true), [syncPanelCollapsedState])
+  const onExpand = useCallback(() => syncPanelCollapsedState(false), [syncPanelCollapsedState])
+  const chatPanelStyle = useMemo(() => ({ minWidth: "40px" }), [])
+
+  const onChatPanelToggle = useCallback(() => handleChatPanelToggle(), [handleChatPanelToggle])
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">
@@ -58,7 +61,7 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
       <ResizablePanelGroup direction="horizontal" onLayout={onLayout}>
         <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
           <div className="flex h-full flex-col">
-            <MainPanelHeader onChatPanelToggle={() => handleChatPanelToggle()} isCollapsed={isChatPanelCollapsed} />
+            <MainPanelHeader onChatPanelToggle={onChatPanelToggle} isCollapsed={isChatPanelCollapsed} />
             <div className="flex-1 overflow-auto p-4">{children}</div>
           </div>
         </ResizablePanel>
@@ -72,11 +75,9 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
           minSize={CHAT_PANEL_MIN_SIZE_PERCENTAGE}
           maxSize={CHAT_PANEL_MAX_SIZE_PERCENTAGE}
           className="bg-card h-full w-full flex-shrink-0"
-          onCollapse={() => syncPanelCollapsedState(true)}
-          onExpand={() => syncPanelCollapsedState(false)}
-          style={{
-            minWidth: "42px",
-          }}
+          onCollapse={onCollapse}
+          onExpand={onExpand}
+          style={chatPanelStyle}
         >
           <div className="flex h-full w-full flex-col">
             <ChatPanelHeader

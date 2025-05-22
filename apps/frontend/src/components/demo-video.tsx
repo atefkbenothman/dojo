@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { X } from "lucide-react"
 import { useState } from "react"
 
@@ -44,11 +45,18 @@ function VideoPopup({ isOpen, onOpenChange }: VideoPopupProps) {
 }
 
 export function DemoVideo() {
+  const { play } = useSoundEffectContext()
+
   const [isVideoPopupOpen, setIsVideoPopupOpen] = useState(false)
+
+  const handleClick = () => {
+    play("./done.mp3", { volume: 0.5 })
+    setIsVideoPopupOpen(true)
+  }
 
   return (
     <div className="w-full max-w-2xl mt-6 px-2">
-      <Button onClick={() => setIsVideoPopupOpen(true)} className="hover:cursor-pointer">
+      <Button onMouseDown={handleClick} className="hover:cursor-pointer">
         Watch Demo
       </Button>
       <VideoPopup isOpen={isVideoPopupOpen} onOpenChange={setIsVideoPopupOpen} />
