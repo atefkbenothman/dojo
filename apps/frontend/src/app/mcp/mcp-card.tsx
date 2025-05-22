@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useLocalStorage } from "@/hooks/use-local-storage"
-import { useConnectionContext } from "@/hooks/use-mcp"
+import { useMCPContext } from "@/hooks/use-mcp"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn, getServerConfigWithEnv } from "@/lib/utils"
 import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
 import { Wrench } from "lucide-react"
@@ -18,6 +19,8 @@ interface ToolsPopoverProps {
 }
 
 function ToolsPopover({ tools }: ToolsPopoverProps) {
+  const { play } = useSoundEffectContext()
+
   const toolNames = Object.keys(tools)
 
   if (toolNames.length === 0) return null
@@ -30,6 +33,7 @@ function ToolsPopover({ tools }: ToolsPopoverProps) {
           size="icon"
           className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
           title={`Tools (${toolNames.length})`}
+          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
         >
           <Wrench className="h-4 w-4" />
         </Button>
@@ -55,8 +59,11 @@ interface MCPCardProps {
 }
 
 export function MCPCard({ server }: MCPCardProps) {
+  const { play: playClick } = useSoundEffectContext()
+  const { play: playSave } = useSoundEffectContext()
+
   const { readStorage, writeStorage } = useLocalStorage()
-  const { getConnectionStatus, getConnectionError, connect, disconnect, activeConnections } = useConnectionContext()
+  const { getConnectionStatus, getConnectionError, connect, disconnect, activeConnections } = useMCPContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
   const [config, setConfig] = useState<MCPServerConfig | undefined>(() => {
@@ -86,6 +93,7 @@ export function MCPCard({ server }: MCPCardProps) {
   const isConnected = connectionStatus === "connected"
 
   const handleConnectClick = async () => {
+    playClick("./click.mp3", { volume: 0.5 })
     if (isConnected) {
       await disconnect(server.id)
       return
@@ -112,6 +120,7 @@ export function MCPCard({ server }: MCPCardProps) {
     }
     setConfig(mergedConfig)
     writeStorage(`mcp_config_${server.id}`, mergedConfig)
+    playSave("./save.mp3", { volume: 0.5 })
   }
 
   const Icon = MCP_SERVER_ICONS[server.id]
@@ -120,7 +129,7 @@ export function MCPCard({ server }: MCPCardProps) {
     <Card
       className={cn(
         "relative h-[10rem] max-h-[10rem] w-full max-w-xs border",
-        isConnected ? "border-primary/80 bg-muted/50" : "",
+        isConnected && "border-primary/80 bg-muted/50",
       )}
     >
       <CardHeader>

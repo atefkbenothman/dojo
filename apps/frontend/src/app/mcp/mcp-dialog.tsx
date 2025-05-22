@@ -1,3 +1,5 @@
+"use client"
+
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { env as globalEnv } from "@/env.js"
 import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { getServerConfigWithEnv } from "@/lib/utils"
 import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
 import { Settings } from "lucide-react"
@@ -64,6 +67,7 @@ interface MCPDialogProps {
 }
 
 export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialogProps) {
+  const { play } = useSoundEffectContext()
   const { readStorage, removeStorage } = useLocalStorage()
 
   const [command, setCommand] = useState(server.config?.command || "")
@@ -97,6 +101,7 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
   }
 
   const handleSave = () => {
+    play("./click.mp3", { volume: 0.5 })
     const finalArgs = argsString
       .split(",")
       .map((arg) => arg.trim())
@@ -118,6 +123,7 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
         <Button
           variant="secondary"
           className="bg-secondary/80 hover:bg-secondary/90 h-9 w-9 border hover:cursor-pointer"
+          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
           size="icon"
         >
           <Settings className="h-4 w-4" />
@@ -168,8 +174,10 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
             variant="destructive"
             className="hover:cursor-pointer"
             onMouseDown={() => {
+              play("./click.mp3", { volume: 0.5 })
               removeStorage(`mcp_config_${server.id}`)
               onOpenChange(false)
+              play("./delete.mp3", { volume: 0.5 })
             }}
           >
             Delete

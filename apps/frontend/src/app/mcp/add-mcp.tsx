@@ -1,9 +1,12 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import type { MCPServer, MCPServerConfig } from "@dojo/config"
+import { PlusIcon } from "lucide-react"
 import { useState } from "react"
 
 interface AddMCPDialogProps {
@@ -19,14 +22,12 @@ interface EnvPair {
 
 function EnvInputFields({
   envPairs,
-  onEnvChange,
   onAddKey,
   onRemoveKey,
   onKeyNameChange,
   onValueChange,
 }: {
   envPairs: EnvPair[]
-  onEnvChange: (idx: number, value: string) => void
   onAddKey: () => void
   onRemoveKey: (idx: number) => void
   onKeyNameChange: (idx: number, newKey: string) => void
@@ -75,7 +76,9 @@ function EnvInputFields({
   )
 }
 
-export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogProps) {
+function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogProps) {
+  const { play } = useSoundEffectContext()
+
   const [serverName, setServerName] = useState("")
   const [serverSummary, setServerSummary] = useState("")
   const [command, setCommand] = useState("")
@@ -101,6 +104,7 @@ export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogPr
   const isFormValid = !!serverName && !!command
 
   const handleSave = () => {
+    play("./click.mp3", { volume: 0.5 })
     if (!isFormValid) return
     const args = argsString
       .split(",")
@@ -146,7 +150,7 @@ export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogPr
     >
       <DialogContent className="border sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Add New MCP Server</DialogTitle>
+          <DialogTitle>Add MCP Server</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
@@ -195,7 +199,6 @@ export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogPr
           </div>
           <EnvInputFields
             envPairs={envPairs}
-            onEnvChange={handleValueChange}
             onAddKey={handleAddKey}
             onRemoveKey={handleRemoveKey}
             onKeyNameChange={handleKeyNameChange}
@@ -215,5 +218,34 @@ export function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogPr
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+export function AddMCPCard({ onAddServer }: { onAddServer: (server: MCPServer) => void }) {
+  const { play } = useSoundEffectContext()
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+
+  const handleAddServer = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    play("./click.mp3", { volume: 0.5 })
+    setIsAddDialogOpen(true)
+  }
+
+  return (
+    <>
+      <Card
+        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border transition-colors"
+        onMouseDown={handleAddServer}
+      >
+        <CardHeader className="flex h-full items-center justify-center">
+          <CardTitle className="text-primary/90 flex items-center font-medium">
+            <PlusIcon className="mr-2 h-5 w-5" />
+            Add New Server
+          </CardTitle>
+        </CardHeader>
+      </Card>
+      <AddMCPDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onAddServer={onAddServer} />
+    </>
   )
 }
