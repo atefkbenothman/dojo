@@ -1,14 +1,11 @@
-import { AVAILABLE_MCP_SERVERS, AVAILABLE_IMAGE_MODELS, AVAILABLE_AI_MODELS, WATCH_DIRECTORY_PATH } from "@/config"
-import { startWatching, watcherEmitter } from "@/files/watcher"
-import { userContextMiddleware } from "@/middleware/user-context"
-import agentRouter from "@/routes/agent"
-import chatRouter from "@/routes/chat"
-import connectionRouter from "@/routes/connection"
-import filesRouter from "@/routes/files"
-import imageRouter from "@/routes/image"
-import serversRouter from "@/routes/servers"
-import { broadcastSseEvent } from "@/sse"
-import type { UserSession, ActiveMcpClient, FileBatchChangeEvent } from "@/types"
+import { userContextMiddleware } from "./middleware/user-context.js"
+import agentRouter from "./routes/agent.js"
+import chatRouter from "./routes/chat.js"
+import configRouter from "./routes/config.js"
+import connectionRouter from "./routes/connection.js"
+import imageRouter from "./routes/image.js"
+import type { UserSession, ActiveMcpClient } from "./types.js"
+import { CONFIGURED_MCP_SERVERS, AI_MODELS } from "@dojo/config"
 import cors from "cors"
 import express, { Express, Request, Response } from "express"
 
@@ -28,17 +25,15 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }))
 
-app.use("/", serversRouter)
+app.use("/", configRouter)
 app.use("/", imageRouter)
 app.use("/", chatRouter)
 app.use("/", connectionRouter)
 
-app.use("/files", filesRouter)
 app.use("/agent", userContextMiddleware, agentRouter)
 
-console.log("[Core] Available MCP Servers:", Object.keys(AVAILABLE_MCP_SERVERS).join(", "))
-console.log("[Core] Available AI Models:", Object.keys(AVAILABLE_AI_MODELS).join(", "))
-console.log("[Core] Available Image Models:", Object.keys(AVAILABLE_IMAGE_MODELS).join(", "))
+console.log("[Core] Configured MCP Servers:", Object.keys(CONFIGURED_MCP_SERVERS).join(", "))
+console.log("[Core] AI Models:", Object.keys(AI_MODELS).join(", "))
 
 export const sessions = new Map<string, UserSession>()
 
@@ -64,14 +59,6 @@ app.listen(PORT, () => {
   console.log(`[Core] Server listening on port ${PORT}`)
   console.log(`[Core] Initializing with ${totalConnections} connections`)
   console.log(`[Core] Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
-  console.log(`[Core] Watch directory target configured as: ${WATCH_DIRECTORY_PATH}`)
-
-  startWatching()
-
-  // Connect watcher events to SSE broadcaster
-  watcherEmitter.on("fileBatchChanged", (batchEvent: FileBatchChangeEvent) => {
-    broadcastSseEvent(batchEvent)
-  })
 })
 
 process.on("uncaughtException", (err) => {

@@ -1,6 +1,7 @@
-import { totalConnections, MAX_CONNECTIONS, incrementTotalConnections, decrementTotalConnections } from "@/core"
-import { MCPClient } from "@/mcp-client"
-import type { MCPServerConfig, ActiveMcpClient, UserSession } from "@/types"
+import { totalConnections, MAX_CONNECTIONS, incrementTotalConnections, decrementTotalConnections } from "./core.js"
+import { MCPClient } from "./mcp-client.js"
+import type { ActiveMcpClient, UserSession } from "./types.js"
+import { MCPServer } from "@dojo/config"
 
 /**
  * Establishes an MCP connection for a given user session and server config.
@@ -8,7 +9,7 @@ import type { MCPServerConfig, ActiveMcpClient, UserSession } from "@/types"
  */
 export async function establishMcpConnection(
   userSession: UserSession,
-  config: MCPServerConfig,
+  server: MCPServer,
 ): Promise<{ success: boolean; client?: ActiveMcpClient; error?: string }> {
   if (totalConnections >= MAX_CONNECTIONS) {
     return { success: false, error: "Service busy, connection limit reached" }
@@ -16,40 +17,30 @@ export async function establishMcpConnection(
 
   let mcpClient: MCPClient
   try {
-    mcpClient = new MCPClient(config)
+    mcpClient = new MCPClient(server)
   } catch (mcpClientError) {
-    const errorMessage = `Failed to instantiate MCPClient for user ${userSession.userId}, server ${config.id}`
+    const errorMessage = `Failed to instantiate MCPClient for user ${userSession.userId}, server ${server.id}`
     console.error(`[Connection] ${errorMessage}:`, mcpClientError)
     return { success: false, error: errorMessage }
   }
 
-  console.log(`[Connection] Starting MCPClient connection for user ${userSession.userId}, server ${config.id}...`)
+  console.log(`[Connection] Starting MCPClient connection for user ${userSession.userId}, server ${server.id}...`)
+
   try {
     await mcpClient.start()
-  } catch (mcpStartErrorCaught) {
-    const errorMessage = `Failed to start MCPClient for user ${userSession.userId}, server ${config.id}`
-    console.error(`[Connection] ${errorMessage}:`, mcpStartErrorCaught)
-    try {
-      await mcpClient.cleanup()
-      console.log(
-        `[Connection] Cleaned up MCPClient after start failure for user ${userSession.userId}, server ${config.id}.`,
-      )
-    } catch (cleanupAfterStartError) {
-      console.error(
-        `[Connection] Error during cleanup after MCPClient start failure for user ${userSession.userId}, server ${config.id}:`,
-        cleanupAfterStartError,
-      )
-    }
-    return { success: false, error: errorMessage }
+  } catch (err) {
+    const errMessage = `Failed to start MCPClient for user ${userSession.userId}, server ${server.id}`
+    console.error(`[Connection] ${errMessage}:`, err)
+    return { success: false, error: errMessage }
   }
 
-  const activeMcpClient: ActiveMcpClient = { client: mcpClient, config }
+  const activeMcpClient: ActiveMcpClient = { client: mcpClient, config: server.config! }
 
-  userSession.activeMcpClients.set(config.id, activeMcpClient)
+  userSession.activeMcpClients.set(server.id, activeMcpClient)
   incrementTotalConnections()
 
   console.log(
-    `[Connection] Connection established for user ${userSession.userId}, server ${config.id}. Total connections: ${totalConnections}`,
+    `[Connection] Connection established for user ${userSession.userId}, server ${server.id}. Total connections: ${totalConnections}`,
   )
 
   return { success: true, client: activeMcpClient }

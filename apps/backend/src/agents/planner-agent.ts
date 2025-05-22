@@ -1,4 +1,4 @@
-import { type AgentInput, type AgentInternalOutput, type IAgent } from "@/agents/types"
+import { type AgentInput, type AgentInternalOutput, type IAgent } from "../types.js"
 import { streamObject } from "ai"
 import { type Response as ExpressResponse } from "express"
 import { TextEncoder } from "util"

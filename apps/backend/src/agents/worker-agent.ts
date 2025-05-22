@@ -1,5 +1,5 @@
-import { type YourPlanSchema } from "@/agents/planner-agent"
-import { type AgentInput, type AgentInternalOutput, type IAgent } from "@/agents/types"
+import { type YourPlanSchema } from "../agents/planner-agent.js"
+import { type AgentInput, type AgentInternalOutput, type IAgent } from "../types.js"
 import { streamText } from "ai"
 import { type Response as ExpressResponse } from "express"
 
@@ -22,7 +22,7 @@ export class WorkerAgent implements IAgent<YourPlanSchema, void> {
     const messages = [{ role: "system" as const, content: systemPrompt }, ...input.messages]
 
     try {
-      const result = await streamText({
+      const result = streamText({
         model: input.languageModel,
         messages: messages,
         tools: input.tools,

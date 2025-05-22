@@ -1,14 +1,16 @@
-import { totalConnections } from "@/core"
-import { establishMcpConnection, cleanupExistingConnection } from "@/mcp-connection"
-import { userContextMiddleware } from "@/middleware/user-context"
-import type { MCPServerConfig, RequestWithUserContext } from "@/types"
+import { totalConnections } from "../core.js"
+import { establishMcpConnection, cleanupExistingConnection } from "../mcp-connection.js"
+import { userContextMiddleware } from "../middleware/user-context.js"
+import type { RequestWithUserContext } from "../types.js"
+import { MCPServer } from "@dojo/config"
 import { Router, Request, Response } from "express"
 
 const router = Router()
 
-export const validateConnectConfigBody = (config: Partial<MCPServerConfig>): boolean => {
-  if (!config || typeof config !== "object") return false
-  if (!config.id || typeof config.id !== "string") return false
+export const validateConnectConfigBody = (server: Partial<MCPServer>): boolean => {
+  if (!server || typeof server !== "object") return false
+  if (!server.id || typeof server.id !== "string") return false
+  if (!server.config || typeof server.config !== "object") return false
   return true
 }
 
@@ -16,20 +18,22 @@ export const validateConnectConfigBody = (config: Partial<MCPServerConfig>): boo
 router.post("/connect", userContextMiddleware, async (expressReq: Request, res: Response): Promise<void> => {
   const req = expressReq as RequestWithUserContext
 
-  const { userSession, body } = req
-
-  const config = body.config as Partial<MCPServerConfig>
-
-  if (!validateConnectConfigBody(config)) {
-    res.status(400).json({ message: "Missing or invalid config" })
+  const userSession: RequestWithUserContext["userSession"] = req.userSession
+  const { server } = req.body as { server?: Partial<MCPServer> }
+  if (!server) {
+    res.status(400).json({ message: "Missing or invalid server object" })
+    return
+  }
+  if (!validateConnectConfigBody(server)) {
+    res.status(400).json({ message: "Missing or invalid server object" })
     return
   }
 
-  console.log(`[Connection] /connect request received for userId: ${userSession.userId}, mcpServer: ${config.id}`)
+  console.log(`[Connection] /connect request received for userId: ${userSession.userId}, mcpServer: ${server.id}`)
 
-  await cleanupExistingConnection(userSession, config.id!)
+  await cleanupExistingConnection(userSession, server.id!)
 
-  const result = await establishMcpConnection(userSession, config as MCPServerConfig)
+  const result = await establishMcpConnection(userSession, server as MCPServer)
 
   if (!result.success) {
     const statusCode = result.error?.includes("limit reached") ? 503 : 500
@@ -45,10 +49,8 @@ router.post("/connect", userContextMiddleware, async (expressReq: Request, res: 
 router.post("/disconnect", userContextMiddleware, async (expressReq: Request, res: Response): Promise<void> => {
   const req = expressReq as RequestWithUserContext
 
-  const { userSession, body } = req
-
-  const serverId = body.serverId as string
-
+  const userSession: RequestWithUserContext["userSession"] = req.userSession
+  const { serverId } = req.body as { serverId?: string }
   if (!serverId || typeof serverId !== "string") {
     res.status(400).json({ message: "Missing or invalid serverId" })
     return

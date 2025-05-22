@@ -1,4 +1,4 @@
-import { type CoreMessage, streamText, type ToolSet, type LanguageModel } from "ai"
+import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel } from "ai"
 import { type Response } from "express"
 
 interface StreamAiResponseOptions {
@@ -17,11 +17,15 @@ export async function streamAiResponse(options: StreamAiResponseOptions): Promis
   )
 
   try {
-    const result = await streamText({
+    const result = streamText({
       model: languageModel,
       messages: messages,
       tools: tools,
       maxSteps: maxSteps,
+      experimental_transform: smoothStream({
+        delayInMs: 5,
+        chunking: "line",
+      }),
       onError: (error) => {
         console.error("[AI] Error during AI stream processing:", error)
         if (!res.headersSent) {

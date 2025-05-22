@@ -1,28 +1,23 @@
-import { MCPServerConfig } from "@/types"
+import { MCPServer } from "@dojo/config"
 import { asyncTryCatch } from "@dojo/utils"
 import { Tool, experimental_createMCPClient } from "ai"
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
-import dotenv from "dotenv"
-import * as path from "path"
-
-dotenv.config({
-  path: path.resolve(__dirname, "..", ".env"),
-})
 
 export class MCPClient {
-  private config: MCPServerConfig
+  private server: MCPServer
   private client: Awaited<ReturnType<typeof experimental_createMCPClient>> | null = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public tools: { [k: string]: Tool<any, any> } = {}
 
-  constructor(config: MCPServerConfig) {
-    this.config = config
-    console.log(`[MCP] MCPClient configured for service ${this.config.name}`)
+  constructor(server: MCPServer) {
+    this.server = server
+    console.log(`[MCP] MCPClient configured for server ${this.server.id} (${this.server.name})`)
   }
 
+  // change this to use the server config env
   private setupEnvironment(): Record<string, string> {
     const parentEnv = { ...process.env }
-    const configEnv = this.config.env || {}
+    const configEnv = this.server.config?.env || {}
 
     return {
       ...parentEnv,
@@ -32,9 +27,10 @@ export class MCPClient {
   }
 
   private createTransport(envs: Record<string, string>): StdioMCPTransport {
+    if (!this.server.config) throw new Error(`No config found for MCP server ${this.server.id}`)
     return new StdioMCPTransport({
-      command: this.config.command,
-      args: this.config.args,
+      command: this.server.config.command,
+      args: this.server.config.args,
       cwd: ".",
       env: envs,
     })
@@ -43,7 +39,8 @@ export class MCPClient {
   public async start(): Promise<void> {
     if (this.client) return
 
-    console.log(`[MCP.start] Preparing environment and transport for ${this.config.name}...`)
+    if (!this.server.config) throw new Error(`No config found for MCP server ${this.server.id}`)
+    console.log(`[MCP.start] Preparing environment and transport for server ${this.server.id} (${this.server.name})...`)
 
     const envs = this.setupEnvironment()
     const transport = this.createTransport(envs)
@@ -51,34 +48,36 @@ export class MCPClient {
     const { data: client, error: clientError } = await asyncTryCatch(experimental_createMCPClient({ transport }))
 
     if (!client || clientError) {
-      console.error("[MCP.start] Failed to create MCP client: ", clientError)
+      console.error(`[MCP.start] Failed to create MCP client for server ${this.server.id}: `, clientError)
       this.client = null
       this.tools = {}
-      return
+      throw new Error(
+        `Failed to create MCP client for server ${this.server.id}: ${clientError?.message || "Unknown error"}`,
+      )
     }
 
     this.client = client
-    console.log(`[MCP.start] MCP Client created successfully for ${this.config.name}`)
+    console.log(`[MCP.start] MCP Client created successfully for server ${this.server.id}`)
 
     const { data: tools, error: toolsError } = await asyncTryCatch(this.client.tools())
 
     if (!tools || toolsError) {
-      console.error("[MCP.start] Failed to fetch MCP tools: ", clientError)
+      console.error(`[MCP.start] Failed to fetch MCP tools for server ${this.server.id}: `, toolsError)
       this.tools = {}
       return
     }
 
     this.tools = tools
-    console.log(`[MCP.getTools] Fetched ${Object.keys(this.tools).length} tools`)
+    console.log(`[MCP.getTools] Fetched ${Object.keys(this.tools).length} tools for server ${this.server.id}`)
   }
 
   public async cleanup(): Promise<void> {
     if (this.client) {
-      console.log(`[MCP.cleanup] Closing MCP client...`)
+      console.log(`[MCP.cleanup] Closing MCP client for server ${this.server.id}...`)
       await this.client.close()
       this.client = null
       this.tools = {}
-      console.log(`[MCP.cleanup] MCP client closed`)
+      console.log(`[MCP.cleanup] MCP client closed for server ${this.server.id}`)
     }
   }
 }

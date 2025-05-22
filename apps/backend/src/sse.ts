@@ -1,7 +1,6 @@
-import { FileBatchChangeEvent } from "@/types"
+import { FileBatchChangeEvent } from "./types.js"
 import { Response } from "express"
 
-// Store active SSE client connections
 const sseClients = new Set<Response>()
 
 export function addSseClient(res: Response): void {

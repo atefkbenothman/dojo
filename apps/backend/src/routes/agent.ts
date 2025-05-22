@@ -1,7 +1,7 @@
-import { handleAiChainRequest } from "@/agents/orchestrator"
-import { AVAILABLE_AI_MODELS } from "@/config"
-import { establishMcpConnection, cleanupExistingConnection } from "@/mcp-connection"
-import type { AgentConfig, RequestWithUserContext, UserSession } from "@/types"
+import { handleAiChainRequest } from "../agents/orchestrator.js"
+import { getModelInstance } from "../ai/get-model.js"
+import { establishMcpConnection, cleanupExistingConnection } from "../mcp-connection.js"
+import type { AgentConfig, RequestWithUserContext, UserSession } from "../types.js"
 import { type CoreMessage, type ToolSet, type LanguageModel } from "ai"
 import { Router, Request, Response } from "express"
 
@@ -21,20 +21,25 @@ async function establishMcpConnectionsForAgent(
   userSession: UserSession,
   agentConfig: AgentConfig,
 ): Promise<{ success: boolean; error?: string }> {
-  const connectionPromises = agentConfig.mcpServers.map(async (mcpServerConfig) => {
+  const connectionPromises = agentConfig.mcpServers.map(async (mcpServer) => {
+    if (!mcpServer.config) {
+      const errorMessage = `No config found for MCP server ${mcpServer.id}`
+      console.error(`[Agent] ${errorMessage}`)
+      throw new Error(errorMessage)
+    }
     console.log(
-      `[Agent] Attempting connection to MCP server: ${mcpServerConfig.id} for agent ${agentConfig.id} for user ${userSession.userId}...`,
+      `[Agent] Attempting connection to MCP server: ${mcpServer.id} for agent ${agentConfig.id} for user ${userSession.userId}...`,
     )
-    const result = await establishMcpConnection(userSession, mcpServerConfig)
+    const result = await establishMcpConnection(userSession, mcpServer)
     if (!result.success) {
-      const errorMessage = `Failed to establish connection to ${mcpServerConfig.id}: ${result.error}`
+      const errorMessage = `Failed to establish connection to ${mcpServer.id}: ${result.error}`
       console.error(
-        `[Agent] Failed to establish connection for ${mcpServerConfig.id} (Agent: ${agentConfig.id}, User: ${userSession.userId}): ${result.error}`,
+        `[Agent] Failed to establish connection for ${mcpServer.id} (Agent: ${agentConfig.id}, User: ${userSession.userId}): ${String(result.error)}`,
       )
       throw new Error(errorMessage)
     }
-    console.log(`[Agent] Successfully established connection to ${mcpServerConfig.id} for user ${userSession.userId}`)
-    return { serverId: mcpServerConfig.id, success: true }
+    console.log(`[Agent] Successfully established connection to ${mcpServer.id} for user ${userSession.userId}`)
+    return { serverId: mcpServer.id, success: true }
   })
 
   try {
@@ -45,11 +50,11 @@ async function establishMcpConnectionsForAgent(
     return { success: true }
   } catch (error) {
     console.error(
-      `[Agent] Failed to establish one or more MCP connections for agent ${agentConfig.id} for user ${userSession.userId}. First error: ${error}`,
+      `[Agent] Failed to establish one or more MCP connections for agent ${agentConfig.id} for user ${userSession.userId}.`,
     )
     return {
       success: false,
-      error: `Failed to establish one or more connections: ${error}`,
+      error: `Failed to establish one or more connections: ${String(error)}`,
     }
   }
 }
@@ -58,9 +63,13 @@ async function establishMcpConnectionsForAgent(
 agentRouter.post("/run", async (expressReq: Request, res: Response): Promise<void> => {
   const req = expressReq as RequestWithUserContext
 
-  const { userSession, body } = req
+  const userSession: RequestWithUserContext["userSession"] = req.userSession
+  const { config, apiKey } = req.body as { config?: AgentConfig; apiKey?: string }
 
-  const config = body.config as AgentConfig
+  if (!apiKey) {
+    res.status(500).json({ success: false, message: "API key is required" })
+    return
+  }
 
   if (!config || typeof config !== "object" || !config.id || !Array.isArray(config.mcpServers)) {
     res.status(400).json({ success: false, message: "Invalid agent configuration: Missing id or mcpServers array" })
@@ -80,12 +89,10 @@ agentRouter.post("/run", async (expressReq: Request, res: Response): Promise<voi
       return
     }
 
-    const aiModel: LanguageModel | undefined = AVAILABLE_AI_MODELS[agentConfig.modelId]?.languageModel
-
-    if (!aiModel) {
-      console.error(
-        `[Agent] AI Model '${agentConfig.modelId}' not found or not configured for user '${userSession.userId}'`,
-      )
+    let aiModel: LanguageModel
+    try {
+      aiModel = getModelInstance(agentConfig.modelId, apiKey) as LanguageModel
+    } catch {
       await rollbackConnections(userSession, agentConfig)
       res.status(500).json({ success: false, message: `AI Model '${agentConfig.modelId}' not configured on backend` })
       return
@@ -126,7 +133,6 @@ agentRouter.post("/run", async (expressReq: Request, res: Response): Promise<voi
 /* Stop all agent connections for a user */
 agentRouter.post("/stop", async (expressReq: Request, res: Response): Promise<void> => {
   const req = expressReq as RequestWithUserContext
-
   const { userSession } = req
 
   console.log(`[Agent] Request to stop all connections for user '${userSession.userId}'`)

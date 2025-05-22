@@ -1,33 +1,8 @@
-import { MCPClient } from "@/mcp-client"
-import { ImageModel, LanguageModel } from "ai"
+import { MCPClient } from "./mcp-client.js"
+import { MCPServerConfig, MCPServer } from "@dojo/config"
+import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import { Request } from "express"
-
-export interface MCPServer {
-  id: string
-  name: string
-  summary: string
-}
-
-export interface MCPServerConfig {
-  id: string
-  name: string
-  command: string
-  args: string[]
-  env?: Record<string, string>
-}
-
-export interface AIModelConfig {
-  name: string
-  modelName: string
-  languageModel: LanguageModel
-}
-
-export interface AIImageModelConfig {
-  name: string
-  modelName: string
-  imageModel: ImageModel
-  provider: "openai"
-}
+import { type Response as ExpressResponse } from "express"
 
 export interface GenerateImageOptions {
   n?: number
@@ -63,7 +38,7 @@ export interface AgentConfig {
   name: string
   modelId: string
   systemPrompt: string
-  mcpServers: MCPServerConfig[]
+  mcpServers: MCPServer[]
   maxExecutionSteps: number
 }
 
@@ -72,4 +47,33 @@ export type AgentConfigs = Record<string, AgentConfig>
 export interface RequestWithUserContext extends Request {
   userId: string
   userSession: UserSession
+}
+
+// Input structure for an agent
+export interface AgentInput<TPreviousResult = unknown> {
+  messages: CoreMessage[]
+  languageModel: LanguageModel
+  tools?: ToolSet
+  previousAgentResult?: TPreviousResult // Output from the preceding agent
+  // Add any other contextual data agents might need
+}
+
+// Output structure that an agent's execute method returns to the orchestrator (server-side)
+// This is distinct from what it streams to the client via the ExpressResponse.
+export interface AgentInternalOutput<TResult = unknown> {
+  result: TResult // The primary result of the agent's execution for server-side use
+  // Add metadata useful for subsequent agents or server logic
+}
+
+// The core Agent interface
+export interface IAgent<TInputParams = unknown, TOutputResult = unknown> {
+  name: string
+  description: string
+
+  /**
+   * Executes the agent's core logic.
+   * Streams output to the client via the ExpressResponse object.
+   * Returns an internal result for use by the orchestrator or subsequent agents.
+   */
+  execute(input: AgentInput<TInputParams>, res: ExpressResponse): Promise<AgentInternalOutput<TOutputResult>>
 }
