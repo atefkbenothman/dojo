@@ -72,7 +72,7 @@ function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
 
   return (
     <MessageAccordion variant="tool" icon={icon} title={content.toolName + (text ? ` (${text})` : "")}>
-      {content.state === "result" && "result" in content ? (
+      {content.state === "result" ? (
         <div>
           <div className="text-muted-foreground mb-2 text-xs">Args:</div>
           <pre className={preClassName}>{JSON.stringify(content.args, null, 2)}</pre>

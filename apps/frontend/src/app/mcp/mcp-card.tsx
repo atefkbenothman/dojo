@@ -120,6 +120,11 @@ export function MCPCard({ server }: MCPCardProps) {
         isConnected && "border-primary/80 bg-muted/50",
       )}
     >
+      {server.localOnly && (
+        <div className="absolute top-2 right-2 z-10 bg-secondary/80 border border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          Local only
+        </div>
+      )}
       <CardHeader>
         <div className="flex items-center gap-2">
           {Icon && <Icon />}

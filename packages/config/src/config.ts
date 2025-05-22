@@ -63,18 +63,17 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
     requiresUserKey: true,
     config: {
       command: "npx",
-      args: ["-y", "@supabase/mcp-server-supabase@latest", "--access-token", ""],
+      args: ["-y", "@supabase/mcp-server-supabase@latest", "--access-token", "ACCESS_TOEN"],
     },
   },
-  notion: {
-    id: "notion",
-    name: "Notion",
-    summary: "Interact with the Notion API",
-    requiresUserKey: true,
+  github: {
+    id: "github",
+    name: "Github",
+    summary: "Repository management, file operations, and GitHub API integration",
+    localOnly: true,
     config: {
-      command: "npx",
-      args: ["-y", "@notionhq/notion-mcp-server"],
-      requiresEnv: ["NOTION_API_KEY"],
+      command: "docker-compose",
+      args: ["run", "--rm", "github-mcp-server"],
     },
   },
   ticketmaster: {
@@ -102,22 +101,43 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
     id: "playwright",
     name: "Playwright",
     summary: "Run browser automation and webscraping",
+    localOnly: true,
+    config: {
+      command: "npx",
+      args: ["-y", "@playwright/mcp@latest", "--browser", "chrome"],
+    },
   },
-  // github: {
-  //   id: "github",
-  //   name: "Github",
-  //   summary: "Repository management, file operations, and GitHub API integration",
-  // },
-  // blender: {
-  //   id: "blender",
-  //   name: "Blender",
-  //   summary: "Enable prompt assisted 3D modeling, scene creation, and manipulation",
-  // },
-  // filesystem: {
-  //   id: "filesystem",
-  //   name: "Filesystem",
-  //   summary: "Secure file operations with configurable access controls",
-  // },
+  notion: {
+    id: "notion",
+    name: "Notion",
+    summary: "Interact with the Notion API",
+    requiresUserKey: true,
+    config: {
+      command: "npx",
+      args: ["-y", "@notionhq/notion-mcp-server"],
+      requiresEnv: ["NOTION_API_KEY"],
+    },
+  },
+  blender: {
+    id: "blender",
+    name: "Blender",
+    summary: "Enable prompt assisted 3D modeling, scene creation, and manipulation",
+    localOnly: true,
+    config: {
+      command: "uvx",
+      args: ["blender-mcp"],
+    },
+  },
+  filesystem: {
+    id: "filesystem",
+    name: "Filesystem",
+    summary: "Secure file operations with configurable access controls",
+    localOnly: true,
+    config: {
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "PATH_TO_DIRECTORY"],
+    },
+  },
   // figma: {
   //   id: "figma",
   //   name: "Figma",

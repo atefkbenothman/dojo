@@ -14,6 +14,7 @@ export interface MCPServer {
   summary?: string
   requiresUserKey?: boolean
   config?: MCPServerConfig
+  localOnly?: boolean
 }
 
 export interface MCPServerConfig {
