@@ -35,6 +35,10 @@ export function SideNav() {
 
   const { play } = useSoundEffectContext()
 
+  function playSoundEffect() {
+    play("./click.mp3", { volume: 0.5 })
+  }
+
   return (
     <div className="bg-card w-[42px] flex-shrink-0 border-r">
       <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b">
@@ -50,7 +54,7 @@ export function SideNav() {
                   <TooltipTrigger asChild>
                     <Link
                       href={href}
-                      onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+                      onMouseDown={playSoundEffect}
                       className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
                     >
                       <div
