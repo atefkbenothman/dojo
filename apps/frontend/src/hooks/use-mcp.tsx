@@ -13,6 +13,13 @@ const queryClient = new QueryClient()
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
 
+const toastStyle = {
+  backgroundColor: "#9f0712",
+  border: "1px solid #fb2c36",
+  color: "#fff",
+  fontWeight: 800,
+}
+
 export interface ActiveConnection {
   serverId: string
   name: string
@@ -115,13 +122,7 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         id: `mcp-error-${server.id}`,
         duration: 5000,
         position: "bottom-center",
-        style: {
-          backgroundColor: "#9f0712",
-          border: "1px solid #fb2c36",
-          color: "#fff",
-          height: "1.5rem",
-          fontWeight: 800,
-        },
+        style: toastStyle,
       })
     },
   })
@@ -181,13 +182,7 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         id: `mcp-error-${server.id}`,
         duration: 5000,
         position: "bottom-center",
-        style: {
-          backgroundColor: "#9f0712",
-          border: "1px solid #fb2c36",
-          color: "#fff",
-          height: "1.5rem",
-          fontWeight: 800,
-        },
+        style: toastStyle,
       })
       return
     }
