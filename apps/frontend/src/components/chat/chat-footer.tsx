@@ -1,10 +1,20 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectGroup,
+  SelectLabel,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useModelContext } from "@/hooks/use-model"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import type { AIModel } from "@dojo/config"
 import { ArrowUp } from "lucide-react"
 import { memo, useState, useCallback, useRef, useEffect } from "react"
 
@@ -13,23 +23,50 @@ interface ChatControlsProps {
 }
 
 const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
+  const { play } = useSoundEffectContext()
   const { models, selectedModel, setSelectedModelId } = useModelContext()
+
+  const groupedModels = models.reduce<Record<string, AIModel[]>>((acc, model) => {
+    ;(acc[model.provider] ??= []).push(model)
+    return acc
+  }, {})
+
+  const handleSend = useCallback(() => {
+    onSend()
+  }, [onSend])
 
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
-      <Select value={selectedModel.id} onValueChange={setSelectedModelId}>
+      <Select
+        value={(selectedModel && selectedModel.id) || ""}
+        onValueChange={setSelectedModelId}
+        onOpenChange={(isOpen) => isOpen && play("./click.mp3", { volume: 0.5 })}
+      >
         <SelectTrigger className="hover:cursor-pointer">
           <SelectValue placeholder="Model" />
         </SelectTrigger>
         <SelectContent className="text-xs" align="start">
-          {models.map((model) => (
-            <SelectItem key={model.id} value={model.id} className="hover:cursor-pointer">
-              {model.name}
-            </SelectItem>
-          ))}
+          {Object.entries(groupedModels).map(([providerId, models]) => {
+            if (!models.length) return null
+            return (
+              <SelectGroup key={providerId}>
+                <SelectLabel>{models[0]?.provider}</SelectLabel>
+                {models.map((model) => (
+                  <SelectItem
+                    key={model.id}
+                    value={model.id}
+                    className="hover:cursor-pointer"
+                    onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+                  >
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )
+          })}
         </SelectContent>
       </Select>
-      <Button className="ml-auto hover:cursor-pointer" variant="outline" onMouseDown={onSend}>
+      <Button className="ml-auto hover:cursor-pointer" variant="outline" onMouseDown={handleSend}>
         <ArrowUp className="h-4 w-4" strokeWidth={3} />
       </Button>
     </div>

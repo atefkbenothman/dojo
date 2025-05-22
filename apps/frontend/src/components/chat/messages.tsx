@@ -1,10 +1,58 @@
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useChatProvider } from "@/hooks/use-chat"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { cn } from "@/lib/utils"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"
 import { Hammer, Check, Clock, Play, Lightbulb, Info, AlertTriangle } from "lucide-react"
-import { useEffect, RefObject } from "react"
+import { useEffect, RefObject, memo } from "react"
+
+interface MessageAccordionProps {
+  variant?: "error" | "system" | "reasoning" | "tool"
+  icon: React.ReactNode
+  title: string
+  children: React.ReactNode
+  defaultOpen?: boolean
+  className?: string
+}
+
+const variantStyles = {
+  error: "bg-red-200 dark:bg-red-800 border border-red-500/50 text-red-700 dark:text-white",
+  system: "bg-blue-100 dark:bg-blue-900 border border-blue-400/50 text-blue-900 dark:text-white",
+  reasoning: "bg-yellow-100 dark:bg-yellow-900 border border-yellow-400/50 text-yellow-900 dark:text-white",
+  tool: "bg-muted border border-muted-foreground/20 text-foreground dark:text-white",
+}
+
+const preClassName = "p-2 text-xs wrap-break-word whitespace-pre-wrap bg-background/80 dark:bg-background/50 rounded-sm"
+
+function MessageAccordion({ variant = "tool", icon, title, children, defaultOpen, className }: MessageAccordionProps) {
+  const { play } = useSoundEffectContext()
+
+  const open = defaultOpen ?? variant === "error"
+
+  return (
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue={open ? "message-accordion" : undefined}
+      className={cn(variantStyles[variant], "w-full", className)}
+    >
+      <AccordionItem value="message-accordion" className="border-b-0">
+        <AccordionTrigger
+          className="p-2 hover:cursor-pointer hover:no-underline"
+          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+        >
+          <div className="flex flex-row items-center gap-2">
+            {icon}
+            <p className="text-xs font-semibold">{title}</p>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="pt-0 p-2 text-xs">{children}</AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
+}
 
 function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
   const getStateInfo = () => {
@@ -23,47 +71,26 @@ function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
   const { icon, text } = getStateInfo()
 
   return (
-    <Accordion type="single" collapsible className="bg-muted w-full">
-      <AccordionItem value={content.toolCallId}>
-        <AccordionTrigger className="p-2 hover:cursor-pointer">
-          <div className="flex flex-row items-center gap-2">
-            {icon}
-            <p className="text-xs">{content.toolName}</p>
-            {text && <span className="text-muted-foreground ml-2 text-xs">{text}</span>}
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="p-2">
-          {content.state === "result" && "result" in content ? (
-            <div>
-              <div className="text-muted-foreground mb-2 text-xs">Args:</div>
-              <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.args, null, 2)}</pre>
-              <div className="text-muted-foreground mt-4 mb-2 text-xs">Result:</div>
-              <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.result, null, 2)}</pre>
-            </div>
-          ) : (
-            <pre className="overflow-auto p-2 text-xs">{JSON.stringify(content.args, null, 2)}</pre>
-          )}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <MessageAccordion variant="tool" icon={icon} title={content.toolName + (text ? ` (${text})` : "")}>
+      {content.state === "result" && "result" in content ? (
+        <div>
+          <div className="text-muted-foreground mb-2 text-xs">Args:</div>
+          <pre className={preClassName}>{JSON.stringify(content.args, null, 2)}</pre>
+          <div className="text-muted-foreground mt-4 mb-2 text-xs">Result:</div>
+          <pre className={preClassName}>{JSON.stringify(content.result, null, 2)}</pre>
+        </div>
+      ) : (
+        <pre className={preClassName}>{JSON.stringify(content.args, null, 2)}</pre>
+      )}
+    </MessageAccordion>
   )
 }
 
 function ReasoningMessage({ content }: { content: string }) {
   return (
-    <Accordion type="single" collapsible className="bg-muted w-full">
-      <AccordionItem value="reasoning">
-        <AccordionTrigger className="p-2 hover:cursor-pointer">
-          <div className="flex flex-row items-center gap-2">
-            <Lightbulb className="h-4 w-4" />
-            <p className="text-xs">Reasoning</p>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="p-2">
-          <pre className="overflow-auto p-2 text-xs wrap-break-word whitespace-pre-wrap">{content}</pre>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <MessageAccordion variant="reasoning" icon={<Lightbulb className="h-4 w-4" />} title="Reasoning">
+      <pre className={preClassName}>{content}</pre>
+    </MessageAccordion>
   )
 }
 
@@ -84,49 +111,43 @@ function GeneratedImagesRenderer({ images }: { images: { base64: string }[] }) {
 
 function SystemMessage({ content }: { content: string }) {
   return (
-    <Accordion type="single" collapsible className="bg-muted w-full">
-      <AccordionItem value="system-message">
-        <AccordionTrigger className="p-2 hover:cursor-pointer">
-          <div className="flex flex-row items-center gap-2">
-            <Info className="h-4 w-4" />
-            <p className="text-xs">System</p>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="p-1 text-xs">
-          <pre className="p-2 text-xs wrap-break-word whitespace-pre-wrap">{content}</pre>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <MessageAccordion variant="system" icon={<Info className="h-4 w-4" />} title="System">
+      <pre className={preClassName}>{content}</pre>
+    </MessageAccordion>
   )
 }
 
 function ErrorMessage({ errorMessage }: { errorMessage: string }) {
   if (!errorMessage) return null
   return (
-    <Accordion
-      type="single"
-      collapsible
-      defaultValue="error-message"
-      className="bg-red-200 dark:bg-red-800 w-full rounded-md border border-red-500/50"
-    >
-      <AccordionItem value="error-message" className="border-b-0">
-        <AccordionTrigger className="p-2 hover:cursor-pointer hover:no-underline">
-          <div className="flex flex-row items-center gap-2 text-red-700 dark:text-white">
-            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-            <p className="text-xs font-semibold">Error</p>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="pt-0 p-2 text-xs text-red-700 dark:text-white">
-          <pre className="p-2 text-xs wrap-break-word whitespace-pre-wrap bg-background/80 dark:bg-background/50 rounded-sm">
-            {errorMessage}
-          </pre>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <div className="py-2">
+      <MessageAccordion
+        variant="error"
+        icon={<AlertTriangle className="h-4 w-4 flex-shrink-0" />}
+        title="Error"
+        defaultOpen
+      >
+        <pre className={preClassName}>{errorMessage}</pre>
+      </MessageAccordion>
+    </div>
   )
 }
 
-function MessageItem({
+function LoadingAnimation() {
+  return (
+    <div className="flex items-center space-x-1 w-fit px-1 py-2 text-red-500">
+      {[0, 1, 2].map((dot) => (
+        <div
+          key={dot}
+          className="h-1.5 w-1.5 animate-bounce bg-primary/50"
+          style={{ animationDelay: `${dot * 0.2}s` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+const MessageItem = memo(function MessageItem({
   msg,
 }: {
   msg: UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } }
@@ -158,7 +179,7 @@ function MessageItem({
 
   return (
     <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
-      {msg.parts.map((part, idx: number) => {
+      {msg.parts.map((part, idx) => {
         switch (part.type) {
           case "text":
             return (
@@ -182,16 +203,16 @@ function MessageItem({
       })}
     </div>
   )
-}
+})
 
 export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | null> }) {
-  const { messages, chatError } = useChatProvider()
+  const { messages, chatError, isImageGenerating, status } = useChatProvider()
 
   const virtualizer = useVirtualizer({
     count: messages.length,
     estimateSize: () => 80,
     getScrollElement: () => scrollRef.current,
-    overscan: 5,
+    overscan: 3,
   })
 
   const virtualItems = virtualizer.getVirtualItems()
@@ -223,12 +244,9 @@ export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | 
           ))}
         </div>
       </div>
-      {/* Display chatError if it exists */}
-      {chatError && (
-        <div className="py-2">
-          <ErrorMessage errorMessage={chatError} />
-        </div>
-      )}
+      {status === "submitted" && <LoadingAnimation />}
+      {isImageGenerating && <LoadingAnimation />}
+      {chatError && status !== "submitted" && <ErrorMessage errorMessage={chatError} />}
     </div>
   )
 }

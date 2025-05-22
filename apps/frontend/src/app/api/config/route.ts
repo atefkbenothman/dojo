@@ -1,9 +1,8 @@
+import { env } from "@/env"
 import { NextResponse } from "next/server"
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8888"
-
 export async function GET() {
-  const res = await fetch(`${BACKEND_URL}/config`, { cache: "no-store" })
+  const res = await fetch(`${env.MCP_SERVICE_URL}/config`, { cache: "no-store" })
   if (!res.ok) {
     return NextResponse.json({ error: "Failed to fetch config from backend" }, { status: 500 })
   }
