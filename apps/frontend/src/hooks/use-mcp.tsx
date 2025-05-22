@@ -5,7 +5,7 @@ import { useUserContext } from "@/hooks/use-user-id"
 import type { MCPServer } from "@dojo/config"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { Tool } from "ai"
-import { useState, createContext, useContext, useEffect } from "react"
+import { useState, createContext, useContext } from "react"
 import { toast } from "sonner"
 import type { ZodTypeAny } from "zod"
 
