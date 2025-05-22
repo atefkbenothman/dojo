@@ -97,6 +97,7 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         if (exists) return prev
         return [...prev, newConnection]
       })
+      play("./connect.mp3", { volume: 0.5 })
     },
     onError: (error, { server }: { server: MCPServer }) => {
       setConnectionStatus((prev) => ({
@@ -107,6 +108,7 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         ...prev,
         [server.id]: error.message || "An unexpected error occurred during connecting",
       }))
+      play("./error.mp3", { volume: 0.5 })
     },
   })
 
@@ -136,8 +138,6 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         ...prev,
         [serverId]: null,
       }))
-
-      // Remove from active connections
       setActiveConnections((prev) => prev.filter((conn) => conn.serverId !== serverId))
     },
     onError: (error, serverId) => {
@@ -162,10 +162,13 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
     }
     try {
       await connectMutation.mutateAsync({ server })
-      play("./connect.mp3", { volume: 0.5 })
     } catch {
       setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
-      setConnectionError((prev) => ({ ...prev, [server.id]: "Connection failed" }))
+      if (!isServerHealthy) {
+        setConnectionError((prev) => ({ ...prev, [server.id]: "Server is offline" }))
+      } else {
+        setConnectionError((prev) => ({ ...prev, [server.id]: "Connection failed" }))
+      }
     }
   }
 

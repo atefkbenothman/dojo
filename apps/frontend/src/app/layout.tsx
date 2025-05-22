@@ -10,6 +10,7 @@ import { UserProvider } from "@/hooks/use-user-id"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
 import type { AgentConfig } from "@dojo/config"
 import type { AIModel, MCPServer } from "@dojo/config"
+import { AI_MODELS, CONFIGURED_MCP_SERVERS, CONFIGURED_AGENTS } from "@dojo/config"
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
@@ -28,20 +29,27 @@ async function fetchConfig(): Promise<{
   mcpServers: Record<string, MCPServer>
   agents: Record<string, AgentConfig>
 }> {
-  const defaultConfig = { aiModels: {}, mcpServers: {}, agents: {} }
   try {
     const res = await fetch(`${env.MCP_SERVICE_URL}/config`, { cache: "no-store" })
     if (!res.ok) {
-      return defaultConfig
+      return {
+        aiModels: AI_MODELS,
+        mcpServers: CONFIGURED_MCP_SERVERS,
+        agents: CONFIGURED_AGENTS,
+      }
     }
     const data = await res.json()
     return {
-      aiModels: data.aiModels || {},
-      mcpServers: data.mcpServers || {},
-      agents: data.agents || {},
+      aiModels: data.aiModels || AI_MODELS,
+      mcpServers: data.mcpServers || CONFIGURED_MCP_SERVERS,
+      agents: data.agents || CONFIGURED_AGENTS,
     }
   } catch {
-    return defaultConfig
+    return {
+      aiModels: AI_MODELS,
+      mcpServers: CONFIGURED_MCP_SERVERS,
+      agents: CONFIGURED_AGENTS,
+    }
   }
 }
 

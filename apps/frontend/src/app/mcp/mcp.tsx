@@ -15,7 +15,7 @@ export function Mcp() {
   const [customServers, setCustomServers] = useState<Record<string, MCPServer>>({})
 
   useEffect(() => {
-    const allAvailableServers = { ...(isServerHealthy ? mcpServers : {}), ...customServers }
+    const allAvailableServers = { ...mcpServers, ...customServers }
     if (searchInput === "") {
       setFilteredServers(allAvailableServers)
     } else {

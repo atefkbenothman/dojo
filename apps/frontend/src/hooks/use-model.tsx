@@ -21,7 +21,7 @@ export function ModelProvider({
   const [selectedModelId, setSelectedModelId] = useState<string>("gemini-1.5-flash")
 
   const selectedModel = useMemo((): AIModel => {
-    return aiModels[selectedModelId as keyof typeof aiModels]!
+    return aiModels[selectedModelId]!
   }, [selectedModelId, aiModels])
 
   return (

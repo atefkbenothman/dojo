@@ -24,7 +24,7 @@ export function DarkModeToggle() {
   return (
     <div>
       {mounted && (
-        <Tabs defaultValue={theme} className="border">
+        <Tabs defaultValue={theme} className="h-9">
           <TabsList>
             <TabsTrigger value="light" onMouseDown={() => handleThemeClick("light")}>
               <Sun />

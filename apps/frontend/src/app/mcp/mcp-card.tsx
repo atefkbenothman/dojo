@@ -82,9 +82,17 @@ export function MCPCard({ server }: MCPCardProps) {
   useEffect(() => {
     if (connectionError) {
       toast.error(connectionError, {
+        icon: null,
         id: `mcp-error-${server.id}`,
         duration: 5000,
         position: "bottom-center",
+        style: {
+          backgroundColor: "#9f0712",
+          border: "1px solid #fb2c36",
+          color: "#fff",
+          height: "1.5rem",
+          fontWeight: 800,
+        },
       })
     }
   }, [connectionError, server.id])
