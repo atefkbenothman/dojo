@@ -1,27 +1,7 @@
 "use server"
 
-import { AgentList } from "@/app/agent/agent-list"
-import { AGENT_CONFIG } from "@/lib/config"
-import { Suspense } from "react"
-
-async function Agents() {
-  const agents = AGENT_CONFIG
-
-  if (!agents || Object.keys(agents).length === 0) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">No agents available</p>
-      </div>
-    )
-  }
-
-  return <AgentList agents={agents} />
-}
+import { Agent } from "@/app/agent/agent"
 
 export default async function AgentPage() {
-  return (
-    <Suspense fallback={<p>Loading...</p>}>
-      <Agents />
-    </Suspense>
-  )
+  return <Agent />
 }

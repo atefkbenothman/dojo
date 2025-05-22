@@ -1,17 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { AgentConfig } from "@/lib/types"
+import type { AgentConfig } from "@dojo/config"
 import { Settings } from "lucide-react"
 
 interface AgentDialogProps {
@@ -32,49 +24,56 @@ export function AgentDialog({ agent, open, onOpenChange }: AgentDialogProps) {
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] sm:max-w-[700px]">
+      <DialogContent className="border sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{agent.name} Settings</DialogTitle>
-          <DialogDescription>View agent configuration details</DialogDescription>
+          <DialogTitle>Configure {agent.name}</DialogTitle>
         </DialogHeader>
-        <div className="mt-4 max-h-[calc(90vh-200px)] overflow-y-auto rounded-md border p-4">
-          <div className="space-y-6">
-            <div>
-              <Label className="text-xs font-medium">Agent ID</Label>
-              <div className="bg-muted mt-1 rounded-md p-2 text-sm">{agent.id}</div>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label className="text-primary/80 text-xs" htmlFor="agent-id">
+              Agent ID
+            </Label>
+            <div id="agent-id" className="text-sm">
+              {agent.id}
             </div>
-
-            <div>
-              <Label className="text-xs font-medium">Model</Label>
-              <div className="bg-muted mt-1 rounded-md p-2 text-sm">{agent.modelId}</div>
+          </div>
+          <div className="grid gap-2">
+            <Label className="text-primary/80 text-xs" htmlFor="agent-model">
+              Model
+            </Label>
+            <div id="agent-model" className="text-sm">
+              {agent.modelId}
             </div>
-
-            <div>
-              <Label className="text-xs font-medium">Maximum Execution Steps</Label>
-              <div className="bg-muted mt-1 rounded-md p-2 text-sm">{agent.maxExecutionSteps}</div>
+          </div>
+          <div className="grid gap-2">
+            <Label className="text-primary/80 text-xs" htmlFor="agent-steps">
+              Maximum Execution Steps
+            </Label>
+            <div id="agent-steps" className="text-sm">
+              {agent.maxExecutionSteps}
             </div>
-
-            <div>
-              <Label className="text-xs font-medium">System Prompt</Label>
-              <div className="bg-muted mt-1 rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
-                {agent.systemPrompt}
-              </div>
+          </div>
+          <div className="grid gap-2">
+            <Label className="text-primary/80 text-xs" htmlFor="agent-system-prompt">
+              System Prompt
+            </Label>
+            <div id="agent-system-prompt" className="text-sm font-mono whitespace-pre-wrap">
+              {agent.systemPrompt}
             </div>
-
-            <div>
-              <Label className="text-xs font-medium">Connected Servers ({agent.mcpServers.length})</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {agent.mcpServers.map((server) => (
-                  <div key={server.id} className="bg-secondary/40 text-foreground rounded-md px-3 py-1.5 text-sm">
-                    {server.name}
-                  </div>
-                ))}
-              </div>
+          </div>
+          <div className="grid gap-2">
+            <Label className="text-primary/80 text-xs">Connected Servers ({agent.mcpServers.length})</Label>
+            <div className="flex flex-wrap gap-2">
+              {agent.mcpServers.map((server) => (
+                <div key={server.id} className="bg-secondary/40 text-foreground rounded-md px-3 py-1.5 text-sm">
+                  {server.name}
+                </div>
+              ))}
             </div>
           </div>
         </div>
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="hover:cursor-pointer" onClick={() => onOpenChange(false)}>
             Close
           </Button>
         </DialogFooter>

@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
@@ -9,85 +10,74 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useConnectionContext } from "@/hooks/use-connection"
+import { useMCPContext } from "@/hooks/use-mcp"
 import { useModelContext } from "@/hooks/use-model"
-import { MCP_CONFIG } from "@/lib/config"
-import { AgentConfig, MCPServerConfig } from "@/lib/types"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import type { AgentConfig, MCPServer } from "@dojo/config"
+import { PlusIcon } from "lucide-react"
+import { useCallback, useState } from "react"
 
-type ServiceTypes = keyof typeof MCP_CONFIG
-
-interface AgentBuilderProps {
+interface AgentBuilderDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAddAgent?: (agent: AgentConfig) => void
-  trigger?: React.ReactNode
 }
 
-export function AgentBuilder({ open, onOpenChange, onAddAgent, trigger }: AgentBuilderProps) {
-  const { availableModels, selectedModelId, handleModelChange } = useModelContext()
-  const { connect, disconnect, isConnected } = useConnectionContext()
+function AgentBuilderDialog({ open, onOpenChange, onAddAgent }: AgentBuilderDialogProps) {
+  const { mcpServers, connect, disconnect, getConnectionStatus } = useMCPContext()
+  const { selectedModel, models, setSelectedModelId } = useModelContext()
+
+  const isConnected = useCallback(
+    (serverId: string) => {
+      return getConnectionStatus(serverId) === "connected"
+    },
+    [getConnectionStatus],
+  )
 
   const [agentName, setAgentName] = useState("")
   const [persona, setPersona] = useState("")
   const [maxSteps, setMaxSteps] = useState(10)
 
-  const serviceOptions = Object.keys(MCP_CONFIG) as ServiceTypes[]
-
-  const handleServiceToggle = async (service: ServiceTypes, checked: boolean | "indeterminate") => {
+  const handleServiceToggle = async (server: MCPServer, checked: boolean | "indeterminate") => {
     if (checked === true) {
-      const config = MCP_CONFIG[service]
-      if (config) {
-        await connect(config)
-      }
+      await connect({ server })
     } else {
-      await disconnect(String(service))
+      await disconnect(server.id)
     }
   }
 
   const handleCreateAgent = () => {
-    const selectedServices = serviceOptions
-      .filter((service) => isConnected(String(service)))
-      .map((service) => MCP_CONFIG[service]) as MCPServerConfig[]
-
+    const selectedServices = Object.values(mcpServers).filter((server: MCPServer) => isConnected(server.id))
     const newAgent: AgentConfig = {
       id: `${agentName.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}`,
       name: agentName,
-      modelId: selectedModelId,
+      modelId: selectedModel.id,
       systemPrompt: persona,
       mcpServers: selectedServices,
       maxExecutionSteps: maxSteps,
     }
-
     if (onAddAgent) {
       onAddAgent(newAgent)
     }
-
-    // Reset form
     setAgentName("")
     setPersona("")
     setMaxSteps(10)
-
-    // Close dialog
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Create New Agent</DialogTitle>
           <DialogDescription>{"Define your AI agent's capabilities, personality, and behavior"}</DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="agentName" className="font-medium">
@@ -100,17 +90,16 @@ export function AgentBuilder({ open, onOpenChange, onAddAgent, trigger }: AgentB
               placeholder="Enter agent name"
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="modelSelect" className="font-medium">
               LLM Model
             </Label>
-            <Select value={selectedModelId} onValueChange={handleModelChange}>
+            <Select value={selectedModel.id} onValueChange={(value) => setSelectedModelId(value)}>
               <SelectTrigger id="modelSelect">
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>
-                {availableModels.map((model) => (
+                {models.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
                     {model.name}
                   </SelectItem>
@@ -118,7 +107,6 @@ export function AgentBuilder({ open, onOpenChange, onAddAgent, trigger }: AgentB
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="persona" className="font-medium">
               Agent Persona
@@ -131,36 +119,31 @@ export function AgentBuilder({ open, onOpenChange, onAddAgent, trigger }: AgentB
               placeholder="Define the agent's persona, objectives, constraints, and behavior instructions..."
             />
           </div>
-
           <div className="space-y-3">
             <Label className="font-medium">MCP Servers</Label>
             <div className="bg-muted/40 grid gap-3 rounded-lg p-4 sm:grid-cols-2">
-              {serviceOptions.map((service) => {
-                const config = MCP_CONFIG[service]
-                return (
-                  <div
-                    key={service}
-                    className={cn(
-                      "flex items-center space-x-3 rounded-md border p-3",
-                      isConnected(String(service)) && "bg-primary/5 border-primary/30",
-                    )}
-                  >
-                    <Checkbox
-                      id={`service-${service}`}
-                      checked={isConnected(String(service))}
-                      onCheckedChange={(checked: boolean | "indeterminate") => handleServiceToggle(service, checked)}
-                    />
-                    <div className="flex flex-1 items-center gap-2">
-                      <Label htmlFor={`service-${service}`} className="cursor-pointer font-normal">
-                        {config?.name || service}
-                      </Label>
-                    </div>
+              {Object.values(mcpServers).map((server: MCPServer) => (
+                <div
+                  key={server.id}
+                  className={cn(
+                    "flex items-center space-x-3 rounded-md border p-3",
+                    isConnected(server.id) && "bg-primary/5 border-primary/30",
+                  )}
+                >
+                  <Checkbox
+                    id={`service-${server.id}`}
+                    checked={isConnected(server.id)}
+                    onCheckedChange={(checked: boolean | "indeterminate") => handleServiceToggle(server, checked)}
+                  />
+                  <div className="flex flex-1 items-center gap-2">
+                    <Label htmlFor={`service-${server.id}`} className="cursor-pointer font-normal">
+                      {server.name}
+                    </Label>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="maxSteps" className="font-medium">
               Maximum Execution Steps
@@ -180,7 +163,6 @@ export function AgentBuilder({ open, onOpenChange, onAddAgent, trigger }: AgentB
             </Select>
           </div>
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
@@ -191,5 +173,35 @@ export function AgentBuilder({ open, onOpenChange, onAddAgent, trigger }: AgentB
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// AddAgentCard component
+interface AddAgentCardProps {
+  onAddAgent: (agent: AgentConfig) => void
+}
+
+export function AddAgentCard({ onAddAgent }: AddAgentCardProps) {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const { play } = useSoundEffectContext()
+
+  return (
+    <>
+      <Card
+        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border transition-colors"
+        onMouseDown={() => {
+          play("./click.mp3", { volume: 0.5 })
+          setIsAddDialogOpen(true)
+        }}
+      >
+        <CardHeader className="flex h-full items-center justify-center">
+          <CardTitle className="text-primary/90 flex items-center font-medium">
+            <PlusIcon className="mr-2 h-5 w-5" />
+            Add New Agent
+          </CardTitle>
+        </CardHeader>
+      </Card>
+      <AgentBuilderDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onAddAgent={onAddAgent} />
+    </>
   )
 }

@@ -1,8 +1,8 @@
 "use client"
 
 import { useChatProvider } from "@/hooks/use-chat"
-import { useConnectionContext } from "@/hooks/use-connection"
-import { AgentConfig } from "@/lib/types"
+import { useUserContext } from "@/hooks/use-user-id"
+import type { AgentConfig } from "@dojo/config"
 import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createContext, useContext, useCallback, ReactNode, useState, useEffect } from "react"
 
@@ -13,14 +13,15 @@ interface AgentStopResponse {
 
 const agentQueryClient = new QueryClient()
 
-function useAgentLogic() {
-  const { userId } = useConnectionContext()
-  const { unifiedAppend, stop: stopSdkStream, status: globalStatus, currentInteractionType } = useChatProvider()
+function useAgentLogic(agents: Record<string, AgentConfig>) {
+  const userId = useUserContext()
+
+  const { unifiedAppend, stop, status, currentInteractionType } = useChatProvider()
 
   const [isAgentRunAttempted, setIsAgentRunAttempted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const isAgentStreaming = globalStatus === "streaming" && currentInteractionType === "agent"
+  const isAgentStreaming = status === "streaming" && currentInteractionType === "agent"
 
   useEffect(() => {
     if (isAgentRunAttempted || isAgentStreaming) {
@@ -29,15 +30,10 @@ function useAgentLogic() {
   }, [isAgentRunAttempted, isAgentStreaming])
 
   useEffect(() => {
-    if (
-      !isAgentStreaming &&
-      globalStatus !== "streaming" &&
-      currentInteractionType !== "agent" &&
-      isAgentRunAttempted
-    ) {
+    if (!isAgentStreaming && status !== "streaming" && currentInteractionType !== "agent" && isAgentRunAttempted) {
       setIsAgentRunAttempted(false)
     }
-  }, [globalStatus, currentInteractionType, isAgentRunAttempted, isAgentStreaming])
+  }, [status, currentInteractionType, isAgentRunAttempted, isAgentStreaming])
 
   const agentStopMutation = useMutation<AgentStopResponse, Error, void>({
     mutationFn: async () => {
@@ -78,6 +74,7 @@ function useAgentLogic() {
           {
             body: {
               userId: userId,
+              modelId: agentConfig.modelId,
               config: agentConfig,
               interactionType: "agent",
             },
@@ -102,14 +99,14 @@ function useAgentLogic() {
     try {
       await agentStopMutation.mutateAsync()
       if (isAgentStreaming) {
-        stopSdkStream()
+        stop()
       }
     } catch (error) {
       console.error("[Agent Hook] Error during agentStopMutation or stopping SDK stream:", error)
     } finally {
       setIsAgentRunAttempted(false)
     }
-  }, [agentStopMutation, stopSdkStream, isAgentStreaming])
+  }, [agentStopMutation, stop, isAgentStreaming])
 
   return {
     runAgent,
@@ -118,6 +115,7 @@ function useAgentLogic() {
     isAgentStreaming,
     isStopping: agentStopMutation.isPending,
     errorMessage,
+    agents,
   }
 }
 
@@ -125,9 +123,14 @@ type AgentContextType = ReturnType<typeof useAgentLogic>
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined)
 
-export function AgentProvider({ children }: { children: ReactNode }) {
-  const agentLogic = useAgentLogic()
-  return <AgentContext.Provider value={agentLogic}>{children}</AgentContext.Provider>
+interface AgentProviderProps {
+  children: ReactNode
+  agents: Record<string, AgentConfig>
+}
+
+export function AgentProvider({ children, agents }: AgentProviderProps) {
+  const agentLogicAndData = useAgentLogic(agents)
+  return <AgentContext.Provider value={agentLogicAndData}>{children}</AgentContext.Provider>
 }
 
 export function useAgentProvider() {
@@ -138,10 +141,10 @@ export function useAgentProvider() {
   return context
 }
 
-export function AgentProviderRoot({ children }: { children: ReactNode }) {
+export function AgentProviderRoot({ children, agents }: { children: ReactNode; agents: Record<string, AgentConfig> }) {
   return (
     <QueryClientProvider client={agentQueryClient}>
-      <AgentProvider>{children}</AgentProvider>
+      <AgentProvider agents={agents}>{children}</AgentProvider>
     </QueryClientProvider>
   )
 }

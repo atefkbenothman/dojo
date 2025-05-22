@@ -4,9 +4,9 @@ import { AgentDialog } from "@/app/agent/agent-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAgentProvider } from "@/hooks/use-agent"
-import { AgentConfig } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Trash2Icon, PlayIcon, StopCircleIcon, AlertCircleIcon } from "lucide-react"
+import type { AgentConfig } from "@dojo/config"
+import { PlayIcon, StopCircleIcon } from "lucide-react"
 import { useState } from "react"
 
 interface AgentCardProps {
@@ -15,8 +15,8 @@ interface AgentCardProps {
   onDelete?: (agentId: string) => void
 }
 
-export function AgentCard({ agent, onDelete }: AgentCardProps) {
-  const { runAgent, errorMessage, stopAgent, isStopping, isAgentRunning, isAgentStreaming } = useAgentProvider()
+export function AgentCard({ agent }: AgentCardProps) {
+  const { runAgent, stopAgent, isStopping, isAgentRunning, isAgentStreaming } = useAgentProvider()
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -38,29 +38,18 @@ export function AgentCard({ agent, onDelete }: AgentCardProps) {
 
   return (
     <Card
-      className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-xs border", {
-        "border-destructive": !!errorMessage,
-      })}
+      className={cn(
+        "relative h-[10rem] max-h-[10rem] w-full max-w-xs border",
+        isAgentRunning && "border-primary/80 bg-muted/50",
+      )}
     >
       <CardHeader>
         <div className="flex items-center gap-2">
           <CardTitle className="text-primary/90 font-medium">{agent.name}</CardTitle>
-          <div
-            className={cn(
-              "ml-2 h-2 w-2 rounded-full",
-              isAgentRunning || isStopping ? "animate-pulse bg-green-500" : errorMessage ? "bg-red-500" : "bg-blue-500",
-            )}
-          ></div>
+          {isAgentRunning && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
         </div>
-        <CardDescription className="line-clamp-2 w-[90%]">{agent.systemPrompt.substring(0, 100)}...</CardDescription>
+        <CardDescription className="w-[90%] truncate">{agent.systemPrompt}</CardDescription>
       </CardHeader>
-
-      {errorMessage && (
-        <div className="text-destructive flex items-center gap-1 px-6 pb-2 text-xs">
-          <AlertCircleIcon className="h-3 w-3" />
-          {errorMessage}
-        </div>
-      )}
 
       <CardFooter className="mt-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -78,8 +67,8 @@ export function AgentCard({ agent, onDelete }: AgentCardProps) {
 
           {isAgentRunning && (
             <Button
-              variant="destructive"
-              className="border hover:cursor-pointer"
+              variant="default"
+              className="bg-primary hover:bg-primary border hover:cursor-pointer"
               onClick={handleStopAgentClick}
               disabled={isStopping}
             >
@@ -89,17 +78,6 @@ export function AgentCard({ agent, onDelete }: AgentCardProps) {
           )}
 
           <AgentDialog agent={agent} open={isDialogOpen} onOpenChange={setIsDialogOpen} />
-
-          {onDelete && (
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={() => onDelete(agent.id)}
-              className="bg-secondary/80 hover:bg-secondary/90 h-9 w-9 border hover:cursor-pointer"
-            >
-              <Trash2Icon className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </CardFooter>
     </Card>
