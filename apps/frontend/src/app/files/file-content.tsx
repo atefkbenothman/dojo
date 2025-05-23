@@ -1,8 +1,7 @@
 "use client"
 
+import { env } from "@/env"
 import { useEffect, useState, useCallback } from "react"
-
-const MCP_SERVICE_URL = process.env.NEXT_PUBLIC_MCP_SERVICE_URL || "http://localhost:8888"
 
 interface FileContentClientProps {
   file: string
@@ -16,7 +15,7 @@ export default function FileContent({ file, initialContent }: FileContentClientP
   const fetchContent = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${MCP_SERVICE_URL}/files/file-content?path=${encodeURIComponent(file)}`, {
+      const res = await fetch(`${env.BACKEND_URL}/files/file-content?path=${encodeURIComponent(file)}`, {
         method: "GET",
         headers: { Accept: "text/plain" },
         cache: "no-store",

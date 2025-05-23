@@ -1,7 +1,6 @@
+import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 import { NextResponse } from "next/server"
-
-const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
   const { messages, userId, modelId, config, interactionType, apiKey } = await request.json()
@@ -33,7 +32,7 @@ export async function POST(request: Request) {
       console.log(`[API Router /chat] Routing to CHAT service. Model: ${modelId}, Messages Count: ${messages.length}`)
 
       const { data: chatData, error: chatError } = await asyncTryCatch(
-        fetch(`${MCP_SERVICE_URL}/chat`, {
+        fetch(`${env.BACKEND_URL}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages, userId, modelId, apiKey }),
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
       )
 
       const { data: agentData, error: agentError } = await asyncTryCatch(
-        fetch(`${MCP_SERVICE_URL}/agent/run`, {
+        fetch(`${env.BACKEND_URL}/agent/run`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages, userId, config, apiKey }),

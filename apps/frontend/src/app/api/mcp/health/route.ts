@@ -1,13 +1,12 @@
+import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 import { NextResponse } from "next/server"
 
-const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
-
 export async function GET() {
-  console.log(`[MCP API] Checking health of MCP service at ${MCP_SERVICE_URL}/health`)
+  console.log(`[MCP API] Checking health of MCP service at ${env.BACKEND_URL}/health`)
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${MCP_SERVICE_URL}/health`, {
+    fetch(`${env.BACKEND_URL}/health`, {
       method: "GET",
       headers: {
         Accept: "application/json",

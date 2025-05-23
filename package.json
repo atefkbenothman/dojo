@@ -10,9 +10,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
     "start": "turbo run start",
     "start:backend": "turbo run start --filter=@dojo/backend",
+    "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "format": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx}\"",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx}\""

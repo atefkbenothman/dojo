@@ -1,7 +1,6 @@
+import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 import { NextResponse } from "next/server"
-
-const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
   const { userId } = await request.json()
@@ -14,7 +13,7 @@ export async function POST(request: Request) {
   console.log(`[Agent Stop API] Stopping agent connections for user ID: ${userId}`)
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${MCP_SERVICE_URL}/agent/stop`, {
+    fetch(`${env.BACKEND_URL}/agent/stop`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

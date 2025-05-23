@@ -1,7 +1,6 @@
+import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 import { NextResponse } from "next/server"
-
-const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
   const { userId, serverId } = await request.json()
@@ -19,7 +18,7 @@ export async function POST(request: Request) {
   console.log(`[MCP API] Disconnecting user ${userId} from server ${serverId}`)
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${MCP_SERVICE_URL}/disconnect`, {
+    fetch(`${env.BACKEND_URL}/disconnect`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

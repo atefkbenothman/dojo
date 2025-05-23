@@ -1,11 +1,12 @@
 "use server"
 
 import { FilesList } from "@/app/files/files-list"
+import { env } from "@/env"
 import React, { Suspense } from "react"
 
 async function isMcpServiceHealthy(): Promise<boolean> {
   try {
-    const response = await fetch(`${process.env.MCP_SERVICE_URL}/health`, {
+    const response = await fetch(`${env.BACKEND_URL}/health`, {
       method: "GET",
       cache: "no-store",
     })

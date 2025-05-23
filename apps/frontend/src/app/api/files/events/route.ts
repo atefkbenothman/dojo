@@ -1,7 +1,6 @@
+import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 import { NextRequest, NextResponse } from "next/server"
-
-const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -14,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   console.log(`[API Route /file-content] Fetching path: ${relativePath}`)
 
-  const backendUrl = new URL(`${MCP_SERVICE_URL}/files/file-events`)
+  const backendUrl = new URL(`${env.BACKEND_URL}/files/file-events`)
   backendUrl.searchParams.append("path", relativePath)
 
   const { data, error } = await asyncTryCatch(

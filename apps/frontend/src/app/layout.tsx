@@ -30,7 +30,7 @@ async function fetchConfig(): Promise<{
   agents: Record<string, AgentConfig>
 }> {
   try {
-    const res = await fetch(`${env.MCP_SERVICE_URL}/config`, { cache: "no-store" })
+    const res = await fetch(`${env.BACKEND_URL}/config`, { cache: "no-store" })
     if (!res.ok) {
       return {
         aiModels: AI_MODELS,

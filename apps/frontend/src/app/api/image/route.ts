@@ -1,7 +1,6 @@
+import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 import { NextResponse } from "next/server"
-
-const MCP_SERVICE_URL = process.env.MCP_SERVICE_URL || "http://localhost:8888"
 
 export async function POST(request: Request) {
   const { userId, prompt, modelId, n, apiKey } = await request.json()
@@ -12,7 +11,7 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${MCP_SERVICE_URL}/image`, {
+    fetch(`${env.BACKEND_URL}/image`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

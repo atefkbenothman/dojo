@@ -1,22 +1,25 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": [
-    "NODE_ENV",
-    "MCP_SERVICE_URL",
-    "SKIP_ENV_VALIDATION",
-    "NEXT_PUBLIC_APP_URL",
-    "NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN",
-    "NEXT_PUBLIC_TICKETMASTER_API_KEY",
-    "NEXT_PUBLIC_NOTION_API_KEY"
-  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "NODE_ENV",
+        "BACKEND_URL",
+        "NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN",
+        "NEXT_PUBLIC_TICKETMASTER_API_KEY",
+        "NEXT_PUBLIC_NOTION_API_KEY",
+        "NEXT_PUBLIC_OPENAI_API_KEY",
+        "NEXT_PUBLIC_GOOGLE_API_KEY",
+        "NEXT_PUBLIC_GROQ_API_KEY",
+        "SKIP_ENV_VALIDATION"
+      ]
     },
     "dev": {
       "persistent": true,
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "cache": false
     },
     "start": {
