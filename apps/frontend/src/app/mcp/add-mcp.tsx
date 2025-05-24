@@ -5,9 +5,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { successToastStyle } from "@/lib/styles"
 import type { MCPServer, MCPServerConfig } from "@dojo/config"
 import { PlusIcon } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 
 interface AddMCPDialogProps {
   open: boolean
@@ -129,6 +131,16 @@ function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogProps) {
     }
     onAddServer(newServer)
     resetForm()
+    toast.success(`${serverName} config added to localstorage`, {
+      icon: null,
+      id: "mcp-server-added",
+      duration: 5000,
+      position: "bottom-center",
+      style: successToastStyle,
+    })
+    setTimeout(() => {
+      play("./save.mp3", { volume: 0.5 })
+    }, 100)
     onOpenChange(false)
   }
 
