@@ -1,5 +1,4 @@
 import { getModelInstance } from "../ai/get-model.js"
-import { DEFAULT_IMAGE_MODEL_ID } from "../config.js"
 import { userContextMiddleware } from "../middleware/user-context.js"
 import type { GenerateImageOptions, RequestWithUserContext } from "../types.js"
 import { experimental_generateImage as generateImage, type ImageModel } from "ai"
@@ -21,17 +20,20 @@ router.post("/image", userContextMiddleware, async (expressReq: Request, res: Re
     res.status(400).json({ error: "Missing or invalid API key" })
     return
   }
+  if (!modelId) {
+    res.status(400).json({ error: "Missing modelId" })
+    return
+  }
 
-  const selectedModelId: string = modelId || DEFAULT_IMAGE_MODEL_ID
   let imageModel: ImageModel
   try {
-    imageModel = getModelInstance(selectedModelId, apiKey) as ImageModel
+    imageModel = getModelInstance(modelId, apiKey) as ImageModel
   } catch (err) {
     res.status(400).json({ error: (err as Error).message })
     return
   }
 
-  console.log(`[Core /image] request received for user: ${userSession.userId}, using model: ${selectedModelId}`)
+  console.log(`[Core /image] request received for user: ${userSession.userId}, using model: ${modelId}`)
 
   try {
     const options: GenerateImageOptions = { n }

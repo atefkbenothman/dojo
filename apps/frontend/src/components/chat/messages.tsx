@@ -183,7 +183,7 @@ const MessageItem = memo(function MessageItem({
         switch (part.type) {
           case "text":
             return (
-              <div className="py-2" key={idx}>
+              <div key={idx}>
                 <MarkdownRenderer content={part.text} />
               </div>
             )

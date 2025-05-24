@@ -87,9 +87,16 @@ const components: Partial<Components> = {
   },
   p: ({ children, ...props }) => {
     return (
-      <div className="px-1 text-xs leading-6" {...props}>
+      <div className="px-1 text-xs leading-6 py-2" {...props}>
         {children}
       </div>
+    )
+  },
+  em: ({ children, ...props }) => {
+    return (
+      <span className="italic text-xs" {...props}>
+        {children}
+      </span>
     )
   },
 }
