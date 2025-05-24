@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: ./apps/backend/Dockerfile
+    image: ${DOCKER_IMAGE}
     ports:
       - "8888:8888"
     environment:
