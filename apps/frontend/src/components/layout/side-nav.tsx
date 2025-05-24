@@ -1,11 +1,13 @@
 "use client"
 
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { UserDialog } from "@/components/user-dialog"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import { House, Server, Bot } from "lucide-react"
+import { House, Server, Bot, User } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
 
 const navigationItems = [
   {
@@ -32,20 +34,21 @@ const navigationItems = [
 
 export function SideNav() {
   const pathname = usePathname()
-
   const { play } = useSoundEffectContext()
+  const [userDialogOpen, setUserDialogOpen] = useState(false)
 
-  function playSoundEffect() {
+  function handleUserIconClick() {
     play("./click.mp3", { volume: 0.5 })
+    setUserDialogOpen(true)
   }
 
   return (
-    <div className="bg-card w-[42px] flex-shrink-0 border-r">
+    <div className="bg-card w-[42px] flex-shrink-0 border-r h-full flex flex-col">
       <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b">
         <p className="text-base font-medium">⛩️</p>
       </div>
       <TooltipProvider>
-        <div className="flex h-full flex-col gap-4 py-4">
+        <div className="flex flex-col gap-4 py-4 flex-1">
           {navigationItems.map(({ href, icon: Icon, label }) => {
             const isActive = href === "/" ? pathname === href : pathname.startsWith(href)
             return (
@@ -54,7 +57,7 @@ export function SideNav() {
                   <TooltipTrigger asChild>
                     <Link
                       href={href}
-                      onMouseDown={playSoundEffect}
+                      onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
                       className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
                     >
                       <div
@@ -72,6 +75,18 @@ export function SideNav() {
               </div>
             )
           })}
+        </div>
+        {/* User Dialog */}
+        <div className="flex w-full items-center justify-center mb-4 mt-auto">
+          <div
+            onMouseDown={handleUserIconClick}
+            className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
+          >
+            <div className={cn("text-primary/70 group-hover:text-primary")}>
+              <User className="h-5.5 w-5.5" />
+            </div>
+          </div>
+          <UserDialog isOpen={userDialogOpen} setIsOpen={setUserDialogOpen} />
         </div>
       </TooltipProvider>
     </div>

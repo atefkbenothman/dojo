@@ -1,9 +1,9 @@
 "use client"
 
-import { ChatPanelHeader } from "./chat-panel-header"
-import { MainPanelHeader } from "./main-panel-header"
-import { SideNav } from "./side-nav"
 import { Chat } from "@/components/chat/chat"
+import { ChatPanelHeader } from "@/components/layout/chat-panel-header"
+import { MainPanelHeader } from "@/components/layout/main-panel-header"
+import { SideNav } from "@/components/layout/side-nav"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
@@ -59,6 +59,7 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
     <div className="flex h-[100dvh] w-screen overflow-hidden">
       <SideNav />
       <ResizablePanelGroup direction="horizontal" onLayout={onLayout}>
+        {/* Main Panel */}
         <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
           <div className="flex h-full flex-col">
             <MainPanelHeader onChatPanelToggle={onChatPanelToggle} isCollapsed={isChatPanelCollapsed} />
@@ -66,6 +67,7 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle className={cn(isMaximized && "hidden")} />
+        {/* Chat Panel */}
         <ResizablePanel
           id="chat-panel"
           ref={chatPanelRef}

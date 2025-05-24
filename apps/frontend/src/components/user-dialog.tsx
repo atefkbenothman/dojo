@@ -1,14 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -18,8 +11,7 @@ import { useModelContext } from "@/hooks/use-model"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
 import type { ProviderId } from "@dojo/config"
-import { SettingsIcon } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, Dispatch, SetStateAction } from "react"
 
 function ApiKeyManager() {
   const { models } = useModelContext()
@@ -96,25 +88,17 @@ function ApiKeyManager() {
   )
 }
 
-export function SettingsDialog() {
+interface UserDialogProps {
+  isOpen: boolean
+  setIsOpen: Dispatch<SetStateAction<boolean>>
+}
+
+export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
   const userId = useUserContext()
-
-  const [isOpen, setIsOpen] = useState(false)
-
   const { play } = useSoundEffectContext()
-
-  const handleMouseDown = () => {
-    play("./click.mp3", { volume: 0.5 })
-    setIsOpen(true)
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="icon" variant="outline" className="hover:cursor-pointer" onMouseDown={handleMouseDown}>
-          <SettingsIcon className="h-4.5 w-4.5" />
-        </Button>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>

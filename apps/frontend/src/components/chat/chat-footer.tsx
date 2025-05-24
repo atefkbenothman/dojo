@@ -44,7 +44,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
         onOpenChange={(isOpen) => isOpen && play("./click.mp3", { volume: 0.5 })}
       >
         <SelectTrigger className="hover:cursor-pointer">
-          <SelectValue placeholder="Model" />
+          <SelectValue placeholder="Model">{selectedModel ? selectedModel.name : null}</SelectValue>
         </SelectTrigger>
         <SelectContent className="text-xs" align="start">
           {Object.entries(groupedModels).map(([providerId, models]) => {

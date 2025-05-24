@@ -2,7 +2,6 @@
 
 import { DarkModeToggle } from "@/components/dark-mode-toggle"
 import { GithubLinkButton } from "@/components/github-link-button"
-import { SettingsDialog } from "@/components/settings-dialog"
 import { SoundToggle } from "@/components/sound-toggle"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -20,7 +19,6 @@ export function MainPanelHeader({ onChatPanelToggle, isCollapsed }: MainPanelHea
         <DarkModeToggle />
         <GithubLinkButton />
         <SoundToggle />
-        <SettingsDialog />
         <Button onMouseDown={onChatPanelToggle} size="icon" variant="outline" className="hover:cursor-pointer">
           {isCollapsed ? <ChevronLeft className="h-4.5 w-4.5" /> : <ChevronRight className="h-4.5 w-4.5" />}
         </Button>

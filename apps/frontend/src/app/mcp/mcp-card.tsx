@@ -145,7 +145,7 @@ export function MCPCard({ server }: MCPCardProps) {
               isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
             )}
           >
-            {isConnected ? "Disconnect" : "Connect"}
+            {connectionStatus === "connecting" ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
           </Button>
 
           <MCPDialog
