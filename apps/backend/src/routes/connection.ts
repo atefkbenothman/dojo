@@ -7,6 +7,8 @@ import { Router, Request, Response } from "express"
 
 const router = Router()
 
+const isProduction = process.env.NODE_ENV === "production"
+
 export const validateConnectConfigBody = (server: Partial<MCPServer>): boolean => {
   if (!server || typeof server !== "object") return false
   if (!server.id || typeof server.id !== "string") return false
@@ -30,6 +32,11 @@ router.post("/connect", userContextMiddleware, async (expressReq: Request, res: 
   }
 
   console.log(`[Connection] /connect request received for userId: ${userSession.userId}, mcpServer: ${server.id}`)
+
+  if (server.localOnly && isProduction) {
+    res.status(400).json({ message: "This is a local-only MCP server. Please run it locally" })
+    return
+  }
 
   await cleanupExistingConnection(userSession, server.id!)
 
