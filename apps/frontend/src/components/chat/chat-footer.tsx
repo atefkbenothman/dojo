@@ -37,6 +37,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
 
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
+      {/* Model Select */}
       <Select
         value={(selectedModel && selectedModel.id) || ""}
         onValueChange={setSelectedModelId}
@@ -59,6 +60,9 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
                     onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
                   >
                     {model.name}
+                    {model.requiresApiKey && (
+                      <span className="text-muted-foreground text-xs ml-1 font-normal">(requires key)</span>
+                    )}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -66,6 +70,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
           })}
         </SelectContent>
       </Select>
+      {/* Send Button */}
       <Button className="ml-auto hover:cursor-pointer" variant="outline" onMouseDown={handleSend}>
         <ArrowUp className="h-4 w-4" strokeWidth={3} />
       </Button>

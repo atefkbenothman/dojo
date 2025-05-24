@@ -6,6 +6,7 @@ export interface AIModel {
   modelName: string
   type: "text" | "image"
   provider: ProviderId
+  requiresApiKey?: boolean
 }
 
 export interface MCPServer {

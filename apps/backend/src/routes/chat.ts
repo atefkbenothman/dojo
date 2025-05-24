@@ -1,8 +1,8 @@
 import { getModelInstance } from "../ai/get-model.js"
 import { streamAiResponse } from "../ai/stream-response.js"
-import { DEFAULT_MODEL_ID } from "../config.js"
 import { userContextMiddleware } from "../middleware/user-context.js"
 import type { RequestWithUserContext } from "../types.js"
+import { AI_MODELS } from "@dojo/config"
 import { type CoreMessage, type ToolSet, type LanguageModel } from "ai"
 import { Router, Request, Response } from "express"
 
@@ -19,26 +19,36 @@ router.post("/chat", userContextMiddleware, async (expressReq: Request, res: Res
     res.status(400).json({ message: "Missing or invalid messages array" })
     return
   }
-  if (!apiKey || typeof apiKey !== "string") {
-    res.status(400).json({ message: "Missing or invalid API key" })
+
+  if (!modelId) {
+    res.status(400).json({ message: "Missing modelId" })
     return
   }
 
-  const model = modelId || DEFAULT_MODEL_ID
+  let apiKeyFallback = apiKey
 
-  const validation = validateChatRequest(messages, model, apiKey)
+  if (!apiKey && AI_MODELS[modelId]?.requiresApiKey === false) {
+    apiKeyFallback = process.env.GROQ_API_KEY_FALLBACK
+  }
+
+  if (!apiKeyFallback) {
+    res.status(400).json({ message: "Missing API key" })
+    return
+  }
+
+  const validation = validateChatRequest(messages, modelId, apiKeyFallback)
   if (!validation.isValid) {
     res.status(validation.error?.includes("configured") ? 500 : 400).json({ message: validation.error })
     return
   }
 
-  console.log(`[Core /chat] request received for userId: ${userSession.userId}, using model: ${model}`)
+  console.log(`[Core /chat] request received for userId: ${userSession.userId}, using model: ${modelId}`)
 
   let aiModel: LanguageModel
   try {
-    aiModel = getModelInstance(model, apiKey) as LanguageModel
+    aiModel = getModelInstance(modelId, apiKeyFallback) as LanguageModel
   } catch {
-    res.status(400).json({ message: `AI Model '${model}' not configured on backend` })
+    res.status(400).json({ message: `AI Model '${modelId}' not configured on backend` })
     return
   }
 
@@ -74,7 +84,7 @@ export const validateChatRequest = (
     return { isValid: false, error: "Missing or invalid API key" }
   }
   try {
-    getModelInstance(modelId || DEFAULT_MODEL_ID, apiKey)
+    getModelInstance(modelId, apiKey)
   } catch (err) {
     return { isValid: false, error: (err as Error).message }
   }

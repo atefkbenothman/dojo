@@ -24,6 +24,7 @@ export const AI_MODELS: Record<string, AIModel> = {
     name: "Gemini 1.5 Flash",
     type: "text",
     provider: "google",
+    requiresApiKey: true,
   },
   "gemini-2.0-flash-001": {
     id: "gemini-2.0-flash-001",
@@ -31,6 +32,7 @@ export const AI_MODELS: Record<string, AIModel> = {
     name: "Gemini 2.0 Flash",
     type: "text",
     provider: "google",
+    requiresApiKey: true,
   },
   "qwen-qwq-32b": {
     id: "qwen-qwq-32b",
@@ -38,6 +40,7 @@ export const AI_MODELS: Record<string, AIModel> = {
     name: "Qwen QWQ 32B",
     type: "text",
     provider: "groq",
+    requiresApiKey: false,
   },
   "deepseek-r1-distill-llama-70b": {
     id: "deepseek-r1-distill-llama-70b",
@@ -45,6 +48,7 @@ export const AI_MODELS: Record<string, AIModel> = {
     name: "Deepseek R1 Distill Llama 70B",
     type: "text",
     provider: "groq",
+    requiresApiKey: false,
   },
   "gpt-image-1": {
     id: "gpt-image-1",
@@ -52,8 +56,9 @@ export const AI_MODELS: Record<string, AIModel> = {
     name: "GPT Image 1",
     type: "image",
     provider: "openai",
+    requiresApiKey: true,
   },
-}
+} as const
 
 export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
   supabase: {

@@ -14,7 +14,8 @@
         "NEXT_PUBLIC_OPENAI_API_KEY",
         "NEXT_PUBLIC_GOOGLE_API_KEY",
         "NEXT_PUBLIC_GROQ_API_KEY",
-        "SKIP_ENV_VALIDATION"
+        "SKIP_ENV_VALIDATION",
+        "GROQ_API_KEY_FALLBACK"
       ]
     },
     "dev": {

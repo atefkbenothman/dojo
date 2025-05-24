@@ -5,7 +5,7 @@ import { env } from "@/env"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useModelContext } from "@/hooks/use-model"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { SYSTEM_PROMPT } from "@/lib/config"
+import { DEFAULT_ASSISTANT_MESSAGE, SYSTEM_PROMPT } from "@/lib/ai/constants"
 import { useChat, Message } from "@ai-sdk/react"
 import type { AgentConfig, AIModel } from "@dojo/config"
 import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
@@ -32,7 +32,7 @@ const initialMessages: Message[] = [
   {
     id: "intro",
     role: "assistant",
-    content: "Hello. I am an AI assistant",
+    content: DEFAULT_ASSISTANT_MESSAGE,
   },
 ]
 

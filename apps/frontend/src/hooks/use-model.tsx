@@ -1,5 +1,6 @@
 "use client"
 
+import { DEFAULT_MODEL_ID } from "@/lib/ai/constants"
 import type { AIModel } from "@dojo/config"
 import { createContext, useContext, useMemo, useState } from "react"
 
@@ -18,7 +19,7 @@ export function ModelProvider({
   children: React.ReactNode
   aiModels: Record<string, AIModel>
 }) {
-  const [selectedModelId, setSelectedModelId] = useState<string>("gemini-1.5-flash")
+  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID)
 
   const selectedModel = useMemo((): AIModel => {
     return aiModels[selectedModelId]!

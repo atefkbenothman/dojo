@@ -1,4 +1,4 @@
-export const DEFAULT_MODEL_ID = "gemini-1.5-flash"
+export const DEFAULT_MODEL_ID = "qwen-qwq-32b"
 
 export const SYSTEM_PROMPT = `You are a helpful assistant with access to a variety of tools.
 
@@ -17,3 +17,5 @@ Multiple tools can be used in a single response and multiple steps can be used t
 - Respond according to tool's response.
 - Use the tools to answer the user's question.
 - If you don't know the answer, use the tools to find the answer or say you don't know.`
+
+export const DEFAULT_ASSISTANT_MESSAGE = "Hello, I am an AI assistant"
