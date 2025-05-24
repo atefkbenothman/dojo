@@ -8,10 +8,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useMCPContext } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { successToastStyle } from "@/lib/styles"
 import { cn, getServerConfigWithEnv } from "@/lib/utils"
 import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
 import { Wrench } from "lucide-react"
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 
 interface ToolsPopoverProps {
   tools: Record<string, unknown>
@@ -108,7 +110,16 @@ export function MCPCard({ server }: MCPCardProps) {
     }
     setConfig(mergedConfig)
     writeStorage(`mcp_config_${server.id}`, mergedConfig)
-    playSave("./save.mp3", { volume: 0.5 })
+    toast.success(`${server.name} config saved to localstorage`, {
+      icon: null,
+      id: "mcp-config-saved",
+      duration: 5000,
+      position: "bottom-center",
+      style: successToastStyle,
+    })
+    setTimeout(() => {
+      playSave("./save.mp3", { volume: 0.5 })
+    }, 100)
   }
 
   const Icon = MCP_SERVER_ICONS[server.id]
@@ -116,8 +127,8 @@ export function MCPCard({ server }: MCPCardProps) {
   return (
     <Card
       className={cn(
-        "relative h-[10rem] max-h-[10rem] w-full max-w-xs border",
-        isConnected && "border-primary/80 bg-muted/50",
+        "relative h-[10rem] max-h-[10rem] w-full max-w-xs border border",
+        isConnected && "border-primary/80 bg-muted/50 border-2",
       )}
     >
       {server.localOnly && (

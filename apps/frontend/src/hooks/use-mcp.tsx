@@ -1,7 +1,8 @@
 "use client"
 
-import { useSoundEffectContext } from "./use-sound-effect"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
+import { errorToastStyle } from "@/lib/styles"
 import type { MCPServer } from "@dojo/config"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { Tool } from "ai"
@@ -12,13 +13,6 @@ import type { ZodTypeAny } from "zod"
 const queryClient = new QueryClient()
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
-
-const toastStyle = {
-  backgroundColor: "#9f0712",
-  border: "1px solid #fb2c36",
-  color: "#fff",
-  fontWeight: 800,
-}
 
 export interface ActiveConnection {
   serverId: string
@@ -122,7 +116,7 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         id: `mcp-error-${server.id}`,
         duration: 5000,
         position: "bottom-center",
-        style: toastStyle,
+        style: errorToastStyle,
       })
     },
   })
@@ -182,7 +176,7 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
         id: `mcp-error-${server.id}`,
         duration: 5000,
         position: "bottom-center",
-        style: toastStyle,
+        style: errorToastStyle,
       })
       return
     }

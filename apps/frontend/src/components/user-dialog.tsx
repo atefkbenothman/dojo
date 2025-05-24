@@ -10,10 +10,13 @@ import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useModelContext } from "@/hooks/use-model"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
+import { successToastStyle } from "@/lib/styles"
 import type { ProviderId } from "@dojo/config"
 import { useEffect, useMemo, useState, Dispatch, SetStateAction } from "react"
+import { toast } from "sonner"
 
 function ApiKeyManager() {
+  const { play } = useSoundEffectContext()
   const { models } = useModelContext()
   const { readStorage, writeStorage, removeStorage } = useLocalStorage()
 
@@ -56,6 +59,16 @@ function ApiKeyManager() {
     if (keyToSave) {
       const localStorageKey = `${provider.toUpperCase()}_API_KEY`
       writeStorage<string>(localStorageKey, keyToSave)
+      toast.success(`${provider.toUpperCase()} API key saved to localstorage`, {
+        icon: null,
+        id: "api-key-saved",
+        duration: 5000,
+        position: "bottom-center",
+        style: successToastStyle,
+      })
+      setTimeout(() => {
+        play("./save.mp3", { volume: 0.5 })
+      }, 100)
     } else {
       const localStorageKey = `${provider.toUpperCase()}_API_KEY`
       removeStorage(localStorageKey)
@@ -63,27 +76,46 @@ function ApiKeyManager() {
   }
 
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-6 py-4">
       {providers.map((provider) => (
         <div key={provider} className="space-y-2">
           <Label htmlFor={`api-key-${provider}`} className="capitalize">
             {provider}
           </Label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <Input
               id={`api-key-${provider}`}
               type="password"
               value={apiKeys[provider] || ""}
               onChange={(e) => handleApiKeyChange(provider, e.target.value)}
               placeholder={`Enter your ${provider} API key`}
-              className="flex-1"
+              className="flex-1 text-muted-foreground"
             />
-            <Button onClick={() => handleSaveApiKey(provider)} size="default" className="hover:cursor-pointer">
+            <Button
+              onMouseDown={() => {
+                handleSaveApiKey(provider)
+                play("./click.mp3", { volume: 0.5 })
+              }}
+              size="default"
+              variant="secondary"
+              className="hover:cursor-pointer border bg-secondary/80 hover:bg-secondary/90"
+            >
               Save
             </Button>
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+function UserIdManager({ userId }: { userId: string }) {
+  return (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label>User ID</Label>
+        <div className="text-sm font-mono break-all text-muted-foreground p-1">{userId}</div>
+      </div>
     </div>
   )
 }
@@ -99,13 +131,15 @@ export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
+      <DialogContent className="h-112 flex flex-col">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>User ID: {userId}</DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="api-keys" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-12 border">
+        <Tabs defaultValue="user" className="w-full flex-1 flex flex-col">
+          <TabsList className="grid w-full grid-cols-3 h-12">
+            <TabsTrigger value="user" onMouseDown={() => play("./click.mp3", { volume: 0.5 })}>
+              User
+            </TabsTrigger>
             <TabsTrigger value="api-keys" onMouseDown={() => play("./click.mp3", { volume: 0.5 })}>
               API Keys
             </TabsTrigger>
@@ -113,10 +147,15 @@ export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
               Other
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="api-keys">
-            <ApiKeyManager />
-          </TabsContent>
-          <TabsContent value="other"></TabsContent>
+          <div className="flex-1 overflow-y-auto py-2 px-1">
+            <TabsContent value="user">
+              <UserIdManager userId={userId ?? ""} />
+            </TabsContent>
+            <TabsContent value="api-keys">
+              <ApiKeyManager />
+            </TabsContent>
+            <TabsContent value="other"></TabsContent>
+          </div>
         </Tabs>
       </DialogContent>
     </Dialog>

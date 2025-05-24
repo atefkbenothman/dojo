@@ -16,10 +16,12 @@ import { Label } from "@/components/ui/label"
 import { env as globalEnv } from "@/env.js"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { errorToastStyle } from "@/lib/styles"
 import { getServerConfigWithEnv } from "@/lib/utils"
 import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
 import { Settings } from "lucide-react"
 import { useState, type ChangeEvent } from "react"
+import { toast } from "sonner"
 
 function EnvInputFields({
   requiredEnvKeys,
@@ -117,6 +119,22 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
     onOpenChange(false)
   }
 
+  const handleDelete = () => {
+    play("./click.mp3", { volume: 0.5 })
+    removeStorage(`mcp_config_${server.id}`)
+    onOpenChange(false)
+    toast.error(`${server.name} config deleted from localstorage`, {
+      icon: null,
+      id: "mcp-config-deleted",
+      duration: 5000,
+      position: "bottom-center",
+      style: errorToastStyle,
+    })
+    setTimeout(() => {
+      play("./delete.mp3", { volume: 0.5 })
+    }, 100)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
@@ -166,21 +184,16 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
           )}
         </div>
         <DialogFooter>
-          <Button type="button" variant="secondary" onMouseDown={handleSave} className="hover:cursor-pointer">
-            Save
-          </Button>
           <Button
             type="button"
             variant="destructive"
-            className="hover:cursor-pointer"
-            onMouseDown={() => {
-              play("./click.mp3", { volume: 0.5 })
-              removeStorage(`mcp_config_${server.id}`)
-              onOpenChange(false)
-              play("./delete.mp3", { volume: 0.5 })
-            }}
+            className="hover:cursor-pointer border-destructive"
+            onMouseDown={handleDelete}
           >
             Delete
+          </Button>
+          <Button type="button" variant="secondary" onMouseDown={handleSave} className="hover:cursor-pointer border">
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>
