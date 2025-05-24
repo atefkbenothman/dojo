@@ -2,7 +2,7 @@
 
 Build, Run, and Chain Custom Tool-Augmented LLM Agents.
 
-<img width="1552" alt="Dojo Interface Screenshot" src="https://github.com/user-attachments/assets/4a9fe38a-90a5-4916-b6e9-daf4828086b1" />
+<img width="1552" alt="Screenshot 2025-05-23 at 10 52 20 PM" src="https://github.com/user-attachments/assets/db824d86-1d64-40fb-9d5f-b0262e316e3e" />
 
 ## What is Dojo?
 
