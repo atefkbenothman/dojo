@@ -41,6 +41,8 @@ function useMCP(mcpServers: Record<string, MCPServer>) {
 
   const isServerHealthy = serverHealth.data?.status === "ok"
 
+  console.log("serverHealth", serverHealth.isLoading, serverHealth.data, serverHealth.error)
+
   // Connect mutation
   const connectMutation = useMutation({
     mutationFn: async ({ server }: { server: MCPServer }) => {
