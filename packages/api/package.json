@@ -16,13 +16,13 @@
     "./router": "./dist/router.js",
     "./types": "./dist/types.js"
   },
+  "dependencies": {
+    "@trpc/server": "latest",
+    "zod": "^3.25.28"
+  },
   "devDependencies": {
     "@dojo/eslint": "0.0.0",
     "@dojo/tsconfig": "0.0.0",
     "typescript": "latest"
-  },
-  "dependencies": {
-    "@trpc/server": "latest",
-    "zod": "^3.25.28"
   }
 }
