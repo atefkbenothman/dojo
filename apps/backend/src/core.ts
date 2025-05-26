@@ -17,10 +17,15 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 
 const app: Express = express()
 
+const allowedOrigins = ["http://localhost:3000", "https://dojoai.vercel.app/", "https://dojoai.vercel.app"]
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://dojoai.vercel.app/"],
-    methods: ["GET", "POST", "OPTIONS"],
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source"],
+    credentials: true,
+    optionsSuccessStatus: 200,
   }),
 )
 

@@ -57,11 +57,13 @@ COPY --from=installer /app/package.json ./package.json
 COPY --from=installer /app/apps/backend/package.json ./apps/backend/package.json
 COPY --from=installer /app/packages/config/package.json ./packages/config/package.json
 COPY --from=installer /app/packages/utils/package.json ./packages/utils/package.json
+COPY --from=installer /app/packages/api/package.json ./packages/api/package.json
 
 # Copy only the built application code and necessary dependencies
 COPY --from=installer /app/apps/backend/dist ./apps/backend/dist
 COPY --from=installer /app/packages/config/dist ./packages/config/dist
 COPY --from=installer /app/packages/utils/dist ./packages/utils/dist
+COPY --from=installer /app/packages/api/dist ./packages/api/dist
 COPY --from=installer /app/node_modules ./node_modules
 
 EXPOSE 8888
