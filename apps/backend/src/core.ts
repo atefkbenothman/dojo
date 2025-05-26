@@ -1,11 +1,12 @@
 import { userContextMiddleware } from "./middleware/user-context.js"
 import agentRouter from "./routes/agent.js"
 import chatRouter from "./routes/chat.js"
-import configRouter from "./routes/config.js"
 import connectionRouter from "./routes/connection.js"
 import imageRouter from "./routes/image.js"
 import type { UserSession, ActiveMcpClient } from "./types.js"
+import { appRouter, createTRPCContext } from "@dojo/api"
 import { CONFIGURED_MCP_SERVERS, AI_MODELS } from "@dojo/config"
+import { createExpressMiddleware } from "@trpc/server/adapters/express"
 import cors from "cors"
 import express, { Express, Request, Response } from "express"
 
@@ -19,13 +20,21 @@ const app: Express = express()
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://dojoai.vercel.app/"],
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "OPTIONS"],
   }),
 )
 
 app.use(express.json({ limit: "10mb" }))
 
-app.use("/", configRouter)
+app.use(
+  "/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext: createTRPCContext,
+  }),
+)
+console.log(`[Core] tRPC router mounted at /trpc`)
+
 app.use("/", imageRouter)
 app.use("/", chatRouter)
 app.use("/", connectionRouter)
@@ -67,9 +76,4 @@ process.on("uncaughtException", (err) => {
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason)
-})
-
-/* Get server health */
-app.get("/health", (req: Request, res: Response) => {
-  res.json({ status: "ok" })
 })

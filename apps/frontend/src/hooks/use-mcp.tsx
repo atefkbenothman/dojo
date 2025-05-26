@@ -3,6 +3,7 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
 import { errorToastStyle } from "@/lib/styles"
+import { useTRPCClient } from "@/lib/trpc/context"
 import type { MCPServer } from "@dojo/config"
 import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import type { Tool } from "ai"
@@ -22,27 +23,23 @@ export interface ActiveConnection {
 
 function useMCP(mcpServers: Record<string, MCPServer>) {
   const userId = useUserContext()
+  const trpcClient = useTRPCClient()
+
   const { play } = useSoundEffectContext()
 
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
   const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
   const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([])
 
-  const { data: serverHealth } = useQuery({
+  const serverHealth = useQuery({
     queryKey: ["server-health"],
-    queryFn: async () => {
-      const response = await fetch("/api/mcp/health", {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      })
-      if (!response.ok) throw new Error("Server health check failed")
-      return response.json()
+    queryFn: () => {
+      console.log("querying health")
+      return trpcClient.health.get.query()
     },
-    retry: false,
   })
 
-  const isServerHealthy = serverHealth?.success || false
+  const isServerHealthy = serverHealth.data?.status === "ok"
 
   // Connect mutation
   const connectMutation = useMutation({

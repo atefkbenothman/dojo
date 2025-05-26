@@ -12,11 +12,13 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@dojo/api": "1.0.0",
     "@dojo/config": "1.0.0",
     "@dojo/utils": "1.0.0",
     "@ai-sdk/google": "^1.2.8",
     "@ai-sdk/groq": "^1.2.5",
     "@ai-sdk/openai": "^1.3.20",
+    "@trpc/server": "latest",
     "ai": "^4.3.13",
     "chokidar": "^4.0.3",
     "cors": "^2.8.5",
