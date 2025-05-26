@@ -39,7 +39,11 @@ export default async function RootLayout({
 }>) {
   const defaultLayout = await getDefaultLayout()
 
+  console.log("HELLO1")
+
   const { mcpServers, aiModels, agents }: ConfigGetOutput = await serverTrpc.config.get.query()
+
+  console.log("HELLO2")
 
   return (
     <html lang="en" suppressHydrationWarning>
