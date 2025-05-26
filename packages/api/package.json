@@ -17,6 +17,7 @@
     "./types": "./dist/types.js"
   },
   "dependencies": {
+    "@dojo/config": "*",
     "@trpc/server": "latest",
     "zod": "^3.25.28"
   },
