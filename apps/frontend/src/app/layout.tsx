@@ -10,6 +10,7 @@ import { serverTrpc } from "@/lib/trpc/client"
 import { DojoTRPCProvider } from "@/lib/trpc/provider"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
 import type { ConfigGetOutput } from "@dojo/api"
+import { asyncTryCatch } from "@dojo/utils"
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
@@ -39,11 +40,23 @@ export default async function RootLayout({
 }>) {
   const defaultLayout = await getDefaultLayout()
 
-  console.log("HELLO1")
+  // get server health
+  const { data: healthData } = await asyncTryCatch(serverTrpc.health.get.query())
 
-  const { mcpServers, aiModels, agents }: ConfigGetOutput = await serverTrpc.config.get.query()
+  const isServerHealthy = healthData?.status === "ok"
 
-  console.log("HELLO2")
+  // get config
+  const { data: configData } = await asyncTryCatch(serverTrpc.config.get.query())
+
+  let mcpServers: ConfigGetOutput["mcpServers"] = {}
+  let agents: ConfigGetOutput["agents"] = {}
+  let aiModels: ConfigGetOutput["aiModels"] = {}
+
+  if (configData) {
+    mcpServers = configData.mcpServers
+    agents = configData.agents
+    aiModels = configData.aiModels
+  }
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -59,7 +72,7 @@ export default async function RootLayout({
           <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <SoundEffectProvider>
               <UserProvider>
-                <MCPProviderRoot mcpServers={mcpServers}>
+                <MCPProviderRoot mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
                   <ModelProvider aiModels={aiModels}>
                     <AIChatProviderRoot>
                       <AgentProviderRoot agents={agents}>
@@ -72,7 +85,7 @@ export default async function RootLayout({
             </SoundEffectProvider>
           </DarkModeProvider>
         </DojoTRPCProvider>
-        <Toaster />
+        <Toaster toastOptions={{ style: { borderRadius: "var(--radius-sm)" } }} />
         <Analytics />
       </body>
     </html>

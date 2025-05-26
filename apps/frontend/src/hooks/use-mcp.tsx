@@ -3,9 +3,8 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
 import { errorToastStyle } from "@/lib/styles"
-import { useTRPCClient } from "@/lib/trpc/context"
 import type { MCPServer } from "@dojo/config"
-import { useMutation, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
+import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type { Tool } from "ai"
 import { useState, createContext, useContext } from "react"
 import { toast } from "sonner"
@@ -21,27 +20,14 @@ export interface ActiveConnection {
   tools: Record<string, Tool<ZodTypeAny, unknown>>
 }
 
-function useMCP(mcpServers: Record<string, MCPServer>) {
+function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean) {
   const userId = useUserContext()
-  const trpcClient = useTRPCClient()
 
   const { play } = useSoundEffectContext()
 
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
   const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
   const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([])
-
-  const serverHealth = useQuery({
-    queryKey: ["server-health"],
-    queryFn: () => {
-      console.log("querying health")
-      return trpcClient.health.get.query()
-    },
-  })
-
-  const isServerHealthy = serverHealth.data?.status === "ok"
-
-  console.log("serverHealth", serverHealth.isLoading, serverHealth.data, serverHealth.error)
 
   // Connect mutation
   const connectMutation = useMutation({
@@ -241,24 +227,30 @@ const MCPContext = createContext<MCPContextType | undefined>(undefined)
 export function MCPProvider({
   children,
   mcpServers,
+  isServerHealthy,
 }: {
   children: React.ReactNode
   mcpServers: Record<string, MCPServer>
+  isServerHealthy: boolean
 }) {
-  const value = useMCP(mcpServers)
+  const value = useMCP(mcpServers, isServerHealthy)
   return <MCPContext.Provider value={value}>{children}</MCPContext.Provider>
 }
 
 export function MCPProviderRoot({
   children,
   mcpServers,
+  isServerHealthy,
 }: {
   children: React.ReactNode
   mcpServers: Record<string, MCPServer>
+  isServerHealthy: boolean
 }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <MCPProvider mcpServers={mcpServers}>{children}</MCPProvider>
+      <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
+        {children}
+      </MCPProvider>
     </QueryClientProvider>
   )
 }
