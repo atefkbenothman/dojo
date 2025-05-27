@@ -6,6 +6,7 @@ import { protectedProcedure, router } from "../trpc.js"
 import { AI_MODELS } from "@dojo/config"
 import { TRPCError } from "@trpc/server"
 import { type LanguageModel, type ToolSet, type CoreMessage } from "ai"
+import "dotenv/config"
 import { z } from "zod"
 
 export const chatRouter = router({

@@ -23,6 +23,7 @@ export function UserProvider({ children }: UserProviderProps) {
       writeStorage(USER_ID_STORAGE_KEY, storedUserId)
     }
     setUserId(storedUserId)
+    document.cookie = `userId=${storedUserId}; path=/; max-age=31536000`
   }, [readStorage, writeStorage])
 
   if (!userId) return null

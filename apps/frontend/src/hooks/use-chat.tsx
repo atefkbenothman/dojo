@@ -17,11 +17,16 @@ import { nanoid } from "nanoid"
 import { useState, createContext, useContext, useCallback } from "react"
 
 interface ChatRequestOptionsBody {
-  userId: string | null
   modelId: string
   interactionType: string
   config?: AgentConfig
   apiKey?: string | null
+}
+
+interface ChatRequestBody {
+  modelId: string
+  apiKey?: string
+  interactionType: string
 }
 
 const initialMessages: Message[] = [
@@ -124,7 +129,7 @@ export function useAIChat() {
 
   const unifiedAppend = useCallback(
     async (
-      messageToRelay: Message | Omit<Message, "id">,
+      messageToRelay: Message,
       options: {
         body: ChatRequestOptionsBody
         interactionType: string
@@ -191,22 +196,23 @@ export function useAIChat() {
         return
       }
 
-      const userMessage: Omit<Message, "id"> = {
+      const userMessage: Message = {
+        id: nanoid(),
         role: "user",
         content: prompt,
       }
 
+      const body: ChatRequestBody = {
+        modelId: selectedModel.id,
+        interactionType: "chat",
+        ...(apiKey ? { apiKey } : {}),
+      }
       await unifiedAppend(userMessage, {
-        body: {
-          userId: userId,
-          modelId: selectedModel.id,
-          interactionType: "chat",
-          apiKey: apiKey,
-        } as ChatRequestOptionsBody,
+        body,
         interactionType: "chat",
       })
     },
-    [status, selectedModel, unifiedAppend, imageGenerationMutation, setMessages, userId, getApiKeyForModel, play],
+    [status, selectedModel, unifiedAppend, imageGenerationMutation, setMessages, getApiKeyForModel, play],
   )
 
   const handleNewChat = useCallback(() => {
