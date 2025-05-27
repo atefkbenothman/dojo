@@ -12,7 +12,6 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@dojo/api": "1.0.0",
     "@dojo/config": "1.0.0",
     "@dojo/utils": "1.0.0",
     "@ai-sdk/google": "^1.2.8",

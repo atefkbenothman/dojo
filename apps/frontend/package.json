@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dojo/api": "1.0.0",
     "@dojo/config": "1.0.0",
     "@dojo/utils": "1.0.0",
     "@radix-ui/react-accordion": "^1.2.7",
