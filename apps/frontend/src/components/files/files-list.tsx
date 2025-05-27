@@ -1,6 +1,6 @@
 "use server"
 
-import { FileListUI } from "@/app/files/file-list-ui"
+import { FileListUI } from "@/components/files/file-list-ui"
 import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 

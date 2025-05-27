@@ -1,9 +1,9 @@
 "use client"
 
 import { Chat } from "@/components/chat/chat"
-import { ChatPanelHeader } from "@/components/layout/chat-panel-header"
-import { MainPanelHeader } from "@/components/layout/main-panel-header"
-import { SideNav } from "@/components/layout/side-nav"
+import { ChatPanelHeader } from "@/components/panels/chat-panel-header"
+import { MainPanelHeader } from "@/components/panels/main-panel-header"
+import { SideNav } from "@/components/panels/side-nav"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"

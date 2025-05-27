@@ -1,6 +1,6 @@
 "use server"
 
-import FileContent from "@/app/files/file-content"
+import FileContent from "@/components/files/file-content"
 import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 

@@ -1,6 +1,6 @@
 "use server"
 
-import { FilesList } from "@/app/files/files-list"
+import { FilesList } from "@/components/files/files-list"
 import { env } from "@/env"
 import React, { Suspense } from "react"
 
