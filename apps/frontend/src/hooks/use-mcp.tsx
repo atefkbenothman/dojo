@@ -3,79 +3,46 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
 import { errorToastStyle } from "@/lib/styles"
+import { useTRPCClient } from "@/lib/trpc/context"
+import type { RouterOutputs } from "@dojo/backend/src/types.js"
 import type { MCPServer } from "@dojo/config"
-import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import type { Tool } from "ai"
+import { useMutation } from "@tanstack/react-query"
 import { useState, createContext, useContext } from "react"
 import { toast } from "sonner"
-import type { ZodTypeAny } from "zod"
-
-const queryClient = new QueryClient()
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
 
 export interface ActiveConnection {
   serverId: string
   name: string
-  tools: Record<string, Tool<ZodTypeAny, unknown>>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tools: Record<any, any>
 }
 
 function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean) {
-  const userId = useUserContext()
-
+  const userIdFromContext = useUserContext()
+  const client = useTRPCClient()
   const { play } = useSoundEffectContext()
 
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
   const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
   const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([])
 
-  // Connect mutation
-  const connectMutation = useMutation({
-    mutationFn: async ({ server }: { server: MCPServer }) => {
-      if (!userId || typeof userId !== "string" || userId.trim() === "") throw new Error("User ID is not available")
-      if (!server || typeof server.id !== "string" || !server.config)
-        throw new Error("Invalid server object: missing id or config")
-
-      const response = await fetch("/api/mcp/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, server }),
-        cache: "no-store",
-      })
-
-      if (!response.ok) {
-        let errorMessage = `Connection failed: ${response.statusText || "Unknown error"}`
-        const errorData = await response.json()
-        if (errorData && typeof errorData.error === "string" && errorData.error.trim() !== "") {
-          errorMessage = errorData.error
-        }
-        throw new Error(errorMessage)
-      }
-
-      const data = await response.json()
-      return { ...data, server }
+  const connectMutation = useMutation<RouterOutputs["connection"]["connect"], Error, { server: MCPServer }>({
+    mutationFn: async (variables: { server: MCPServer }) => {
+      return client.connection.connect.mutate(variables)
     },
-    onMutate: ({ server }: { server: MCPServer }) => {
-      setConnectionStatus((prev) => ({
-        ...prev,
-        [server.id]: "connecting",
-      }))
-      setConnectionError((prev) => ({
-        ...prev,
-        [server.id]: null,
-      }))
+    onMutate: (variables: { server: MCPServer }) => {
+      const { server } = variables
+      setConnectionStatus((prev) => ({ ...prev, [server.id]: "connecting" }))
+      setConnectionError((prev) => ({ ...prev, [server.id]: null }))
     },
-    onSuccess: (data, { server }: { server: MCPServer }) => {
-      setConnectionStatus((prev) => ({
-        ...prev,
-        [server.id]: "connected",
-      }))
-      setConnectionError((prev) => ({
-        ...prev,
-        [server.id]: null,
-      }))
+    onSuccess: (data: RouterOutputs["connection"]["connect"], variables: { server: MCPServer }) => {
+      const { server } = variables
+      setConnectionStatus((prev) => ({ ...prev, [server.id]: "connected" }))
+      setConnectionError((prev) => ({ ...prev, [server.id]: null }))
       const newConnection: ActiveConnection = {
-        serverId: server.id,
+        serverId: data.serverId,
         name: server.name,
         tools: data.tools || {},
       }
@@ -86,11 +53,9 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
       })
       play("./connect.mp3", { volume: 0.5 })
     },
-    onError: (error, { server }: { server: MCPServer }) => {
-      setConnectionStatus((prev) => ({
-        ...prev,
-        [server.id]: "error",
-      }))
+    onError: (error: Error, variables: { server: MCPServer }) => {
+      const { server } = variables
+      setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
       setConnectionError((prev) => ({
         ...prev,
         [server.id]: error.message || "An unexpected error occurred during connecting",
@@ -106,52 +71,32 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
     },
   })
 
-  // Disconnect mutation
-  const disconnectMutation = useMutation({
-    mutationFn: async (serverId: string) => {
-      if (!userId || typeof userId !== "string" || userId.trim() === "") throw new Error("No userId to disconnect")
-      if (!serverId || typeof serverId !== "string" || serverId.trim() === "")
-        throw new Error("No serverId to disconnect")
-      const response = await fetch("/api/mcp/disconnect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, serverId }),
-        cache: "no-store",
-      })
-      if (!response.ok) throw new Error("Disconnection failed")
-      return response.json()
+  const disconnectMutation = useMutation<{ message: string }, Error, { serverId: string }>({
+    mutationFn: async (variables: { serverId: string }) => {
+      return client.connection.disconnect.mutate(variables)
     },
-    onMutate: (serverId) => {
-      setConnectionStatus((prev) => ({
-        ...prev,
-        [serverId]: "disconnected",
-      }))
+    onMutate: (variables: { serverId: string }) => {
+      const { serverId } = variables
+      setConnectionStatus((prev) => ({ ...prev, [serverId]: "disconnected" }))
     },
-    onSuccess: (data, serverId) => {
-      setConnectionError((prev) => ({
-        ...prev,
-        [serverId]: null,
-      }))
+    onSuccess: (_data: { message: string }, variables: { serverId: string }) => {
+      const { serverId } = variables
+      setConnectionError((prev) => ({ ...prev, [serverId]: null }))
       setActiveConnections((prev) => prev.filter((conn) => conn.serverId !== serverId))
     },
-    onError: (error, serverId) => {
-      setConnectionStatus((prev) => ({
-        ...prev,
-        [serverId]: "error",
-      }))
-      setConnectionError((prev) => ({
-        ...prev,
-        [serverId]: error.message || "Disconnection failed",
-      }))
+    onError: (error: Error, variables: { serverId: string }) => {
+      const { serverId } = variables
+      setConnectionStatus((prev) => ({ ...prev, [serverId]: "error" }))
+      setConnectionError((prev) => ({ ...prev, [serverId]: error.message || "Disconnection failed" }))
     },
   })
 
   const connect = async ({ server }: { server: MCPServer }) => {
     if (connectionStatus[server.id] === "connecting") return
-    if (!userId) {
-      console.error("Cannot connect without a userId")
+    if (!userIdFromContext) {
+      console.error("Cannot connect without a userId in context.")
       setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
-      setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available" }))
+      setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available in context" }))
       return
     }
     if (!isServerHealthy) {
@@ -167,31 +112,30 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
     }
     try {
       await connectMutation.mutateAsync({ server })
-    } catch {
-      setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
-      setConnectionError((prev) => ({ ...prev, [server.id]: "Connection failed" }))
+    } catch (err) {
+      console.error("[MCP Hook] connect function caught error (should be handled by onError):", err)
+      if (connectionStatus[server.id] !== "error") {
+        setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
+        setConnectionError((prev) => ({
+          ...prev,
+          [server.id]: err instanceof Error ? err.message : "Connection failed",
+        }))
+      }
     }
   }
 
   const disconnect = async (serverId: string) => {
-    if (!userId) {
-      setConnectionStatus((prev) => ({
-        ...prev,
-        [serverId]: "disconnected",
-      }))
-      setConnectionError((prev) => ({
-        ...prev,
-        [serverId]: null,
-      }))
+    if (!userIdFromContext) {
+      setConnectionStatus((prev) => ({ ...prev, [serverId]: "disconnected" }))
+      setConnectionError((prev) => ({ ...prev, [serverId]: null }))
       return
     }
-
-    await disconnectMutation.mutateAsync(serverId)
+    await disconnectMutation.mutateAsync({ serverId })
     play("./disconnect.mp3", { volume: 0.5 })
   }
 
   const disconnectAll = async () => {
-    if (!userId || activeConnections.length === 0) return
+    if (!userIdFromContext || activeConnections.length === 0) return
     for (const conn of activeConnections) {
       await disconnect(conn.serverId)
     }
@@ -247,11 +191,9 @@ export function MCPProviderRoot({
   isServerHealthy: boolean
 }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
-        {children}
-      </MCPProvider>
-    </QueryClientProvider>
+    <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
+      {children}
+    </MCPProvider>
   )
 }
 

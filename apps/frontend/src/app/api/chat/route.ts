@@ -31,11 +31,18 @@ export async function POST(request: Request) {
 
       console.log(`[API Router /chat] Routing to CHAT service. Model: ${modelId}, Messages Count: ${messages.length}`)
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      }
+      if (userId) {
+        headers["X-User-Id"] = userId
+      }
+
       const { data: chatData, error: chatError } = await asyncTryCatch(
-        fetch(`${env.BACKEND_URL}/chat`, {
+        fetch(`${env.BACKEND_URL}/trpc/chat.sendMessage`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, userId, modelId, apiKey }),
+          headers: headers,
+          body: JSON.stringify({ messages, modelId, apiKey }),
         }),
       )
 

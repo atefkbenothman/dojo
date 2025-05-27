@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid"
 
 const USER_ID_STORAGE_KEY = "dojo-user-id"
 
-const UserContext = createContext<string | null | undefined>(undefined)
+const UserContext = createContext<string | undefined>(undefined)
 
 interface UserProviderProps {
   children: ReactNode
@@ -14,31 +14,23 @@ interface UserProviderProps {
 
 export function UserProvider({ children }: UserProviderProps) {
   const { readStorage, writeStorage } = useLocalStorage()
-
-  const [userId, setUserIdState] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const [userId, setUserId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (mounted) {
-      const storedUserId = readStorage<string>(USER_ID_STORAGE_KEY)
-      if (storedUserId === null) {
-        const newUserId = uuidv4()
-        writeStorage(USER_ID_STORAGE_KEY, newUserId)
-        setUserIdState(newUserId)
-      } else {
-        setUserIdState(storedUserId)
-      }
+    let storedUserId = readStorage<string>(USER_ID_STORAGE_KEY)
+    if (!storedUserId) {
+      storedUserId = uuidv4()
+      writeStorage(USER_ID_STORAGE_KEY, storedUserId)
     }
-  }, [mounted, readStorage, writeStorage])
+    setUserId(storedUserId)
+  }, [readStorage, writeStorage])
+
+  if (!userId) return null
 
   return <UserContext.Provider value={userId}>{children}</UserContext.Provider>
 }
 
-export function useUserContext() {
+export function useUserContext(): string {
   const context = useContext(UserContext)
   if (context === undefined) {
     throw new Error("useUserContext must be used within a UserProvider")

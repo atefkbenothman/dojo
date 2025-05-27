@@ -6,9 +6,12 @@ import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useModelContext } from "@/hooks/use-model"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { DEFAULT_ASSISTANT_MESSAGE, SYSTEM_PROMPT } from "@/lib/ai/constants"
+import { useTRPCClient } from "@/lib/trpc/context"
 import { useChat, Message } from "@ai-sdk/react"
+import type { RouterOutputs } from "@dojo/backend/src/types"
+import type { ImageGenerationInput } from "@dojo/backend/src/types"
 import type { AgentConfig, AIModel } from "@dojo/config"
-import { QueryClientProvider, QueryClient, useMutation } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
 import { useState, createContext, useContext, useCallback } from "react"
@@ -20,8 +23,6 @@ interface ChatRequestOptionsBody {
   config?: AgentConfig
   apiKey?: string | null
 }
-
-const queryClient = new QueryClient()
 
 const initialMessages: Message[] = [
   {
@@ -38,6 +39,7 @@ const initialMessages: Message[] = [
 
 export function useAIChat() {
   const userId = useUserContext()
+  const trpcClient = useTRPCClient()
 
   const { selectedModel } = useModelContext()
   const { readStorage } = useLocalStorage()
@@ -80,47 +82,43 @@ export function useAIChat() {
     },
   })
 
-  /* Generate Image */
-  const imageGenerationMutation = useMutation({
-    mutationFn: async ({ modelId, prompt, apiKey }: { modelId: string; prompt: string; apiKey: string | null }) => {
-      if (!apiKey) {
-        const errorMsg = `API key for image generation with model ${selectedModel.id} not provided.`
+  const imageGenerationMutation = useMutation<RouterOutputs["image"]["generate"], Error, ImageGenerationInput>({
+    mutationFn: async (data: ImageGenerationInput) => {
+      if (!data.apiKey) {
+        const errorMsg = `API key for image generation with model ${data.modelId} not provided.`
         setChatError(errorMsg)
         throw new Error(errorMsg)
       }
-      const response = await fetch("/api/image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, modelId, prompt, apiKey }),
-        cache: "no-store",
-      })
-      if (!response.ok) {
-        const errorText = await response.text()
-        const errorMsg = `There was an error generating the image. Status: ${response.status}. Error: ${errorText || response.statusText}`
-        setChatError(errorMsg)
-        throw new Error(errorMsg)
-      }
-      const result = await response.json()
-      if (result.error) {
-        setChatError(result.error)
-        throw new Error(result.error)
-      }
-      return result
+      return trpcClient.image.generate.mutate(data)
     },
     onSuccess: (result) => {
-      const imageData = {
-        type: "generated_image",
-        images: result.images.images,
+      const imagesArr = result.images || []
+
+      if (imagesArr.length > 0) {
+        const imageData = {
+          type: "generated_image",
+          images: imagesArr.map((img) => {
+            if ("base64" in img) return { base64: img.base64 }
+            if ("url" in img) return { base64: img.url }
+            return { base64: "" }
+          }),
+        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nanoid(),
+            role: "assistant",
+            content: imagesArr.length > 1 ? "Generated Images:" : "Generated Image:",
+            images: imageData,
+          },
+        ])
       }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nanoid(),
-          role: "assistant",
-          content: "Generated Image(s):",
-          images: imageData,
-        },
-      ])
+    },
+    onError: (error: Error) => {
+      play("./error.mp3", { volume: 0.5 })
+      const message = error.message || "An unexpected error occurred during image generation."
+      setChatError(message)
+      console.error("Image generation mutation error:", error)
     },
   })
 
@@ -180,7 +178,16 @@ export function useAIChat() {
             content: prompt,
           },
         ])
-        imageGenerationMutation.mutate({ modelId: selectedModel.id, prompt, apiKey })
+        if (!apiKey) {
+          setChatError(`API key for ${selectedModel.name} is not configured.`)
+          play("./error.mp3", { volume: 0.5 })
+          return
+        }
+        imageGenerationMutation.mutate({
+          modelId: selectedModel.id,
+          prompt,
+          apiKey,
+        })
         return
       }
 
@@ -247,9 +254,5 @@ export function useChatProvider() {
 }
 
 export function AIChatProviderRoot({ children }: { children: React.ReactNode }) {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AIChatProvider>{children}</AIChatProvider>
-    </QueryClientProvider>
-  )
+  return <AIChatProvider>{children}</AIChatProvider>
 }
