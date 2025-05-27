@@ -1,6 +1,6 @@
 "use client"
 
-import { AgentCard } from "@/app/agent/agent-card"
+import { AgentCard } from "@/components/agent/agent-card"
 import type { AgentConfig } from "@dojo/config"
 
 interface AgentListProps {

@@ -1,7 +1,7 @@
 "use client"
 
-import { AddAgentCard } from "@/app/agent/add-agent"
-import { AgentList } from "@/app/agent/agent-list"
+import { AddAgentCard } from "@/components/agent/add-agent"
+import { AgentList } from "@/components/agent/agent-list"
 import { useAgentProvider } from "@/hooks/use-agent"
 import type { AgentConfig } from "@dojo/config"
 import { useState, useEffect } from "react"

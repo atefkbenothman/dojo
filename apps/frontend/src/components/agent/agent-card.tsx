@@ -1,6 +1,6 @@
 "use client"
 
-import { AgentDialog } from "@/app/agent/agent-dialog"
+import { AgentDialog } from "@/components/agent/agent-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAgentProvider } from "@/hooks/use-agent"

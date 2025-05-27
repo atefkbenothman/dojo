@@ -1,5 +1,5 @@
 import "./globals.css"
-import { ResizableLayout } from "@/components/layout/resizable-layout"
+import { ResizableLayout } from "@/components/panels/resizable-layout"
 import { AgentProviderRoot } from "@/hooks/use-agent"
 import { AIChatProviderRoot } from "@/hooks/use-chat"
 import { MCPProviderRoot } from "@/hooks/use-mcp"
@@ -9,7 +9,7 @@ import { UserProvider } from "@/hooks/use-user-id"
 import { serverTrpc } from "@/lib/trpc/client"
 import { DojoTRPCProvider } from "@/lib/trpc/provider"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
-import type { ConfigGetOutput } from "@dojo/api"
+import type { ConfigGetOutput } from "@dojo/backend/src/types.js"
 import { asyncTryCatch } from "@dojo/utils"
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next"
@@ -68,10 +68,10 @@ export default async function RootLayout({
         />
       </head>
       <body className={`antialiased ${inter.className}`}>
-        <DojoTRPCProvider>
-          <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            <SoundEffectProvider>
-              <UserProvider>
+        <UserProvider>
+          <DojoTRPCProvider>
+            <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+              <SoundEffectProvider>
                 <MCPProviderRoot mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
                   <ModelProvider aiModels={aiModels}>
                     <AIChatProviderRoot>
@@ -81,10 +81,10 @@ export default async function RootLayout({
                     </AIChatProviderRoot>
                   </ModelProvider>
                 </MCPProviderRoot>
-              </UserProvider>
-            </SoundEffectProvider>
-          </DarkModeProvider>
-        </DojoTRPCProvider>
+              </SoundEffectProvider>
+            </DarkModeProvider>
+          </DojoTRPCProvider>
+        </UserProvider>
         <Toaster toastOptions={{ style: { borderRadius: "var(--radius-sm)" } }} />
         <Analytics />
       </body>
