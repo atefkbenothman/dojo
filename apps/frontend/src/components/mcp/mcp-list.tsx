@@ -1,6 +1,6 @@
 "use client"
 
-import { MCPCard } from "@/app/mcp/mcp-card"
+import { MCPCard } from "@/components/mcp/mcp-card"
 import type { MCPServer } from "@dojo/config"
 
 interface MCPListProps {

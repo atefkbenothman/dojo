@@ -1,7 +1,7 @@
 "use client"
 
-import { AddMCPCard } from "@/app/mcp/add-mcp"
-import { MCPList } from "@/app/mcp/mcp-list"
+import { AddMCPCard } from "@/components/mcp/add-mcp"
+import { MCPList } from "@/components/mcp/mcp-list"
 import { Input } from "@/components/ui/input"
 import { useMCPContext } from "@/hooks/use-mcp"
 import type { MCPServer } from "@dojo/config"

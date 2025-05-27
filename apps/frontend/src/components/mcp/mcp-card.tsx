@@ -1,7 +1,7 @@
 "use client"
 
-import { MCPDialog } from "@/app/mcp/mcp-dialog"
 import { MCP_SERVER_ICONS } from "@/components/icons"
+import { MCPDialog } from "@/components/mcp/mcp-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
