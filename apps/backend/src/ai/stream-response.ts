@@ -1,6 +1,10 @@
 import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel } from "ai"
 import { type Response } from "express"
 
+// Polyfill for Node.js if not available globally
+// Remove this if your environment already has ReadableStreamReadResult
+type ReadableStreamReadResult<T> = { done: boolean; value?: T }
+
 interface StreamAiResponseOptions {
   res: Response
   languageModel: LanguageModel
@@ -44,8 +48,17 @@ export async function streamAiResponse(options: StreamAiResponseOptions): Promis
     res.status(responseStream.status)
 
     if (responseStream.body) {
-      for await (const chunk of responseStream.body) {
-        res.write(chunk)
+      const reader = (responseStream.body as ReadableStream<Uint8Array>).getReader()
+      try {
+        while (true) {
+          const { done, value }: ReadableStreamReadResult<Uint8Array> = await reader.read()
+          if (done) {
+            break
+          }
+          res.write(value)
+        }
+      } finally {
+        reader.releaseLock()
       }
     }
     res.end()

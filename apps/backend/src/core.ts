@@ -1,14 +1,10 @@
-import { userContextMiddleware } from "./middleware/user-context.js"
-import agentRouter from "./routes/agent.js"
-import chatRouter from "./routes/chat.js"
-import connectionRouter from "./routes/connection.js"
-import imageRouter from "./routes/image.js"
-import type { UserSession, ActiveMcpClient } from "./types.js"
-import { appRouter, createTRPCContext } from "@dojo/api"
+import { createTRPCContext } from "./trpc/context.js"
+import { appRouter } from "./trpc/router.js"
+import type { ActiveMcpClient, UserSession } from "./types.js"
 import { CONFIGURED_MCP_SERVERS, AI_MODELS } from "@dojo/config"
 import { createExpressMiddleware } from "@trpc/server/adapters/express"
 import cors from "cors"
-import express, { Express, Request, Response } from "express"
+import express, { Express } from "express"
 
 const PORT = process.env.PORT || 8888
 
@@ -23,7 +19,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source", "X-User-Id"],
     credentials: true,
     optionsSuccessStatus: 200,
   }),
@@ -38,18 +34,10 @@ app.use(
     createContext: createTRPCContext,
   }),
 )
-console.log(`[Core] tRPC router mounted at /trpc`)
-
-app.use("/", imageRouter)
-app.use("/", chatRouter)
-app.use("/", connectionRouter)
-
-app.use("/agent", userContextMiddleware, agentRouter)
-
-console.log("[Core] Configured MCP Servers:", Object.keys(CONFIGURED_MCP_SERVERS).join(", "))
-console.log("[Core] AI Models:", Object.keys(AI_MODELS).join(", "))
 
 export const sessions = new Map<string, UserSession>()
+
+export let totalConnections = 0
 
 export function getOrCreateUserSession(userId: string): UserSession {
   if (!sessions.has(userId)) {
@@ -57,8 +45,6 @@ export function getOrCreateUserSession(userId: string): UserSession {
   }
   return sessions.get(userId)!
 }
-
-export let totalConnections = 0
 
 export function incrementTotalConnections() {
   totalConnections++
@@ -73,6 +59,9 @@ app.listen(PORT, () => {
   console.log(`[Core] Server listening on port ${PORT}`)
   console.log(`[Core] Initializing with ${totalConnections} connections`)
   console.log(`[Core] Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
+  console.log("[Core] tRPC router mounted at /trpc")
+  console.log("[Core] Configured MCP Servers:", Object.keys(CONFIGURED_MCP_SERVERS).join(", "))
+  console.log("[Core] AI Models:", Object.keys(AI_MODELS).join(", "))
 })
 
 process.on("uncaughtException", (err) => {

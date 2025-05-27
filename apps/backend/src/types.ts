@@ -1,5 +1,8 @@
 import { MCPClient } from "./mcp-client.js"
-import { MCPServerConfig, MCPServer } from "@dojo/config"
+import type { AppRouter } from "./trpc/router.js"
+import { MCPServerConfig } from "@dojo/config"
+import type { AgentConfig as ExternalAgentConfig } from "@dojo/config"
+import type { inferRouterOutputs, inferRouterInputs } from "@trpc/server"
 import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import { Request } from "express"
 import { type Response as ExpressResponse } from "express"
@@ -16,33 +19,7 @@ export interface ActiveMcpClient {
   config: MCPServerConfig
 }
 
-export interface UserSession {
-  userId: string
-  activeMcpClients: Map<string, ActiveMcpClient>
-}
-
-export type FileChangeType = "add" | "change" | "unlink"
-
-export interface FileChangeEvent {
-  type: FileChangeType
-  path: string
-}
-
-export interface FileBatchChangeEvent {
-  event: "fileBatchChanged"
-  changes: FileChangeEvent[]
-}
-
-export interface AgentConfig {
-  id: string
-  name: string
-  modelId: string
-  systemPrompt: string
-  mcpServers: MCPServer[]
-  maxExecutionSteps: number
-}
-
-export type AgentConfigs = Record<string, AgentConfig>
+export type AgentConfigs = Record<string, ExternalAgentConfig>
 
 export interface RequestWithUserContext extends Request {
   userId: string
@@ -77,3 +54,21 @@ export interface IAgent<TInputParams = unknown, TOutputResult = unknown> {
    */
   execute(input: AgentInput<TInputParams>, res: ExpressResponse): Promise<AgentInternalOutput<TOutputResult>>
 }
+
+export interface UserSession {
+  userId: string
+  activeMcpClients: Map<string, ActiveMcpClient>
+}
+
+export interface EstablishMcpConnectionResult {
+  success: boolean
+  error?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client?: { client: { tools: Record<any, any> } }
+}
+
+export type RouterOutputs = inferRouterOutputs<AppRouter>
+export type RouterInputs = inferRouterInputs<AppRouter>
+
+export type ConfigGetOutput = RouterOutputs["config"]["get"]
+export type ImageGenerationInput = RouterInputs["image"]["generate"]
