@@ -67,7 +67,7 @@ function ApiKeyManager() {
         style: successToastStyle,
       })
       setTimeout(() => {
-        play("./save.mp3", { volume: 0.5 })
+        play("./sounds/save.mp3", { volume: 0.5 })
       }, 100)
     } else {
       const localStorageKey = `${provider.toUpperCase()}_API_KEY`
@@ -94,7 +94,7 @@ function ApiKeyManager() {
             <Button
               onMouseDown={() => {
                 handleSaveApiKey(provider)
-                play("./click.mp3", { volume: 0.5 })
+                play("./sounds/click.mp3", { volume: 0.5 })
               }}
               size="default"
               variant="secondary"
@@ -137,13 +137,13 @@ export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
         </DialogHeader>
         <Tabs defaultValue="user" className="w-full flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-3 h-12">
-            <TabsTrigger value="user" onMouseDown={() => play("./click.mp3", { volume: 0.5 })}>
+            <TabsTrigger value="user" onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}>
               User
             </TabsTrigger>
-            <TabsTrigger value="api-keys" onMouseDown={() => play("./click.mp3", { volume: 0.5 })}>
+            <TabsTrigger value="api-keys" onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}>
               API Keys
             </TabsTrigger>
-            <TabsTrigger value="other" onMouseDown={() => play("./click.mp3", { volume: 0.5 })}>
+            <TabsTrigger value="other" onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}>
               Other
             </TabsTrigger>
           </TabsList>

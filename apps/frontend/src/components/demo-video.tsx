@@ -50,7 +50,7 @@ export function DemoVideo() {
   const [isVideoPopupOpen, setIsVideoPopupOpen] = useState(false)
 
   const handleClick = () => {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     setIsVideoPopupOpen(true)
   }
 

@@ -41,7 +41,7 @@ function MessageAccordion({ variant = "tool", icon, title, children, defaultOpen
       <AccordionItem value="message-accordion" className="border-b-0">
         <AccordionTrigger
           className="p-2 hover:cursor-pointer hover:no-underline"
-          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
         >
           <div className="flex flex-row items-center gap-2">
             {icon}

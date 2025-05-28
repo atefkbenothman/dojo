@@ -21,7 +21,7 @@ function MCPServersPopover() {
           variant="outline"
           className="relative mr-2 hover:cursor-pointer"
           title="MCP Servers"
-          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
         >
           <Server className="h-4.5 w-4.5" />
           {connectedServers > 0 && (

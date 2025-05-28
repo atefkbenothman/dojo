@@ -41,7 +41,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
       <Select
         value={(selectedModel && selectedModel.id) || ""}
         onValueChange={setSelectedModelId}
-        onOpenChange={(isOpen) => isOpen && play("./click.mp3", { volume: 0.5 })}
+        onOpenChange={(isOpen) => isOpen && play("./sounds/click.mp3", { volume: 0.5 })}
       >
         <SelectTrigger className="hover:cursor-pointer">
           <SelectValue placeholder="Model">{selectedModel ? selectedModel.name : null}</SelectValue>
@@ -57,7 +57,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
                     key={model.id}
                     value={model.id}
                     className="hover:cursor-pointer"
-                    onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+                    onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
                   >
                     {model.name}
                     {model.requiresApiKey && (

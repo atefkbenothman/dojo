@@ -38,7 +38,7 @@ export function SideNav() {
   const [userDialogOpen, setUserDialogOpen] = useState(false)
 
   function handleUserIconClick() {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     setUserDialogOpen(true)
   }
 
@@ -57,7 +57,7 @@ export function SideNav() {
                   <TooltipTrigger asChild>
                     <Link
                       href={href}
-                      onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+                      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
                       className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
                     >
                       <div

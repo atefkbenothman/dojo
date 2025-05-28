@@ -106,7 +106,7 @@ function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogProps) {
   const isFormValid = !!serverName && !!command
 
   const handleSave = () => {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     if (!isFormValid) return
     const args = argsString
       .split(",")
@@ -139,7 +139,7 @@ function AddMCPDialog({ open, onOpenChange, onAddServer }: AddMCPDialogProps) {
       style: successToastStyle,
     })
     setTimeout(() => {
-      play("./save.mp3", { volume: 0.5 })
+      play("./sounds/save.mp3", { volume: 0.5 })
     }, 100)
     onOpenChange(false)
   }
@@ -240,7 +240,7 @@ export function AddMCPCard({ onAddServer }: { onAddServer: (server: MCPServer) =
 
   const handleAddServer = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault()
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     setIsAddDialogOpen(true)
   }
 

@@ -41,7 +41,7 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
     })
 
   const newChat = useCallback(() => {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     handleNewChat()
   }, [play, handleNewChat])
 

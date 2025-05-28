@@ -18,7 +18,7 @@ export function DarkModeToggle() {
 
   const handleThemeClick = (theme: string) => {
     setTheme(theme)
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
   }
 
   return (

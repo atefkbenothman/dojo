@@ -190,7 +190,7 @@ export function AddAgentCard({ onAddAgent }: AddAgentCardProps) {
       <Card
         className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border transition-colors"
         onMouseDown={() => {
-          play("./click.mp3", { volume: 0.5 })
+          play("./sounds/click.mp3", { volume: 0.5 })
           setIsAddDialogOpen(true)
         }}
       >

@@ -34,7 +34,7 @@ function ToolsPopover({ tools }: ToolsPopoverProps) {
           size="icon"
           className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
           title={`Tools (${toolNames.length})`}
-          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
         >
           <Wrench className="h-4 w-4" />
         </Button>
@@ -83,7 +83,7 @@ export function MCPCard({ server }: MCPCardProps) {
   const isConnected = connectionStatus === "connected"
 
   const handleConnectClick = async () => {
-    playClick("./click.mp3", { volume: 0.5 })
+    playClick("./sounds/click.mp3", { volume: 0.5 })
     if (isConnected) {
       await disconnect(server.id)
       return
@@ -118,7 +118,7 @@ export function MCPCard({ server }: MCPCardProps) {
       style: successToastStyle,
     })
     setTimeout(() => {
-      playSave("./save.mp3", { volume: 0.5 })
+      playSave("./sounds/save.mp3", { volume: 0.5 })
     }, 100)
   }
 

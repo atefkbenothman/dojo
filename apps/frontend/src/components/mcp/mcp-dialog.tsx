@@ -103,7 +103,7 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
   }
 
   const handleSave = () => {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     const finalArgs = argsString
       .split(",")
       .map((arg) => arg.trim())
@@ -120,7 +120,7 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
   }
 
   const handleDelete = () => {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     removeStorage(`mcp_config_${server.id}`)
     onOpenChange(false)
     toast.error(`${server.name} config deleted from localstorage`, {
@@ -131,7 +131,7 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
       style: errorToastStyle,
     })
     setTimeout(() => {
-      play("./delete.mp3", { volume: 0.5 })
+      play("./sounds/delete.mp3", { volume: 0.5 })
     }, 100)
   }
 
@@ -141,7 +141,7 @@ export function MCPDialog({ server, open, onSaveConfig, onOpenChange }: MCPDialo
         <Button
           variant="secondary"
           className="bg-secondary/80 hover:bg-secondary/90 h-9 w-9 border hover:cursor-pointer"
-          onMouseDown={() => play("./click.mp3", { volume: 0.5 })}
+          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
           size="icon"
         >
           <Settings className="h-4 w-4" />

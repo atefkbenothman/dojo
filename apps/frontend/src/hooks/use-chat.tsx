@@ -75,12 +75,12 @@ export function useAIChat() {
     initialMessages: initialMessages as Message[],
     generateId: () => nanoid(),
     onError: (err) => {
-      play("./error.mp3", { volume: 0.5 })
+      play("./sounds/error.mp3", { volume: 0.5 })
       setChatError(err.message || "An unexpected error occurred during the chat.")
       setCurrentInteractionType(null)
     },
     onFinish: () => {
-      play("./done.mp3", { volume: 0.5 })
+      play("./sounds/done.mp3", { volume: 0.5 })
       setCurrentInteractionType(null)
     },
   })
@@ -118,7 +118,7 @@ export function useAIChat() {
       }
     },
     onError: (error: Error) => {
-      play("./error.mp3", { volume: 0.5 })
+      play("./sounds/error.mp3", { volume: 0.5 })
       const message = error.message || "An unexpected error occurred during image generation."
       setChatError(message)
       console.error("Image generation mutation error:", error)
@@ -170,7 +170,7 @@ export function useAIChat() {
 
       const apiKey = await getApiKeyForModel(selectedModel)
 
-      play("./chat.mp3", { volume: 0.5 })
+      play("./sounds/chat.mp3", { volume: 0.5 })
 
       if (selectedModel.type === "image") {
         setMessages((prev) => [
@@ -183,7 +183,7 @@ export function useAIChat() {
         ])
         if (!apiKey) {
           setChatError(`API key for ${selectedModel.name} is not configured.`)
-          play("./error.mp3", { volume: 0.5 })
+          play("./sounds/error.mp3", { volume: 0.5 })
           return
         }
         imageGenerationMutation.mutate({

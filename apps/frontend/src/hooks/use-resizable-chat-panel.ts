@@ -54,7 +54,7 @@ export function useResizableChatPanel({
     const panel = chatPanelRef.current
     if (!panel) return
 
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
 
     const targetMaximizedState = !isMaximized
 
@@ -75,7 +75,7 @@ export function useResizableChatPanel({
       const panel = chatPanelRef.current
       if (!panel) return
 
-      play("./click.mp3", { volume: 0.5 })
+      play("./sounds/click.mp3", { volume: 0.5 })
 
       let targetCollapsedState: boolean
       if (forceState !== undefined) {

@@ -7,7 +7,7 @@ export function SoundToggle() {
   const { play, isSoundEnabled, setIsSoundEnabled } = useSoundEffectContext()
 
   const handleToggle = useCallback(() => {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
     setIsSoundEnabled(!isSoundEnabled)
   }, [isSoundEnabled, setIsSoundEnabled, play])
 

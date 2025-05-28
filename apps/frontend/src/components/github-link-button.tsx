@@ -8,7 +8,7 @@ export function GithubLinkButton() {
   const { play } = useSoundEffectContext()
 
   const handleClick = () => {
-    play("./click.mp3", { volume: 0.5 })
+    play("./sounds/click.mp3", { volume: 0.5 })
   }
 
   return (

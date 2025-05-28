@@ -51,7 +51,7 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
         if (exists) return prev
         return [...prev, newConnection]
       })
-      play("./connect.mp3", { volume: 0.5 })
+      play("./sounds/connect.mp3", { volume: 0.5 })
     },
     onError: (error: Error, variables: { server: MCPServer }) => {
       const { server } = variables
@@ -60,7 +60,7 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
         ...prev,
         [server.id]: error.message || "An unexpected error occurred during connecting",
       }))
-      play("./error.mp3", { volume: 0.5 })
+      play("./sounds/error.mp3", { volume: 0.5 })
       toast.error(error.message, {
         icon: null,
         id: `mcp-error-${server.id}`,
@@ -100,7 +100,7 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
       return
     }
     if (!isServerHealthy) {
-      play("./error.mp3", { volume: 0.5 })
+      play("./sounds/error.mp3", { volume: 0.5 })
       toast.error("Server is offline", {
         icon: null,
         id: `mcp-error-${server.id}`,
@@ -131,7 +131,7 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
       return
     }
     await disconnectMutation.mutateAsync({ serverId })
-    play("./disconnect.mp3", { volume: 0.5 })
+    play("./sounds/disconnect.mp3", { volume: 0.5 })
   }
 
   const disconnectAll = async () => {
