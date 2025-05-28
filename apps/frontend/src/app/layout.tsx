@@ -21,7 +21,37 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Dojo",
-  description: "Dojo",
+  description: "Build, run, and chain custom tool-augmented AI agents",
+  openGraph: {
+    title: "Dojo",
+    description: "Build, run, and chain custom tool-augmented AI agents",
+    url: "https://dojoai.vercel.app",
+    siteName: "Dojo",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Dojo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    title: "Dojo",
+    description: "Build, run, and chain custom tool-augmented AI agents",
+    site: "https://dojoai.vercel.app",
+    card: "summary_large_image",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Dojo",
+      },
+    ],
+  },
 }
 
 async function getDefaultLayout() {
