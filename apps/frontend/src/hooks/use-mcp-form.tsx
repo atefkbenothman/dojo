@@ -70,13 +70,17 @@ export function useMCPForm(mode: "add" | "edit", server?: MCPServer) {
   }
 
   const createConfigFromForm = (): MCPServerConfig => {
+    if (!server) {
+      throw new Error("Server is required for creating config")
+    }
+
     const args = formData.argsString
       .split(",")
       .map((arg) => arg.trim())
       .filter(Boolean)
     const env = Object.fromEntries(formData.envPairs.map((pair) => [pair.key, pair.value]))
 
-    return getServerConfigWithEnv(server!, {
+    return getServerConfigWithEnv(server, {
       command: formData.command,
       args,
       env,
