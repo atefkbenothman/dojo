@@ -2,68 +2,25 @@
 
 import { MCP_SERVER_ICONS } from "@/components/icons"
 import { MCPDialog } from "@/components/mcp/mcp-dialog"
+import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useMCPContext } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { successToastStyle } from "@/lib/styles"
 import { cn, getServerConfigWithEnv } from "@/lib/utils"
 import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
-import { Wrench } from "lucide-react"
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
-
-interface ToolsPopoverProps {
-  tools: Record<string, unknown>
-}
-
-function ToolsPopover({ tools }: ToolsPopoverProps) {
-  const { play } = useSoundEffectContext()
-
-  const toolNames = Object.keys(tools)
-
-  if (toolNames.length === 0) return null
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="secondary"
-          size="icon"
-          className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
-          title={`Tools (${toolNames.length})`}
-          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
-        >
-          <Wrench className="h-4 w-4" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-4" align="start">
-        <div className="space-y-2">
-          <h4 className="font-medium">Available Tools ({toolNames.length})</h4>
-          <div className="flex max-w-[250px] flex-wrap gap-2">
-            {toolNames.map((toolName) => (
-              <div key={toolName} className="bg-secondary/40 text-foreground rounded-md px-2 py-1 text-xs">
-                {toolName}
-              </div>
-            ))}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
+import { Settings } from "lucide-react"
+import { useState } from "react"
 
 interface MCPCardProps {
   server: MCPServer
+  onDelete?: (serverId: string) => void
 }
 
-export function MCPCard({ server }: MCPCardProps) {
-  const { play: playClick } = useSoundEffectContext()
-  const { play: playSave } = useSoundEffectContext()
-
-  const { readStorage, writeStorage } = useLocalStorage()
+export function MCPCard({ server, onDelete }: MCPCardProps) {
+  const { play } = useSoundEffectContext()
+  const { readStorage, writeStorage, removeStorage } = useLocalStorage()
   const { getConnectionStatus, connect, disconnect, activeConnections } = useMCPContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
@@ -72,103 +29,95 @@ export function MCPCard({ server }: MCPCardProps) {
     return storedConfig || server.config
   })
 
-  useEffect(() => {
-    const storedConfig = readStorage<MCPServerConfig>(`mcp_config_${server.id}`)
-    if (storedConfig) setConfig(storedConfig)
-  }, [server.id, readStorage])
-
   const connectionStatus = getConnectionStatus(server.id)
-
   const serverConnection = activeConnections.find((conn) => conn.serverId === server.id)
   const isConnected = connectionStatus === "connected"
+  const Icon = MCP_SERVER_ICONS[server.id]
 
-  const handleConnectClick = async () => {
-    playClick("./sounds/click.mp3", { volume: 0.5 })
+  const handleConnect = async () => {
+    play("./sounds/click.mp3", { volume: 0.5 })
+
     if (isConnected) {
       await disconnect(server.id)
       return
     }
+
     const configToUse = getServerConfigWithEnv({ ...server, config })
-    const serverToConnect: MCPServer = {
-      ...server,
-      config: configToUse,
-    }
-    await connect({ server: serverToConnect })
+    await connect({ server: { ...server, config: configToUse } })
   }
 
   const handleSaveConfig = (newConfig: MCPServerConfig) => {
-    const prevConfig = config || server.config
-    const requiredEnvKeys = server.config?.requiresEnv || []
-    const mergedEnv: Record<string, string> = {}
-    for (const key of requiredEnvKeys) {
-      mergedEnv[key] = newConfig.env?.[key] ?? prevConfig?.env?.[key] ?? ""
-    }
-    const mergedConfig: MCPServerConfig = {
-      ...prevConfig,
-      ...newConfig,
-      env: mergedEnv,
-    }
-    setConfig(mergedConfig)
-    writeStorage(`mcp_config_${server.id}`, mergedConfig)
-    toast.success(`${server.name} config saved to localstorage`, {
-      icon: null,
-      id: "mcp-config-saved",
-      duration: 5000,
-      position: "bottom-center",
-      style: successToastStyle,
-    })
-    setTimeout(() => {
-      playSave("./sounds/save.mp3", { volume: 0.5 })
-    }, 100)
+    setConfig(newConfig)
+    writeStorage(`mcp_config_${server.id}`, newConfig)
   }
 
-  const Icon = MCP_SERVER_ICONS[server.id]
+  const handleDelete = () => {
+    removeStorage(`mcp_config_${server.id}`)
+    onDelete?.(server.id)
+  }
 
   return (
-    <Card
-      className={cn(
-        "relative h-[10rem] max-h-[10rem] w-full max-w-xs border border",
-        isConnected && "border-primary/80 bg-muted/50 border-2",
-      )}
-    >
-      {server.localOnly && (
-        <div className="absolute top-2 right-2 z-10 bg-secondary/80 border border px-2 py-0.5 text-xs font-medium text-muted-foreground">
-          Local only
-        </div>
-      )}
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          {Icon && <Icon />}
-          <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
-          {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500"></div>}
-        </div>
-        <CardDescription className="w-[90%]">{server.summary}</CardDescription>
-      </CardHeader>
+    <>
+      <Card
+        className={cn(
+          "relative h-[10rem] max-h-[10rem] w-full max-w-xs border",
+          isConnected && "border-primary/80 bg-muted/50 border-2",
+        )}
+      >
+        {server.localOnly && (
+          <div className="absolute top-2 right-2 z-10 bg-secondary/80 border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            Local only
+          </div>
+        )}
 
-      <CardFooter className="mt-auto flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button
-            variant={isConnected ? "default" : "secondary"}
-            onMouseDown={handleConnectClick}
-            disabled={connectionStatus === "connecting"}
-            className={cn(
-              "border hover:cursor-pointer",
-              isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
-            )}
-          >
-            {connectionStatus === "connecting" ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
-          </Button>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            {Icon && <Icon />}
+            <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
+            {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500" />}
+          </div>
+          <CardDescription className="w-[90%]">{server.summary}</CardDescription>
+        </CardHeader>
 
-          <MCPDialog
-            server={{ ...server, config }}
-            onSaveConfig={handleSaveConfig}
-            open={isConfigDialogOpen}
-            onOpenChange={setIsConfigDialogOpen}
-          />
+        <CardFooter className="mt-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isConnected ? "default" : "secondary"}
+              onClick={handleConnect}
+              disabled={connectionStatus === "connecting"}
+              className={cn(
+                "border hover:cursor-pointer",
+                isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
+              )}
+            >
+              {connectionStatus === "connecting" ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
+            </Button>
 
-          {isConnected && <ToolsPopover tools={serverConnection?.tools || {}} />}
-        </div>
-      </CardFooter>
-    </Card>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() => {
+                play("./sounds/click.mp3", { volume: 0.5 })
+                setIsConfigDialogOpen(true)
+              }}
+              className="bg-secondary/80 hover:bg-secondary/90 h-9 w-9 border hover:cursor-pointer"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+
+            {isConnected && <ToolsPopover tools={serverConnection?.tools || {}} />}
+          </div>
+        </CardFooter>
+      </Card>
+
+      <MCPDialog
+        mode="edit"
+        server={{ ...server, config }}
+        open={isConfigDialogOpen}
+        onOpenChange={setIsConfigDialogOpen}
+        onSaveConfig={handleSaveConfig}
+        onDelete={handleDelete}
+      />
+    </>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { AddMCPCard } from "@/components/mcp/add-mcp"
+import { AddMCPCard } from "@/components/mcp/add-mcp-card"
 import { MCPList } from "@/components/mcp/mcp-list"
 import { Input } from "@/components/ui/input"
 import { useMCPContext } from "@/hooks/use-mcp"
@@ -14,6 +14,7 @@ export function Mcp() {
   const [searchInput, setSearchInput] = useState<string>("")
   const [customServers, setCustomServers] = useState<Record<string, MCPServer>>({})
 
+  // Filter servers based on search input
   useEffect(() => {
     const allAvailableServers = { ...mcpServers, ...customServers }
     if (searchInput === "") {
