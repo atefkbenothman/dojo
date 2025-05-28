@@ -1,6 +1,5 @@
 "use client"
 
-import { useUserContext } from "./use-user-id"
 import { env } from "@/env"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useModelContext } from "@/hooks/use-model"
@@ -43,7 +42,6 @@ const initialMessages: Message[] = [
 ]
 
 export function useAIChat() {
-  const userId = useUserContext()
   const trpcClient = useTRPCClient()
 
   const { selectedModel } = useModelContext()

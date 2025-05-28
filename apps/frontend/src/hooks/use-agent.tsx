@@ -3,7 +3,9 @@
 import { useChatProvider } from "@/hooks/use-chat"
 import { useUserContext } from "@/hooks/use-user-id"
 import type { AgentConfig } from "@dojo/config"
-import { useMutation, QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
+import { Message } from "ai"
+import { nanoid } from "nanoid"
 import { createContext, useContext, useCallback, ReactNode, useState, useEffect } from "react"
 
 interface AgentStopResponse {
@@ -11,29 +13,21 @@ interface AgentStopResponse {
   message: string
 }
 
-const agentQueryClient = new QueryClient()
-
 function useAgentLogic(agents: Record<string, AgentConfig>) {
   const userId = useUserContext()
 
   const { unifiedAppend, stop, status, currentInteractionType } = useChatProvider()
 
-  const [isAgentRunAttempted, setIsAgentRunAttempted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const isAgentStreaming = status === "streaming" && currentInteractionType === "agent"
+  const isAgentRunning = isAgentStreaming || status === "submitted"
 
   useEffect(() => {
-    if (isAgentRunAttempted || isAgentStreaming) {
+    if (isAgentRunning) {
       setErrorMessage(null)
     }
-  }, [isAgentRunAttempted, isAgentStreaming])
-
-  useEffect(() => {
-    if (!isAgentStreaming && status !== "streaming" && currentInteractionType !== "agent" && isAgentRunAttempted) {
-      setIsAgentRunAttempted(false)
-    }
-  }, [status, currentInteractionType, isAgentRunAttempted, isAgentStreaming])
+  }, [isAgentRunning])
 
   const agentStopMutation = useMutation<AgentStopResponse, Error, void>({
     mutationFn: async () => {
@@ -51,9 +45,7 @@ function useAgentLogic(agents: Record<string, AgentConfig>) {
       if (!response.ok) throw new Error(data.message || "Failed to stop agent backend")
       return data
     },
-    onSuccess: () => {
-      setIsAgentRunAttempted(false)
-    },
+    onSuccess: () => {},
     onError: (error: Error) => setErrorMessage(error.message),
     onMutate: () => setErrorMessage(null),
   })
@@ -66,30 +58,24 @@ function useAgentLogic(agents: Record<string, AgentConfig>) {
       }
 
       setErrorMessage(null)
-      setIsAgentRunAttempted(true)
 
       try {
-        await unifiedAppend(
-          { role: "user", content: agentConfig.systemPrompt },
-          {
-            body: {
-              userId: userId,
-              modelId: agentConfig.modelId,
-              config: agentConfig,
-              interactionType: "agent",
-            },
+        await unifiedAppend({ id: nanoid(), role: "user", content: agentConfig.systemPrompt } as Message, {
+          body: {
+            modelId: agentConfig.modelId,
+            config: agentConfig,
             interactionType: "agent",
-            initialDisplayMessage: {
-              role: "assistant",
-              id: "agent-start",
-              content: `Agent ${agentConfig.name} is starting...`,
-            },
           },
-        )
+          interactionType: "agent",
+          initialDisplayMessage: {
+            role: "assistant",
+            id: "agent-start",
+            content: `Agent ${agentConfig.name} is starting...`,
+          },
+        })
       } catch (err) {
         console.error("[Agent Hook] Error calling unifiedAppend for agent run:", err)
         setErrorMessage(`Failed to initiate agent run via unifiedAppend: ${err}`)
-        setIsAgentRunAttempted(false)
       }
     },
     [unifiedAppend, userId],
@@ -103,15 +89,13 @@ function useAgentLogic(agents: Record<string, AgentConfig>) {
       }
     } catch (error) {
       console.error("[Agent Hook] Error during agentStopMutation or stopping SDK stream:", error)
-    } finally {
-      setIsAgentRunAttempted(false)
     }
   }, [agentStopMutation, stop, isAgentStreaming])
 
   return {
     runAgent,
     stopAgent,
-    isAgentRunning: isAgentStreaming || isAgentRunAttempted,
+    isAgentRunning,
     isAgentStreaming,
     isStopping: agentStopMutation.isPending,
     errorMessage,
@@ -142,9 +126,5 @@ export function useAgentProvider() {
 }
 
 export function AgentProviderRoot({ children, agents }: { children: ReactNode; agents: Record<string, AgentConfig> }) {
-  return (
-    <QueryClientProvider client={agentQueryClient}>
-      <AgentProvider agents={agents}>{children}</AgentProvider>
-    </QueryClientProvider>
-  )
+  return <AgentProvider agents={agents}>{children}</AgentProvider>
 }

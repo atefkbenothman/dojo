@@ -41,7 +41,7 @@ async function handleChatInteraction({ messages, modelId, apiKey, userId }: Hand
     headers["X-User-Id"] = userId
   }
 
-  const chatBody: Record<string, any> = { messages, modelId }
+  const chatBody: Record<string, string | CoreMessage[]> = { messages, modelId }
 
   // only send api key if it is provided
   if (apiKey) {
