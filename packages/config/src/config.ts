@@ -1,4 +1,4 @@
-import type { AIModel, AgentConfig, MCPServer } from "./types.js"
+import type { AIModel, MCPServer, AgentConfig } from "./types.js"
 
 export const PROVIDERS = {
   google: {
@@ -143,20 +143,40 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
       args: ["-y", "@modelcontextprotocol/server-filesystem", "PATH_TO_DIRECTORY"],
     },
   },
-  // figma: {
-  //   id: "figma",
-  //   name: "Figma",
-  //   summary: "Collaborative design and prototyping",
-  // },
-}
-
-export const CONFIGURED_AGENTS: Record<string, AgentConfig> = {
-  data_analysis: {
-    id: "sports_event_analyst_agent",
-    name: "Sports Event Analyst",
-    modelId: "gemini-2.0-flash-001",
-    systemPrompt: `You are an AI assistant that helps analyze data and code.\n1. Use the Ticketmaster tools to find all sport events in San Francisco happening between May 19, 2025 and May 27, 2025.\n2. Use the Supabase tools to create a new table in the database.\n3. Insert the data retrieved from the Ticketmaster API into the newly created Supabase table.\n4. Synthesize information from these sources to answer user queries comprehensively.\n5. If asked to modify files or database tables, always ask for confirmation first unless explicitly told to proceed.`,
-    mcpServers: [CONFIGURED_MCP_SERVERS["supabase"]!, CONFIGURED_MCP_SERVERS["ticketmaster"]!],
-    maxExecutionSteps: 15,
+  figma: {
+    id: "figma",
+    name: "Figma",
+    summary: "Collaborative design and prototyping",
+    localOnly: true,
   },
 }
+
+export const AGENT_CONFIGS: AgentConfig[] = [
+  {
+    id: "code-wizard-001",
+    name: "Code Wizard",
+    systemPrompt:
+      "You are an expert AI pair programmer. You specialize in Next.js, TypeScript, and Tailwind CSS. Adhere to the specified coding style and best practices. Assist with code generation, debugging, and explaining complex concepts.",
+    aiModelId: AI_MODELS["gemini-2.0-flash-001"]!.id,
+    context: "Next.js App Router, TypeScript, React, Shadcn UI, Tailwind CSS",
+    mcpServers: [CONFIGURED_MCP_SERVERS.github!, CONFIGURED_MCP_SERVERS.filesystem!],
+  },
+  {
+    id: "research-pro-002",
+    name: "Research Pro",
+    systemPrompt:
+      "You are an AI research assistant. Your goal is to find and synthesize information from technical documentation and web sources. Provide concise and accurate answers with references.",
+    aiModelId: AI_MODELS["gemini-1.5-flash"]!.id,
+    context: "Technical documentation research, API specifications, library usage",
+    mcpServers: [CONFIGURED_MCP_SERVERS.context7!],
+  },
+  {
+    id: "notion-organizer-003",
+    name: "Notion Organizer",
+    systemPrompt:
+      "You are an AI assistant for Notion. Help organize notes, manage tasks, and retrieve information from Notion workspaces.",
+    aiModelId: AI_MODELS["qwen-qwq-32b"]!.id,
+    context: "Notion workspace management, task tracking, note taking",
+    mcpServers: [CONFIGURED_MCP_SERVERS.notion!],
+  },
+]

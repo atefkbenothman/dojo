@@ -32,6 +32,17 @@ export const AIModelSchema = z.object({
 
 export type AIModel = z.infer<typeof AIModelSchema>
 
+export const AgentConfigSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  systemPrompt: z.string(),
+  aiModelId: z.string(),
+  context: z.string().optional(),
+  mcpServers: z.array(MCPServerSchema).optional(),
+})
+
+export type AgentConfig = z.infer<typeof AgentConfigSchema>
+
 // Schema for the 'tool_calls' part of CoreMessage from 'ai' library
 const ToolCallSchema = z.object({
   id: z.string().optional(),
@@ -50,14 +61,3 @@ export const CoreMessageSchema = z.object({
   tool_call_id: z.string().optional(),
   name: z.string().optional(),
 })
-
-export const AgentConfigSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  modelId: z.string(),
-  systemPrompt: z.string(),
-  mcpServers: z.array(MCPServerSchema),
-  maxExecutionSteps: z.number(),
-})
-
-export type AgentConfig = z.infer<typeof AgentConfigSchema>
