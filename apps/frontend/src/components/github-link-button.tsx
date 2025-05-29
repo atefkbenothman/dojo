@@ -1,18 +1,11 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { Github } from "lucide-react"
 
 export function GithubLinkButton() {
-  const { play } = useSoundEffectContext()
-
-  const handleClick = () => {
-    play("./sounds/click.mp3", { volume: 0.5 })
-  }
-
   return (
-    <Button size="icon" variant="outline" className="hover:cursor-pointer" onMouseDown={handleClick} asChild>
+    <Button size="icon" variant="outline" className="hover:cursor-pointer" asChild>
       <a
         href="https://github.com/atefkbenothman/dojo"
         target="_blank"

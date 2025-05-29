@@ -4,7 +4,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { EnvPair } from "@/hooks/use-mcp-form"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 
 interface EnvInputFieldsProps {
   envPairs: EnvPair[]
@@ -13,10 +12,7 @@ interface EnvInputFieldsProps {
 }
 
 export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs }: EnvInputFieldsProps) {
-  const { play } = useSoundEffectContext()
-
   const handleAddKey = () => {
-    play("./sounds/click.mp3", { volume: 0.5 })
     onUpdateEnvPairs([...envPairs, { key: "API_KEY", value: "" }])
   }
 
@@ -65,10 +61,7 @@ export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs }: EnvInputFie
                     variant="ghost"
                     size="icon"
                     className="ml-1 text-destructive hover:cursor-pointer"
-                    onClick={() => {
-                      play("./sounds/click.mp3", { volume: 0.5 })
-                      handleRemoveKey(index)
-                    }}
+                    onClick={() => handleRemoveKey(index)}
                     aria-label={`Remove ${pair.key}`}
                   >
                     ×

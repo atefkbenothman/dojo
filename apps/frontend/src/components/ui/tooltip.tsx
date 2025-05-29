@@ -1,5 +1,6 @@
 "use client"
 
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import * as React from "react"
@@ -17,7 +18,14 @@ function Tooltip({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Root
 }
 
 function TooltipTrigger({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+  const { play } = useSoundEffectContext()
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
+      {...props}
+    />
+  )
 }
 
 function TooltipContent({

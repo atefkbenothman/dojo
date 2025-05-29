@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { Wrench } from "lucide-react"
 
 interface ToolsPopoverProps {
@@ -10,8 +9,6 @@ interface ToolsPopoverProps {
 }
 
 export function ToolsPopover({ tools }: ToolsPopoverProps) {
-  const { play } = useSoundEffectContext()
-
   const toolNames = Object.keys(tools)
   if (toolNames.length === 0) return null
 
@@ -23,7 +20,6 @@ export function ToolsPopover({ tools }: ToolsPopoverProps) {
           size="icon"
           className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
           title={`Tools (${toolNames.length})`}
-          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
         >
           <Wrench className="h-4 w-4" />
         </Button>

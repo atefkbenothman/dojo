@@ -1,5 +1,6 @@
 "use client"
 
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
@@ -10,7 +11,15 @@ function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>)
 }
 
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+  const { play } = useSoundEffectContext()
+
+  return (
+    <DialogPrimitive.Trigger
+      data-slot="dialog-trigger"
+      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
+      {...props}
+    />
+  )
 }
 
 function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
@@ -18,7 +27,15 @@ function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.
 }
 
 function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+  const { play } = useSoundEffectContext()
+
+  return (
+    <DialogPrimitive.Close
+      data-slot="dialog-close"
+      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
+      {...props}
+    />
+  )
 }
 
 function DialogOverlay({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Overlay>) {

@@ -92,10 +92,7 @@ function ApiKeyManager() {
               className="flex-1 text-muted-foreground"
             />
             <Button
-              onMouseDown={() => {
-                handleSaveApiKey(provider)
-                play("./sounds/click.mp3", { volume: 0.5 })
-              }}
+              onClick={() => handleSaveApiKey(provider)}
               size="default"
               variant="secondary"
               className="hover:cursor-pointer border bg-secondary/80 hover:bg-secondary/90"
@@ -127,7 +124,6 @@ interface UserDialogProps {
 
 export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
   const userId = useUserContext()
-  const { play } = useSoundEffectContext()
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -137,15 +133,9 @@ export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
         </DialogHeader>
         <Tabs defaultValue="user" className="w-full flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-3 h-12">
-            <TabsTrigger value="user" onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}>
-              User
-            </TabsTrigger>
-            <TabsTrigger value="api-keys" onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}>
-              API Keys
-            </TabsTrigger>
-            <TabsTrigger value="other" onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}>
-              Other
-            </TabsTrigger>
+            <TabsTrigger value="user">User</TabsTrigger>
+            <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+            <TabsTrigger value="other">Other</TabsTrigger>
           </TabsList>
           <div className="flex-1 overflow-y-auto py-2 px-1">
             <TabsContent value="user">

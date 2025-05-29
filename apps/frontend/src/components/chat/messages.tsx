@@ -27,8 +27,6 @@ const variantStyles = {
 const preClassName = "p-2 text-xs wrap-break-word whitespace-pre-wrap bg-background/80 dark:bg-background/50 rounded-sm"
 
 function MessageAccordion({ variant = "tool", icon, title, children, defaultOpen, className }: MessageAccordionProps) {
-  const { play } = useSoundEffectContext()
-
   const open = defaultOpen ?? variant === "error"
 
   return (
@@ -39,10 +37,7 @@ function MessageAccordion({ variant = "tool", icon, title, children, defaultOpen
       className={cn(variantStyles[variant], "w-full", className)}
     >
       <AccordionItem value="message-accordion" className="border-b-0">
-        <AccordionTrigger
-          className="p-2 hover:cursor-pointer hover:no-underline"
-          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
-        >
+        <AccordionTrigger className="p-2 hover:cursor-pointer hover:no-underline">
           <div className="flex flex-row items-center gap-2">
             {icon}
             <p className="text-xs font-semibold">{title}</p>

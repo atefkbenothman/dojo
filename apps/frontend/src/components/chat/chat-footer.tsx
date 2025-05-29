@@ -13,7 +13,6 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useModelContext } from "@/hooks/use-model"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import type { AIModel } from "@dojo/config"
 import { ArrowUp } from "lucide-react"
 import { memo, useState, useCallback, useRef, useEffect } from "react"
@@ -23,7 +22,6 @@ interface ChatControlsProps {
 }
 
 const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
-  const { play } = useSoundEffectContext()
   const { models, selectedModel, setSelectedModelId } = useModelContext()
 
   const groupedModels = models.reduce<Record<string, AIModel[]>>((acc, model) => {
@@ -38,11 +36,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
       {/* Model Select */}
-      <Select
-        value={(selectedModel && selectedModel.id) || ""}
-        onValueChange={setSelectedModelId}
-        onOpenChange={(isOpen) => isOpen && play("./sounds/click.mp3", { volume: 0.5 })}
-      >
+      <Select value={(selectedModel && selectedModel.id) || ""} onValueChange={setSelectedModelId}>
         <SelectTrigger className="hover:cursor-pointer">
           <SelectValue placeholder="Model">{selectedModel ? selectedModel.name : null}</SelectValue>
         </SelectTrigger>
@@ -53,12 +47,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
               <SelectGroup key={providerId}>
                 <SelectLabel>{models[0]?.provider}</SelectLabel>
                 {models.map((model) => (
-                  <SelectItem
-                    key={model.id}
-                    value={model.id}
-                    className="hover:cursor-pointer"
-                    onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
-                  >
+                  <SelectItem key={model.id} value={model.id} className="hover:cursor-pointer">
                     {model.name}
                     {model.requiresApiKey && (
                       <span className="text-muted-foreground text-xs ml-1 font-normal">(requires key)</span>
@@ -71,7 +60,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
         </SelectContent>
       </Select>
       {/* Send Button */}
-      <Button className="ml-auto hover:cursor-pointer" variant="outline" onMouseDown={handleSend}>
+      <Button className="ml-auto hover:cursor-pointer" variant="outline" onClick={handleSend}>
         <ArrowUp className="h-4 w-4" strokeWidth={3} />
       </Button>
     </div>

@@ -7,7 +7,6 @@ import { SideNav } from "@/components/panels/side-nav"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { useRef, useCallback, useMemo } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
@@ -25,8 +24,6 @@ const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 100
 export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProps) {
   const { handleNewChat } = useChatProvider()
 
-  const { play } = useSoundEffectContext()
-
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
 
   const { isChatPanelCollapsed, isMaximized, handleChatPanelToggle, handleMaximizeToggle, syncPanelCollapsedState } =
@@ -40,15 +37,9 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
       initialIsMaximized: Math.round(defaultLayout[1]) === 100,
     })
 
-  const newChat = useCallback(() => {
-    play("./sounds/click.mp3", { volume: 0.5 })
-    handleNewChat()
-  }, [play, handleNewChat])
-
   const onLayout = useCallback((sizes: number[]) => {
     document.cookie = `react-resizable-panels:layout=${JSON.stringify(sizes)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`
   }, [])
-
   const onCollapse = useCallback(() => syncPanelCollapsedState(true), [syncPanelCollapsedState])
   const onExpand = useCallback(() => syncPanelCollapsedState(false), [syncPanelCollapsedState])
   const chatPanelStyle = useMemo(() => ({ minWidth: "40px" }), [])
@@ -86,7 +77,7 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
               isCollapsed={isChatPanelCollapsed}
               isMaximized={isMaximized}
               onMaximizeToggle={handleMaximizeToggle}
-              onNewChat={newChat}
+              onNewChat={handleNewChat}
             />
             {isChatPanelCollapsed ? (
               <div className="flex flex-1 items-center justify-center" />

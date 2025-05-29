@@ -1,12 +1,20 @@
 "use client"
 
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import * as React from "react"
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />
+  const { play } = useSoundEffectContext()
+  return (
+    <SelectPrimitive.Root
+      data-slot="select"
+      onOpenChange={(isOpen) => isOpen && play("./sounds/click.mp3", { volume: 0.5 })}
+      {...props}
+    />
+  )
 }
 
 function SelectGroup({ ...props }: React.ComponentProps<typeof SelectPrimitive.Group>) {
@@ -89,6 +97,8 @@ function SelectLabel({ className, ...props }: React.ComponentProps<typeof Select
 }
 
 function SelectItem({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Item>) {
+  const { play } = useSoundEffectContext()
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -96,6 +106,7 @@ function SelectItem({ className, children, ...props }: React.ComponentProps<type
         "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className,
       )}
+      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
       {...props}
     >
       <span className="absolute right-2 flex size-3.5 items-center justify-center">

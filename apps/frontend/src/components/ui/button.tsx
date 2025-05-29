@@ -1,3 +1,6 @@
+"use client"
+
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -42,8 +45,16 @@ function Button({
     asChild?: boolean
   }) {
   const Comp = asChild ? Slot : "button"
+  const { play } = useSoundEffectContext()
 
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />
+  return (
+    <Comp
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
+      {...props}
+    />
+  )
 }
 
 export { Button, buttonVariants }

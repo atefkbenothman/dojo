@@ -19,7 +19,7 @@ export function MainPanelHeader({ onChatPanelToggle, isCollapsed }: MainPanelHea
         <DarkModeToggle />
         <GithubLinkButton />
         <SoundToggle />
-        <Button onMouseDown={onChatPanelToggle} size="icon" variant="outline" className="hover:cursor-pointer">
+        <Button onClick={onChatPanelToggle} size="icon" variant="outline" className="hover:cursor-pointer">
           {isCollapsed ? <ChevronLeft className="h-4.5 w-4.5" /> : <ChevronRight className="h-4.5 w-4.5" />}
         </Button>
       </div>

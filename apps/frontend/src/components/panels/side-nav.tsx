@@ -35,12 +35,8 @@ const navigationItems = [
 export function SideNav() {
   const pathname = usePathname()
   const { play } = useSoundEffectContext()
-  const [userDialogOpen, setUserDialogOpen] = useState(false)
 
-  function handleUserIconClick() {
-    play("./sounds/click.mp3", { volume: 0.5 })
-    setUserDialogOpen(true)
-  }
+  const [userDialogOpen, setUserDialogOpen] = useState(false)
 
   return (
     <div className="bg-card w-[42px] flex-shrink-0 border-r h-full flex flex-col">
@@ -57,7 +53,6 @@ export function SideNav() {
                   <TooltipTrigger asChild>
                     <Link
                       href={href}
-                      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
                       className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
                     >
                       <div
@@ -79,11 +74,12 @@ export function SideNav() {
         {/* User Dialog */}
         <div className="flex w-full items-center justify-center mb-4 mt-auto">
           <div
-            onMouseDown={handleUserIconClick}
+            onClick={() => setUserDialogOpen(true)}
+            onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
             className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
           >
-            <div className={cn("text-primary/70 group-hover:text-primary")}>
-              <User className="h-5.5 w-5.5" />
+            <div className="text-primary/70 group-hover:text-primary">
+              <User className="h-5 w-5" />
             </div>
           </div>
           <UserDialog isOpen={userDialogOpen} setIsOpen={setUserDialogOpen} />

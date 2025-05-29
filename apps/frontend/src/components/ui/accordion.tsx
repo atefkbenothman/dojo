@@ -1,5 +1,6 @@
 "use client"
 
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import { ChevronDownIcon } from "lucide-react"
@@ -20,6 +21,8 @@ function AccordionItem({ className, ...props }: React.ComponentProps<typeof Acco
 }
 
 function AccordionTrigger({ className, children, ...props }: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
+  const { play } = useSoundEffectContext()
+
   return (
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
@@ -28,6 +31,7 @@ function AccordionTrigger({ className, children, ...props }: React.ComponentProp
           "focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180",
           className,
         )}
+        onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
         {...props}
       >
         {children}
