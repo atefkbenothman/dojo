@@ -1,7 +1,7 @@
 "use client"
 
 import { AddMCPCard } from "@/components/mcp/add-mcp-card"
-import { MCPList } from "@/components/mcp/mcp-list"
+import { MCPCard } from "@/components/mcp/mcp-card"
 import { Input } from "@/components/ui/input"
 import { useMCPContext } from "@/hooks/use-mcp"
 import type { MCPServer } from "@dojo/config"
@@ -37,7 +37,9 @@ export function Mcp() {
       </div>
       <div className="flex flex-row flex-wrap gap-4">
         <AddMCPCard />
-        <MCPList servers={filteredServers} />
+        {Object.entries(filteredServers).map(([key, server]) => (
+          <MCPCard key={key} server={server} />
+        ))}
       </div>
     </div>
   )

@@ -127,7 +127,7 @@ export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="h-112 flex flex-col">
+      <DialogContent className="h-120 flex flex-col border-2">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>

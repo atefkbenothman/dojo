@@ -122,7 +122,7 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="border border-2 sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{mode === "add" ? "Add MCP Server" : `Configure ${server?.name}`}</DialogTitle>
           {mode === "edit" && server?.summary && <p className="text-sm text-muted-foreground">{server.summary}</p>}
