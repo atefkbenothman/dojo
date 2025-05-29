@@ -68,7 +68,7 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
     requiresUserKey: true,
     config: {
       command: "npx",
-      args: ["-y", "@supabase/mcp-server-supabase@latest", "--access-token", "ACCESS_TOEN"],
+      args: ["-y", "@supabase/mcp-server-supabase@latest", "--access-token", "ACCESS_TOKEN"],
     },
   },
   github: {
@@ -90,6 +90,7 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
       command: "npx",
       args: ["-y", "@delorenj/mcp-server-ticketmaster"],
       requiresEnv: ["TICKETMASTER_API_KEY"],
+      env: { TICKETMASTER_API_KEY: "REPLACE_ME" },
     },
   },
   context7: {
@@ -121,6 +122,7 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
       command: "npx",
       args: ["-y", "@notionhq/notion-mcp-server"],
       requiresEnv: ["NOTION_API_KEY"],
+      env: { NOTION_API_KEY: "REPLACE_ME" },
     },
   },
   blender: {

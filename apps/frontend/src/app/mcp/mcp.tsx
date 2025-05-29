@@ -11,7 +11,7 @@ export function Mcp() {
   const { allAvailableServers } = useMCPContext()
 
   const [searchInput, setSearchInput] = useState<string>("")
-  const [filteredServers, setFilteredServers] = useState<Record<string, MCPServer>>({})
+  const [filteredServers, setFilteredServers] = useState<Record<string, MCPServer>>(allAvailableServers)
 
   useEffect(() => {
     const filtered =

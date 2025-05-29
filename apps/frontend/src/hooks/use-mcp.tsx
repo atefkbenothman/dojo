@@ -1,5 +1,6 @@
 "use client"
 
+import { env } from "@/env"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
@@ -8,7 +9,7 @@ import { useTRPCClient } from "@/lib/trpc/context"
 import type { RouterOutputs } from "@dojo/backend/src/types.js"
 import type { MCPServer } from "@dojo/config"
 import { useMutation } from "@tanstack/react-query"
-import { useState, createContext, useContext } from "react"
+import { useState, createContext, useContext, useCallback } from "react"
 import { useMemo } from "react"
 import { toast } from "sonner"
 
@@ -31,27 +32,63 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
   const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
   const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([])
 
-  const [localStorageServers, setLocalStorageServers] = useState<Record<string, MCPServer>>(() => {
+  const loadServersFromStorage = useCallback((): Record<string, MCPServer> => {
     if (typeof window === "undefined") return {}
+
     const servers: Record<string, MCPServer> = {}
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i)
-      if (key && key.startsWith("mcp_server_")) {
-        const server = readStorage<MCPServer>(key)
-        if (server && server.id) {
+    const storageKeys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
+
+    storageKeys
+      .filter((key) => key?.startsWith("mcp_server_"))
+      .forEach((key) => {
+        const server = readStorage<MCPServer>(key!)
+        if (server?.id) {
           servers[server.id] = server
         }
-      }
-    }
+      })
+
     return servers
-  })
+  }, [readStorage])
+
+  const [localStorageServers, setLocalStorageServers] = useState(loadServersFromStorage)
+
+  const injectEnvVariables = useCallback((server: MCPServer): MCPServer => {
+    const requiredKeys = server.config?.requiresEnv || []
+    if (requiredKeys.length === 0) return server
+
+    const envMap = requiredKeys.reduce(
+      (acc, keyName) => {
+        const lookupKey = `NEXT_PUBLIC_${keyName}`
+        const apiKey = env[lookupKey as keyof typeof env] as string | undefined
+
+        if (apiKey?.trim()) {
+          acc[keyName] = apiKey
+        }
+        return acc
+      },
+      {} as Record<string, string>,
+    )
+
+    return {
+      ...server,
+      config: server.config
+        ? {
+            ...server.config,
+            env: Object.keys(envMap).length > 0 ? envMap : undefined,
+          }
+        : undefined,
+    }
+  }, [])
 
   const allAvailableServers = useMemo(() => {
+    const processedMcpServers = Object.fromEntries(
+      Object.entries(mcpServers).map(([id, server]) => [id, injectEnvVariables(server)]),
+    )
     return {
-      ...mcpServers,
+      ...processedMcpServers,
       ...localStorageServers,
     }
-  }, [mcpServers, localStorageServers])
+  }, [mcpServers, localStorageServers, injectEnvVariables])
 
   function saveServerToAvailableServers(server: MCPServer) {
     writeStorage(`mcp_server_${server.id}`, server)
@@ -221,22 +258,6 @@ export function MCPProvider({
 }) {
   const value = useMCP(mcpServers, isServerHealthy)
   return <MCPContext.Provider value={value}>{children}</MCPContext.Provider>
-}
-
-export function MCPProviderRoot({
-  children,
-  mcpServers,
-  isServerHealthy,
-}: {
-  children: React.ReactNode
-  mcpServers: Record<string, MCPServer>
-  isServerHealthy: boolean
-}) {
-  return (
-    <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
-      {children}
-    </MCPProvider>
-  )
 }
 
 export function useMCPContext() {

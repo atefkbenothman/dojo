@@ -6,7 +6,7 @@ import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useMCPContext } from "@/hooks/use-mcp"
-import { cn, getServerConfigWithEnv } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import type { MCPServer } from "@dojo/config/src/types"
 import { Settings } from "lucide-react"
 import { useState } from "react"
@@ -30,8 +30,7 @@ export function MCPCard({ server }: MCPCardProps) {
       await disconnect(server.id)
       return
     }
-    const configToUse = getServerConfigWithEnv(server)
-    await connect({ server: { ...server, config: configToUse } })
+    await connect({ server })
   }
 
   return (
