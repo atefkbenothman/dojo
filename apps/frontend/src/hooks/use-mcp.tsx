@@ -1,5 +1,6 @@
 "use client"
 
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
 import { errorToastStyle } from "@/lib/styles"
@@ -8,6 +9,7 @@ import type { RouterOutputs } from "@dojo/backend/src/types.js"
 import type { MCPServer } from "@dojo/config"
 import { useMutation } from "@tanstack/react-query"
 import { useState, createContext, useContext } from "react"
+import { useMemo } from "react"
 import { toast } from "sonner"
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
@@ -20,13 +22,50 @@ export interface ActiveConnection {
 }
 
 function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean) {
-  const userIdFromContext = useUserContext()
   const client = useTRPCClient()
+  const userId = useUserContext()
   const { play } = useSoundEffectContext()
+  const { readStorage, writeStorage, removeStorage } = useLocalStorage()
 
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
   const [connectionError, setConnectionError] = useState<Record<string, string | null>>({})
   const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([])
+
+  const [localStorageServers, setLocalStorageServers] = useState<Record<string, MCPServer>>(() => {
+    if (typeof window === "undefined") return {}
+    const servers: Record<string, MCPServer> = {}
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (key && key.startsWith("mcp_server_")) {
+        const server = readStorage<MCPServer>(key)
+        if (server && server.id) {
+          servers[server.id] = server
+        }
+      }
+    }
+    return servers
+  })
+
+  const allAvailableServers = useMemo(() => {
+    return {
+      ...mcpServers,
+      ...localStorageServers,
+    }
+  }, [mcpServers, localStorageServers])
+
+  function saveServerToAvailableServers(server: MCPServer) {
+    writeStorage(`mcp_server_${server.id}`, server)
+    setLocalStorageServers((prev) => ({ ...prev, [server.id]: server }))
+  }
+
+  function removeServerFromAvailableServers(serverId: string) {
+    removeStorage(`mcp_server_${serverId}`)
+    setLocalStorageServers((prev) => {
+      const updated = { ...prev }
+      delete updated[serverId]
+      return updated
+    })
+  }
 
   const connectMutation = useMutation<RouterOutputs["connection"]["connect"], Error, { server: MCPServer }>({
     mutationFn: async (variables: { server: MCPServer }) => {
@@ -93,7 +132,7 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
 
   const connect = async ({ server }: { server: MCPServer }) => {
     if (connectionStatus[server.id] === "connecting") return
-    if (!userIdFromContext) {
+    if (!userId) {
       console.error("Cannot connect without a userId in context.")
       setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
       setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available in context" }))
@@ -125,7 +164,7 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
   }
 
   const disconnect = async (serverId: string) => {
-    if (!userIdFromContext) {
+    if (!userId) {
       setConnectionStatus((prev) => ({ ...prev, [serverId]: "disconnected" }))
       setConnectionError((prev) => ({ ...prev, [serverId]: null }))
       return
@@ -135,7 +174,7 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
   }
 
   const disconnectAll = async () => {
-    if (!userIdFromContext || activeConnections.length === 0) return
+    if (!userId || activeConnections.length === 0) return
     for (const conn of activeConnections) {
       await disconnect(conn.serverId)
     }
@@ -161,6 +200,9 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
     getConnectionError,
     hasActiveConnections: activeConnections.length > 0,
     mcpServers,
+    allAvailableServers,
+    saveServerToAvailableServers,
+    removeServerFromAvailableServers,
   }
 }
 

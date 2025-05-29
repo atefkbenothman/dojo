@@ -3,28 +3,21 @@
 import { MCPDialog } from "@/components/mcp/mcp-dialog"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import type { MCPServer } from "@dojo/config"
 import { PlusIcon } from "lucide-react"
 import { useState } from "react"
 
-interface AddMCPCardProps {
-  onAddServer: (server: MCPServer) => void
-}
-
-export function AddMCPCard({ onAddServer }: AddMCPCardProps) {
+export function AddMCPCard() {
   const { play } = useSoundEffectContext()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-
-  const handleClick = () => {
-    play("./sounds/click.mp3", { volume: 0.5 })
-    setIsDialogOpen(true)
-  }
 
   return (
     <>
       <Card
-        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border transition-colors"
-        onClick={handleClick}
+        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border border-dashed border-2 transition-colors"
+        onMouseDown={() => {
+          play("./sounds/click.mp3", { volume: 0.5 })
+        }}
+        onClick={() => setIsDialogOpen(true)}
       >
         <CardHeader className="flex h-full items-center justify-center">
           <CardTitle className="text-primary/90 flex items-center font-medium">
@@ -33,8 +26,7 @@ export function AddMCPCard({ onAddServer }: AddMCPCardProps) {
           </CardTitle>
         </CardHeader>
       </Card>
-
-      <MCPDialog mode="add" open={isDialogOpen} onOpenChange={setIsDialogOpen} onAddServer={onAddServer} />
+      <MCPDialog mode="add" open={isDialogOpen} onOpenChange={setIsDialogOpen} />
     </>
   )
 }

@@ -5,29 +5,20 @@ import { MCPDialog } from "@/components/mcp/mcp-dialog"
 import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useMCPContext } from "@/hooks/use-mcp"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn, getServerConfigWithEnv } from "@/lib/utils"
-import type { MCPServer, MCPServerConfig } from "@dojo/config/src/types"
+import type { MCPServer } from "@dojo/config/src/types"
 import { Settings } from "lucide-react"
 import { useState } from "react"
 
 interface MCPCardProps {
   server: MCPServer
-  onDelete?: (serverId: string) => void
 }
 
-export function MCPCard({ server, onDelete }: MCPCardProps) {
-  const { play } = useSoundEffectContext()
-  const { readStorage, writeStorage, removeStorage } = useLocalStorage()
+export function MCPCard({ server }: MCPCardProps) {
   const { getConnectionStatus, connect, disconnect, activeConnections } = useMCPContext()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
-  const [config, setConfig] = useState<MCPServerConfig | undefined>(() => {
-    const storedConfig = readStorage<MCPServerConfig>(`mcp_config_${server.id}`)
-    return storedConfig || server.config
-  })
 
   const connectionStatus = getConnectionStatus(server.id)
   const serverConnection = activeConnections.find((conn) => conn.serverId === server.id)
@@ -35,25 +26,12 @@ export function MCPCard({ server, onDelete }: MCPCardProps) {
   const Icon = MCP_SERVER_ICONS[server.id]
 
   const handleConnect = async () => {
-    play("./sounds/click.mp3", { volume: 0.5 })
-
     if (isConnected) {
       await disconnect(server.id)
       return
     }
-
-    const configToUse = getServerConfigWithEnv({ ...server, config })
+    const configToUse = getServerConfigWithEnv(server)
     await connect({ server: { ...server, config: configToUse } })
-  }
-
-  const handleSaveConfig = (newConfig: MCPServerConfig) => {
-    setConfig(newConfig)
-    writeStorage(`mcp_config_${server.id}`, newConfig)
-  }
-
-  const handleDelete = () => {
-    removeStorage(`mcp_config_${server.id}`)
-    onDelete?.(server.id)
   }
 
   return (
@@ -96,10 +74,7 @@ export function MCPCard({ server, onDelete }: MCPCardProps) {
             <Button
               variant="secondary"
               size="icon"
-              onClick={() => {
-                play("./sounds/click.mp3", { volume: 0.5 })
-                setIsConfigDialogOpen(true)
-              }}
+              onClick={() => setIsConfigDialogOpen(true)}
               className="bg-secondary/80 hover:bg-secondary/90 h-9 w-9 border hover:cursor-pointer"
             >
               <Settings className="h-4 w-4" />
@@ -109,15 +84,7 @@ export function MCPCard({ server, onDelete }: MCPCardProps) {
           </div>
         </CardFooter>
       </Card>
-
-      <MCPDialog
-        mode="edit"
-        server={{ ...server, config }}
-        open={isConfigDialogOpen}
-        onOpenChange={setIsConfigDialogOpen}
-        onSaveConfig={handleSaveConfig}
-        onDelete={handleDelete}
-      />
+      <MCPDialog mode="edit" server={server} open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen} />
     </>
   )
 }

@@ -3,159 +3,221 @@
 import { EnvInputFields } from "@/components/mcp/env-input-fields"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useMCPForm } from "@/hooks/use-mcp-form"
+import { useMCPContext } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
-import type { MCPServer, MCPServerConfig } from "@dojo/config"
+import type { MCPServer } from "@dojo/config"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useMemo } from "react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import { z } from "zod"
+
+const mcpFormSchema = z.object({
+  serverName: z.string().min(1, "Server name is required"),
+  serverSummary: z.string().optional(),
+  command: z.string().min(1, "Command is required"),
+  argsString: z.string(),
+  envPairs: z.array(
+    z.object({
+      key: z.string(),
+      value: z.string(),
+    }),
+  ),
+})
+
+type MCPFormValues = z.infer<typeof mcpFormSchema>
 
 export interface MCPDialogProps {
   mode: "add" | "edit"
   server?: MCPServer
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddServer?: (server: MCPServer) => void
-  onSaveConfig?: (config: MCPServerConfig) => void
-  onDelete?: () => void
 }
 
-export function MCPDialog({ mode, server, open, onOpenChange, onAddServer, onSaveConfig, onDelete }: MCPDialogProps) {
+export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) {
   const { play } = useSoundEffectContext()
-  const { formData, updateFormData, resetForm, createServerFromForm, createConfigFromForm, isFormValid } = useMCPForm(
-    mode,
-    server,
-  )
+  const { saveServerToAvailableServers, removeServerFromAvailableServers } = useMCPContext()
 
-  const handleSave = () => {
-    play("./sounds/click.mp3", { volume: 0.5 })
-
-    if (!isFormValid) return
-
-    if (mode === "add" && onAddServer) {
-      const newServer = createServerFromForm()
-      onAddServer(newServer)
-      toast.success(`${newServer.name} config added to localstorage`, {
-        icon: null,
-        duration: 5000,
-        position: "bottom-center",
-        style: successToastStyle,
-      })
-      setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
-    } else if (mode === "edit" && onSaveConfig && server) {
-      const updatedConfig = createConfigFromForm()
-      onSaveConfig(updatedConfig)
-      toast.success(`${server.name} config saved to localstorage`, {
-        icon: null,
-        duration: 5000,
-        position: "bottom-center",
-        style: successToastStyle,
-      })
-      setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
+  const formValues = useMemo((): MCPFormValues => {
+    if (!server) {
+      return {
+        serverName: "",
+        serverSummary: "",
+        command: "",
+        argsString: "",
+        envPairs: [],
+      }
     }
 
-    handleClose()
+    const requiredKeys = server.config?.requiresEnv || []
+    const configEnv = server.config?.env || {}
+    const envPairs = requiredKeys.map((key) => ({
+      key,
+      value: configEnv[key] || "",
+    }))
+
+    return {
+      serverName: server.name || "",
+      serverSummary: server.summary || "",
+      command: server.config?.command || "",
+      argsString: (server.config?.args || []).join(", "),
+      envPairs,
+    }
+  }, [server])
+
+  const form = useForm<MCPFormValues>({
+    resolver: zodResolver(mcpFormSchema),
+    values: formValues,
+  })
+
+  const createServerFromForm = (data: MCPFormValues): MCPServer => {
+    const args = data.argsString
+      .split(",")
+      .map((arg) => arg.trim())
+      .filter(Boolean)
+    const env = Object.fromEntries(data.envPairs.map((pair) => [pair.key, pair.value]))
+
+    return {
+      id: server?.id || data.serverName.toLowerCase().replace(/\s+/g, "-"),
+      name: data.serverName,
+      ...(data.serverSummary && { summary: data.serverSummary }),
+      config: {
+        command: data.command,
+        args,
+        ...(data.envPairs.length > 0 && {
+          env,
+          requiresEnv: data.envPairs.map((pair) => pair.key),
+        }),
+      },
+    }
+  }
+
+  const handleSave = (data: MCPFormValues) => {
+    const newOrUpdatedServer = createServerFromForm(data)
+    saveServerToAvailableServers(newOrUpdatedServer)
+    toast.success(`${newOrUpdatedServer.name} config ${mode === "add" ? "added to" : "saved to"} localstorage`, {
+      icon: null,
+      duration: 5000,
+      position: "bottom-center",
+      style: successToastStyle,
+    })
+    setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
+    onOpenChange(false)
   }
 
   const handleDelete = () => {
-    if (!onDelete || !server) return
-
-    play("./sounds/click.mp3", { volume: 0.5 })
-    onDelete()
-    toast.error(`${server.name} config deleted from localstorage`, {
+    if (server?.id) removeServerFromAvailableServers(server.id)
+    toast.error(`${server?.name} config deleted from localstorage`, {
       icon: null,
       duration: 5000,
       position: "bottom-center",
       style: errorToastStyle,
     })
     setTimeout(() => play("./sounds/delete.mp3", { volume: 0.5 }), 100)
-    handleClose()
-  }
-
-  const handleClose = () => {
-    if (mode === "add") resetForm()
     onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{mode === "add" ? "Add MCP Server" : `Configure ${server?.name}`}</DialogTitle>
           {mode === "edit" && server?.summary && <p className="text-sm text-muted-foreground">{server.summary}</p>}
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {mode === "add" && (
-            <>
-              <div className="grid gap-2">
-                <Label htmlFor="serverName" className="text-primary/80 text-xs">
-                  Name
-                </Label>
-                <Input
-                  id="serverName"
-                  value={formData.serverName}
-                  onChange={(e) => updateFormData({ serverName: e.target.value })}
-                  placeholder="Server Name"
-                />
-              </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+            <div className="grid gap-4 py-4">
+              <FormField
+                control={form.control}
+                name="serverName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-primary/80 text-xs">Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Server Name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className="grid gap-2">
-                <Label htmlFor="summary" className="text-primary/80 text-xs">
-                  Summary (optional)
-                </Label>
-                <Input
-                  id="summary"
-                  value={formData.serverSummary}
-                  onChange={(e) => updateFormData({ serverSummary: e.target.value })}
-                  placeholder="Short description of server capabilities"
-                />
-              </div>
-            </>
-          )}
+              <FormField
+                control={form.control}
+                name="serverSummary"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-primary/80 text-xs">Summary (optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Short description of server capabilities" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div className="grid gap-2">
-            <Label htmlFor="command" className="text-primary/80 text-xs">
-              Command
-            </Label>
-            <Input
-              id="command"
-              value={formData.command}
-              onChange={(e) => updateFormData({ command: e.target.value })}
-              placeholder="e.g., python3, node, bash"
-            />
-          </div>
+              <FormField
+                control={form.control}
+                name="command"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-primary/80 text-xs">Command</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., python3, node, bash" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div className="grid gap-2">
-            <Label htmlFor="args" className="text-primary/80 text-xs">
-              Arguments
-            </Label>
-            <Input
-              id="args"
-              value={formData.argsString}
-              onChange={(e) => updateFormData({ argsString: e.target.value })}
-              placeholder="Comma separated, e.g: -f,file.py,--verbose"
-            />
-          </div>
+              <FormField
+                control={form.control}
+                name="argsString"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-primary/80 text-xs">Arguments</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Comma separated, e.g: -f,file.py,--verbose" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <EnvInputFields
-            envPairs={formData.envPairs}
-            mode={mode}
-            onUpdateEnvPairs={(envPairs) => updateFormData({ envPairs })}
-          />
-        </div>
+              <FormField
+                control={form.control}
+                name="envPairs"
+                render={({ field }) => (
+                  <EnvInputFields envPairs={field.value} mode={mode} onUpdateEnvPairs={field.onChange} />
+                )}
+              />
+            </div>
 
-        <DialogFooter>
-          {mode === "edit" && (
-            <Button variant="destructive" onClick={handleDelete} className="hover:cursor-pointer border-destructive">
-              Delete
-            </Button>
-          )}
-          <Button onClick={handleSave} disabled={!isFormValid} className="hover:cursor-pointer" variant="secondary">
-            {mode === "add" ? "Create Server" : "Save"}
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              {mode === "edit" && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  className="hover:cursor-pointer border-destructive"
+                >
+                  Delete
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={!form.formState.isValid}
+                className="hover:cursor-pointer"
+                variant="secondary"
+              >
+                {mode === "add" ? "Create Server" : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
