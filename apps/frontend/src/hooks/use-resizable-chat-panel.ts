@@ -1,4 +1,3 @@
-import { useSoundEffectContext } from "./use-sound-effect"
 import { useState, useCallback, RefObject } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 
@@ -25,8 +24,6 @@ export function useResizableChatPanel({
   config,
   initialIsMaximized,
 }: UseResizableChatPanelProps): UseResizableChatPanelReturn {
-  const { play } = useSoundEffectContext()
-
   const { defaultSizePercentage, expandedWidthPercentage, collapsedSizePercentage } = config
   const initialIsCollapsed = defaultSizePercentage <= collapsedSizePercentage
 
@@ -66,7 +63,7 @@ export function useResizableChatPanel({
       }
     }
     setIsMaximized(targetMaximizedState)
-  }, [isMaximized, isChatPanelCollapsed, play, chatPanelRef, expandedWidthPercentage, resizeChatPanel])
+  }, [isMaximized, isChatPanelCollapsed, chatPanelRef, expandedWidthPercentage, resizeChatPanel])
 
   const handleChatPanelToggle = useCallback(
     (forceState?: boolean) => {
@@ -94,15 +91,7 @@ export function useResizableChatPanel({
         panel.resize(expandedWidthPercentage)
       }
     },
-    [
-      isChatPanelCollapsed,
-      isMaximized,
-      play,
-      expandedWidthPercentage,
-      handleMaximizeToggle,
-      resizeChatPanel,
-      chatPanelRef,
-    ],
+    [isChatPanelCollapsed, isMaximized, expandedWidthPercentage, handleMaximizeToggle, resizeChatPanel, chatPanelRef],
   )
 
   return {

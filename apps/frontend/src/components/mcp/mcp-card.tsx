@@ -37,7 +37,7 @@ export function MCPCard({ server }: MCPCardProps) {
     <>
       <Card
         className={cn(
-          "relative h-[10rem] max-h-[10rem] w-full max-w-xs border",
+          "relative h-[10rem] max-h-[10rem] w-full max-w-xs border flex flex-col overflow-hidden",
           isConnected && "border-primary/80 bg-muted/50 border-2",
         )}
       >
@@ -47,13 +47,13 @@ export function MCPCard({ server }: MCPCardProps) {
           </div>
         )}
 
-        <CardHeader>
+        <CardHeader className="flex-1 min-h-0">
           <div className="flex items-center gap-2">
             {Icon && <Icon />}
             <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
             {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500" />}
           </div>
-          <CardDescription className="w-[90%]">{server.summary}</CardDescription>
+          <CardDescription className="w-[90%] line-clamp-2 overflow-hidden">{server.summary}</CardDescription>
         </CardHeader>
 
         <CardFooter className="mt-auto flex items-center justify-between">

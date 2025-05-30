@@ -1,7 +1,6 @@
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useChatProvider } from "@/hooks/use-chat"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"

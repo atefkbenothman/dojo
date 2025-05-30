@@ -10,6 +10,7 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
 import type { MCPServer } from "@dojo/config"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { nanoid } from "nanoid"
 import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -81,7 +82,7 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
     const env = Object.fromEntries(data.envPairs.map((pair) => [pair.key, pair.value]))
 
     return {
-      id: server?.id || data.serverName.toLowerCase().replace(/\s+/g, "-"),
+      id: server?.id || nanoid(),
       name: data.serverName,
       ...(data.serverSummary && { summary: data.serverSummary }),
       config: {
