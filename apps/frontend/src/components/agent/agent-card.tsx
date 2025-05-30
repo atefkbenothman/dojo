@@ -1,6 +1,7 @@
 "use client"
 
 import { AgentDialog } from "@/components/agent/agent-dialog"
+import { AgentMCPServersPopover } from "@/components/agent/mcp-servers-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -50,6 +51,10 @@ export function AgentCard({ agent }: AgentCardProps) {
             >
               <Settings className="h-4 w-4" />
             </Button>
+
+            {agent.mcpServers && agent.mcpServers.length > 0 && (
+              <AgentMCPServersPopover servers={agent.mcpServers.map((s) => ({ id: s.id, name: s.name }))} />
+            )}
           </div>
         </CardFooter>
       </Card>
