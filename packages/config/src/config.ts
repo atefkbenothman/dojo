@@ -153,8 +153,8 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
   },
 }
 
-export const AGENT_CONFIGS: AgentConfig[] = [
-  {
+export const AGENT_CONFIGS: Record<string, AgentConfig> = {
+  "code-wizard-001": {
     id: "code-wizard-001",
     name: "Code Wizard",
     systemPrompt:
@@ -163,7 +163,7 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     context: "Next.js App Router, TypeScript, React, Shadcn UI, Tailwind CSS",
     mcpServers: [CONFIGURED_MCP_SERVERS.github!, CONFIGURED_MCP_SERVERS.filesystem!],
   },
-  {
+  "research-pro-002": {
     id: "research-pro-002",
     name: "Research Pro",
     systemPrompt:
@@ -172,7 +172,7 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     context: "Technical documentation research, API specifications, library usage",
     mcpServers: [CONFIGURED_MCP_SERVERS.context7!],
   },
-  {
+  "notion-organizer-003": {
     id: "notion-organizer-003",
     name: "Notion Organizer",
     systemPrompt:
@@ -181,4 +181,4 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     context: "Notion workspace management, task tracking, note taking",
     mcpServers: [CONFIGURED_MCP_SERVERS.notion!],
   },
-]
+}

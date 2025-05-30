@@ -1,8 +1,8 @@
 import "./globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
-import { AgentProviderRoot } from "@/hooks/use-agent"
+import { AgentProvider } from "@/hooks/use-agent"
 import { AIChatProviderRoot } from "@/hooks/use-chat"
-import { MCPProviderRoot } from "@/hooks/use-mcp"
+import { MCPProvider } from "@/hooks/use-mcp"
 import { ModelProvider } from "@/hooks/use-model"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
 import { UserProvider } from "@/hooks/use-user-id"
@@ -102,15 +102,15 @@ export default async function RootLayout({
           <DojoTRPCProvider>
             <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
               <SoundEffectProvider>
-                <MCPProviderRoot mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
+                <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
                   <ModelProvider aiModels={aiModels}>
                     <AIChatProviderRoot>
-                      <AgentProviderRoot agents={agents}>
+                      <AgentProvider agents={agents}>
                         <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
-                      </AgentProviderRoot>
+                      </AgentProvider>
                     </AIChatProviderRoot>
                   </ModelProvider>
-                </MCPProviderRoot>
+                </MCPProvider>
               </SoundEffectProvider>
             </DarkModeProvider>
           </DojoTRPCProvider>

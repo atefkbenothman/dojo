@@ -35,6 +35,7 @@ export type AIModel = z.infer<typeof AIModelSchema>
 export const AgentConfigSchema = z.object({
   id: z.string(),
   name: z.string(),
+  description: z.string().optional(),
   systemPrompt: z.string(),
   aiModelId: z.string(),
   context: z.string().optional(),
