@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useChatProvider } from "@/hooks/use-chat"
+import { useImageProvider } from "@/hooks/use-image"
 import { useModelContext } from "@/hooks/use-model"
 import type { AIModel } from "@dojo/config"
 import { ArrowUp } from "lucide-react"
@@ -69,6 +70,8 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
 
 export const ChatFooter = memo(function ChatFooter() {
   const { handleChat } = useChatProvider()
+  const { selectedModel } = useModelContext()
+  const { handleImageGeneration } = useImageProvider()
 
   const [input, setInput] = useState<string>("")
 
@@ -83,17 +86,24 @@ export const ChatFooter = memo(function ChatFooter() {
   }
 
   const handleSend = useCallback(() => {
-    if (inputRef.current.trim() !== "") {
-      handleChat(inputRef.current)
+    if (inputRef.current.trim() === "") return
+    if (selectedModel.type === "image") {
+      handleImageGeneration({
+        message: inputRef.current,
+        selectedModel,
+      })
       setInput("")
+      return
     }
-  }, [handleChat])
+    handleChat(inputRef.current)
+    setInput("")
+  }, [handleChat, inputRef, handleImageGeneration, selectedModel])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       if (input.trim() !== "") {
-        handleChat(input)
+        handleSend()
         setInput("")
       }
     }

@@ -1,6 +1,7 @@
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useChatProvider } from "@/hooks/use-chat"
+import { useImageProvider } from "@/hooks/use-image"
 import { cn } from "@/lib/utils"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"
@@ -200,7 +201,8 @@ const MessageItem = memo(function MessageItem({
 })
 
 export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | null> }) {
-  const { messages, chatError, isImageGenerating, status } = useChatProvider()
+  const { messages, chatError, status } = useChatProvider()
+  const { isImageGenerating } = useImageProvider()
 
   const virtualizer = useVirtualizer({
     count: messages.length,

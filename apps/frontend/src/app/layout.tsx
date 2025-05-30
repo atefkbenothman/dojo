@@ -1,7 +1,8 @@
 import "./globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
 import { AgentProvider } from "@/hooks/use-agent"
-import { AIChatProviderRoot } from "@/hooks/use-chat"
+import { AIChatProvider } from "@/hooks/use-chat"
+import { AIImageProvider } from "@/hooks/use-image"
 import { MCPProvider } from "@/hooks/use-mcp"
 import { ModelProvider } from "@/hooks/use-model"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
@@ -104,11 +105,13 @@ export default async function RootLayout({
               <SoundEffectProvider>
                 <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
                   <ModelProvider aiModels={aiModels}>
-                    <AIChatProviderRoot>
-                      <AgentProvider agents={agents}>
-                        <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
-                      </AgentProvider>
-                    </AIChatProviderRoot>
+                    <AIChatProvider>
+                      <AIImageProvider>
+                        <AgentProvider agents={agents}>
+                          <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
+                        </AgentProvider>
+                      </AIImageProvider>
+                    </AIChatProvider>
                   </ModelProvider>
                 </MCPProvider>
               </SoundEffectProvider>
