@@ -104,45 +104,65 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
     })
   }
 
-  const connectMutation = useMutation<RouterOutputs["connection"]["connect"], Error, { server: MCPServer }>({
-    mutationFn: async (variables: { server: MCPServer }) => {
-      return client.connection.connect.mutate(variables)
+  const connectMutation = useMutation<RouterOutputs["connection"]["connect"], Error, { servers: MCPServer[] }>({
+    mutationFn: async (mcpServers: { servers: MCPServer[] }) => {
+      return client.connection.connect.mutate({ servers: mcpServers.servers })
     },
-    onMutate: (variables: { server: MCPServer }) => {
-      const { server } = variables
-      setConnectionStatus((prev) => ({ ...prev, [server.id]: "connecting" }))
-      setConnectionError((prev) => ({ ...prev, [server.id]: null }))
-    },
-    onSuccess: (data: RouterOutputs["connection"]["connect"], variables: { server: MCPServer }) => {
-      const { server } = variables
-      setConnectionStatus((prev) => ({ ...prev, [server.id]: "connected" }))
-      setConnectionError((prev) => ({ ...prev, [server.id]: null }))
-      const newConnection: ActiveConnection = {
-        serverId: data.serverId,
-        name: server.name,
-        tools: data.tools || {},
-      }
-      setActiveConnections((prev) => {
-        const exists = prev.some((conn) => conn.serverId === server.id)
-        if (exists) return prev
-        return [...prev, newConnection]
+    onMutate: (mcpServers: { servers: MCPServer[] }) => {
+      const { servers } = mcpServers
+      servers.forEach((server) => {
+        setConnectionStatus((prev) => ({ ...prev, [server.id]: "connecting" }))
+        setConnectionError((prev) => ({ ...prev, [server.id]: null }))
       })
-      play("./sounds/connect.mp3", { volume: 0.5 })
     },
-    onError: (error: Error, variables: { server: MCPServer }) => {
-      const { server } = variables
-      setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
-      setConnectionError((prev) => ({
-        ...prev,
-        [server.id]: error.message || "An unexpected error occurred during connecting",
-      }))
-      play("./sounds/error.mp3", { volume: 0.5 })
-      toast.error(error.message, {
-        icon: null,
-        id: `mcp-error-${server.id}`,
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
+    onSuccess: (data: RouterOutputs["connection"]["connect"], mcpServers: { servers: MCPServer[] }) => {
+      mcpServers.servers.forEach((server) => {
+        const result = data.results.find((r) => r.serverId === server.id)
+        if (result?.success) {
+          setConnectionStatus((prev) => ({ ...prev, [server.id]: "connected" }))
+          setConnectionError((prev) => ({ ...prev, [server.id]: null }))
+          const newConnection: ActiveConnection = {
+            serverId: result.serverId,
+            name: server.name,
+            tools: result.tools || {},
+          }
+          setActiveConnections((prev) => {
+            const exists = prev.some((conn) => conn.serverId === server.id)
+            if (exists) return prev
+            return [...prev, newConnection]
+          })
+          play("./sounds/connect.mp3", { volume: 0.5 })
+        } else {
+          const errorMsg =
+            result && "error" in result && typeof result.error === "string" ? result.error : "Connection failed"
+          setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
+          setConnectionError((prev) => ({ ...prev, [server.id]: errorMsg }))
+          play("./sounds/error.mp3", { volume: 0.5 })
+          toast.error(errorMsg, {
+            icon: null,
+            id: `mcp-error-${server.id}`,
+            duration: 5000,
+            position: "bottom-center",
+            style: errorToastStyle,
+          })
+        }
+      })
+    },
+    onError: (error: Error, mcpServers: { servers: MCPServer[] }) => {
+      mcpServers.servers.forEach((server) => {
+        setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
+        setConnectionError((prev) => ({
+          ...prev,
+          [server.id]: error.message || "An unexpected error occurred during connecting",
+        }))
+        play("./sounds/error.mp3", { volume: 0.5 })
+        toast.error(error.message, {
+          icon: null,
+          id: `mcp-error-${server.id}`,
+          duration: 5000,
+          position: "bottom-center",
+          style: errorToastStyle,
+        })
       })
     },
   })
@@ -167,36 +187,41 @@ function useMCP(mcpServers: Record<string, MCPServer>, isServerHealthy: boolean)
     },
   })
 
-  const connect = async ({ server }: { server: MCPServer }) => {
-    if (connectionStatus[server.id] === "connecting") return
+  const connect = async (servers: MCPServer[]) => {
+    // Prevent duplicate connections
+    if (servers.some((server) => connectionStatus[server.id] === "connecting")) return
     if (!userId) {
-      console.error("Cannot connect without a userId in context.")
-      setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
-      setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available in context" }))
+      servers.forEach((server) => {
+        setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
+        setConnectionError((prev) => ({ ...prev, [server.id]: "User ID not available in context" }))
+      })
       return
     }
     if (!isServerHealthy) {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      toast.error("Server is offline", {
-        icon: null,
-        id: `mcp-error-${server.id}`,
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
+      servers.forEach((server) => {
+        play("./sounds/error.mp3", { volume: 0.5 })
+        toast.error("Server is offline", {
+          icon: null,
+          id: `mcp-error-${server.id}`,
+          duration: 5000,
+          position: "bottom-center",
+          style: errorToastStyle,
+        })
       })
       return
     }
     try {
-      await connectMutation.mutateAsync({ server })
+      await connectMutation.mutateAsync({ servers })
     } catch (err) {
-      console.error("[MCP Hook] connect function caught error (should be handled by onError):", err)
-      if (connectionStatus[server.id] !== "error") {
-        setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
-        setConnectionError((prev) => ({
-          ...prev,
-          [server.id]: err instanceof Error ? err.message : "Connection failed",
-        }))
-      }
+      servers.forEach((server) => {
+        if (connectionStatus[server.id] !== "error") {
+          setConnectionStatus((prev) => ({ ...prev, [server.id]: "error" }))
+          setConnectionError((prev) => ({
+            ...prev,
+            [server.id]: err instanceof Error ? err.message : "Connection failed",
+          }))
+        }
+      })
     }
   }
 

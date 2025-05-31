@@ -5,7 +5,6 @@ import { TRPCError } from "@trpc/server"
 import { experimental_generateImage as generateImage, type ImageModel } from "ai"
 import { z } from "zod"
 
-// Define the expected structure of an image object in the response from the AI SDK
 interface SDKImageObject {
   base64?: string
   url?: string

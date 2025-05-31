@@ -10,7 +10,7 @@ export const connectionRouter = router({
   connect: protectedProcedure
     .input(connectInputSchema)
     .mutation(async ({ input, ctx }: { input: z.infer<typeof connectInputSchema>; ctx: Context }) => {
-      const { server } = input
+      const { servers } = input
       const { userSession } = ctx
 
       if (!userSession) {
@@ -22,46 +22,65 @@ export const connectionRouter = router({
 
       const isProduction = process.env.NODE_ENV === "production"
 
-      if (server.localOnly && isProduction) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "This is a local-only MCP server and cannot be accessed in the current environment.",
+      const results = []
+
+      for (const server of servers) {
+        if (server.localOnly && isProduction) {
+          results.push({
+            serverId: server.id,
+            success: false,
+            error: "This is a local-only MCP server and cannot be accessed in the current environment.",
+            tools: {},
+          })
+          continue
+        }
+
+        const { error: cleanupError } = await asyncTryCatch(cleanupExistingConnection(userSession, server.id))
+
+        if (cleanupError) {
+          results.push({
+            serverId: server.id,
+            success: false,
+            error: "An unexpected error occurred while cleaning up the connection.",
+            tools: {},
+          })
+          continue
+        }
+
+        const { data: connection, error: connectionError } = await asyncTryCatch(
+          establishMcpConnection(userSession, server),
+        )
+
+        if (connectionError) {
+          results.push({
+            serverId: server.id,
+            success: false,
+            error: "An unexpected error occurred while establishing the connection.",
+            tools: {},
+          })
+          continue
+        }
+
+        if (!connection || !connection.success) {
+          const errorMessage = connection?.error || "Failed to establish connection with MCP server."
+          results.push({
+            serverId: server.id,
+            success: false,
+            error: errorMessage,
+            tools: {},
+          })
+          continue
+        }
+
+        const tools = connection.client?.client.tools || {}
+        results.push({
+          serverId: server.id,
+          success: true,
+          tools,
         })
       }
 
-      const { error: cleanupError } = await asyncTryCatch(cleanupExistingConnection(userSession, server.id))
-
-      if (cleanupError) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while cleaning up the connection.",
-          cause: cleanupError instanceof Error ? cleanupError : undefined,
-        })
-      }
-
-      const { data: connection, error: connectionError } = await asyncTryCatch(
-        establishMcpConnection(userSession, server),
-      )
-
-      if (connectionError) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while establishing the connection.",
-          cause: connectionError,
-        })
-      }
-
-      if (!connection || !connection.success) {
-        const errorMessage = connection?.error || "Failed to establish connection with MCP server."
-        const trpcErrorCode = connection?.error?.includes("limit reached")
-          ? "TOO_MANY_REQUESTS"
-          : "INTERNAL_SERVER_ERROR"
-        throw new TRPCError({ code: trpcErrorCode, message: errorMessage })
-      }
-
-      const tools = connection.client?.client.tools || {}
-
-      return { success: true, userId: userSession.userId, serverId: server.id, tools }
+      return { success: results.every((r) => r.success), userId: userSession.userId, results }
     }),
   disconnect: protectedProcedure
     .input(disconnectInputSchema)

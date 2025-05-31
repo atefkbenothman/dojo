@@ -30,7 +30,7 @@ export function MCPCard({ server }: MCPCardProps) {
       await disconnect(server.id)
       return
     }
-    await connect({ server })
+    await connect([server])
   }
 
   return (

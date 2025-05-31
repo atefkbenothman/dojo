@@ -2,7 +2,7 @@ import { CoreMessageSchema, MCPServerSchema } from "@dojo/config"
 import { z } from "zod"
 
 export const connectInputSchema = z.object({
-  server: MCPServerSchema,
+  servers: z.array(MCPServerSchema).min(1),
 })
 
 export const disconnectInputSchema = z.object({

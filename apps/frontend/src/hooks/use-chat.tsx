@@ -9,19 +9,6 @@ import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
 import { useState, createContext, useContext, useCallback } from "react"
 
-interface ChatRequestOptionsBody {
-  modelId: string
-  interactionType: string
-  // config?: AgentConfig
-  apiKey?: string | null
-}
-
-interface ChatRequestBody {
-  modelId: string
-  apiKey?: string
-  interactionType: string
-}
-
 const initialMessages: Message[] = [
   {
     id: "system",
@@ -35,12 +22,13 @@ const initialMessages: Message[] = [
   },
 ]
 
+export type ChatInteractionType = "chat" | "agent"
+
 export function useAIChat() {
   const { play } = useSoundEffectContext()
   const { selectedModel } = useModelContext()
 
   const [context, setContext] = useState<string>("")
-  const [currentInteractionType, setCurrentInteractionType] = useState<string | null>(null)
   const [chatError, setChatError] = useState<string | null>(null)
 
   const { messages, status, input, append, setMessages, error, stop } = useChat({
@@ -50,47 +38,11 @@ export function useAIChat() {
     onError: (err) => {
       play("./sounds/error.mp3", { volume: 0.5 })
       setChatError(err.message || "An unexpected error occurred during the chat.")
-      setCurrentInteractionType(null)
     },
     onFinish: () => {
       play("./sounds/done.mp3", { volume: 0.5 })
-      setCurrentInteractionType(null)
     },
   })
-
-  const unifiedAppend = useCallback(
-    async (
-      messageToRelay: Message,
-      options: {
-        body: ChatRequestOptionsBody
-        interactionType: string
-        initialDisplayMessage?: {
-          id?: string
-          role: "assistant" | "system" | "user" | "function" | "tool"
-          content: string
-        }
-      },
-    ) => {
-      setCurrentInteractionType(options.interactionType)
-
-      if (options.initialDisplayMessage) {
-        const initialMsg = options.initialDisplayMessage
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: initialMsg.id || nanoid(),
-            role: initialMsg.role,
-            content: initialMsg.content,
-          } as Message,
-        ])
-      }
-
-      await append(messageToRelay, {
-        body: options.body,
-      })
-    },
-    [append, setMessages, setCurrentInteractionType],
-  )
 
   const handleChat = useCallback(
     async (message: string) => {
@@ -111,23 +63,22 @@ export function useAIChat() {
         content: prompt,
       }
 
-      const body: ChatRequestBody = {
+      const body = {
         modelId: selectedModel.id,
         interactionType: "chat",
         ...(apiKey ? { apiKey } : {}),
       }
-      await unifiedAppend(userMessage, {
-        body,
-        interactionType: "chat",
-      })
+
+      await append(userMessage, { body })
     },
-    [status, selectedModel, unifiedAppend, play],
+    [status, selectedModel, append, play],
   )
 
   const handleNewChat = useCallback(() => {
     setMessages(initialMessages)
+    stop()
     setChatError(null)
-  }, [setMessages])
+  }, [setMessages, stop])
 
   return {
     messages: messages as (UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } })[],
@@ -135,12 +86,11 @@ export function useAIChat() {
     status,
     input,
     error,
-    currentInteractionType,
     chatError,
+    append,
     setContext,
     handleChat,
     handleNewChat,
-    unifiedAppend,
     stop,
     setMessages,
     setChatError,

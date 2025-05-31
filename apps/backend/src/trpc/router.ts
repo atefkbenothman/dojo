@@ -1,3 +1,4 @@
+import { agentRouter } from "./routers/agent.js"
 import { chatRouter } from "./routers/chat.js"
 import { configRouter } from "./routers/config.js"
 import { connectionRouter } from "./routers/connection.js"
@@ -11,6 +12,7 @@ export const appRouter = router({
   health: healthRouter,
   chat: chatRouter,
   image: imageRouter,
+  agent: agentRouter,
 })
 
 export type AppRouter = typeof appRouter
