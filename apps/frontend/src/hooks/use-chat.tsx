@@ -5,6 +5,7 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { DEFAULT_ASSISTANT_MESSAGE, SYSTEM_PROMPT } from "@/lib/ai/constants"
 import { getApiKeyForModel } from "@/lib/utils"
 import { useChat, Message } from "@ai-sdk/react"
+import { ChatInteraction } from "@dojo/config"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
 import { useState, createContext, useContext, useCallback } from "react"
@@ -21,8 +22,6 @@ const initialMessages: Message[] = [
     content: DEFAULT_ASSISTANT_MESSAGE,
   },
 ]
-
-export type ChatInteractionType = "chat" | "agent"
 
 export function useAIChat() {
   const { play } = useSoundEffectContext()
@@ -63,20 +62,24 @@ export function useAIChat() {
         content: prompt,
       }
 
-      const body = {
+      const chatBody: ChatInteraction = {
         modelId: selectedModel.id,
-        interactionType: "chat",
-        ...(apiKey ? { apiKey } : {}),
       }
 
-      await append(userMessage, { body })
+      await append(userMessage, {
+        body: {
+          interactionType: "chat",
+          apiKey,
+          chat: chatBody,
+        },
+      })
     },
     [status, selectedModel, append, play],
   )
 
   const handleNewChat = useCallback(() => {
-    setMessages(initialMessages)
     stop()
+    setMessages(initialMessages)
     setChatError(null)
   }, [setMessages, stop])
 

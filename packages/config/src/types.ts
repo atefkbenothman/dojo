@@ -44,6 +44,18 @@ export const AgentConfigSchema = z.object({
 
 export type AgentConfig = z.infer<typeof AgentConfigSchema>
 
+export const ChatInteractionSchema = z.object({
+  modelId: z.string(),
+})
+
+export type ChatInteraction = z.infer<typeof ChatInteractionSchema>
+
+export const AgentInteractionSchema = z.object({
+  agentConfig: AgentConfigSchema,
+})
+
+export type AgentInteraction = z.infer<typeof AgentInteractionSchema>
+
 // Schema for the 'tool_calls' part of CoreMessage from 'ai' library
 const ToolCallSchema = z.object({
   id: z.string().optional(),

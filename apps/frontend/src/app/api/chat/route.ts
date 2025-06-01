@@ -1,66 +1,43 @@
 import { env } from "@/env"
-import type { AgentConfig } from "@dojo/config"
+import { type ChatInteraction, type AgentInteraction } from "@dojo/config"
 import { asyncTryCatch } from "@dojo/utils"
 import type { CoreMessage } from "ai"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-interface HandleChatInteractionArgs {
-  messages: CoreMessage[]
-  modelId: string
-  apiKey?: string
-  userId: string
-}
-
-interface HandleAgentInteractionArgs {
-  messages: CoreMessage[]
-  config: AgentConfig
-  apiKey?: string
-  userId: string
-}
-
 function buildProxyHeaders(headers: Headers) {
   const result = new Headers()
   result.set("Content-Type", headers.get("Content-Type") || "text/plain; charset=utf-8")
-  if (headers.get("Transfer-Encoding")) result.set("Transfer-Encoding", headers.get("Transfer-Encoding")!)
-  if (headers.get("x-vercel-ai-data-stream"))
+  if (headers.get("Transfer-Encoding")) {
+    result.set("Transfer-Encoding", headers.get("Transfer-Encoding")!)
+  }
+  if (headers.get("x-vercel-ai-data-stream")) {
     result.set("x-vercel-ai-data-stream", headers.get("x-vercel-ai-data-stream")!)
+  }
   return result
 }
 
-async function handleChatInteraction({ messages, modelId, apiKey, userId }: HandleChatInteractionArgs) {
-  if (!messages || !modelId) {
+async function handleChat(userId: string, apiKey: string | undefined, messages: CoreMessage[], chat: ChatInteraction) {
+  if (!messages || !chat.modelId) {
     return NextResponse.json({ error: "Missing 'messages' or 'modelId' for CHAT interaction." }, { status: 400 })
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  }
-
-  if (userId) {
-    headers["X-User-Id"] = userId
-  }
-
-  const chatBody: Record<string, string | CoreMessage[]> = { messages, modelId }
-
-  // only send api key if it is provided
-  if (apiKey) {
-    chatBody.apiKey = apiKey
-  }
-
-  const { data: chatData, error: chatError } = await asyncTryCatch(
+  const { data, error } = await asyncTryCatch(
     fetch(`${env.BACKEND_URL}/trpc/chat.sendMessage`, {
       method: "POST",
-      headers: headers,
-      body: JSON.stringify(chatBody),
+      headers: {
+        "Content-Type": "application/json",
+        ...(userId ? { "X-User-Id": userId } : {}),
+      },
+      body: JSON.stringify({ messages, modelId: chat.modelId, apiKey: apiKey || undefined }),
     }),
   )
 
-  if (!chatData?.body || chatError) {
-    console.error(`[API Router /chat] CHAT service backend responded with error: ${chatError}`)
+  if (!data?.body || error) {
+    console.error(`[API Router /chat] CHAT service backend responded with error: ${error}`)
     return NextResponse.json(
       {
-        error: `CHAT service backend failed: ${chatError}`,
+        error: `CHAT service backend failed: ${error}`,
       },
       { status: 503 },
     )
@@ -68,52 +45,57 @@ async function handleChatInteraction({ messages, modelId, apiKey, userId }: Hand
 
   console.log(`[API /chat] Successfully initiated CHAT stream via CHAT service for user ${userId}`)
 
-  return new Response(chatData.body, {
-    status: chatData.status,
-    statusText: chatData.statusText,
-    headers: buildProxyHeaders(chatData.headers),
+  return new Response(data.body, {
+    status: data.status,
+    statusText: data.statusText,
+    headers: buildProxyHeaders(data.headers),
   })
 }
 
-async function handleAgentInteraction({ messages, config, apiKey, userId }: HandleAgentInteractionArgs) {
-  if (!messages || !config) {
-    return NextResponse.json({ error: "Missing 'messages' or 'config' for AGENT interaction." }, { status: 400 })
+async function handleAgent(userId: string, apiKey: string, messages: CoreMessage[], agent: AgentInteraction) {
+  if (!messages || !agent.agentConfig.aiModelId) {
+    return NextResponse.json({ error: "Missing 'messages' or 'modelId' for AGENT interaction." }, { status: 400 })
   }
 
-  const { data: agentData, error: agentError } = await asyncTryCatch(
-    fetch(`${env.BACKEND_URL}/agent/run`, {
+  if (!apiKey) {
+    console.error("[API /chat] API key is required for AGENT interaction.")
+    return NextResponse.json({ error: "API key is required for AGENT interaction." }, { status: 400 })
+  }
+
+  const { data, error } = await asyncTryCatch(
+    fetch(`${env.BACKEND_URL}/trpc/agent.run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, userId, config, apiKey }),
+      headers: {
+        "Content-Type": "application/json",
+        ...(userId ? { "X-User-Id": userId } : {}),
+      },
+      body: JSON.stringify({ messages, apiKey, config: agent.agentConfig }),
     }),
   )
 
-  if (!agentData?.body || agentError) {
-    console.error(
-      `[API /chat] AGENT service backend responded with error for agent '${config.id}':`,
-      agentError || "Response body missing",
-    )
+  if (!data?.body || error) {
+    console.error(`[API Router /chat] AGENT service backend responded with error: ${error}`)
     return NextResponse.json(
       {
-        error: `AGENT service backend failed: ${agentError || "Response body missing"}`,
+        error: `AGENT service backend failed: ${error}`,
       },
       { status: 503 },
     )
   }
 
-  console.log(
-    `[API /chat] Successfully initiated AGENT stream via AGENT service for user ${userId}, agent '${config.id}'`,
-  )
+  console.log(`[API /chat] Successfully initiated AGENT stream via AGENT service for user ${userId}`)
 
-  return new Response(agentData.body, {
-    status: agentData.status,
-    statusText: agentData.statusText,
-    headers: buildProxyHeaders(agentData.headers),
+  return new Response(data.body, {
+    status: data.status,
+    statusText: data.statusText,
+    headers: buildProxyHeaders(data.headers),
   })
 }
 
 export async function POST(request: Request) {
-  const { messages, modelId, config, interactionType, apiKey } = await request.json()
+  const body = await request.json()
+
+  const { messages, interactionType, apiKey } = body
 
   const cookieStore = await cookies()
   const userId = cookieStore.get("userId")?.value
@@ -140,10 +122,18 @@ export async function POST(request: Request) {
 
   switch (interactionType) {
     case "chat": {
-      return await handleChatInteraction({ messages, modelId, apiKey, userId })
+      const { chat } = body
+      if (!chat) {
+        return NextResponse.json({ error: "Missing 'chat' object in request body." }, { status: 400 })
+      }
+      return await handleChat(userId, apiKey, messages, chat)
     }
     case "agent": {
-      return await handleAgentInteraction({ messages, config, apiKey, userId })
+      const { agent } = body
+      if (!agent) {
+        return NextResponse.json({ error: "Missing 'agent' object in request body." }, { status: 400 })
+      }
+      return await handleAgent(userId, apiKey, messages, agent)
     }
     default:
       console.error(`[API /chat] Unknown 'interactionType': ${interactionType}`)

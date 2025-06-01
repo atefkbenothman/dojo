@@ -2,38 +2,27 @@ import { getModelInstance } from "../../ai/get-model.js"
 import { streamAiResponse } from "../../ai/stream-response.js"
 import type { Context } from "../context.js"
 import { protectedProcedure, router } from "../trpc.js"
-import { AI_MODELS, CoreMessageSchema } from "@dojo/config"
+import { AgentConfigSchema, CoreMessageSchema } from "@dojo/config"
 import { tryCatch } from "@dojo/utils"
 import { TRPCError } from "@trpc/server"
 import { type LanguageModel, type ToolSet, type CoreMessage } from "ai"
 import "dotenv/config"
 import { z } from "zod"
 
-const chatInputSchema = z.object({
+const agentInputSchema = z.object({
   messages: z.array(CoreMessageSchema).min(1, { message: "Missing or invalid messages array" }),
-  modelId: z.string().min(1, { message: "Missing modelId" }),
-  apiKey: z.string().optional(),
+  apiKey: z.string(),
+  config: AgentConfigSchema,
 })
 
-export const chatRouter = router({
-  sendMessage: protectedProcedure
-    .input(chatInputSchema)
-    .mutation(async ({ input, ctx }: { input: z.infer<typeof chatInputSchema>; ctx: Context }) => {
-      const { messages, modelId, apiKey: providedApiKey } = input
+export const agentRouter = router({
+  run: protectedProcedure
+    .input(agentInputSchema)
+    .mutation(async ({ input, ctx }: { input: z.infer<typeof agentInputSchema>; ctx: Context }) => {
       const { userSession, res } = ctx
+      const { messages, config, apiKey } = input
 
-      let apiKey = providedApiKey
-
-      if (!apiKey && AI_MODELS[modelId]?.requiresApiKey === false) {
-        apiKey = process.env.GROQ_API_KEY_FALLBACK
-      }
-
-      if (!apiKey) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Missing API key.",
-        })
-      }
+      const modelId = config.aiModelId
 
       const { data: aiModel, error: modelError } = tryCatch(getModelInstance(modelId, apiKey) as LanguageModel)
       if (modelError) {
@@ -46,9 +35,7 @@ export const chatRouter = router({
         })
       }
 
-      console.log(
-        `[TRPC /chat.sendMessage] request received for userId: ${userSession!.userId}, using model: ${modelId}`,
-      )
+      console.log(`[TRPC /agent.run] request received for userId: ${userSession!.userId}, using model: ${modelId}`)
 
       const combinedTools: ToolSet = {}
       if (userSession!.activeMcpClients) {
@@ -59,7 +46,7 @@ export const chatRouter = router({
       }
 
       console.log(
-        `[TRPC /chat.sendMessage]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userSession!.userId}`,
+        `[TRPC /agent.run]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userSession!.userId}`,
       )
 
       await streamAiResponse({
@@ -76,5 +63,3 @@ export const chatRouter = router({
       return new Promise(() => {})
     }),
 })
-
-export type ChatRouter = typeof chatRouter

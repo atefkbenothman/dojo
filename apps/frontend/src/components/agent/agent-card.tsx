@@ -4,25 +4,24 @@ import { AgentDialog } from "@/components/agent/agent-dialog"
 import { AgentMCPServersPopover } from "@/components/agent/mcp-servers-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAgentProvider } from "@/hooks/use-agent"
 import { cn } from "@/lib/utils"
 import { AgentConfig } from "@dojo/config"
 import { Settings } from "lucide-react"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 
 interface AgentCardProps {
   agent: AgentConfig
 }
 
 export function AgentCard({ agent }: AgentCardProps) {
+  const { runAgent } = useAgentProvider()
+
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
 
-  const handleRun = () => {
-    console.log("Run agent:", agent.name)
-  }
-
-  // const handleStop = () => {
-  //   console.log("Stop agent:", agent.name)
-  // }
+  const handleRun = useCallback(() => {
+    runAgent(agent.id)
+  }, [runAgent, agent.id])
 
   return (
     <>

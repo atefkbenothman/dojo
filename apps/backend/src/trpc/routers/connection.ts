@@ -1,10 +1,18 @@
 import { establishMcpConnection, cleanupExistingConnection } from "../../mcp-connection.js"
 import type { Context } from "../context.js"
-import { connectInputSchema, disconnectInputSchema } from "../schemas.js"
 import { router, protectedProcedure } from "../trpc.js"
+import { MCPServerSchema } from "@dojo/config"
 import { asyncTryCatch } from "@dojo/utils"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
+
+const connectInputSchema = z.object({
+  servers: z.array(MCPServerSchema).min(1),
+})
+
+const disconnectInputSchema = z.object({
+  serverId: z.string().min(1),
+})
 
 export const connectionRouter = router({
   connect: protectedProcedure
