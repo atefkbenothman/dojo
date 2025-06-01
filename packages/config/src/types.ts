@@ -32,14 +32,23 @@ export const AIModelSchema = z.object({
 
 export type AIModel = z.infer<typeof AIModelSchema>
 
+export const TextOutputSchema = z.object({
+  type: z.literal("text"),
+  mcpServers: z.array(MCPServerSchema).optional(),
+})
+
+export const ObjectOutputSchema = z.object({
+  type: z.literal("object"),
+  objectJsonSchema: z.any(),
+})
+
 export const AgentConfigSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().optional(),
   systemPrompt: z.string(),
   aiModelId: z.string(),
-  context: z.string().optional(),
-  mcpServers: z.array(MCPServerSchema).optional(),
+  output: z.discriminatedUnion("type", [TextOutputSchema, ObjectOutputSchema]).default({ type: "text" }),
 })
 
 export type AgentConfig = z.infer<typeof AgentConfigSchema>
@@ -56,7 +65,6 @@ export const AgentInteractionSchema = z.object({
 
 export type AgentInteraction = z.infer<typeof AgentInteractionSchema>
 
-// Schema for the 'tool_calls' part of CoreMessage from 'ai' library
 const ToolCallSchema = z.object({
   id: z.string().optional(),
   type: z.literal("function"),
@@ -74,3 +82,20 @@ export const CoreMessageSchema = z.object({
   tool_call_id: z.string().optional(),
   name: z.string().optional(),
 })
+
+export const AgentWorkflowStepSchema = z.object({
+  id: z.string(),
+  agentConfigId: z.string(),
+})
+
+export type AgentWorkflowStep = z.infer<typeof AgentWorkflowStepSchema>
+
+export const AgentWorkflowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  prompt: z.string(),
+  steps: z.array(AgentWorkflowStepSchema),
+})
+
+export type AgentWorkflow = z.infer<typeof AgentWorkflowSchema>
