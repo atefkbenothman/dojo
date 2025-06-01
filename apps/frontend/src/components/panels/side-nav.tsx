@@ -72,7 +72,7 @@ export function SideNav() {
           })}
         </div>
         {/* User Dialog */}
-        <div className="flex w-full items-center justify-center mb-4 mt-auto">
+        <div className="flex w-full items-center border-t justify-center py-4">
           <div
             onClick={() => setUserDialogOpen(true)}
             onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
