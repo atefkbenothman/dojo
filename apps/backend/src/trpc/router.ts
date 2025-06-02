@@ -4,6 +4,7 @@ import { configRouter } from "./routers/config.js"
 import { connectionRouter } from "./routers/connection.js"
 import { healthRouter } from "./routers/health.js"
 import { imageRouter } from "./routers/image.js"
+import { workflowRouter } from "./routers/workflow.js"
 import { router } from "./trpc.js"
 
 export const appRouter = router({
@@ -13,6 +14,7 @@ export const appRouter = router({
   chat: chatRouter,
   image: imageRouter,
   agent: agentRouter,
+  workflow: workflowRouter,
 })
 
 export type AppRouter = typeof appRouter

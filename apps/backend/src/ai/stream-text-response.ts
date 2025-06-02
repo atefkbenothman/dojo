@@ -1,4 +1,4 @@
-import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel } from "ai"
+import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel, streamObject } from "ai"
 import { type Response } from "express"
 
 // Polyfill for Node.js if not available globally
@@ -10,14 +10,13 @@ interface StreamAiResponseOptions {
   languageModel: LanguageModel
   messages: CoreMessage[]
   tools: ToolSet
-  maxSteps?: number
 }
 
-export async function streamAiResponse(options: StreamAiResponseOptions): Promise<void> {
-  const { res, languageModel, messages, tools, maxSteps } = options
+export async function streamTextResponse(options: StreamAiResponseOptions): Promise<{ text: string }> {
+  const { res, languageModel, messages, tools } = options
 
   console.log(
-    `[AI] Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools. Max steps: ${maxSteps ?? "default"}`,
+    `[AI] Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools.`,
   )
 
   try {
@@ -25,7 +24,7 @@ export async function streamAiResponse(options: StreamAiResponseOptions): Promis
       model: languageModel,
       messages: messages,
       tools: tools,
-      maxSteps: maxSteps,
+      maxSteps: 10,
       experimental_transform: smoothStream({
         delayInMs: 5,
         chunking: "line",
@@ -40,28 +39,28 @@ export async function streamAiResponse(options: StreamAiResponseOptions): Promis
       },
     })
 
-    const responseStream = result.toDataStreamResponse()
+    const responseStream = result.toDataStream()
 
-    responseStream.headers.forEach((value, key) => {
-      res.setHeader(key, value)
-    })
-    res.status(responseStream.status)
-
-    if (responseStream.body) {
-      const reader = (responseStream.body as ReadableStream<Uint8Array>).getReader()
-      try {
-        while (true) {
-          const { done, value }: ReadableStreamReadResult<Uint8Array> = await reader.read()
-          if (done) {
-            break
-          }
-          res.write(value)
+    if (responseStream) {
+      const reader = responseStream.getReader()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
         }
-      } finally {
-        reader.releaseLock()
+        res.write(value)
       }
     }
-    res.end()
+
+    if (!res.writableEnded) {
+      res.end()
+    }
+
+    const finalText = await result.text
+    console.log("------------ ")
+    console.log("[stream-text-response] finalText", finalText)
+    console.log("------------ ")
+    return { text: finalText }
   } catch (error) {
     console.error("[AI] Error during AI stream processing:", error)
     if (!res.headersSent) {
@@ -71,5 +70,6 @@ export async function streamAiResponse(options: StreamAiResponseOptions): Promis
         res.end()
       }
     }
+    return { text: "" }
   }
 }

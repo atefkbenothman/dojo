@@ -1,5 +1,5 @@
 import { getModelInstance } from "../../ai/get-model.js"
-import { streamAiResponse } from "../../ai/stream-response.js"
+import { streamTextResponse } from "../../ai/stream-text-response.js"
 import type { Context } from "../context.js"
 import { protectedProcedure, router } from "../trpc.js"
 import { AI_MODELS, CoreMessageSchema } from "@dojo/config"
@@ -62,12 +62,11 @@ export const chatRouter = router({
         `[TRPC /chat.sendMessage]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userSession!.userId}`,
       )
 
-      await streamAiResponse({
+      await streamTextResponse({
         res,
         languageModel: aiModel,
         messages: messages as CoreMessage[],
         tools: combinedTools,
-        maxSteps: 10,
       })
 
       // After streamAiResponse has called res.end(),
