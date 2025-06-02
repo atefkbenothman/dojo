@@ -37,7 +37,7 @@ export function MCPCard({ server }: MCPCardProps) {
     <>
       <Card
         className={cn(
-          "relative h-[10rem] max-h-[10rem] w-full max-w-xs border flex flex-col overflow-hidden",
+          "relative h-[10rem] max-h-[10rem] w-full max-w-[16rem] border flex flex-col overflow-hidden",
           isConnected && "border-primary/80 bg-muted/50 border-2",
         )}
       >

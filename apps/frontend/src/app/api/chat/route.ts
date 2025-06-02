@@ -1,5 +1,5 @@
 import { env } from "@/env"
-import { type ChatInteraction, type AgentInteraction } from "@dojo/config"
+import { type ChatInteraction, type AgentInteraction, AgentWorkflow, AGENT_CONFIGS } from "@dojo/config"
 import { asyncTryCatch } from "@dojo/utils"
 import type { CoreMessage } from "ai"
 import { cookies } from "next/headers"
@@ -17,6 +17,7 @@ function buildProxyHeaders(headers: Headers) {
   return result
 }
 
+/* Chat */
 async function handleChat(userId: string, apiKey: string | undefined, messages: CoreMessage[], chat: ChatInteraction) {
   if (!messages || !chat.modelId) {
     return NextResponse.json({ error: "Missing 'messages' or 'modelId' for CHAT interaction." }, { status: 400 })
@@ -52,14 +53,15 @@ async function handleChat(userId: string, apiKey: string | undefined, messages: 
   })
 }
 
-async function handleAgent(userId: string, apiKey: string, messages: CoreMessage[], agent: AgentInteraction) {
-  if (!messages || !agent.agentConfig.aiModelId) {
+/* Agent */
+async function handleAgent(
+  userId: string,
+  apiKey: string | undefined,
+  messages: CoreMessage[],
+  agent: AgentInteraction & { schemaJson?: string },
+) {
+  if (!messages || !agent.modelId) {
     return NextResponse.json({ error: "Missing 'messages' or 'modelId' for AGENT interaction." }, { status: 400 })
-  }
-
-  if (!apiKey) {
-    console.error("[API /chat] API key is required for AGENT interaction.")
-    return NextResponse.json({ error: "API key is required for AGENT interaction." }, { status: 400 })
   }
 
   const { data, error } = await asyncTryCatch(
@@ -69,7 +71,13 @@ async function handleAgent(userId: string, apiKey: string, messages: CoreMessage
         "Content-Type": "application/json",
         ...(userId ? { "X-User-Id": userId } : {}),
       },
-      body: JSON.stringify({ messages, apiKey, config: agent.agentConfig }),
+      body: JSON.stringify({
+        messages,
+        apiKey: apiKey || undefined,
+        modelId: agent.modelId,
+        config: agent.agentConfig,
+        schemaJson: agent.schemaJson,
+      }),
     }),
   )
 
@@ -84,6 +92,40 @@ async function handleAgent(userId: string, apiKey: string, messages: CoreMessage
   }
 
   console.log(`[API /chat] Successfully initiated AGENT stream via AGENT service for user ${userId}`)
+
+  return new Response(data.body, {
+    status: data.status,
+    statusText: data.statusText,
+    headers: buildProxyHeaders(data.headers),
+  })
+}
+
+/* Workflow */
+const handleWorkflow = async (userId: string, apiKey: string, messages: CoreMessage[], workflow: AgentWorkflow) => {
+  console.log(`[API /chat] Received workflow: ${workflow}`)
+
+  if (!messages || !workflow.aiModelId) {
+    return NextResponse.json({ error: "Missing 'messages' or 'aiModelId' for WORKFLOW interaction." }, { status: 400 })
+  }
+
+  // Resolve agentConfigId to full AgentConfig objects
+  const steps = workflow.steps.map((step) => AGENT_CONFIGS[step.agentConfigId])
+
+  const { data, error } = await asyncTryCatch(
+    fetch(`${env.BACKEND_URL}/trpc/workflow.run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(userId ? { "X-User-Id": userId } : {}),
+      },
+      body: JSON.stringify({ steps, messages, modelId: workflow.aiModelId, apiKey: apiKey || undefined }),
+    }),
+  )
+
+  if (!data?.body || error) {
+    console.error(`[API Router /chat] WORKFLOW service backend responded with error: ${error}`)
+    return NextResponse.json({ error: `WORKFLOW service backend failed: ${error}` }, { status: 503 })
+  }
 
   return new Response(data.body, {
     status: data.status,
@@ -134,6 +176,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Missing 'agent' object in request body." }, { status: 400 })
       }
       return await handleAgent(userId, apiKey, messages, agent)
+    }
+    case "workflow": {
+      const { workflow } = body
+      if (!workflow) {
+        return NextResponse.json({ error: "Missing 'workflow' object in request body." }, { status: 400 })
+      }
+      return await handleWorkflow(userId, apiKey, messages, workflow)
     }
     default:
       console.error(`[API /chat] Unknown 'interactionType': ${interactionType}`)

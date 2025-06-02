@@ -14,7 +14,7 @@ export function AddAgentCard() {
   return (
     <>
       <Card
-        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-xs cursor-pointer border border-dashed border-2 transition-colors"
+        className="hover:border-primary/80 hover:bg-muted/50 relative h-[10rem] max-h-[10rem] w-full max-w-[16rem] cursor-pointer border border-dashed border-2 transition-colors"
         onMouseDown={() => {
           play("./sounds/click.mp3", { volume: 0.5 })
         }}

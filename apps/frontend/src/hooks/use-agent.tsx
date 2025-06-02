@@ -16,7 +16,7 @@ function useAgentContext(agents: Record<string, AgentConfig>) {
   const { connect } = useMCPContext()
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
-  const { setSelectedModelId } = useModelContext()
+  const { selectedModel, setSelectedModelId } = useModelContext()
 
   const loadAgentsFromStorage = useCallback((): Record<string, AgentConfig> => {
     if (typeof window === "undefined") return {}
@@ -62,11 +62,6 @@ function useAgentContext(agents: Record<string, AgentConfig>) {
       if (!agent) {
         throw new Error(`Agent with id ${agentId} not found`)
       }
-      const model = AI_MODELS[agent.aiModelId]
-      if (!model) {
-        throw new Error(`Model with id ${agent.aiModelId} not found`)
-      }
-      setSelectedModelId(agent.aiModelId)
       setMessages((prev) => [
         ...prev,
         {
@@ -75,26 +70,31 @@ function useAgentContext(agents: Record<string, AgentConfig>) {
           content: `Starting agent ${agent.name}`,
         },
       ])
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nanoid(),
-          role: "assistant",
-          content: "Connecting to MCP servers",
-        },
-      ])
-      // connect to mcp servers first
-      if (agent.mcpServers) {
-        await connect(agent.mcpServers)
+      if (agent.output.type === "text") {
+        if (agent.output.mcpServers) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nanoid(),
+              role: "assistant",
+              content: "Connecting to MCP servers",
+            },
+          ])
+          await connect(agent.output.mcpServers)
+        }
       }
-      const apiKey = getApiKeyForModel(model)
+      const apiKey = getApiKeyForModel(selectedModel)
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
         content: agent.systemPrompt,
       }
-      const agentBody: AgentInteraction = {
+      const agentBody: AgentInteraction & { schemaJson?: string } = {
+        modelId: selectedModel.id,
         agentConfig: agent,
+      }
+      if (agent.output.type === "object") {
+        agentBody.schemaJson = JSON.stringify(agent.output.objectJsonSchema)
       }
       append(userMessage, {
         body: {

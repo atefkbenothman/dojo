@@ -4,7 +4,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { UserDialog } from "@/components/user-dialog"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import { House, Server, Bot, User } from "lucide-react"
+import { House, Server, Bot, User, Layers } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
@@ -24,6 +24,11 @@ const navigationItems = [
     href: "/agent",
     icon: Bot,
     label: "Agent",
+  },
+  {
+    href: "/workflow",
+    icon: Layers,
+    label: "Workflow",
   },
   // {
   //   href: "/files",

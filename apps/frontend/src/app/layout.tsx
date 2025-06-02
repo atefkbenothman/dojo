@@ -7,6 +7,7 @@ import { MCPProvider } from "@/hooks/use-mcp"
 import { ModelProvider } from "@/hooks/use-model"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
 import { UserProvider } from "@/hooks/use-user-id"
+import { WorkflowProvider } from "@/hooks/use-workflow"
 import { serverTrpc } from "@/lib/trpc/client"
 import { DojoTRPCProvider } from "@/lib/trpc/provider"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
@@ -82,11 +83,13 @@ export default async function RootLayout({
   let mcpServers: ConfigGetOutput["mcpServers"] = {}
   let agents: ConfigGetOutput["agents"] = {}
   let aiModels: ConfigGetOutput["aiModels"] = {}
+  let workflows: ConfigGetOutput["workflows"] = {}
 
   if (configData) {
     mcpServers = configData.mcpServers
     agents = configData.agents
     aiModels = configData.aiModels
+    workflows = configData.workflows
   }
 
   return (
@@ -108,7 +111,9 @@ export default async function RootLayout({
                     <AIChatProvider>
                       <AIImageProvider>
                         <AgentProvider agents={agents}>
-                          <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
+                          <WorkflowProvider workflows={workflows}>
+                            <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
+                          </WorkflowProvider>
                         </AgentProvider>
                       </AIImageProvider>
                     </AIChatProvider>

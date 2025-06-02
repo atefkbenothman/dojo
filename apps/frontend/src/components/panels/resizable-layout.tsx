@@ -54,7 +54,7 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
         <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
           <div className="flex h-full flex-col">
             <MainPanelHeader onChatPanelToggle={onChatPanelToggle} isCollapsed={isChatPanelCollapsed} />
-            <div className="flex-1 overflow-auto p-4">{children}</div>
+            <div className="flex-1 overflow-auto min-w-[500px]">{children}</div>
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle className={cn(isMaximized && "hidden")} />
