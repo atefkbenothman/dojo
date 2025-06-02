@@ -47,7 +47,6 @@ export const AgentConfigSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   systemPrompt: z.string(),
-  aiModelId: z.string(),
   output: z.discriminatedUnion("type", [TextOutputSchema, ObjectOutputSchema]).default({ type: "text" }),
 })
 
@@ -60,6 +59,7 @@ export const ChatInteractionSchema = z.object({
 export type ChatInteraction = z.infer<typeof ChatInteractionSchema>
 
 export const AgentInteractionSchema = z.object({
+  modelId: z.string(),
   agentConfig: AgentConfigSchema,
 })
 
@@ -95,6 +95,7 @@ export const AgentWorkflowSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   prompt: z.string(),
+  aiModelId: z.string(),
   steps: z.array(AgentWorkflowStepSchema),
 })
 

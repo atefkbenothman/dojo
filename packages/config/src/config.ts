@@ -145,7 +145,7 @@ export const CONFIGURED_MCP_SERVERS: Record<string, MCPServer> = {
     localOnly: true,
     config: {
       command: "npx",
-      args: ["-y", "@modelcontextprotocol/server-filesystem", "PATH_TO_DIRECTORY"],
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/kai/dev/sandbox"],
     },
   },
   figma: {
@@ -169,7 +169,6 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     name: "Code Wizard",
     systemPrompt:
       "You are an expert AI pair programmer. You specialize in Next.js, TypeScript, and Tailwind CSS. Adhere to the specified coding style and best practices. Assist with code generation, debugging, and explaining complex concepts.",
-    aiModelId: AI_MODELS["gemini-2.0-flash-001"]!.id,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.github!, CONFIGURED_MCP_SERVERS.filesystem!],
@@ -180,7 +179,6 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     name: "Code Wizard 2",
     systemPrompt:
       "You are an expert AI pair programmer. You specialize in Next.js, TypeScript, and Tailwind CSS. Adhere to the specified coding style and best practices. Assist with code generation, debugging, and explaining complex concepts.",
-    aiModelId: AI_MODELS["gemini-2.0-flash-001"]!.id,
     output: {
       type: "text",
       mcpServers: [
@@ -195,7 +193,6 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     name: "Research Pro",
     systemPrompt:
       "You are an AI research assistant. Your goal is to find and synthesize information from technical documentation and web sources. Provide concise and accurate answers with references.",
-    aiModelId: AI_MODELS["gemini-1.5-flash"]!.id,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.context7!],
@@ -206,7 +203,6 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     name: "Notion Organizer",
     systemPrompt:
       "You are an AI assistant for Notion. Help organize notes, manage tasks, and retrieve information from Notion workspaces.",
-    aiModelId: AI_MODELS["qwen-qwq-32b"]!.id,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.notion!],
@@ -217,7 +213,6 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     name: "Sports Event Analyst",
     systemPrompt:
       "You are an AI assistant that helps analyze data and code.\n1. Use the Ticketmaster tools to find all sport events in San Francisco happening between May 19, 2025 and May 27, 2025.\n2. Use the Supabase tools to create a new table in the database.\n3. Insert the data retrieved from the Ticketmaster API into the newly created Supabase table.\n4. Synthesize information from these sources to answer user queries comprehensively.\n5. If asked to modify files or database tables, always ask for confirmation first unless explicitly told to proceed.",
-    aiModelId: AI_MODELS["gemini-2.0-flash-001"]!.id,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.supabase!, CONFIGURED_MCP_SERVERS.ticketmaster!],
@@ -228,7 +223,6 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     name: "Planner Agent",
     systemPrompt:
       "You are an expert planning assistant. Analyze the user's request and formulate a detailed, step-by-step plan. The plan should be structured according to the provided schema.",
-    aiModelId: AI_MODELS["gemini-2.0-flash-001"]!.id,
     output: {
       type: "object",
       objectJsonSchema: PlannerAgentPlanJsonSchema,
@@ -237,8 +231,17 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
   "file-summary-001": {
     id: "file-summary-001",
     name: "File Summarizer",
-    systemPrompt: "Summarize the contents of the given file path in a concise paragraph.",
-    aiModelId: AI_MODELS["gemini-1.5-flash"]!.id,
+    systemPrompt: `You are a developer assistant with access to filesystem tools. You can read and write from/to files and directories. You have access to this directory: /Users/kai/dev/sandbox. Do not ask the user for a file path; use the one already given.
+
+      Summarize any given file for a developer audience, providing a deeper understanding. Your summary should:
+      - Give a high-level overview of the file's purpose and structure.
+      - Highlight key components (functions, classes, exports, configuration, etc.).
+      - Note any adherence to or deviation from best practices.
+      - Use a clear, bulleted list.
+      - Be direct and to the point.
+
+      Do not include unnecessary details. If the file is not code, adapt your summary to the file type.
+    `,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.filesystem!],
@@ -247,8 +250,7 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
   "doc-explainer-001": {
     id: "doc-explainer-001",
     name: "Doc Explainer",
-    systemPrompt: "Explain the main purpose of the provided documentation snippet.",
-    aiModelId: AI_MODELS["gemini-1.5-flash"]!.id,
+    systemPrompt: `You are an expert developer assistant. You can read the documentation of libraries and frameworks.`,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.context7!],
@@ -258,7 +260,6 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     id: "web-checker-001",
     name: "Web Checker",
     systemPrompt: "Visit the provided URL and return the page title and a short summary.",
-    aiModelId: AI_MODELS["gemini-2.0-flash-001"]!.id,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.playwright!],
@@ -271,14 +272,20 @@ export const AGENT_WORKFLOWS: Record<string, AgentWorkflow> = {
     id: "simple-file-to-doc-explanation",
     name: "File to Doc Explanation",
     description: "Summarize a file, then explain its documentation using chained agents.",
-    prompt: "Summarize the file at ./README.md and explain its main purpose.",
+    prompt:
+      "Summarize the stream-text.ts file and explain what it does. Then compare my code to the official documentation to see if there are room for any improvements",
+    aiModelId: AI_MODELS["gemini-1.5-flash"]!.id,
     steps: [
       {
-        id: "step-1-summarize-file",
+        id: "step-1-plan",
+        agentConfigId: "planner-agent-001",
+      },
+      {
+        id: "step-2-summarize-file",
         agentConfigId: "file-summary-001",
       },
       {
-        id: "step-2-explain-doc",
+        id: "step-3-explain-doc",
         agentConfigId: "doc-explainer-001",
       },
     ],
