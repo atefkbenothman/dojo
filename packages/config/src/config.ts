@@ -221,8 +221,10 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
   "planner-agent-001": {
     id: "planner-agent-001",
     name: "Planner Agent",
-    systemPrompt:
-      "You are an expert planning assistant. Analyze the user's request and formulate a detailed, step-by-step plan. The plan should be structured according to the provided schema.",
+    systemPrompt: `You are a planning agent. Your job is to break down the following user request into a step-by-step plan.
+    Output your plan as a numbered list of steps, each with a short description.
+    Do NOT perform any other actions.
+    `,
     output: {
       type: "object",
       objectJsonSchema: PlannerAgentPlanJsonSchema,
@@ -250,7 +252,9 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
   "doc-explainer-001": {
     id: "doc-explainer-001",
     name: "Doc Explainer",
-    systemPrompt: `You are an expert developer assistant. You can read the documentation of libraries and frameworks.`,
+    systemPrompt: `You are a documentation explainer agent. Your job is to read the provided input (which may be a file summary, code, or a question) and compare it to the official documentation of the relevant libraries and frameworks using the context7 MCP server.
+      Output a concise, actionable comparison or answer, and suggest specific improvements if any.
+      Do NOT perform any other actions.`,
     output: {
       type: "text",
       mcpServers: [CONFIGURED_MCP_SERVERS.context7!],
@@ -274,7 +278,7 @@ export const AGENT_WORKFLOWS: Record<string, AgentWorkflow> = {
     description: "Summarize a file, then explain its documentation using chained agents.",
     prompt:
       "Summarize the stream-text.ts file and explain what it does. Then compare my code to the official documentation to see if there are room for any improvements",
-    aiModelId: AI_MODELS["gemini-1.5-flash"]!.id,
+    aiModelId: AI_MODELS["gemini-2.0-flash-001"]!.id,
     steps: [
       {
         id: "step-1-plan",
