@@ -24,7 +24,7 @@ async function handleChat(userId: string, apiKey: string | undefined, messages: 
   }
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${env.BACKEND_URL}/trpc/chat.sendMessage`, {
+    fetch(`${env.BACKEND_URL}/api/chat/send-message`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -65,7 +65,7 @@ async function handleAgent(
   }
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${env.BACKEND_URL}/trpc/agent.run`, {
+    fetch(`${env.BACKEND_URL}/api/agent/run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -112,7 +112,7 @@ const handleWorkflow = async (userId: string, apiKey: string, messages: CoreMess
   const steps = workflow.steps.map((step) => AGENT_CONFIGS[step.agentConfigId])
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${env.BACKEND_URL}/trpc/workflow.run`, {
+    fetch(`${env.BACKEND_URL}/api/workflow/run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

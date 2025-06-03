@@ -16,7 +16,7 @@ function useAgentContext(agents: Record<string, AgentConfig>) {
   const { connect } = useMCPContext()
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
-  const { selectedModel, setSelectedModelId } = useModelContext()
+  const { selectedModel } = useModelContext()
 
   const loadAgentsFromStorage = useCallback((): Record<string, AgentConfig> => {
     if (typeof window === "undefined") return {}
@@ -83,18 +83,15 @@ function useAgentContext(agents: Record<string, AgentConfig>) {
           await connect(agent.output.mcpServers)
         }
       }
-      const apiKey = getApiKeyForModel(selectedModel)
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
         content: agent.systemPrompt,
       }
-      const agentBody: AgentInteraction & { schemaJson?: string } = {
+      const apiKey = getApiKeyForModel(selectedModel)
+      const agentBody: AgentInteraction = {
         modelId: selectedModel.id,
         agentConfig: agent,
-      }
-      if (agent.output.type === "object") {
-        agentBody.schemaJson = JSON.stringify(agent.output.objectJsonSchema)
       }
       append(userMessage, {
         body: {
@@ -105,7 +102,7 @@ function useAgentContext(agents: Record<string, AgentConfig>) {
       })
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [allAvailableAgents, connect, append],
+    [allAvailableAgents, connect, append, selectedModel],
   )
 
   return {

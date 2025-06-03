@@ -1,10 +1,6 @@
 import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel, streamObject } from "ai"
 import { type Response } from "express"
 
-// Polyfill for Node.js if not available globally
-// Remove this if your environment already has ReadableStreamReadResult
-type ReadableStreamReadResult<T> = { done: boolean; value?: T }
-
 interface StreamAiResponseOptions {
   res: Response
   languageModel: LanguageModel
@@ -12,8 +8,10 @@ interface StreamAiResponseOptions {
   tools: ToolSet
 }
 
-export async function streamTextResponse(options: StreamAiResponseOptions): Promise<{ text: string }> {
-  const { res, languageModel, messages, tools } = options
+export async function streamTextResponse(
+  options: StreamAiResponseOptions & { end?: boolean } = { end: true } as any,
+): Promise<{ text: string }> {
+  const { res, languageModel, messages, tools, end = true } = options
 
   console.log(
     `[AI] Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools.`,
@@ -30,7 +28,7 @@ export async function streamTextResponse(options: StreamAiResponseOptions): Prom
         chunking: "line",
       }),
       onError: (error) => {
-        console.error("[AI] Error during AI stream processing:", error)
+        console.error("[AI] Error during AI text stream processing:", error)
         if (!res.headersSent) {
           res.status(500).json({ message: "Error processing AI stream" })
         } else {
@@ -52,17 +50,14 @@ export async function streamTextResponse(options: StreamAiResponseOptions): Prom
       }
     }
 
-    if (!res.writableEnded) {
+    if (end && !res.writableEnded) {
       res.end()
     }
 
     const finalText = await result.text
-    console.log("------------ ")
-    console.log("[stream-text-response] finalText", finalText)
-    console.log("------------ ")
     return { text: finalText }
   } catch (error) {
-    console.error("[AI] Error during AI stream processing:", error)
+    console.error("[AI] Error during AI text stream processing:", error)
     if (!res.headersSent) {
       res.status(500).json({ message: "Error processing AI stream" })
     } else {

@@ -106,8 +106,8 @@ export default async function RootLayout({
           <DojoTRPCProvider>
             <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
               <SoundEffectProvider>
-                <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
-                  <ModelProvider aiModels={aiModels}>
+                <ModelProvider aiModels={aiModels}>
+                  <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
                     <AIChatProvider>
                       <AIImageProvider>
                         <AgentProvider agents={agents}>
@@ -117,8 +117,8 @@ export default async function RootLayout({
                         </AgentProvider>
                       </AIImageProvider>
                     </AIChatProvider>
-                  </ModelProvider>
-                </MCPProvider>
+                  </MCPProvider>
+                </ModelProvider>
               </SoundEffectProvider>
             </DarkModeProvider>
           </DojoTRPCProvider>

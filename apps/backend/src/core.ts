@@ -1,3 +1,6 @@
+import { agentRouter } from "./routes/agent.js"
+import { chatRouter } from "./routes/chat.js"
+import { workflowRouter } from "./routes/workflow.js"
 import { createTRPCContext } from "./trpc/context.js"
 import { appRouter } from "./trpc/router.js"
 import type { ActiveMcpClient, UserSession } from "./types.js"
@@ -26,6 +29,10 @@ app.use(
 )
 
 app.use(express.json({ limit: "10mb" }))
+
+app.use("/api/chat", chatRouter)
+app.use("/api/agent", agentRouter)
+app.use("/api/workflow", workflowRouter)
 
 app.use(
   "/trpc",
