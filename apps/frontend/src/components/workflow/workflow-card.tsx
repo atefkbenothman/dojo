@@ -2,23 +2,23 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useWorkflowProvider } from "@/hooks/use-workflow"
+import { useWorkflow } from "@/hooks/use-workflow"
 import { cn } from "@/lib/utils"
-import { AgentWorkflow } from "@dojo/config"
+import { Workflow } from "@dojo/db/convex/types"
 import { Settings } from "lucide-react"
 import { useState, useCallback } from "react"
 
 interface WorkflowCardProps {
-  workflow: AgentWorkflow
+  workflow: Workflow
 }
 
 export function WorkflowCard({ workflow }: WorkflowCardProps) {
-  const { runWorkflow } = useWorkflowProvider()
+  const { runWorkflow } = useWorkflow()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
 
   const handleRun = useCallback(() => {
-    runWorkflow(workflow.id)
+    runWorkflow(workflow)
   }, [workflow, runWorkflow])
 
   return (

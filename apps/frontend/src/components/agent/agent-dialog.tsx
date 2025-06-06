@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useAgentProvider } from "@/hooks/use-agent"
-import { useMCPContext } from "@/hooks/use-mcp"
-import { useModelContext } from "@/hooks/use-model"
+import { useAgent } from "@/hooks/use-agent"
+import { useAIModels } from "@/hooks/use-ai-models"
+import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
-import type { AgentConfig } from "@dojo/config"
+import { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { nanoid } from "nanoid"
 import { useMemo } from "react"
@@ -26,132 +26,106 @@ const agentFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   systemPrompt: z.string().min(1, "System prompt is required"),
-  output: z.discriminatedUnion("type", [
-    z.object({
-      type: z.literal("text"),
-      mcpServers: z.array(z.string()).optional(),
-    }),
-    z.object({
-      type: z.literal("object"),
-      objectJsonSchema: z.string(),
-    }),
-  ]),
+  type: z.enum(["text", "object"]),
+  mcpServers: z.array(z.string()).optional(),
 })
 
 type AgentFormValues = z.infer<typeof agentFormSchema>
 
 export interface AgentDialogProps {
   mode: "add" | "edit"
-  agent?: AgentConfig
+  agent?: Agent
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
 export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProps) {
   const { play } = useSoundEffectContext()
-  const { selectedModel } = useModelContext()
-  const { allAvailableServers } = useMCPContext()
+  const { selectedModel } = useAIModels()
+  const { mcpServers } = useMCP()
 
-  const { saveAgentToAvailableAgents, removeAgentFromAvailableAgents } = useAgentProvider()
+  // const { saveAgentToAvailableAgents, removeAgentFromAvailableAgents } = useAgent()
 
   const formValues = useMemo((): AgentFormValues => {
     if (!agent) {
       return {
         name: "",
         systemPrompt: "",
-        description: "",
-        output: {
-          type: "text",
-          mcpServers: [],
-        },
+        type: "text",
+        mcpServers: [],
       }
     }
-    if (agent.output.type === "text") {
-      return {
-        name: agent.name || "",
-        systemPrompt: agent.systemPrompt || "",
-        description: agent.description || "",
-        output: {
-          type: "text",
-          mcpServers: agent.output.mcpServers?.map((s) => s.id) || [],
-        },
-      }
-    } else {
-      return {
-        name: agent.name || "",
-        systemPrompt: agent.systemPrompt || "",
-        description: agent.description || "",
-        output: {
-          type: "object",
-          objectJsonSchema: JSON.stringify(agent.output.objectJsonSchema, null, 2),
-        },
-      }
+    return {
+      name: agent.name || "",
+      systemPrompt: agent.systemPrompt || "",
+      type: (agent.outputType as "text" | "object") || "text",
+      mcpServers: agent.mcpServers || [],
     }
-  }, [agent, selectedModel])
+  }, [agent])
 
   const form = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
     values: formValues,
   })
 
-  const createAgentFromForm = (data: AgentFormValues): AgentConfig => {
-    if (data.output.type === "text") {
-      const mcpServers = (data.output.mcpServers || [])
-        .map((id) => allAvailableServers[id])
-        .filter((s): s is NonNullable<typeof s> => Boolean(s))
-      return {
-        id: agent?.id || nanoid(),
-        name: data.name,
-        description: data.description,
-        systemPrompt: data.systemPrompt,
-        output: {
-          type: "text",
-          ...(mcpServers.length > 0 ? { mcpServers } : {}),
-        },
-      }
-    } else {
-      let parsedSchema: any
-      try {
-        parsedSchema = JSON.parse(data.output.objectJsonSchema)
-      } catch {
-        parsedSchema = {}
-      }
-      return {
-        id: agent?.id || nanoid(),
-        name: data.name,
-        description: data.description,
-        systemPrompt: data.systemPrompt,
-        output: {
-          type: "object",
-          objectJsonSchema: parsedSchema,
-        },
-      }
-    }
-  }
+  // const createAgentFromForm = (data: AgentFormValues): AgentConfig => {
+  //   // if (data.output.type === "text") {
+  //   //   const mcpServers = (data.output.mcpServers || [])
+  //   //     .map((id) => allAvailableServers[id])
+  //   //     .filter((s): s is NonNullable<typeof s> => Boolean(s))
+  //   //   return {
+  //   //     id: agent?.id || nanoid(),
+  //   //     name: data.name,
+  //   //     description: data.description,
+  //   //     systemPrompt: data.systemPrompt,
+  //   //     output: {
+  //   //       type: "text",
+  //   //       ...(mcpServers.length > 0 ? { mcpServers } : {}),
+  //   //     },
+  //   //   }
+  //   // } else {
+  //   //   let parsedSchema: any
+  //   //   try {
+  //   //     parsedSchema = JSON.parse(data.output.objectJsonSchema)
+  //   //   } catch {
+  //   //     parsedSchema = {}
+  //   //   }
+  //   //   return {
+  //   //     id: agent?.id || nanoid(),
+  //   //     name: data.name,
+  //   //     description: data.description,
+  //   //     systemPrompt: data.systemPrompt,
+  //   //     output: {
+  //   //       type: "object",
+  //   //       objectJsonSchema: parsedSchema,
+  //   //     },
+  //   //   }
+  //   // }
+  // }
 
   function handleSave(data: AgentFormValues) {
-    const newOrUpdatedAgent = createAgentFromForm(data)
-    saveAgentToAvailableAgents(newOrUpdatedAgent)
-    toast.success(`${newOrUpdatedAgent.name} agent ${mode === "add" ? "added to" : "saved to"} localstorage`, {
-      icon: null,
-      duration: 5000,
-      position: "bottom-center",
-      style: successToastStyle,
-    })
-    setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
-    onOpenChange(false)
+    // const newOrUpdatedAgent = createAgentFromForm(data)
+    // saveAgentToAvailableAgents(newOrUpdatedAgent)
+    // toast.success(`${newOrUpdatedAgent.name} agent ${mode === "add" ? "added to" : "saved to"} localstorage`, {
+    //   icon: null,
+    //   duration: 5000,
+    //   position: "bottom-center",
+    //   style: successToastStyle,
+    // })
+    // setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
+    // onOpenChange(false)
   }
 
   function handleDelete() {
-    if (agent?.id) removeAgentFromAvailableAgents(agent.id)
-    toast.error(`${agent?.name} agent deleted from localstorage`, {
-      icon: null,
-      duration: 5000,
-      position: "bottom-center",
-      style: errorToastStyle,
-    })
-    setTimeout(() => play("./sounds/delete.mp3", { volume: 0.5 }), 100)
-    onOpenChange(false)
+    // if (agent?.id) removeAgentFromAvailableAgents(agent.id)
+    // toast.error(`${agent?.name} agent deleted from localstorage`, {
+    //   icon: null,
+    //   duration: 5000,
+    //   position: "bottom-center",
+    //   style: errorToastStyle,
+    // })
+    // setTimeout(() => play("./sounds/delete.mp3", { volume: 0.5 }), 100)
+    // onOpenChange(false)
   }
 
   return (
@@ -206,7 +180,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
               />
               <FormField
                 control={form.control}
-                name="output.type"
+                name="type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Output Type</FormLabel>
@@ -227,10 +201,10 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                   </FormItem>
                 )}
               />
-              {form.watch("output.type") === "text" && (
+              {form.watch("type") === "text" && (
                 <FormField
                   control={form.control}
-                  name="output.mcpServers"
+                  name="mcpServers"
                   render={({ field }) => (
                     <FormItem>
                       <Accordion type="single" collapsible className="w-full">
@@ -243,31 +217,31 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                           <AccordionContent>
                             <div className="space-y-3">
                               <div className="bg-muted/40 grid gap-3 p-4 sm:grid-cols-2">
-                                {Object.values(allAvailableServers).map((server) => {
-                                  const checked = field.value?.some((s) => s === server.id)
+                                {Object.values(mcpServers).map((server) => {
+                                  const checked = field.value?.some((s) => s === server._id)
                                   return (
                                     <div
-                                      key={server.id}
+                                      key={server._id}
                                       className={
                                         `flex items-center space-x-3 border p-3` +
                                         (checked ? " bg-primary/5 border-primary/30" : "")
                                       }
                                     >
                                       <Checkbox
-                                        id={`service-${server.id}`}
+                                        id={`service-${server._id}`}
                                         checked={checked}
                                         onCheckedChange={(isChecked) => {
                                           if (isChecked) {
-                                            field.onChange([...(field.value || []), server.id])
+                                            field.onChange([...(field.value || []), server._id])
                                           } else {
-                                            field.onChange((field.value || []).filter((s) => s !== server.id))
+                                            field.onChange((field.value || []).filter((s) => s !== server._id))
                                           }
                                         }}
                                         className="rounded-none hover:cursor-pointer"
                                       />
                                       <div className="flex flex-1 items-center gap-2">
                                         <Label
-                                          htmlFor={`service-${server.id}`}
+                                          htmlFor={`service-${server._id}`}
                                           className="hover:cursor-pointer font-normal"
                                           onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
                                         >
@@ -282,21 +256,6 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-              {form.watch("output.type") === "object" && (
-                <FormField
-                  control={form.control}
-                  name="output.objectJsonSchema"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-primary/80 text-xs">Object Schema</FormLabel>
-                      <FormControl>
-                        <Textarea className="h-32 font-mono text-xs" value={field.value} readOnly />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

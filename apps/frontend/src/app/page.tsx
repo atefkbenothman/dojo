@@ -4,7 +4,7 @@ import { DemoVideo } from "@/components/demo-video"
 
 export default async function Home() {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center">
+    <div className="flex h-full w-full flex-col items-center justify-center p-4">
       <p className="text-primary p-2 text-base font-medium max-w-2xl">
         Built on top of Vercel&apos;s AI SDK, <strong>Dojo</strong> aims to help both developers and non-developers
         easily configure and chain-together ai agents to solve complex tasks.

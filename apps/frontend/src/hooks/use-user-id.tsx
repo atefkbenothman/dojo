@@ -6,13 +6,19 @@ import { v4 as uuidv4 } from "uuid"
 
 const USER_ID_STORAGE_KEY = "dojo-user-id"
 
-const UserContext = createContext<string | undefined>(undefined)
+interface UserContextValue {
+  userId: string
+  backendHealth: "unknown" | "healthy" | "unhealthy"
+}
+
+const UserContext = createContext<UserContextValue | undefined>(undefined)
 
 interface UserProviderProps {
   children: ReactNode
+  backendHealth?: "unknown" | "healthy" | "unhealthy"
 }
 
-export function UserProvider({ children }: UserProviderProps) {
+export function UserProvider({ children, backendHealth = "unknown" }: UserProviderProps) {
   const { readStorage, writeStorage } = useLocalStorage()
   const [userId, setUserId] = useState<string | undefined>(undefined)
 
@@ -28,10 +34,10 @@ export function UserProvider({ children }: UserProviderProps) {
 
   if (!userId) return null
 
-  return <UserContext.Provider value={userId}>{children}</UserContext.Provider>
+  return <UserContext.Provider value={{ userId, backendHealth }}>{children}</UserContext.Provider>
 }
 
-export function useUserContext(): string {
+export function useUserContext(): UserContextValue {
   const context = useContext(UserContext)
   if (context === undefined) {
     throw new Error("useUserContext must be used within a UserProvider")

@@ -2,36 +2,32 @@
 
 import { Input } from "@/components/ui/input"
 import { WorkflowCard } from "@/components/workflow/workflow-card"
-import { useWorkflowProvider } from "@/hooks/use-workflow"
-import type { AgentWorkflow } from "@dojo/config"
+import { useWorkflow } from "@/hooks/use-workflow"
+import { Workflow as WorkflowType } from "@dojo/db/convex/types"
 import { useEffect, useState } from "react"
 
 export function Workflow() {
-  const { allAvailableWorkflows } = useWorkflowProvider()
+  const { workflows } = useWorkflow()
 
   const [searchInput, setSearchInput] = useState<string>("")
-  const [filteredWorkflows, setFilteredWorkflows] = useState<Record<string, AgentWorkflow>>(allAvailableWorkflows)
+  const [filteredWorkflows, setFilteredWorkflows] = useState<WorkflowType[]>(workflows)
 
   useEffect(() => {
     const filtered =
       searchInput === ""
-        ? allAvailableWorkflows
-        : Object.fromEntries(
-            Object.entries(allAvailableWorkflows).filter(([, workflow]) =>
-              workflow.name.toLowerCase().startsWith(searchInput.toLowerCase()),
-            ),
-          )
+        ? workflows
+        : workflows.filter((workflow) => workflow.name.toLowerCase().includes(searchInput.toLowerCase()))
     setFilteredWorkflows(filtered)
-  }, [searchInput, allAvailableWorkflows])
+  }, [searchInput, workflows])
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-4 border-b p-4 sticky top-0 z-30 bg-card">
+    <div className="flex flex-col p-4">
+      <div className="flex flex-col gap-4 sticky top-0 z-30 bg-background">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">Workflows</p>
-          <p className="text-xs text-muted-foreground">create and run custom workflows</p>
+          <p className="text-xs text-muted-foreground">build and run custom workflows</p>
         </div>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center border-b pb-4 md:border-0 md:pb-0 md:mx-0 md:px-0 -mx-4 px-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <Input
             placeholder="Search"
             className="ring-none bg-input/30 h-10 resize-none border-border focus-visible:ring-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border w-[16rem] text-xs"
@@ -40,9 +36,9 @@ export function Workflow() {
           />
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 p-4">
-        {Object.entries(filteredWorkflows).map(([key, workflow]) => (
-          <WorkflowCard key={key} workflow={workflow} />
+      <div className="flex flex-row flex-wrap gap-4 py-4">
+        {filteredWorkflows.map((workflow) => (
+          <WorkflowCard key={workflow._id} workflow={workflow} />
         ))}
       </div>
     </div>

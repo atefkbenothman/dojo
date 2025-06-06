@@ -1,11 +1,9 @@
 "use client"
 
-import { useModelContext } from "@/hooks/use-model"
+import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { DEFAULT_ASSISTANT_MESSAGE, SYSTEM_PROMPT } from "@/lib/ai/constants"
-import { getApiKeyForModel } from "@/lib/utils"
+import { DEFAULT_ASSISTANT_MESSAGE, SYSTEM_PROMPT } from "@/lib/constants"
 import { useChat, Message } from "@ai-sdk/react"
-import { ChatInteraction } from "@dojo/config"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
 import { useState, createContext, useContext, useCallback } from "react"
@@ -25,7 +23,7 @@ const initialMessages: Message[] = [
 
 export function useAIChat() {
   const { play } = useSoundEffectContext()
-  const { selectedModel } = useModelContext()
+  const { selectedModel, getApiKeyForModel } = useAIModels()
 
   const [context, setContext] = useState<string>("")
   const [chatError, setChatError] = useState<string | null>(null)
@@ -54,7 +52,15 @@ export function useAIChat() {
       const prompt = message.trim()
       if (!prompt) return
 
-      const apiKey = getApiKeyForModel(selectedModel)
+      if (!selectedModel) return
+
+      const apiKey = getApiKeyForModel(selectedModel._id)
+
+      if (!apiKey && selectedModel?.requiresApiKey) {
+        setChatError(`API key for ${selectedModel?.modelId} is not configured.`)
+        play("./sounds/error.mp3", { volume: 0.5 })
+        return
+      }
 
       const userMessage: Message = {
         id: nanoid(),
@@ -62,19 +68,17 @@ export function useAIChat() {
         content: prompt,
       }
 
-      const chatBody: ChatInteraction = {
-        modelId: selectedModel.id,
-      }
-
       await append(userMessage, {
         body: {
           interactionType: "chat",
           apiKey,
-          chat: chatBody,
+          chat: {
+            modelId: selectedModel._id,
+          },
         },
       })
     },
-    [status, selectedModel, append, play],
+    [status, selectedModel, append, play, getApiKeyForModel],
   )
 
   const handleNewChat = useCallback(() => {

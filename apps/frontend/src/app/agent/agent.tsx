@@ -3,36 +3,32 @@
 import { AddAgentCard } from "@/components/agent/add-agent-card"
 import { AgentCard } from "@/components/agent/agent-card"
 import { Input } from "@/components/ui/input"
-import { useAgentProvider } from "@/hooks/use-agent"
-import type { AgentConfig } from "@dojo/config"
+import { useAgent } from "@/hooks/use-agent"
+import type { Agent } from "@dojo/db/convex/types"
 import { useEffect, useState } from "react"
 
 export function Agent() {
-  const { allAvailableAgents } = useAgentProvider()
+  const { agents } = useAgent()
 
   const [searchInput, setSearchInput] = useState<string>("")
-  const [filteredAgents, setFilteredAgents] = useState<Record<string, AgentConfig>>(allAvailableAgents)
+  const [filteredAgents, setFilteredAgents] = useState<Agent[]>(agents)
 
   useEffect(() => {
     const filtered =
       searchInput === ""
-        ? allAvailableAgents
-        : Object.fromEntries(
-            Object.entries(allAvailableAgents).filter(([, agent]) =>
-              agent.name.toLowerCase().startsWith(searchInput.toLowerCase()),
-            ),
-          )
+        ? agents
+        : agents.filter((agent) => agent.name.toLowerCase().includes(searchInput.toLowerCase()))
     setFilteredAgents(filtered)
-  }, [searchInput, allAvailableAgents])
+  }, [searchInput, agents])
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-4 border-b p-4 sticky top-0 z-30 bg-card">
+    <div className="flex flex-col p-4">
+      <div className="flex flex-col gap-4 sticky top-0 z-30 bg-background">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">Agents</p>
           <p className="text-xs text-muted-foreground">create and run custom agents</p>
         </div>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center border-b pb-4 md:border-0 md:pb-0 md:mx-0 md:px-0 -mx-4 px-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <Input
             placeholder="Search"
             className="ring-none bg-input/30 h-10 resize-none border-border focus-visible:ring-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border w-[16rem] text-xs"
@@ -41,7 +37,7 @@ export function Agent() {
           />
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 p-4">
+      <div className="flex flex-row flex-wrap gap-4 py-4">
         <AddAgentCard />
         {Object.entries(filteredAgents).map(([key, agent]) => (
           <AgentCard key={key} agent={agent} />

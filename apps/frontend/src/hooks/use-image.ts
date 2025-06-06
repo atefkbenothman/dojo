@@ -1,22 +1,25 @@
 "use client"
 
+import { useAIModels } from "./use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useTRPCClient } from "@/lib/trpc/context"
-import { getApiKeyForModel } from "@/lib/utils"
+import { useImageStore } from "@/store/use-image-store"
 import type { RouterOutputs } from "@dojo/backend/src/types"
 import type { ImageGenerationInput } from "@dojo/backend/src/types"
-import type { AIModel } from "@dojo/config"
+import { AIModel } from "@dojo/db/convex/types"
 import { useMutation } from "@tanstack/react-query"
 import { nanoid } from "nanoid"
-import { createContext, useContext, useState, useCallback } from "react"
+import { useCallback } from "react"
 
-function useImage() {
+export function useImage() {
   const trpcClient = useTRPCClient()
+
+  const { setIsImageGenerating } = useImageStore()
+
   const { play } = useSoundEffectContext()
   const { setChatError, setMessages } = useChatProvider()
-
-  const [isImageGenerating, setIsImageGenerating] = useState(false)
+  const { getApiKeyForModel } = useAIModels()
 
   const imageGenerationMutationFn = useCallback(
     function imageGenerationMutationFn(data: ImageGenerationInput) {
@@ -78,7 +81,7 @@ function useImage() {
           content: prompt,
         },
       ])
-      const apiKey = getApiKeyForModel(selectedModel)
+      const apiKey = getApiKeyForModel(selectedModel._id)
       if (!apiKey) {
         setChatError(`API key for ${selectedModel.name} is not configured.`)
         play("./sounds/error.mp3", { volume: 0.5 })
@@ -86,38 +89,13 @@ function useImage() {
       }
       setIsImageGenerating(true)
       mutation.mutate({
-        modelId: selectedModel.id,
+        modelId: selectedModel._id,
         prompt,
         apiKey,
       })
     },
-    [setMessages, setChatError, play, mutation],
+    [setMessages, setChatError, play, mutation, getApiKeyForModel, setIsImageGenerating],
   )
 
-  return {
-    imageMutation: mutation,
-    handleImageGeneration,
-    isImageGenerating,
-  }
-}
-
-type AIImageContextType = ReturnType<typeof useImage>
-
-const AIImageContext = createContext<AIImageContextType | undefined>(undefined)
-
-type AIImageProviderProps = {
-  children: React.ReactNode
-}
-
-export function useImageProvider() {
-  const context = useContext(AIImageContext)
-  if (!context) {
-    throw new Error("useImageProvider must be used within an AIImageProvider")
-  }
-  return context
-}
-
-export function AIImageProvider({ children }: AIImageProviderProps) {
-  const imageState = useImage()
-  return <AIImageContext.Provider value={imageState}>{children}</AIImageContext.Provider>
+  return { handleImageGeneration }
 }

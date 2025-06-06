@@ -1,17 +1,12 @@
 import "./globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
-import { AgentProvider } from "@/hooks/use-agent"
 import { AIChatProvider } from "@/hooks/use-chat"
-import { AIImageProvider } from "@/hooks/use-image"
-import { MCPProvider } from "@/hooks/use-mcp"
-import { ModelProvider } from "@/hooks/use-model"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
 import { UserProvider } from "@/hooks/use-user-id"
-import { WorkflowProvider } from "@/hooks/use-workflow"
 import { serverTrpc } from "@/lib/trpc/client"
 import { DojoTRPCProvider } from "@/lib/trpc/provider"
+import { ConvexClientProvider } from "@/providers/convex-client-provider"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
-import type { ConfigGetOutput } from "@dojo/backend/src/types.js"
 import { asyncTryCatch } from "@dojo/utils"
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next"
@@ -74,23 +69,7 @@ export default async function RootLayout({
 
   // get server health
   const { data: healthData } = await asyncTryCatch(serverTrpc.health.get.query())
-
   const isServerHealthy = healthData?.status === "ok"
-
-  // get config
-  const { data: configData } = await asyncTryCatch(serverTrpc.config.get.query())
-
-  let mcpServers: ConfigGetOutput["mcpServers"] = {}
-  let agents: ConfigGetOutput["agents"] = {}
-  let aiModels: ConfigGetOutput["aiModels"] = {}
-  let workflows: ConfigGetOutput["workflows"] = {}
-
-  if (configData) {
-    mcpServers = configData.mcpServers
-    agents = configData.agents
-    aiModels = configData.aiModels
-    workflows = configData.workflows
-  }
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -102,27 +81,19 @@ export default async function RootLayout({
         />
       </head>
       <body className={`antialiased ${inter.className}`}>
-        <UserProvider>
-          <DojoTRPCProvider>
+        <ConvexClientProvider>
+          <UserProvider backendHealth={isServerHealthy ? "healthy" : "unhealthy"}>
             <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
               <SoundEffectProvider>
-                <ModelProvider aiModels={aiModels}>
-                  <MCPProvider mcpServers={mcpServers} isServerHealthy={isServerHealthy}>
-                    <AIChatProvider>
-                      <AIImageProvider>
-                        <AgentProvider agents={agents}>
-                          <WorkflowProvider workflows={workflows}>
-                            <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
-                          </WorkflowProvider>
-                        </AgentProvider>
-                      </AIImageProvider>
-                    </AIChatProvider>
-                  </MCPProvider>
-                </ModelProvider>
+                <DojoTRPCProvider>
+                  <AIChatProvider>
+                    <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
+                  </AIChatProvider>
+                </DojoTRPCProvider>
               </SoundEffectProvider>
             </DarkModeProvider>
-          </DojoTRPCProvider>
-        </UserProvider>
+          </UserProvider>
+        </ConvexClientProvider>
         <Toaster toastOptions={{ style: { borderRadius: "var(--radius-sm)" } }} />
         <Analytics />
       </body>

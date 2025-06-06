@@ -2,14 +2,14 @@
 
 import { ChatFooter } from "@/components/chat/chat-footer"
 import { Messages } from "@/components/chat/messages"
-import { useMCPContext } from "@/hooks/use-mcp"
+import { useUserContext } from "@/hooks/use-user-id"
 import { useRef } from "react"
 
 export function Chat() {
-  const { isServerHealthy } = useMCPContext()
+  const { backendHealth } = useUserContext()
   const scrollRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>
 
-  if (!isServerHealthy) {
+  if (backendHealth === "unhealthy") {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">Server is offline</p>

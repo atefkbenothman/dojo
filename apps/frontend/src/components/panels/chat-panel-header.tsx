@@ -2,12 +2,12 @@
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { useMCPContext } from "@/hooks/use-mcp"
+import { useMCP } from "@/hooks/use-mcp"
 import { MessageSquare, Server, Maximize, Minimize, Plus } from "lucide-react"
 import { memo } from "react"
 
 function MCPServersPopover() {
-  const { activeConnections } = useMCPContext()
+  const { activeConnections } = useMCP()
 
   return (
     <Popover>

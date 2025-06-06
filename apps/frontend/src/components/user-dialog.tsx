@@ -5,59 +5,36 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { env } from "@/env"
+import { useAIModels } from "@/hooks/use-ai-models"
 import { useLocalStorage } from "@/hooks/use-local-storage"
-import { useModelContext } from "@/hooks/use-model"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUserContext } from "@/hooks/use-user-id"
 import { successToastStyle } from "@/lib/styles"
-import type { ProviderId } from "@dojo/config"
-import { useEffect, useMemo, useState, Dispatch, SetStateAction } from "react"
+import { Dispatch, SetStateAction, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 function ApiKeyManager() {
   const { play } = useSoundEffectContext()
-  const { models } = useModelContext()
-  const { readStorage, writeStorage, removeStorage } = useLocalStorage()
+  const { providers, getApiKeyForProvider } = useAIModels()
+  const { writeStorage, removeStorage } = useLocalStorage()
 
-  const [apiKeys, setApiKeys] = useState<Record<ProviderId, string>>({} as Record<ProviderId, string>)
-
-  const providers = useMemo(() => {
-    const uniqueProviders = new Set<ProviderId>()
-    models.forEach((model) => uniqueProviders.add(model.provider))
-    return Array.from(uniqueProviders)
-  }, [models])
-
-  useEffect(() => {
-    const initialApiKeys: Record<ProviderId, string> = {} as Record<ProviderId, string>
+  const initialApiKeys = useMemo(() => {
+    const keys: Record<string, string> = {}
     providers.forEach((provider) => {
-      const localStorageKey = `${provider.toUpperCase()}_API_KEY`
-      const envJsKey = `NEXT_PUBLIC_${provider.toUpperCase()}_API_KEY` as keyof typeof env
-
-      let keyValue = readStorage<string>(localStorageKey)
-
-      if (!keyValue) {
-        const envValue = env[envJsKey as keyof typeof env]
-        if (typeof envValue === "string") {
-          keyValue = envValue
-        }
-      }
-
+      const keyValue = getApiKeyForProvider(provider.providerId)
       if (keyValue) {
-        initialApiKeys[provider] = keyValue
+        keys[provider.providerId] = keyValue
       }
     })
-    setApiKeys(initialApiKeys)
-  }, [providers, readStorage])
+    return keys
+  }, [providers, getApiKeyForProvider])
 
-  const handleApiKeyChange = (provider: ProviderId, value: string) => {
-    setApiKeys((prev) => ({ ...prev, [provider]: value }))
-  }
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>(initialApiKeys)
 
-  const handleSaveApiKey = (provider: ProviderId) => {
+  function handleApiKeySave(provider: string) {
     const keyToSave = apiKeys[provider]
+    const localStorageKey = `${provider.toUpperCase()}_API_KEY`
     if (keyToSave) {
-      const localStorageKey = `${provider.toUpperCase()}_API_KEY`
       writeStorage<string>(localStorageKey, keyToSave)
       toast.success(`${provider.toUpperCase()} API key saved to localstorage`, {
         icon: null,
@@ -70,7 +47,6 @@ function ApiKeyManager() {
         play("./sounds/save.mp3", { volume: 0.5 })
       }, 100)
     } else {
-      const localStorageKey = `${provider.toUpperCase()}_API_KEY`
       removeStorage(localStorageKey)
     }
   }
@@ -78,21 +54,21 @@ function ApiKeyManager() {
   return (
     <div className="space-y-6 py-4">
       {providers.map((provider) => (
-        <div key={provider} className="space-y-2">
-          <Label htmlFor={`api-key-${provider}`} className="capitalize">
-            {provider}
+        <div key={provider._id} className="space-y-2">
+          <Label htmlFor={`api-key-${provider._id}`} className="capitalize">
+            {provider.name}
           </Label>
           <div className="flex items-center gap-4">
             <Input
-              id={`api-key-${provider}`}
+              id={`api-key-${provider._id}`}
               type="password"
-              value={apiKeys[provider] || ""}
-              onChange={(e) => handleApiKeyChange(provider, e.target.value)}
-              placeholder={`Enter your ${provider} API key`}
+              value={apiKeys[provider.providerId] || ""}
+              onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.providerId]: e.target.value }))}
+              placeholder={`Enter your ${provider.name} API key`}
               className="flex-1 text-muted-foreground"
             />
             <Button
-              onClick={() => handleSaveApiKey(provider)}
+              onClick={() => handleApiKeySave(provider.providerId)}
               size="default"
               variant="secondary"
               className="hover:cursor-pointer border bg-secondary/80 hover:bg-secondary/90"
@@ -123,7 +99,7 @@ interface UserDialogProps {
 }
 
 export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
-  const userId = useUserContext()
+  const { userId } = useUserContext()
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -139,7 +115,7 @@ export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
           </TabsList>
           <div className="flex-1 overflow-y-auto py-2 px-1">
             <TabsContent value="user">
-              <UserIdManager userId={userId ?? ""} />
+              <UserIdManager userId={userId} />
             </TabsContent>
             <TabsContent value="api-keys">
               <ApiKeyManager />

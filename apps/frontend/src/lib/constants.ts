@@ -1,4 +1,4 @@
-export const DEFAULT_MODEL_ID = "qwen-qwq-32b"
+export const DEFAULT_MODEL_ID = "j57a8as6yfqj41zpf6m8p43z3s7h53ry"
 
 export const SYSTEM_PROMPT = `You are a helpful assistant with access to a variety of tools.
 

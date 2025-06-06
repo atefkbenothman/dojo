@@ -5,9 +5,9 @@ import { MCPDialog } from "@/components/mcp/mcp-dialog"
 import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useMCPContext } from "@/hooks/use-mcp"
+import { useMCP } from "@/hooks/use-mcp"
 import { cn } from "@/lib/utils"
-import type { MCPServer } from "@dojo/config/src/types"
+import type { MCPServer } from "@dojo/db/convex/types"
 import { Settings } from "lucide-react"
 import { useState } from "react"
 
@@ -16,22 +16,24 @@ interface MCPCardProps {
 }
 
 export function MCPCard({ server }: MCPCardProps) {
-  const { getConnectionStatus, connect, disconnect, activeConnections } = useMCPContext()
+  const { getConnectionStatus, activeConnections, connect, disconnect } = useMCP()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
 
-  const connectionStatus = getConnectionStatus(server.id)
-  const serverConnection = activeConnections.find((conn) => conn.serverId === server.id)
-  const isConnected = connectionStatus === "connected"
-  const Icon = MCP_SERVER_ICONS[server.id]
+  const status = getConnectionStatus(server._id)
+  const isConnected = status === "connected"
+
+  const serverConnection = activeConnections.find((conn) => conn.serverId === server._id)
 
   const handleConnect = async () => {
     if (isConnected) {
-      await disconnect(server.id)
+      await disconnect(server._id)
       return
     }
-    await connect([server])
+    await connect([server._id])
   }
+
+  const Icon = MCP_SERVER_ICONS[server.name.toLowerCase()] || null
 
   return (
     <>
@@ -46,7 +48,6 @@ export function MCPCard({ server }: MCPCardProps) {
             Local only
           </div>
         )}
-
         <CardHeader className="flex-1 min-h-0">
           <div className="flex items-center gap-2">
             {Icon && <Icon />}
@@ -55,21 +56,19 @@ export function MCPCard({ server }: MCPCardProps) {
           </div>
           <CardDescription className="w-[90%] line-clamp-2 overflow-hidden">{server.summary}</CardDescription>
         </CardHeader>
-
         <CardFooter className="mt-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
               variant={isConnected ? "default" : "secondary"}
               onClick={handleConnect}
-              disabled={connectionStatus === "connecting"}
+              disabled={status === "connecting"}
               className={cn(
                 "border hover:cursor-pointer",
                 isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
               )}
             >
-              {connectionStatus === "connecting" ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
+              {status === "connecting" ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
             </Button>
-
             <Button
               variant="secondary"
               size="icon"
@@ -78,7 +77,6 @@ export function MCPCard({ server }: MCPCardProps) {
             >
               <Settings className="h-4 w-4" />
             </Button>
-
             {isConnected && <ToolsPopover tools={serverConnection?.tools || {}} />}
           </div>
         </CardFooter>

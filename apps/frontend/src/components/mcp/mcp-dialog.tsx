@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { useMCPContext } from "@/hooks/use-mcp"
+import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
-import type { MCPServer } from "@dojo/config"
+import { Doc } from "@dojo/db/convex/_generated/dataModel"
+import type { MCPServer } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { nanoid } from "nanoid"
+import { WithoutSystemFields } from "convex/server"
 import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -31,6 +32,27 @@ const mcpFormSchema = z.object({
 
 type MCPFormValues = z.infer<typeof mcpFormSchema>
 
+export function createMCPObject(data: MCPFormValues): WithoutSystemFields<Doc<"mcp">> {
+  const args = data.argsString
+    .split(",")
+    .map((arg) => arg.trim())
+    .filter(Boolean)
+  const env = Object.fromEntries(data.envPairs.map((pair) => [pair.key, pair.value]))
+  return {
+    name: data.serverName,
+    summary: data.serverSummary,
+    requiresUserKey: data.envPairs.length > 0,
+    config: {
+      command: data.command,
+      args,
+      ...(data.envPairs.length > 0 && {
+        env,
+        requiresEnv: data.envPairs.map((pair) => pair.key),
+      }),
+    },
+  }
+}
+
 export interface MCPDialogProps {
   mode: "add" | "edit"
   server?: MCPServer
@@ -40,7 +62,8 @@ export interface MCPDialogProps {
 
 export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) {
   const { play } = useSoundEffectContext()
-  const { saveServerToAvailableServers, removeServerFromAvailableServers } = useMCPContext()
+
+  const { create, remove } = useMCP()
 
   const formValues = useMemo((): MCPFormValues => {
     if (!server) {
@@ -74,17 +97,16 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
     values: formValues,
   })
 
-  const createServerFromForm = (data: MCPFormValues): MCPServer => {
+  const createMCPObject = (data: MCPFormValues): WithoutSystemFields<Doc<"mcp">> => {
     const args = data.argsString
       .split(",")
       .map((arg) => arg.trim())
       .filter(Boolean)
     const env = Object.fromEntries(data.envPairs.map((pair) => [pair.key, pair.value]))
-
     return {
-      id: server?.id || nanoid(),
       name: data.serverName,
-      ...(data.serverSummary && { summary: data.serverSummary }),
+      summary: data.serverSummary,
+      requiresUserKey: data.envPairs.length > 0,
       config: {
         command: data.command,
         args,
@@ -96,10 +118,10 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
     }
   }
 
-  const handleSave = (data: MCPFormValues) => {
-    const newOrUpdatedServer = createServerFromForm(data)
-    saveServerToAvailableServers(newOrUpdatedServer)
-    toast.success(`${newOrUpdatedServer.name} config ${mode === "add" ? "added to" : "saved to"} localstorage`, {
+  const handleSave = async (data: MCPFormValues) => {
+    const newOrUpdatedServer = createMCPObject(data)
+    await create(newOrUpdatedServer)
+    toast.success(`${newOrUpdatedServer.name} config ${mode === "add" ? "added to" : "saved to"} database`, {
       icon: null,
       duration: 5000,
       position: "bottom-center",
@@ -109,9 +131,10 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
     onOpenChange(false)
   }
 
-  const handleDelete = () => {
-    if (server?.id) removeServerFromAvailableServers(server.id)
-    toast.error(`${server?.name} config deleted from localstorage`, {
+  const handleDelete = async () => {
+    if (!server?._id) return
+    await remove(server._id)
+    toast.error(`${server?.name} config deleted from database`, {
       icon: null,
       duration: 5000,
       position: "bottom-center",

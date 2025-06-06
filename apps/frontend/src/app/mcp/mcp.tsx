@@ -4,36 +4,32 @@ import { AddMCPCard } from "@/components/mcp/add-mcp-card"
 import { MCPCard } from "@/components/mcp/mcp-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useMCPContext } from "@/hooks/use-mcp"
-import type { MCPServer } from "@dojo/config"
+import { useMCP } from "@/hooks/use-mcp"
+import type { MCPServer } from "@dojo/db/convex/types"
 import { useEffect, useState } from "react"
 
 export function Mcp() {
-  const { allAvailableServers, hasActiveConnections, disconnectAll } = useMCPContext()
+  const { mcpServers, activeConnections, disconnectAll } = useMCP()
 
   const [searchInput, setSearchInput] = useState<string>("")
-  const [filteredServers, setFilteredServers] = useState<Record<string, MCPServer>>(allAvailableServers)
+  const [filteredServers, setFilteredServers] = useState<MCPServer[]>(mcpServers)
 
   useEffect(() => {
     const filtered =
       searchInput === ""
-        ? allAvailableServers
-        : Object.fromEntries(
-            Object.entries(allAvailableServers).filter(([, server]) =>
-              server.name.toLowerCase().startsWith(searchInput.toLowerCase()),
-            ),
-          )
+        ? mcpServers
+        : mcpServers.filter((server) => server.name.toLowerCase().includes(searchInput.toLowerCase()))
     setFilteredServers(filtered)
-  }, [searchInput, allAvailableServers])
+  }, [searchInput, mcpServers])
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-4 border-b p-4 sticky top-0 z-30 bg-card">
+    <div className="flex flex-col p-4">
+      <div className="flex flex-col gap-4 sticky top-0 z-30 bg-background">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">MCP Servers</p>
           <p className="text-xs text-muted-foreground">manage and connect to MCP servers</p>
         </div>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center border-b pb-4 md:border-0 md:pb-0 md:mx-0 md:px-0 -mx-4 px-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <Input
             placeholder="Search"
             className="ring-none bg-input/30 h-10 resize-none border-border focus-visible:ring-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border w-[16rem] text-xs"
@@ -44,17 +40,17 @@ export function Mcp() {
             variant="outline"
             className="hover:cursor-pointer h-10"
             onClick={disconnectAll}
-            disabled={!hasActiveConnections}
+            disabled={activeConnections.length === 0}
             title="Disconnect all"
           >
             Disconnect All
           </Button>
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 p-4">
+      <div className="flex flex-row flex-wrap gap-4 py-4">
         <AddMCPCard />
-        {Object.entries(filteredServers).map(([key, server]) => (
-          <MCPCard key={key} server={server} />
+        {filteredServers.map((server) => (
+          <MCPCard key={server._id} server={server} />
         ))}
       </div>
     </div>

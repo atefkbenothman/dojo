@@ -11,44 +11,57 @@ import {
   SelectLabel,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useAIModels } from "@/hooks/use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
-import { useImageProvider } from "@/hooks/use-image"
-import { useModelContext } from "@/hooks/use-model"
-import type { AIModel } from "@dojo/config"
+import { useImage } from "@/hooks/use-image"
+import { useModelStore } from "@/store/use-model-store"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
+import { AIModel, AIModelWithProvider } from "@dojo/db/convex/types"
 import { ArrowUp } from "lucide-react"
-import { memo, useState, useCallback, useRef, useEffect } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 interface ChatControlsProps {
   onSend: () => void
+  modelsWithProviders: AIModelWithProvider
+  selectedModel: AIModel | undefined
+  setSelectedModelId: (id: Id<"models">) => void
 }
 
-const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
-  const { models, selectedModel, setSelectedModelId } = useModelContext()
+const ChatControls = memo(function ChatControls({
+  onSend,
+  modelsWithProviders,
+  selectedModel,
+  setSelectedModelId,
+}: ChatControlsProps) {
+  const groupedModels = useMemo(() => {
+    const grouped: Record<string, AIModel[]> = {}
+    for (const model of modelsWithProviders) {
+      const provider = model.provider?.name || "unknown"
+      if (!grouped[provider]) {
+        grouped[provider] = []
+      }
+      grouped[provider].push(model)
+    }
+    return grouped
+  }, [modelsWithProviders])
 
-  const groupedModels = models.reduce<Record<string, AIModel[]>>((acc, model) => {
-    ;(acc[model.provider] ??= []).push(model)
-    return acc
-  }, {})
-
-  const handleSend = useCallback(() => {
-    onSend()
-  }, [onSend])
+  console.log(selectedModel)
 
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
       {/* Model Select */}
-      <Select value={(selectedModel && selectedModel.id) || ""} onValueChange={setSelectedModelId}>
+      <Select value={(selectedModel && selectedModel.modelId) || ""} onValueChange={setSelectedModelId}>
         <SelectTrigger className="hover:cursor-pointer">
           <SelectValue placeholder="Model">{selectedModel ? selectedModel.name : null}</SelectValue>
         </SelectTrigger>
         <SelectContent className="text-xs" align="start">
-          {Object.entries(groupedModels).map(([providerId, models]) => {
+          {Object.entries(groupedModels).map(([providerName, models]) => {
             if (!models.length) return null
             return (
-              <SelectGroup key={providerId}>
-                <SelectLabel>{models[0]?.provider}</SelectLabel>
+              <SelectGroup key={providerName}>
+                <SelectLabel>{providerName}</SelectLabel>
                 {models.map((model) => (
-                  <SelectItem key={model.id} value={model.id} className="hover:cursor-pointer">
+                  <SelectItem key={model._id} value={model._id} className="hover:cursor-pointer">
                     {model.name}
                     {model.requiresApiKey && (
                       <span className="text-muted-foreground text-xs ml-1 font-normal">(requires key)</span>
@@ -61,7 +74,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
         </SelectContent>
       </Select>
       {/* Send Button */}
-      <Button className="ml-auto hover:cursor-pointer" variant="outline" onClick={handleSend}>
+      <Button className="ml-auto hover:cursor-pointer" variant="outline" onClick={onSend}>
         <ArrowUp className="h-4 w-4" strokeWidth={3} />
       </Button>
     </div>
@@ -69,9 +82,12 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
 })
 
 export const ChatFooter = memo(function ChatFooter() {
+  const setSelectedModelId = useModelStore((state) => state.setSelectedModelId)
+
+  const { selectedModel, modelsWithProviders } = useAIModels()
+
   const { handleChat } = useChatProvider()
-  const { selectedModel } = useModelContext()
-  const { handleImageGeneration } = useImageProvider()
+  const { handleImageGeneration } = useImage()
 
   const [input, setInput] = useState<string>("")
 
@@ -81,13 +97,10 @@ export const ChatFooter = memo(function ChatFooter() {
     inputRef.current = input
   }, [input])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value)
-  }
-
   const handleSend = useCallback(() => {
     if (inputRef.current.trim() === "") return
-    if (selectedModel.type === "image") {
+
+    if (selectedModel?.type === "image") {
       handleImageGeneration({
         message: inputRef.current,
         selectedModel,
@@ -95,6 +108,7 @@ export const ChatFooter = memo(function ChatFooter() {
       setInput("")
       return
     }
+
     handleChat(inputRef.current)
     setInput("")
   }, [handleChat, inputRef, handleImageGeneration, selectedModel])
@@ -114,11 +128,16 @@ export const ChatFooter = memo(function ChatFooter() {
       <div className="bg-background/80 dark:bg-input/30 relative w-full border">
         <Textarea
           value={input}
-          onChange={handleInputChange}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           className="ring-none max-h-[280px] min-h-[120px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
         />
-        <ChatControls onSend={handleSend} />
+        <ChatControls
+          onSend={handleSend}
+          modelsWithProviders={modelsWithProviders}
+          selectedModel={selectedModel}
+          setSelectedModelId={setSelectedModelId}
+        />
       </div>
     </div>
   )

@@ -1,5 +1,4 @@
 import { env } from "@/env"
-import { type ChatInteraction, type AgentInteraction, AgentWorkflow, AGENT_CONFIGS } from "@dojo/config"
 import { asyncTryCatch } from "@dojo/utils"
 import type { CoreMessage } from "ai"
 import { cookies } from "next/headers"
@@ -18,19 +17,24 @@ function buildProxyHeaders(headers: Headers) {
 }
 
 /* Chat */
-async function handleChat(userId: string, apiKey: string | undefined, messages: CoreMessage[], chat: ChatInteraction) {
+async function handleChat(
+  userId: string,
+  apiKey: string | undefined,
+  messages: CoreMessage[],
+  chat: { modelId: string },
+) {
   if (!messages || !chat.modelId) {
     return NextResponse.json({ error: "Missing 'messages' or 'modelId' for CHAT interaction." }, { status: 400 })
   }
 
   const { data, error } = await asyncTryCatch(
-    fetch(`${env.BACKEND_URL}/api/chat/send-message`, {
+    fetch(`${env.BACKEND_URL}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(userId ? { "X-User-Id": userId } : {}),
       },
-      body: JSON.stringify({ messages, modelId: chat.modelId, apiKey: apiKey || undefined }),
+      body: JSON.stringify({ messages, apiKey: apiKey || undefined, chat }),
     }),
   )
 
@@ -58,7 +62,7 @@ async function handleAgent(
   userId: string,
   apiKey: string | undefined,
   messages: CoreMessage[],
-  agent: AgentInteraction & { schemaJson?: string },
+  agent: { modelId: string; agentId: string },
 ) {
   if (!messages || !agent.modelId) {
     return NextResponse.json({ error: "Missing 'messages' or 'modelId' for AGENT interaction." }, { status: 400 })
@@ -74,9 +78,7 @@ async function handleAgent(
       body: JSON.stringify({
         messages,
         apiKey: apiKey || undefined,
-        modelId: agent.modelId,
-        config: agent.agentConfig,
-        schemaJson: agent.schemaJson,
+        agent: agent,
       }),
     }),
   )
@@ -101,15 +103,17 @@ async function handleAgent(
 }
 
 /* Workflow */
-const handleWorkflow = async (userId: string, apiKey: string, messages: CoreMessage[], workflow: AgentWorkflow) => {
+const handleWorkflow = async (
+  userId: string,
+  apiKey: string,
+  messages: CoreMessage[],
+  workflow: { modelId: string; workflowId: string },
+) => {
   console.log(`[API /chat] Received workflow: ${workflow}`)
 
-  if (!messages || !workflow.aiModelId) {
-    return NextResponse.json({ error: "Missing 'messages' or 'aiModelId' for WORKFLOW interaction." }, { status: 400 })
+  if (!messages || !workflow.modelId) {
+    return NextResponse.json({ error: "Missing 'messages' or 'modelId' for WORKFLOW interaction." }, { status: 400 })
   }
-
-  // Resolve agentConfigId to full AgentConfig objects
-  const steps = workflow.steps.map((step) => AGENT_CONFIGS[step.agentConfigId])
 
   const { data, error } = await asyncTryCatch(
     fetch(`${env.BACKEND_URL}/api/workflow/run`, {
@@ -118,7 +122,11 @@ const handleWorkflow = async (userId: string, apiKey: string, messages: CoreMess
         "Content-Type": "application/json",
         ...(userId ? { "X-User-Id": userId } : {}),
       },
-      body: JSON.stringify({ steps, messages, modelId: workflow.aiModelId, apiKey: apiKey || undefined }),
+      body: JSON.stringify({
+        messages,
+        apiKey: apiKey || undefined,
+        workflow: workflow,
+      }),
     }),
   )
 
