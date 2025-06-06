@@ -1,7 +1,7 @@
-import { totalConnections, MAX_CONNECTIONS, incrementTotalConnections, decrementTotalConnections } from "./core.js"
 import { MCPClient } from "./mcp-client.js"
+import { totalConnections, MAX_CONNECTIONS, incrementTotalConnections, decrementTotalConnections } from "./session.js"
 import type { ActiveMcpClient, UserSession } from "./types.js"
-import { MCPServer } from "@dojo/config"
+import type { MCPServer } from "@dojo/db/convex/types.js"
 
 /**
  * Establishes an MCP connection for a given user session and server config.
@@ -19,28 +19,28 @@ export async function establishMcpConnection(
   try {
     mcpClient = new MCPClient(server)
   } catch (mcpClientError) {
-    const errorMessage = `Failed to instantiate MCPClient for user ${userSession.userId}, server ${server.id}`
+    const errorMessage = `Failed to instantiate MCPClient for user ${userSession.userId}, server ${server._id}`
     console.error(`[Connection] ${errorMessage}:`, mcpClientError)
     return { success: false, error: errorMessage }
   }
 
-  console.log(`[Connection] Starting MCPClient connection for user ${userSession.userId}, server ${server.id}...`)
+  console.log(`[Connection] Starting MCPClient connection for user ${userSession.userId}, server ${server._id}...`)
 
   try {
     await mcpClient.start()
   } catch (err) {
-    const errMessage = `Failed to start MCPClient for user ${userSession.userId}, server ${server.id}`
+    const errMessage = `Failed to start MCPClient for user ${userSession.userId}, server ${server._id}`
     console.error(`[Connection] ${errMessage}:`, err)
     return { success: false, error: errMessage }
   }
 
-  const activeMcpClient: ActiveMcpClient = { client: mcpClient, config: server.config! }
+  const activeMcpClient: ActiveMcpClient = { client: mcpClient, server: server }
 
-  userSession.activeMcpClients.set(server.id, activeMcpClient)
+  userSession.activeMcpClients.set(server._id, activeMcpClient)
   incrementTotalConnections()
 
   console.log(
-    `[Connection] Connection established for user ${userSession.userId}, server ${server.id}. Total connections: ${totalConnections}`,
+    `[Connection] Connection established for user ${userSession.userId}, server ${server._id}. Total connections: ${totalConnections}`,
   )
 
   return { success: true, client: activeMcpClient }
@@ -71,4 +71,18 @@ export const cleanupExistingConnection = async (userSession: UserSession, mcpSer
       `[Connection]: Cleaned up and decremented connection count for user ${userSession.userId}, server ${mcpServerId}. Total connections now: ${totalConnections}`,
     )
   }
+}
+
+/**
+ * Aggregates all tools from a user's active MCP clients into a single object.
+ */
+export function aggregateMcpTools(userSession: UserSession): Record<string, any> {
+  const combinedTools: Record<string, any> = {}
+  if (userSession.activeMcpClients) {
+    for (const mcpClient of userSession.activeMcpClients.values()) {
+      const clientTools = mcpClient.client.tools || {}
+      Object.assign(combinedTools, clientTools)
+    }
+  }
+  return combinedTools
 }

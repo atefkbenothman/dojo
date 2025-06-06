@@ -1,4 +1,4 @@
-import { getOrCreateUserSession } from "../core.js"
+import { getOrCreateUserSession } from "../session.js"
 import type { UserSession, RequestWithUserContext } from "../types.js"
 import { type CreateExpressContextOptions } from "@trpc/server/adapters/express"
 

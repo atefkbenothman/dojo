@@ -1,4 +1,4 @@
-import { getModelInstance } from "../../ai/get-model.js"
+import { getModelInstance } from "../../ai/models.js"
 import type { Context } from "../context.js"
 import { protectedProcedure, router } from "../trpc.js"
 import { TRPCError } from "@trpc/server"

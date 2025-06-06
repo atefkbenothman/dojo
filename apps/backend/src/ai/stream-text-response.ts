@@ -22,7 +22,7 @@ export async function streamTextResponse(
       model: languageModel,
       messages: messages,
       tools: tools,
-      maxSteps: 10,
+      maxSteps: 20,
       experimental_transform: smoothStream({
         delayInMs: 5,
         chunking: "line",

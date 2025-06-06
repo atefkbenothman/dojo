@@ -1,4 +1,4 @@
-import { MCPServer } from "@dojo/config"
+import type { MCPServer } from "@dojo/db/convex/types.js"
 import { asyncTryCatch } from "@dojo/utils"
 import { Tool, experimental_createMCPClient } from "ai"
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
@@ -11,7 +11,7 @@ export class MCPClient {
 
   constructor(server: MCPServer) {
     this.server = server
-    console.log(`[MCP] MCPClient configured for server ${this.server.id} (${this.server.name})`)
+    console.log(`[MCP] MCPClient configured for server ${this.server._id} (${this.server.name})`)
   }
 
   // change this to use the server config env
@@ -27,7 +27,7 @@ export class MCPClient {
   }
 
   private createTransport(envs: Record<string, string>): StdioMCPTransport {
-    if (!this.server.config) throw new Error(`No config found for MCP server ${this.server.id}`)
+    if (!this.server.config) throw new Error(`No config found for MCP server ${this.server._id}`)
     return new StdioMCPTransport({
       command: this.server.config.command,
       args: this.server.config.args,
@@ -39,8 +39,10 @@ export class MCPClient {
   public async start(): Promise<void> {
     if (this.client) return
 
-    if (!this.server.config) throw new Error(`No config found for MCP server ${this.server.id}`)
-    console.log(`[MCP.start] Preparing environment and transport for server ${this.server.id} (${this.server.name})...`)
+    if (!this.server.config) throw new Error(`No config found for MCP server ${this.server._id}`)
+    console.log(
+      `[MCP.start] Preparing environment and transport for server ${this.server._id} (${this.server.name})...`,
+    )
 
     const envs = this.setupEnvironment()
     const transport = this.createTransport(envs)
@@ -48,36 +50,36 @@ export class MCPClient {
     const { data: client, error: clientError } = await asyncTryCatch(experimental_createMCPClient({ transport }))
 
     if (!client || clientError) {
-      console.error(`[MCP.start] Failed to create MCP client for server ${this.server.id}: `, clientError)
+      console.error(`[MCP.start] Failed to create MCP client for server ${this.server._id}: `, clientError)
       this.client = null
       this.tools = {}
       throw new Error(
-        `Failed to create MCP client for server ${this.server.id}: ${clientError?.message || "Unknown error"}`,
+        `Failed to create MCP client for server ${this.server._id}: ${clientError?.message || "Unknown error"}`,
       )
     }
 
     this.client = client
-    console.log(`[MCP.start] MCP Client created successfully for server ${this.server.id}`)
+    console.log(`[MCP.start] MCP Client created successfully for server ${this.server._id}`)
 
     const { data: tools, error: toolsError } = await asyncTryCatch(this.client.tools())
 
     if (!tools || toolsError) {
-      console.error(`[MCP.start] Failed to fetch MCP tools for server ${this.server.id}: `, toolsError)
+      console.error(`[MCP.start] Failed to fetch MCP tools for server ${this.server._id}: `, toolsError)
       this.tools = {}
       return
     }
 
     this.tools = tools
-    console.log(`[MCP.getTools] Fetched ${Object.keys(this.tools).length} tools for server ${this.server.id}`)
+    console.log(`[MCP.getTools] Fetched ${Object.keys(this.tools).length} tools for server ${this.server._id}`)
   }
 
   public async cleanup(): Promise<void> {
     if (this.client) {
-      console.log(`[MCP.cleanup] Closing MCP client for server ${this.server.id}...`)
+      console.log(`[MCP.cleanup] Closing MCP client for server ${this.server._id}...`)
       await this.client.close()
       this.client = null
       this.tools = {}
-      console.log(`[MCP.cleanup] MCP client closed for server ${this.server.id}`)
+      console.log(`[MCP.cleanup] MCP client closed for server ${this.server._id}`)
     }
   }
 }
