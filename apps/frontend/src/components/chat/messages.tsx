@@ -6,7 +6,7 @@ import { useImageStore } from "@/store/use-image-store"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"
 import { Hammer, Check, Clock, Play, Lightbulb, Info, AlertTriangle } from "lucide-react"
-import { useEffect, RefObject, memo } from "react"
+import { useEffect, RefObject, memo, useMemo } from "react"
 
 interface MessageAccordionProps {
   variant?: "error" | "system" | "reasoning" | "tool"
@@ -130,7 +130,7 @@ function ErrorMessage({ errorMessage }: { errorMessage: string }) {
 
 function LoadingAnimation() {
   return (
-    <div className="flex items-center space-x-1 w-fit px-1 py-2 text-red-500">
+    <div className="flex items-center space-x-1 w-fit px-1 py-4 text-red-500">
       {[0, 1, 2].map((dot) => (
         <div
           key={dot}
@@ -149,7 +149,7 @@ const MessageItem = memo(function MessageItem({
 }) {
   if (msg.role === "user") {
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end py-4">
         <div className="bg-primary/10 text-foreground inline-block max-w-[80%] overflow-auto p-2 text-left wrap-break-word">
           <p className="text-xs leading-6">{msg.content.toString()}</p>
         </div>
@@ -158,14 +158,18 @@ const MessageItem = memo(function MessageItem({
   }
 
   if (msg.role === "system") {
-    return <SystemMessage content={msg.content.toString()} />
+    return (
+      <div className="pb-4">
+        <SystemMessage content={msg.content.toString()} />
+      </div>
+    )
   }
 
   if (msg.images && msg.images.type === "generated_image") {
     const images = msg.images.images
     if (Array.isArray(images)) {
       return (
-        <div className="py-2">
+        <div className="py-4">
           <GeneratedImagesRenderer images={images} />
         </div>
       )
@@ -200,13 +204,35 @@ const MessageItem = memo(function MessageItem({
   )
 })
 
+type VirtualMessage =
+  | { type: "message"; msg: UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } } }
+  | { type: "loading" }
+  | { type: "error"; errorMessage: string }
+
 export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | null> }) {
   const { messages, chatError, status } = useChatProvider()
   const { isImageGenerating } = useImageStore()
 
+  const allItems = useMemo<VirtualMessage[]>(() => {
+    const items: VirtualMessage[] = messages.map((msg) => ({ type: "message", msg }))
+    if (status === "submitted" || isImageGenerating) {
+      items.push({ type: "loading" })
+    }
+    if (chatError && status !== "submitted") {
+      items.push({ type: "error", errorMessage: chatError })
+    }
+    return items
+  }, [messages, status, chatError, isImageGenerating])
+
   const virtualizer = useVirtualizer({
-    count: messages.length,
-    estimateSize: () => 80,
+    count: allItems.length,
+    estimateSize: (i) => {
+      const item = allItems[i]
+      if (item?.type === "message") {
+        return 80
+      }
+      return 40
+    },
     getScrollElement: () => scrollRef.current,
     overscan: 3,
   })
@@ -214,10 +240,10 @@ export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | 
   const virtualItems = virtualizer.getVirtualItems()
 
   useEffect(() => {
-    if (messages.length > 0) {
-      virtualizer.scrollToIndex(messages.length - 1, { align: "end" })
+    if (allItems.length > 0) {
+      virtualizer.scrollToIndex(allItems.length - 1, { align: "end" })
     }
-  }, [messages, virtualizer])
+  }, [allItems, virtualizer])
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
@@ -228,21 +254,23 @@ export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | 
             transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
           }}
         >
-          {virtualItems.map((vItem) => (
-            <div
-              key={vItem.key}
-              data-index={vItem.index}
-              ref={virtualizer.measureElement}
-              className="flex h-fit flex-col py-2"
-            >
-              <MessageItem msg={messages[vItem.index]!} />
-            </div>
-          ))}
+          {virtualItems.map((vItem) => {
+            const item = allItems[vItem.index]!
+            return (
+              <div
+                key={vItem.key}
+                data-index={vItem.index}
+                ref={virtualizer.measureElement}
+                className="flex h-fit flex-col"
+              >
+                {item.type === "message" && <MessageItem msg={item.msg} />}
+                {item.type === "loading" && <LoadingAnimation />}
+                {item.type === "error" && <ErrorMessage errorMessage={item.errorMessage} />}
+              </div>
+            )
+          })}
         </div>
       </div>
-      {status === "submitted" && <LoadingAnimation />}
-      {isImageGenerating && <LoadingAnimation />}
-      {chatError && status !== "submitted" && <ErrorMessage errorMessage={chatError} />}
     </div>
   )
 }

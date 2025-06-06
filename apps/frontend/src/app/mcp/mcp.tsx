@@ -23,8 +23,9 @@ export function Mcp() {
   }, [searchInput, mcpServers])
 
   return (
-    <div className="flex flex-col p-4">
-      <div className="flex flex-col gap-4 sticky top-0 z-30 bg-background">
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
+        {/* Heading */}
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">MCP Servers</p>
           <p className="text-xs text-muted-foreground">manage and connect to MCP servers</p>
@@ -47,7 +48,7 @@ export function Mcp() {
           </Button>
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 py-4">
+      <div className="flex flex-row flex-wrap gap-4 px-4 pb-4">
         <AddMCPCard />
         {filteredServers.map((server) => (
           <MCPCard key={server._id} server={server} />

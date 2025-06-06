@@ -45,8 +45,6 @@ const ChatControls = memo(function ChatControls({
     return grouped
   }, [modelsWithProviders])
 
-  console.log(selectedModel)
-
   return (
     <div className="dark:bg-input/30 flex w-full items-baseline overflow-hidden bg-transparent p-2">
       {/* Model Select */}

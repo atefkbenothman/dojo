@@ -21,8 +21,8 @@ export function Workflow() {
   }, [searchInput, workflows])
 
   return (
-    <div className="flex flex-col p-4">
-      <div className="flex flex-col gap-4 sticky top-0 z-30 bg-background">
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">Workflows</p>
           <p className="text-xs text-muted-foreground">build and run custom workflows</p>
@@ -36,7 +36,7 @@ export function Workflow() {
           />
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 py-4">
+      <div className="flex flex-row flex-wrap gap-4 px-4 pb-4">
         {filteredWorkflows.map((workflow) => (
           <WorkflowCard key={workflow._id} workflow={workflow} />
         ))}

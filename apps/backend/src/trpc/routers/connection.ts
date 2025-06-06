@@ -3,7 +3,7 @@ import { establishMcpConnection, cleanupExistingConnection } from "../../mcp-con
 import type { Context } from "../context.js"
 import { router, protectedProcedure } from "../trpc.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
-import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { Doc, Id } from "@dojo/db/convex/_generated/dataModel.js"
 import { asyncTryCatch } from "@dojo/utils"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
@@ -33,70 +33,47 @@ export const connectionRouter = router({
 
       const { servers } = input
 
-      const results = []
+      const mcpServers = await Promise.all(
+        servers.map((server) => convex.query(api.mcp.get, { id: server as Id<"mcp"> })),
+      )
 
-      const mcpServers = (await Promise.all(
-        servers.map((server) => convex.query(api.mcp.get, { id: server })),
-      )) as Doc<"mcp">[]
+      const validMcpServers = mcpServers.filter((s) => s !== null)
 
-      // Could we use Promise.allSettled here?
-      for (const server of mcpServers) {
-        if (server.localOnly && isProduction) {
-          results.push({
+      try {
+        const connectionPromises = validMcpServers.map(async (server) => {
+          if (server.localOnly && isProduction) {
+            throw new Error(`Server "${server.name}" is local-only and cannot be accessed in a production environment.`)
+          }
+
+          await cleanupExistingConnection(userSession, server._id)
+          const connection = await establishMcpConnection(userSession, server)
+
+          if (!connection?.success) {
+            throw new Error(connection?.error || `Failed to establish connection with server "${server.name}".`)
+          }
+
+          return {
             serverId: server._id,
-            success: false,
-            error: "This is a local-only MCP server and cannot be accessed in the current environment.",
-            tools: {},
-          })
-          continue
-        }
+            success: true,
+            tools: connection.client?.client.tools || {},
+          }
+        })
 
-        const { error: cleanupError } = await asyncTryCatch(cleanupExistingConnection(userSession, server._id))
+        const results = await Promise.all(connectionPromises)
 
-        if (cleanupError) {
-          results.push({
-            serverId: server._id,
-            success: false,
-            error: "An unexpected error occurred while cleaning up the connection.",
-            tools: {},
-          })
-          continue
-        }
+        return { success: true, userId: userSession.userId, results }
+      } catch (error) {
+        // rollback connections
+        const cleanupPromises = validMcpServers.map((server) => cleanupExistingConnection(userSession, server._id))
+        await Promise.allSettled(cleanupPromises)
 
-        const { data: connection, error: connectionError } = await asyncTryCatch(
-          establishMcpConnection(userSession, server),
-        )
-
-        if (connectionError) {
-          results.push({
-            serverId: server._id,
-            success: false,
-            error: "An unexpected error occurred while establishing the connection.",
-            tools: {},
-          })
-          continue
-        }
-
-        if (!connection || !connection.success) {
-          const errorMessage = connection?.error || "Failed to establish connection with MCP server."
-          results.push({
-            serverId: server._id,
-            success: false,
-            error: errorMessage,
-            tools: {},
-          })
-          continue
-        }
-
-        const tools = connection.client?.client.tools || {}
-        results.push({
-          serverId: server._id,
-          success: true,
-          tools,
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred."
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Connection failed: ${errorMessage}. All connections have been rolled back.`,
+          cause: error instanceof Error ? error : undefined,
         })
       }
-
-      return { success: results.every((r) => r.success), userId: userSession.userId, results }
     }),
   disconnect: protectedProcedure
     .input(disconnectInputSchema)

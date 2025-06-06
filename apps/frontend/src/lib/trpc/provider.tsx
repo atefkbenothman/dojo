@@ -10,7 +10,7 @@ import { createTRPCClient } from "@trpc/client"
 import { useState } from "react"
 
 export function DojoTRPCProvider({ children }: { children: React.ReactNode }) {
-  const userId = useUserContext()
+  const { userId } = useUserContext()
 
   const [queryClient] = useState(() => new QueryClient())
 

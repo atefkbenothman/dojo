@@ -22,8 +22,8 @@ export function Agent() {
   }, [searchInput, agents])
 
   return (
-    <div className="flex flex-col p-4">
-      <div className="flex flex-col gap-4 sticky top-0 z-30 bg-background">
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">Agents</p>
           <p className="text-xs text-muted-foreground">create and run custom agents</p>
@@ -37,7 +37,7 @@ export function Agent() {
           />
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 py-4">
+      <div className="flex flex-row flex-wrap gap-4 px-4 pb-4">
         <AddAgentCard />
         {Object.entries(filteredAgents).map(([key, agent]) => (
           <AgentCard key={key} agent={agent} />
