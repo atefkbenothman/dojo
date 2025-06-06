@@ -1,0 +1,16 @@
+{
+  "name": "@dojo/db",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "setup": "convex dev --until-success"
+  },
+  "dependencies": {
+    "convex": "latest"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "convex": "latest"
+  }
+}

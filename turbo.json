@@ -15,7 +15,8 @@
         "NEXT_PUBLIC_GOOGLE_API_KEY",
         "NEXT_PUBLIC_GROQ_API_KEY",
         "SKIP_ENV_VALIDATION",
-        "GROQ_API_KEY_FALLBACK"
+        "GROQ_API_KEY_FALLBACK",
+        "CONVEX_URL"
       ]
     },
     "dev": {

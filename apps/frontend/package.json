@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dojo/config": "1.0.0",
+    "@dojo/db": "1.0.0",
     "@dojo/utils": "1.0.0",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-accordion": "^1.2.7",
@@ -50,7 +50,8 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.1.0",
     "zod": "^3.25.34",
-    "zod-to-json-schema": "^3.24.5"
+    "zod-to-json-schema": "^3.24.5",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@dojo/eslint": "0.0.0",
