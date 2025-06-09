@@ -15,8 +15,8 @@
     "@ai-sdk/google": "^1.2.8",
     "@ai-sdk/groq": "^1.2.5",
     "@ai-sdk/openai": "^1.3.20",
-    "@dojo/utils": "1.0.0",
-    "@dojo/db": "1.0.0",
+    "@dojo/utils": "*",
+    "@dojo/db": "*",
     "@trpc/server": "latest",
     "ai": "^4.3.13",
     "chokidar": "^4.0.3",
@@ -27,8 +27,8 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "@dojo/eslint": "0.0.0",
-    "@dojo/tsconfig": "0.0.0",
+    "@dojo/eslint": "*",
+    "@dojo/tsconfig": "*",
     "@types/chokidar": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
