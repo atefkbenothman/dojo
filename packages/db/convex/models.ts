@@ -1,5 +1,16 @@
 import { Id } from "./_generated/dataModel.js"
 import { query } from "./_generated/server.js"
+import { v } from "convex/values"
+
+export const getModelByModelId = query({
+  args: { modelId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("models")
+      .withIndex("by_modelId", (q) => q.eq("modelId", args.modelId))
+      .unique()
+  },
+})
 
 export const list = query({
   handler: async (ctx) => {

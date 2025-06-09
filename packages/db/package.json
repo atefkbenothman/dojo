@@ -7,10 +7,12 @@
     "setup": "convex dev --until-success"
   },
   "dependencies": {
+    "@auth/core": "^0.37.0",
+    "@convex-dev/auth": "^0.0.87",
     "convex": "latest"
   },
   "devDependencies": {
-    "typescript": "latest",
-    "convex": "latest"
+    "convex": "latest",
+    "typescript": "latest"
   }
 }

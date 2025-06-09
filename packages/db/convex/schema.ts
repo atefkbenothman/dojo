@@ -1,3 +1,4 @@
+import { authTables } from "@convex-dev/auth/server"
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
@@ -42,10 +43,21 @@ export const workflowsFields = {
   aiModelId: v.id("models"),
 }
 
+export const apiKeysFields = {
+  userId: v.id("users"),
+  providerId: v.id("providers"),
+  apiKey: v.string(),
+}
+
 export default defineSchema({
+  ...authTables,
   providers: defineTable(providersFields),
-  models: defineTable(modelsFields),
+  models: defineTable(modelsFields).index("by_modelId", ["modelId"]),
   mcp: defineTable(mcpFields),
   agents: defineTable(agentsFields),
   workflows: defineTable(workflowsFields),
+  apiKeys: defineTable(apiKeysFields)
+    .index("by_user", ["userId"])
+    .index("by_provider", ["providerId"])
+    .index("by_user_provider", ["userId", "providerId"]),
 })

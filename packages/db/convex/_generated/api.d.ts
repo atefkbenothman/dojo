@@ -14,9 +14,13 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as agents from "../agents.js";
+import type * as apiKeys from "../apiKeys.js";
+import type * as auth from "../auth.js";
+import type * as http from "../http.js";
 import type * as mcp from "../mcp.js";
 import type * as models from "../models.js";
 import type * as types from "../types.js";
+import type * as user from "../user.js";
 import type * as workflows from "../workflows.js";
 
 /**
@@ -29,9 +33,13 @@ import type * as workflows from "../workflows.js";
  */
 declare const fullApi: ApiFromModules<{
   agents: typeof agents;
+  apiKeys: typeof apiKeys;
+  auth: typeof auth;
+  http: typeof http;
   mcp: typeof mcp;
   models: typeof models;
   types: typeof types;
+  user: typeof user;
   workflows: typeof workflows;
 }>;
 export declare const api: FilterApi<
