@@ -1,4 +1,4 @@
-import { query } from "./_generated/server"
+import { mutation, query } from "./_generated/server"
 import { v } from "convex/values"
 
 export const getApiKeysForUser = query({
@@ -37,5 +37,22 @@ export const getApiKeyForUserAndProvider = query({
       .query("apiKeys")
       .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("providerId", args.providerId))
       .unique()
+  },
+})
+
+export const upsertApiKey = mutation({
+  args: { userId: v.id("users"), providerId: v.id("providers"), apiKey: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("providerId", args.providerId))
+      .unique()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { apiKey: args.apiKey })
+      return existing._id
+    } else {
+      return await ctx.db.insert("apiKeys", { userId: args.userId, providerId: args.providerId, apiKey: args.apiKey })
+    }
   },
 })

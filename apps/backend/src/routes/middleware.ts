@@ -39,18 +39,18 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
 
     const requiresApiKey = getModelRequiresApiKey(modelId)
 
+    const apiKeyObject = (await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
+      userId: user._id,
+      modelId: modelId,
+    })) as Doc<"apiKeys"> | null
+
     let apiKeyToUse: string | undefined
 
-    if (requiresApiKey) {
-      // Get API key for user from Convex
-      const apiKeyObject = (await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
-        userId: user._id,
-        modelId: modelId,
-      })) as Doc<"apiKeys"> | null
-
-      if (apiKeyObject) {
-        apiKeyToUse = apiKeyObject.apiKey
-      }
+    if (apiKeyObject) {
+      apiKeyToUse = apiKeyObject.apiKey
+    } else if (requiresApiKey) {
+      res.status(400).json({ error: `API key for model '${modelId}' is missing or not configured.` })
+      return
     } else {
       apiKeyToUse = getModelFallbackApiKey(modelId)
     }
