@@ -30,7 +30,6 @@ agentRouter.post(
 
       const { messages, agent: agentInfo } = parsedInput
 
-      // Fetch agent configuration from the database
       const agent = await convex.query(api.agents.get, { id: agentInfo.agentId as Id<"agents"> })
 
       if (!agent) {
@@ -38,19 +37,14 @@ agentRouter.post(
         return
       }
 
-      const combinedTools = aggregateMcpTools(userSession)
+      const userId = userSession ? userSession.userId : "anonymous"
+      const combinedTools = userSession ? aggregateMcpTools(userSession) : {}
 
-      console.log(
-        `[REST /agent/run] request received for userId: ${userSession.userId}, using model: ${agentInfo.modelId}`,
-      )
+      console.log(`[REST /agent/run] request received for userId: ${userId}, using model: ${agentInfo.modelId}`)
 
       switch (agent.outputType) {
         case "text":
-          console.log(
-            `[REST /agent/run]: Using ${Object.keys(combinedTools).length} total tools for userId: ${
-              userSession.userId
-            }`,
-          )
+          console.log(`[REST /agent/run]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userId}`)
           await streamTextResponse({
             res,
             languageModel: aiModel,

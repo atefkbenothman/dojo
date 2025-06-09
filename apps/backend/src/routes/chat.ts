@@ -20,12 +20,15 @@ chatRouter.post("/", createAiRequestMiddleware(chatInputSchema), async (req: Req
     const aiModel = req.aiModel as LanguageModel
     const parsedInput = req.parsedInput as z.infer<typeof chatInputSchema>
     const { messages } = parsedInput
-    const combinedTools = aggregateMcpTools(userSession)
+
+    const userIdForLogging = userSession ? userSession.userId : "anonymous"
+    const combinedTools = userSession ? aggregateMcpTools(userSession) : {}
+
     console.log(
-      `[REST /chat/send-message] request received for userId: ${userSession.userId}, using model: ${parsedInput.chat.modelId}`,
+      `[REST /chat/send-message] request received for userId: ${userIdForLogging}, using model: ${parsedInput.chat.modelId}`,
     )
     console.log(
-      `[REST /chat/send-message]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userSession.userId}`,
+      `[REST /chat/send-message]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`,
     )
     await streamTextResponse({
       res,

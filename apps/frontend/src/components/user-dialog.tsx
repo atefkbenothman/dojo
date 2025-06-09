@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { successToastStyle } from "@/lib/styles"
+import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { useMutation, useQuery } from "convex/react"
@@ -25,6 +25,7 @@ interface ApiKeyManagerProps {
 function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
   const { play } = useSoundEffectContext()
   const upsertApiKey = useMutation(api.apiKeys.upsertApiKey)
+  const removeApiKey = useMutation(api.apiKeys.removeApiKey)
 
   const [visibleKeys, setVisibleKeys] = useState<Record<Id<"providers">, boolean>>({})
   const [inputValues, setInputValues] = useState<Record<Id<"providers">, string>>({})
@@ -64,8 +65,25 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
 
   const handleSave = async (providerId: Id<"providers">) => {
     const apiKey = inputValues[providerId]
-    if (!apiKey) return
-    await upsertApiKey({ apiKey, userId: user._id, providerId })
+    // Remove api key from convex if empty
+    if (!apiKey) {
+      const result = await removeApiKey({ userId: user!._id, providerId })
+      if (result) {
+        toast.error("API key removed", {
+          icon: null,
+          id: "api-key-removed",
+          duration: 5000,
+          position: "bottom-center",
+          style: errorToastStyle,
+        })
+        setTimeout(() => {
+          play("./sounds/delete.mp3", { volume: 0.5 })
+        }, 100)
+      }
+      return
+    }
+
+    await upsertApiKey({ apiKey, userId: user!._id, providerId })
     toast.success("API keys saved to database", {
       icon: null,
       id: "api-key-saved",

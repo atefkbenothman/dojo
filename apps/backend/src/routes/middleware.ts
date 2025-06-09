@@ -20,39 +20,45 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
     const parsedInput = validationResult.data
 
     const user = await getConvexUser(req.headers.authorization)
-    if (!user) {
-      res.status(401).json({ error: "Authentication failed. Invalid or missing token." })
-      return
-    }
-
-    const userSession = getOrCreateUserSession(user._id)
-    if (!userSession) {
-      res.status(500).json({ error: "Failed to get or create user session." })
-      return
-    }
 
     const modelId = parsedInput.chat?.modelId || parsedInput.agent?.modelId || parsedInput.workflow?.modelId
+
     if (!modelId) {
       res.status(400).json({ error: "Missing modelId in chat, agent, or workflow object." })
       return
     }
 
     const requiresApiKey = getModelRequiresApiKey(modelId)
-
-    const apiKeyObject = (await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
-      userId: user._id,
-      modelId: modelId,
-    })) as Doc<"apiKeys"> | null
-
     let apiKeyToUse: string | undefined
 
-    if (apiKeyObject) {
-      apiKeyToUse = apiKeyObject.apiKey
-    } else if (requiresApiKey) {
-      res.status(400).json({ error: `API key for model '${modelId}' is missing or not configured.` })
-      return
+    if (user) {
+      const userSession = getOrCreateUserSession(user._id)
+      if (!userSession) {
+        res.status(500).json({ error: "Failed to get or create user session." })
+        return
+      }
+
+      const apiKeyObject = (await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
+        userId: user._id,
+        modelId: modelId,
+      })) as Doc<"apiKeys"> | null
+
+      if (apiKeyObject) {
+        apiKeyToUse = apiKeyObject.apiKey
+      } else if (requiresApiKey) {
+        res.status(400).json({ error: `API key for model '${modelId}' is missing or not configured.` })
+        return
+      } else {
+        apiKeyToUse = getModelFallbackApiKey(modelId)
+      }
+      req.userSession = userSession
     } else {
+      if (requiresApiKey) {
+        res.status(401).json({ error: "You must be logged in to use this model. Please log in and try again." })
+        return
+      }
       apiKeyToUse = getModelFallbackApiKey(modelId)
+      req.userSession = null
     }
 
     if (!apiKeyToUse) {
@@ -69,7 +75,6 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
       return
     }
 
-    req.userSession = userSession
     req.aiModel = modelInstance
     req.parsedInput = parsedInput
 

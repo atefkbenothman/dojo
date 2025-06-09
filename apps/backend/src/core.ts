@@ -23,7 +23,7 @@ const mcpServers = await convex.query(api.mcp.list)
 declare global {
   namespace Express {
     interface Request {
-      userSession: UserSession
+      userSession: UserSession | null
       aiModel: LanguageModel | ImageModel
       parsedInput: unknown
     }

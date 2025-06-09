@@ -138,8 +138,7 @@ export async function POST(request: Request) {
   const authorization = request.headers.get("Authorization")
 
   if (!authorization) {
-    console.error("[API /chat] Missing authorization header. Rejecting request.")
-    return NextResponse.json({ error: "Missing authorization header. Please log in." }, { status: 401 })
+    console.log("[API /chat] No authorization header. Proceeding as anonymous user.")
   }
 
   if (!interactionType) {

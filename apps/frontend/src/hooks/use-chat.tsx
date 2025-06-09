@@ -56,17 +56,11 @@ export function useAIChat() {
 
       if (!selectedModel) return
 
-      if (!authToken) {
-        setChatError("Authentication token is not available. Please log in.")
+      if (!authToken && selectedModel?.requiresApiKey) {
+        setChatError("Please login to use this model.")
         play("./sounds/error.mp3", { volume: 0.5 })
         return
       }
-
-      // if (!apiKey && selectedModel?.requiresApiKey) {
-      //   setChatError(`API key for ${selectedModel?.modelId} is not configured.`)
-      //   play("./sounds/error.mp3", { volume: 0.5 })
-      //   return
-      // }
 
       const userMessage: Message = {
         id: nanoid(),
@@ -76,7 +70,7 @@ export function useAIChat() {
 
       await append(userMessage, {
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: {
           interactionType: "chat",

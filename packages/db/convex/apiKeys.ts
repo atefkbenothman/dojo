@@ -56,3 +56,19 @@ export const upsertApiKey = mutation({
     }
   },
 })
+
+export const removeApiKey = mutation({
+  args: { userId: v.id("users"), providerId: v.id("providers") },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("providerId", args.providerId))
+      .unique()
+
+    if (existing) {
+      await ctx.db.delete(existing._id)
+      return existing._id
+    }
+    return null
+  },
+})

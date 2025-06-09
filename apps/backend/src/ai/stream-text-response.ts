@@ -1,4 +1,4 @@
-import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel, streamObject } from "ai"
+import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel } from "ai"
 import { type Response } from "express"
 
 interface StreamAiResponseOptions {
@@ -28,13 +28,6 @@ export async function streamTextResponse(
     }),
     onError: (error) => {
       console.error("[AI] Error during AI text stream processing:", error)
-      if (!res.headersSent) {
-        res.status(500).json({ message: `Error processing AI stream: ${JSON.stringify(error)}` })
-      } else {
-        if (!res.writableEnded) {
-          res.end()
-        }
-      }
     },
   })
 
