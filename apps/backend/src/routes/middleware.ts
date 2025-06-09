@@ -1,26 +1,31 @@
 import { getModelInstance, getModelRequiresApiKey, getModelFallbackApiKey } from "../ai/models.js"
+import { getConvexUser } from "../auth.js"
+import { convex } from "../convex-client.js"
 import { getOrCreateUserSession } from "../session.js"
+import { api } from "@dojo/db/convex/_generated/api.js"
+import type { Doc } from "@dojo/db/convex/_generated/dataModel.js"
 import { tryCatch } from "@dojo/utils"
 import type { Request, Response, NextFunction } from "express"
 import type { ZodSchema } from "zod"
 
 export function createAiRequestMiddleware(schema: ZodSchema<any>) {
-  return function aiRequestMiddleware(req: Request, res: Response, next: NextFunction) {
+  return async function aiRequestMiddleware(req: Request, res: Response, next: NextFunction) {
     const validationResult = schema.safeParse(req.body)
 
     if (!validationResult.success) {
       res.status(400).json({ error: "Invalid input", details: validationResult.error.formErrors })
       return
     }
+
     const parsedInput = validationResult.data
 
-    const userId = req.headers["x-user-id"] as string | undefined
-    if (!userId || typeof userId !== "string" || userId.trim() === "") {
-      res.status(401).json({ error: "User ID is missing or invalid in X-User-Id header." })
+    const user = await getConvexUser(req.headers.authorization)
+    if (!user) {
+      res.status(401).json({ error: "Authentication failed. Invalid or missing token." })
       return
     }
 
-    const userSession = getOrCreateUserSession(userId)
+    const userSession = getOrCreateUserSession(user._id)
     if (!userSession) {
       res.status(500).json({ error: "Failed to get or create user session." })
       return
@@ -34,18 +39,29 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
 
     const requiresApiKey = getModelRequiresApiKey(modelId)
 
-    let apiKeyToUse = parsedInput.apiKey
+    let apiKeyToUse: string | undefined
 
-    if (!apiKeyToUse && requiresApiKey === false) {
-      apiKeyToUse = getModelFallbackApiKey(modelId) || ""
+    if (requiresApiKey) {
+      // Get API key for user from Convex
+      const apiKeyObject = (await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
+        userId: user._id,
+        modelId: modelId,
+      })) as Doc<"apiKeys"> | null
+
+      if (apiKeyObject) {
+        apiKeyToUse = apiKeyObject.apiKey
+      }
+    } else {
+      apiKeyToUse = getModelFallbackApiKey(modelId)
     }
 
     if (!apiKeyToUse) {
-      res.status(400).json({ error: "Missing API key." })
+      res.status(400).json({ error: `API key for model '${modelId}' is missing or not configured.` })
       return
     }
 
     const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(modelId, apiKeyToUse))
+
     if (modelError || !modelInstance) {
       res.status(400).json({
         error: `Failed to initialize AI model '${modelId}'. Please check your API key and try again.`,

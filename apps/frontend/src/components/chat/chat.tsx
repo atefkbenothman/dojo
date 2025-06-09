@@ -2,14 +2,16 @@
 
 import { ChatFooter } from "@/components/chat/chat-footer"
 import { Messages } from "@/components/chat/messages"
-import { useUserContext } from "@/hooks/use-user-id"
 import { useRef } from "react"
 
-export function Chat() {
-  const { backendHealth } = useUserContext()
+interface ChatProps {
+  isServerHealthy: boolean
+}
+
+export function Chat({ isServerHealthy }: ChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>
 
-  if (backendHealth === "unhealthy") {
+  if (!isServerHealthy) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p className="bg-muted text-muted-foreground border p-2 text-xs font-medium">Server is offline</p>

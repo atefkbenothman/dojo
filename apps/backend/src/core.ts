@@ -12,6 +12,8 @@ import { ImageModel, LanguageModel } from "ai"
 import cors from "cors"
 import express, { Express } from "express"
 
+console.log("Starting server...")
+
 const PORT = process.env.PORT || 8888
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 
@@ -34,7 +36,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000", "https://dojoai.vercel.app/", "https://dojoai.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source", "X-User-Id"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source"],
     credentials: true,
     optionsSuccessStatus: 200,
   }),
@@ -66,8 +68,16 @@ app.listen(PORT, () => {
 
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err)
+  console.error("Stack:", err.stack)
+  console.error("Name:", err.name)
+  console.error("Message:", err.message)
+  process.exit(1)
 })
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason)
+  console.error("Unhandled Rejection at:", promise)
+  console.error("Reason:", reason)
+  if (reason instanceof Error) {
+    console.error("Stack:", reason.stack)
+  }
 })

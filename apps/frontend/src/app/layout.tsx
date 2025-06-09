@@ -2,11 +2,11 @@ import "./globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
 import { AIChatProvider } from "@/hooks/use-chat"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
-import { UserProvider } from "@/hooks/use-user-id"
 import { serverTrpc } from "@/lib/trpc/client"
 import { DojoTRPCProvider } from "@/lib/trpc/provider"
 import { ConvexClientProvider } from "@/providers/convex-client-provider"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
+import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server"
 import { asyncTryCatch } from "@dojo/utils"
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next"
@@ -72,31 +72,33 @@ export default async function RootLayout({
   const isServerHealthy = healthData?.status === "ok"
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* <script crossOrigin="anonymous" src="//unpkg.com/react-scan/dist/auto.global.js" /> */}
-        <link
-          rel="icon"
-          href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛩️</text></svg>"
-        />
-      </head>
-      <body className={`antialiased ${inter.className}`}>
-        <ConvexClientProvider>
-          <UserProvider backendHealth={isServerHealthy ? "healthy" : "unhealthy"}>
+    <ConvexAuthNextjsServerProvider>
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          {/* <script crossOrigin="anonymous" src="//unpkg.com/react-scan/dist/auto.global.js" /> */}
+          <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛩️</text></svg>"
+          />
+        </head>
+        <body className={`antialiased ${inter.className}`}>
+          <ConvexClientProvider>
             <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
               <SoundEffectProvider>
                 <DojoTRPCProvider>
                   <AIChatProvider>
-                    <ResizableLayout defaultLayout={defaultLayout}>{children}</ResizableLayout>
+                    <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
+                      {children}
+                    </ResizableLayout>
                   </AIChatProvider>
                 </DojoTRPCProvider>
               </SoundEffectProvider>
             </DarkModeProvider>
-          </UserProvider>
-        </ConvexClientProvider>
-        <Toaster toastOptions={{ style: { borderRadius: "var(--radius-sm)" } }} />
-        <Analytics />
-      </body>
-    </html>
+          </ConvexClientProvider>
+          <Toaster toastOptions={{ style: { borderRadius: "var(--radius-sm)" } }} />
+          <Analytics />
+        </body>
+      </html>
+    </ConvexAuthNextjsServerProvider>
   )
 }

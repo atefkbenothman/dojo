@@ -21,7 +21,7 @@ export function useWorkflow() {
   const { append, setMessages } = useChatProvider()
   const { agents } = useAgent()
   const { connect } = useMCP()
-  const { getApiKeyForModel, getModel } = useAIModels()
+  const { getModel } = useAIModels()
 
   const workflows = useQuery(api.workflows.list)
 
@@ -47,7 +47,6 @@ export function useWorkflow() {
       // connect to mcp servers
       const mcpServers = workflow.steps.map((step) => agents.find((a) => a._id === step)?.mcpServers).flat()
       await connect(mcpServers as Id<"mcp">[])
-      const apiKey = getApiKeyForModel(model._id)
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
@@ -56,7 +55,6 @@ export function useWorkflow() {
       append(userMessage, {
         body: {
           interactionType: "workflow",
-          apiKey,
           workflow: {
             modelId: workflow.aiModelId,
             workflowId: workflow._id,
@@ -65,7 +63,7 @@ export function useWorkflow() {
       })
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, agents, getApiKeyForModel, getModel, play, setMessages, setSelectedModelId],
+    [append, agents, getModel, play, setMessages, setSelectedModelId],
   )
 
   const stableWorkflows = useMemo(() => workflows || [], [workflows])

@@ -3,7 +3,6 @@ import { initTRPC, TRPCError } from "@trpc/server"
 
 const t = initTRPC.context<Context>().create()
 
-// Middleware to check if user is authenticated
 const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
   if (!ctx.userSession || !ctx.userSession.userId) {
     throw new TRPCError({

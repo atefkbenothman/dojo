@@ -13,7 +13,6 @@ export const agentRouter: Router = express.Router()
 
 const agentInputSchema = z.object({
   messages: z.array(z.any()).min(1, { message: "Missing or invalid messages array" }),
-  apiKey: z.string().optional(),
   agent: z.object({
     modelId: z.string(),
     agentId: z.string(),

@@ -32,31 +32,31 @@ export function useAIModels() {
    * Read api keys from localstorage and fallback to .env variables
    * if not found in localstorage
    */
-  const getApiKeyForProvider = useCallback(
-    (providerId: string) => {
-      const localStorageKey = `${providerId.toUpperCase()}_API_KEY`
-      let apiKey = readStorage<string>(localStorageKey)
-      if (!apiKey) {
-        const envJsKey = `NEXT_PUBLIC_${providerId.toUpperCase()}_API_KEY` as keyof typeof env
-        const envValue = env[envJsKey]
-        if (envValue) {
-          apiKey = envValue as string
-        }
-      }
-      return apiKey
-    },
-    [readStorage],
-  )
+  // const getApiKeyForProvider = useCallback(
+  //   (providerId: string) => {
+  //     const localStorageKey = `${providerId.toUpperCase()}_API_KEY`
+  //     let apiKey = readStorage<string>(localStorageKey)
+  //     if (!apiKey) {
+  //       const envJsKey = `NEXT_PUBLIC_${providerId.toUpperCase()}_API_KEY` as keyof typeof env
+  //       const envValue = env[envJsKey]
+  //       if (envValue) {
+  //         apiKey = envValue as string
+  //       }
+  //     }
+  //     return apiKey
+  //   },
+  //   [readStorage],
+  // )
 
-  const getApiKeyForModel = useCallback(
-    (modelId: Id<"models">) => {
-      const model = getModel(modelId)
-      const providerId = model?.providerId
-      const provider = providers?.find((p) => p._id === providerId)
-      return getApiKeyForProvider(provider?.providerId || "")
-    },
-    [getModel, getApiKeyForProvider],
-  )
+  // const getApiKeyForModel = useCallback(
+  //   (modelId: Id<"models">) => {
+  //     const model = getModel(modelId)
+  //     const providerId = model?.providerId
+  //     const provider = providers?.find((p) => p._id === providerId)
+  //     return getApiKeyForProvider(provider?.providerId || "")
+  //   },
+  //   [getModel, getApiKeyForProvider],
+  // )
 
   return {
     models: models || [],
@@ -64,7 +64,7 @@ export function useAIModels() {
     selectedModel,
     providers: providers || [],
     getModel,
-    getApiKeyForModel,
-    getApiKeyForProvider,
+    // getApiKeyForModel,
+    // getApiKeyForProvider,
   }
 }

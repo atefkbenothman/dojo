@@ -15,7 +15,7 @@ export function useAgent() {
   const { connect } = useMCP()
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
-  const { selectedModel, getApiKeyForModel } = useAIModels()
+  const { selectedModel } = useAIModels()
 
   const agents = useQuery(api.agents.list)
 
@@ -41,10 +41,6 @@ export function useAgent() {
         await connect(agent.mcpServers)
       }
       if (!selectedModel) return
-      const apiKey = getApiKeyForModel(selectedModel?._id)
-      if (!apiKey && selectedModel?.requiresApiKey) {
-        throw new Error(`API key for ${selectedModel?.modelId} is not configured.`)
-      }
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
@@ -53,7 +49,6 @@ export function useAgent() {
       append(userMessage, {
         body: {
           interactionType: "agent",
-          apiKey,
           agent: {
             modelId: selectedModel._id,
             agentId: agent._id,
@@ -62,7 +57,7 @@ export function useAgent() {
       })
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [selectedModel, append, connect, getApiKeyForModel, play, setMessages],
+    [selectedModel, append, connect, play, setMessages],
   )
 
   const stableAgents = useMemo(() => agents || [], [agents])

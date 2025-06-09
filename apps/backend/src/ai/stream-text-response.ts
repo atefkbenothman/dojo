@@ -17,54 +17,44 @@ export async function streamTextResponse(
     `[AI] Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools.`,
   )
 
-  try {
-    const result = streamText({
-      model: languageModel,
-      messages: messages,
-      tools: tools,
-      maxSteps: 20,
-      experimental_transform: smoothStream({
-        delayInMs: 5,
-        chunking: "line",
-      }),
-      onError: (error) => {
-        console.error("[AI] Error during AI text stream processing:", error)
-        if (!res.headersSent) {
-          res.status(500).json({ message: "Error processing AI stream" })
-        } else {
+  const result = streamText({
+    model: languageModel,
+    messages: messages,
+    tools: tools,
+    maxSteps: 20,
+    experimental_transform: smoothStream({
+      delayInMs: 5,
+      chunking: "line",
+    }),
+    onError: (error) => {
+      console.error("[AI] Error during AI text stream processing:", error)
+      if (!res.headersSent) {
+        res.status(500).json({ message: `Error processing AI stream: ${JSON.stringify(error)}` })
+      } else {
+        if (!res.writableEnded) {
           res.end()
         }
-      },
-    })
-
-    const responseStream = result.toDataStream()
-
-    if (responseStream) {
-      const reader = responseStream.getReader()
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          break
-        }
-        res.write(value)
       }
-    }
+    },
+  })
 
-    if (end && !res.writableEnded) {
-      res.end()
-    }
+  const responseStream = result.toDataStream()
 
-    const finalText = await result.text
-    return { text: finalText }
-  } catch (error) {
-    console.error("[AI] Error during AI text stream processing:", error)
-    if (!res.headersSent) {
-      res.status(500).json({ message: "Error processing AI stream" })
-    } else {
-      if (!res.writableEnded) {
-        res.end()
+  if (responseStream) {
+    const reader = responseStream.getReader()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
       }
+      res.write(value)
     }
-    return { text: "" }
   }
+
+  if (end && !res.writableEnded) {
+    res.end()
+  }
+
+  const finalText = await result.text
+  return { text: finalText }
 }

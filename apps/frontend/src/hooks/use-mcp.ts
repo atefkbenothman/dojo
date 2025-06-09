@@ -1,14 +1,12 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { useUserContext } from "@/hooks/use-user-id"
 import { errorToastStyle } from "@/lib/styles"
 import { useTRPCClient } from "@/lib/trpc/context"
 import { useMCPStore } from "@/store/use-mcp-store"
 import type { RouterOutputs } from "@dojo/backend/src/types.js"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
-import type { MCPServer } from "@dojo/db/convex/types"
 import { useMutation } from "@tanstack/react-query"
-import { useMutation as useConvexMutation, useQuery as useConvexQuery } from "convex/react"
+import { useMutation as useConvexMutation, useQuery as useConvexQuery, useConvexAuth } from "convex/react"
 import { WithoutSystemFields } from "convex/server"
 import { useMemo } from "react"
 import { toast } from "sonner"
@@ -27,10 +25,10 @@ export function useMCP() {
   const createMCP = useConvexMutation(api.mcp.create)
   const deleteMCP = useConvexMutation(api.mcp.remove)
 
-  const { play } = useSoundEffectContext()
-  const { userId, backendHealth } = useUserContext()
-
   const { connectionMeta, setConnectionStatus, setConnectionError, setConnectionMeta } = useMCPStore()
+  const { isAuthenticated } = useConvexAuth()
+
+  const { play } = useSoundEffectContext()
 
   const activeConnections = useMemo(() => {
     return Object.entries(connectionMeta)
@@ -125,20 +123,9 @@ export function useMCP() {
 
   const connect = async (serverIds: Id<"mcp">[]) => {
     if (serverIds.some((serverId) => connectionMeta[serverId]?.status === "connecting")) return
-    if (!userId) {
+    if (!isAuthenticated) {
       play("./sounds/error.mp3", { volume: 0.5 })
       toast.error("User ID not available in context", {
-        icon: null,
-        id: "mcp-error",
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-      return
-    }
-    if (!backendHealth) {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      toast.error("Server is offline", {
         icon: null,
         id: "mcp-error",
         duration: 5000,
@@ -152,7 +139,7 @@ export function useMCP() {
   }
 
   const disconnect = async (serverId: string) => {
-    if (!userId) {
+    if (!isAuthenticated) {
       play("./sounds/error.mp3", { volume: 0.5 })
       toast.error("User ID not available in context", {
         icon: null,
@@ -168,7 +155,7 @@ export function useMCP() {
   }
 
   const disconnectAll = async () => {
-    if (!userId || activeConnections.length === 0) return
+    if (!isAuthenticated || activeConnections.length === 0) return
     await Promise.all(activeConnections.map((conn) => disconnect(conn.serverId)))
     play("./sounds/disconnect.mp3", { volume: 0.5 })
   }

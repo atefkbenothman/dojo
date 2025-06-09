@@ -9,7 +9,6 @@ export const chatRouter: Router = express.Router()
 
 const chatInputSchema = z.object({
   messages: z.array(z.any()).min(1, { message: "Missing or invalid messages array" }),
-  apiKey: z.string().optional(),
   chat: z.object({
     modelId: z.string().min(1, { message: "Missing modelId" }),
   }),
@@ -19,20 +18,15 @@ chatRouter.post("/", createAiRequestMiddleware(chatInputSchema), async (req: Req
   try {
     const userSession = req.userSession
     const aiModel = req.aiModel as LanguageModel
-
     const parsedInput = req.parsedInput as z.infer<typeof chatInputSchema>
     const { messages } = parsedInput
-
     const combinedTools = aggregateMcpTools(userSession)
-
     console.log(
       `[REST /chat/send-message] request received for userId: ${userSession.userId}, using model: ${parsedInput.chat.modelId}`,
     )
-
     console.log(
       `[REST /chat/send-message]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userSession.userId}`,
     )
-
     await streamTextResponse({
       res,
       languageModel: aiModel,

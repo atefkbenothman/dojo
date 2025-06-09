@@ -1,8 +1,8 @@
 import { MCPClient } from "./mcp-client.js"
 import type { AppRouter } from "./trpc/router.js"
+import type { Id } from "@dojo/db/convex/_generated/dataModel.js"
 import type { MCPServer } from "@dojo/db/convex/types.js"
 import type { inferRouterOutputs, inferRouterInputs } from "@trpc/server"
-import { Request } from "express"
 
 export interface GenerateImageOptions {
   n?: number
@@ -16,13 +16,8 @@ export interface ActiveMcpClient {
   server: MCPServer
 }
 
-export interface RequestWithUserContext extends Request {
-  userId: string
-  userSession: UserSession
-}
-
 export interface UserSession {
-  userId: string
+  userId: Id<"users">
   activeMcpClients: Map<string, ActiveMcpClient>
 }
 

@@ -19,15 +19,9 @@ export function useImage() {
 
   const { play } = useSoundEffectContext()
   const { setChatError, setMessages } = useChatProvider()
-  const { getApiKeyForModel } = useAIModels()
 
   const imageGenerationMutationFn = useCallback(
     function imageGenerationMutationFn(data: ImageGenerationInput) {
-      if (!data.apiKey) {
-        const errorMsg = `API key for image generation with model ${data.modelId} not provided.`
-        setChatError(errorMsg)
-        throw new Error(errorMsg)
-      }
       return trpcClient.image.generate.mutate(data)
     },
     [setChatError, trpcClient],
@@ -35,37 +29,37 @@ export function useImage() {
 
   const mutation = useMutation<RouterOutputs["image"]["generate"], Error, ImageGenerationInput>({
     mutationFn: imageGenerationMutationFn,
-    onSuccess: (result) => {
-      const imagesArr = result.images || []
-      if (imagesArr.length > 0) {
-        const imageData = {
-          type: "generated_image",
-          images: imagesArr.map((img) => {
-            if ("base64" in img) return { base64: img.base64 }
-            if ("url" in img) return { base64: img.url }
-            return { base64: "" }
-          }),
-        }
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nanoid(),
-            role: "assistant",
-            content: imagesArr.length > 1 ? "Generated Images:" : "Generated Image:",
-            images: imageData,
-          },
-        ])
-      }
-      play("./sounds/done.mp3", { volume: 0.5 })
-      setIsImageGenerating(false)
-    },
-    onError: (error: Error) => {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      const message = error.message || "An unexpected error occurred during image generation."
-      setChatError(message)
-      setIsImageGenerating(false)
-      console.error("Image generation mutation error:", error)
-    },
+    // onSuccess: (result) => {
+    //   const imagesArr = result.images || []
+    //   if (imagesArr.length > 0) {
+    //     const imageData = {
+    //       type: "generated_image",
+    //       images: imagesArr.map((img) => {
+    //         if ("base64" in img) return { base64: img.base64 }
+    //         if ("url" in img) return { base64: img.url }
+    //         return { base64: "" }
+    //       }),
+    //     }
+    //     setMessages((prev) => [
+    //       ...prev,
+    //       {
+    //         id: nanoid(),
+    //         role: "assistant",
+    //         content: imagesArr.length > 1 ? "Generated Images:" : "Generated Image:",
+    //         images: imageData,
+    //       },
+    //     ])
+    //   }
+    //   play("./sounds/done.mp3", { volume: 0.5 })
+    //   setIsImageGenerating(false)
+    // },
+    // onError: (error: Error) => {
+    //   play("./sounds/error.mp3", { volume: 0.5 })
+    //   const message = error.message || "An unexpected error occurred during image generation."
+    //   setChatError(message)
+    //   setIsImageGenerating(false)
+    //   console.error("Image generation mutation error:", error)
+    // },
   })
 
   const handleImageGeneration = useCallback(
@@ -81,20 +75,13 @@ export function useImage() {
           content: prompt,
         },
       ])
-      const apiKey = getApiKeyForModel(selectedModel._id)
-      if (!apiKey) {
-        setChatError(`API key for ${selectedModel.name} is not configured.`)
-        play("./sounds/error.mp3", { volume: 0.5 })
-        return
-      }
       setIsImageGenerating(true)
       mutation.mutate({
         modelId: selectedModel._id,
         prompt,
-        apiKey,
       })
     },
-    [setMessages, setChatError, play, mutation, getApiKeyForModel, setIsImageGenerating],
+    [setMessages, play, mutation, setIsImageGenerating],
   )
 
   return { handleImageGeneration }

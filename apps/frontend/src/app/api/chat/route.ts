@@ -1,7 +1,6 @@
 import { env } from "@/env"
 import { asyncTryCatch } from "@dojo/utils"
 import type { CoreMessage } from "ai"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 function buildProxyHeaders(headers: Headers) {
@@ -17,12 +16,7 @@ function buildProxyHeaders(headers: Headers) {
 }
 
 /* Chat */
-async function handleChat(
-  userId: string,
-  apiKey: string | undefined,
-  messages: CoreMessage[],
-  chat: { modelId: string },
-) {
+async function handleChat(authorization: string | null, messages: CoreMessage[], chat: { modelId: string }) {
   if (!messages || !chat.modelId) {
     return NextResponse.json({ error: "Missing 'messages' or 'modelId' for CHAT interaction." }, { status: 400 })
   }
@@ -32,9 +26,9 @@ async function handleChat(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(userId ? { "X-User-Id": userId } : {}),
+        ...(authorization ? { Authorization: authorization } : {}),
       },
-      body: JSON.stringify({ messages, apiKey: apiKey || undefined, chat }),
+      body: JSON.stringify({ messages, chat }),
     }),
   )
 
@@ -48,7 +42,7 @@ async function handleChat(
     )
   }
 
-  console.log(`[API /chat] Successfully initiated CHAT stream via CHAT service for user ${userId}`)
+  console.log(`[API /chat] Successfully initiated CHAT stream via CHAT service`)
 
   return new Response(data.body, {
     status: data.status,
@@ -59,8 +53,7 @@ async function handleChat(
 
 /* Agent */
 async function handleAgent(
-  userId: string,
-  apiKey: string | undefined,
+  authorization: string | null,
   messages: CoreMessage[],
   agent: { modelId: string; agentId: string },
 ) {
@@ -73,11 +66,10 @@ async function handleAgent(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(userId ? { "X-User-Id": userId } : {}),
+        ...(authorization ? { Authorization: authorization } : {}),
       },
       body: JSON.stringify({
         messages,
-        apiKey: apiKey || undefined,
         agent: agent,
       }),
     }),
@@ -93,7 +85,7 @@ async function handleAgent(
     )
   }
 
-  console.log(`[API /chat] Successfully initiated AGENT stream via AGENT service for user ${userId}`)
+  console.log(`[API /chat] Successfully initiated AGENT stream via AGENT service`)
 
   return new Response(data.body, {
     status: data.status,
@@ -104,8 +96,7 @@ async function handleAgent(
 
 /* Workflow */
 const handleWorkflow = async (
-  userId: string,
-  apiKey: string,
+  authorization: string | null,
   messages: CoreMessage[],
   workflow: { modelId: string; workflowId: string },
 ) => {
@@ -120,11 +111,10 @@ const handleWorkflow = async (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(userId ? { "X-User-Id": userId } : {}),
+        ...(authorization ? { Authorization: authorization } : {}),
       },
       body: JSON.stringify({
         messages,
-        apiKey: apiKey || undefined,
         workflow: workflow,
       }),
     }),
@@ -144,18 +134,12 @@ const handleWorkflow = async (
 
 export async function POST(request: Request) {
   const body = await request.json()
+  const { messages, interactionType } = body
+  const authorization = request.headers.get("Authorization")
 
-  const { messages, interactionType, apiKey } = body
-
-  const cookieStore = await cookies()
-  const userId = cookieStore.get("userId")?.value
-
-  if (!userId) {
-    console.error("[API /chat] Missing userId cookie. Rejecting request.")
-    return NextResponse.json(
-      { error: "Missing userId cookie. Please refresh the page or enable cookies." },
-      { status: 401 },
-    )
+  if (!authorization) {
+    console.error("[API /chat] Missing authorization header. Rejecting request.")
+    return NextResponse.json({ error: "Missing authorization header. Please log in." }, { status: 401 })
   }
 
   if (!interactionType) {
@@ -168,7 +152,7 @@ export async function POST(request: Request) {
     )
   }
 
-  console.log(`[API /chat] Received interactionType: ${interactionType}, User: ${userId}`)
+  console.log(`[API /chat] Received interactionType: ${interactionType}`)
 
   switch (interactionType) {
     case "chat": {
@@ -176,21 +160,21 @@ export async function POST(request: Request) {
       if (!chat) {
         return NextResponse.json({ error: "Missing 'chat' object in request body." }, { status: 400 })
       }
-      return await handleChat(userId, apiKey, messages, chat)
+      return await handleChat(authorization, messages, chat)
     }
     case "agent": {
       const { agent } = body
       if (!agent) {
         return NextResponse.json({ error: "Missing 'agent' object in request body." }, { status: 400 })
       }
-      return await handleAgent(userId, apiKey, messages, agent)
+      return await handleAgent(authorization, messages, agent)
     }
     case "workflow": {
       const { workflow } = body
       if (!workflow) {
         return NextResponse.json({ error: "Missing 'workflow' object in request body." }, { status: 400 })
       }
-      return await handleWorkflow(userId, apiKey, messages, workflow)
+      return await handleWorkflow(authorization, messages, workflow)
     }
     default:
       console.error(`[API /chat] Unknown 'interactionType': ${interactionType}`)

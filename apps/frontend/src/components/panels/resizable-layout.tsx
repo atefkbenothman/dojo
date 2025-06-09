@@ -14,6 +14,7 @@ import { ImperativePanelHandle } from "react-resizable-panels"
 interface ResizableLayoutProps {
   children: React.ReactNode
   defaultLayout: [number, number]
+  isServerHealthy: boolean
 }
 
 const CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE = 2
@@ -21,7 +22,7 @@ const CHAT_PANEL_EXPANDED_WIDTH_PERCENTAGE = 30
 const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
 const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 100
 
-export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProps) {
+export function ResizableLayout({ children, defaultLayout, isServerHealthy }: ResizableLayoutProps) {
   const { handleNewChat } = useChatProvider()
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
@@ -84,7 +85,7 @@ export function ResizableLayout({ children, defaultLayout }: ResizableLayoutProp
             ) : (
               <div className={cn("flex flex-1 flex-col overflow-hidden p-2", isMaximized && "mx-auto flex w-full")}>
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                  <Chat />
+                  <Chat isServerHealthy={isServerHealthy} />
                 </div>
               </div>
             )}

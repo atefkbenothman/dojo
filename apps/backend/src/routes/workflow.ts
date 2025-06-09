@@ -13,7 +13,6 @@ export const workflowRouter: Router = express.Router()
 
 const workflowInputSchema = z.object({
   messages: z.array(z.any()).min(1, { message: "Missing or invalid messages array" }),
-  apiKey: z.string().optional(),
   workflow: z.object({
     modelId: z.string(),
     workflowId: z.string(),
