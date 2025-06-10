@@ -19,13 +19,13 @@ export const list = query({
       // Authenticated: return only the user's agents
       return await ctx.db
         .query("agents")
-        .filter((q) => q.eq(q.field("userId"), userId))
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
         .collect()
     } else {
       // Not authenticated: return only public agents
       return await ctx.db
         .query("agents")
-        .filter((q) => q.eq(q.field("isPublic"), true))
+        .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
         .collect()
     }
   },

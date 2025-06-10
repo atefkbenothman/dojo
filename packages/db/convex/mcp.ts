@@ -20,13 +20,13 @@ export const list = query({
       // Authenticated: return only the user's MCPs
       return await ctx.db
         .query("mcp")
-        .filter((q) => q.eq(q.field("userId"), userId))
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
         .collect()
     } else {
       // Not authenticated: return only public MCPs
       return await ctx.db
         .query("mcp")
-        .filter((q) => q.eq(q.field("isPublic"), true))
+        .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
         .collect()
     }
   },

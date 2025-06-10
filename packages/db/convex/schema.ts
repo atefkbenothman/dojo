@@ -2,11 +2,13 @@ import { authTables } from "@convex-dev/auth/server"
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
+// AI providers (OpenAI, Anthropic, etc.)
 export const providersFields = {
   providerId: v.string(),
   name: v.string(),
 }
 
+// AI models (gpt-4o, claude-3-5-sonnet, etc.)
 export const modelsFields = {
   modelId: v.string(),
   name: v.string(),
@@ -15,6 +17,7 @@ export const modelsFields = {
   type: v.string(),
 }
 
+// MCP server configurations
 export const mcpFields = {
   userId: v.optional(v.id("users")),
   name: v.string(),
@@ -30,6 +33,7 @@ export const mcpFields = {
   isPublic: v.optional(v.boolean()),
 }
 
+// Agent configurations
 export const agentsFields = {
   userId: v.optional(v.id("users")),
   mcpServers: v.array(v.id("mcp")),
@@ -39,6 +43,7 @@ export const agentsFields = {
   isPublic: v.optional(v.boolean()),
 }
 
+// Workflow configurations
 export const workflowsFields = {
   userId: v.optional(v.id("users")),
   name: v.string(),
@@ -49,21 +54,30 @@ export const workflowsFields = {
   isPublic: v.optional(v.boolean()),
 }
 
+// API key configurations for AI providers
 export const apiKeysFields = {
   userId: v.id("users"),
   providerId: v.id("providers"),
   apiKey: v.string(),
 }
 
+// User session configurations
+export const sessionsFields = {
+  userId: v.optional(v.id("users")),
+  activeMcpServerIds: v.array(v.id("mcp")),
+  lastAccessed: v.number(),
+}
+
 export default defineSchema({
   ...authTables,
   providers: defineTable(providersFields),
   models: defineTable(modelsFields).index("by_modelId", ["modelId"]),
-  mcp: defineTable(mcpFields),
-  agents: defineTable(agentsFields),
-  workflows: defineTable(workflowsFields),
+  mcp: defineTable(mcpFields).index("by_userId", ["userId"]).index("by_isPublic", ["isPublic"]),
+  agents: defineTable(agentsFields).index("by_userId", ["userId"]).index("by_isPublic", ["isPublic"]),
+  workflows: defineTable(workflowsFields).index("by_userId", ["userId"]).index("by_isPublic", ["isPublic"]),
   apiKeys: defineTable(apiKeysFields)
     .index("by_user", ["userId"])
     .index("by_provider", ["providerId"])
     .index("by_user_provider", ["userId", "providerId"]),
+  sessions: defineTable(sessionsFields).index("by_user", ["userId"]),
 })
