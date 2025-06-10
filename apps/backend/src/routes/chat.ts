@@ -16,13 +16,13 @@ const chatInputSchema = z.object({
 
 chatRouter.post("/", createAiRequestMiddleware(chatInputSchema), async (req: Request, res: Response): Promise<void> => {
   try {
-    const userSession = req.userSession
+    const session = req.session
     const aiModel = req.aiModel as LanguageModel
     const parsedInput = req.parsedInput as z.infer<typeof chatInputSchema>
     const { messages } = parsedInput
 
-    const userIdForLogging = userSession ? userSession.userId : "anonymous"
-    const combinedTools = userSession ? aggregateMcpTools(userSession) : {}
+    const userIdForLogging = session?.userId || "anonymous"
+    const combinedTools = session ? aggregateMcpTools(session._id) : {}
 
     console.log(
       `[REST /chat/send-message] request received for userId: ${userIdForLogging}, using model: ${parsedInput.chat.modelId}`,

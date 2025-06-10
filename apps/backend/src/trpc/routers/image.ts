@@ -29,15 +29,19 @@ export const imageRouter = router({
     .input(imageGenerationInputSchema)
     .mutation(async ({ input, ctx }: { input: z.infer<typeof imageGenerationInputSchema>; ctx: Context }) => {
       const { prompt, modelId, n, size, quality, style } = input
-      const { userSession } = ctx
+      const { session } = ctx
 
-      console.log(`[TRPC /image.generate] Request received for user: ${userSession!.userId}, using model: ${modelId}`)
+      if (!session?.userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated." })
+      }
+
+      console.log(`[TRPC /image.generate] Request received for user: ${session.userId}, using model: ${modelId}`)
 
       let imageModel: ImageModel
       try {
         // imageModel = getModelInstance(modelId) as ImageModel
       } catch (err) {
-        console.error(`[TRPC /image.generate] Error getting model instance for user ${userSession!.userId}:`, err)
+        console.error(`[TRPC /image.generate] Error getting model instance for user ${session.userId}:`, err)
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: err instanceof Error ? err.message : "Failed to get model instance.",
@@ -74,7 +78,7 @@ export const imageRouter = router({
 
       //   return { images: resultImages }
       // } catch (error) {
-      //   console.error(`[TRPC /image.generate] Error generating image for user ${userSession!.userId}:`, error)
+      //   console.error(`[TRPC /image.generate] Error generating image for user ${session.userId}:`, error)
       //   throw new TRPCError({
       //     code: "INTERNAL_SERVER_ERROR",
       //     message: "Failed to generate image.",

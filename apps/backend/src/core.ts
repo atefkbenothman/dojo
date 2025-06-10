@@ -2,11 +2,10 @@ import { convex } from "./convex-client.js"
 import { agentRouter } from "./routes/agent.js"
 import { chatRouter } from "./routes/chat.js"
 import { workflowRouter } from "./routes/workflow.js"
-import { totalConnections } from "./session.js"
 import { createTRPCContext } from "./trpc/context.js"
 import { appRouter } from "./trpc/router.js"
-import type { UserSession } from "./types.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
+import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
 import { createExpressMiddleware } from "@trpc/server/adapters/express"
 import { ImageModel, LanguageModel } from "ai"
 import cors from "cors"
@@ -23,7 +22,7 @@ const mcpServers = await convex.query(api.mcp.list)
 declare global {
   namespace Express {
     interface Request {
-      userSession: UserSession | null
+      session?: Doc<"sessions">
       aiModel: LanguageModel | ImageModel
       parsedInput: unknown
     }
@@ -36,7 +35,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000", "https://dojoai.vercel.app/", "https://dojoai.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source", "x-guest-session-id"],
     credentials: true,
     optionsSuccessStatus: 200,
   }),
@@ -59,7 +58,6 @@ app.use(
 /* Start the server */
 app.listen(PORT, () => {
   console.log(`[Core] Server listening on port ${PORT}`)
-  console.log(`[Core] Initializing with ${totalConnections} connections`)
   console.log(`[Core] Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
   console.log("[Core] tRPC router mounted at /trpc")
   console.log("[Core] Configured MCP Servers:", mcpServers.map((mcp) => mcp.name).join(", "))

@@ -4,15 +4,15 @@ import { initTRPC, TRPCError } from "@trpc/server"
 const t = initTRPC.context<Context>().create()
 
 const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
-  if (!ctx.userSession || !ctx.userSession.userId) {
+  if (!ctx.session?.userId) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
-      message: "User session not found or invalid. Authentication via X-User-Id header is required.",
+      message: "User session not found or user is not authenticated.",
     })
   }
   return next({
     ctx: {
-      userSession: ctx.userSession,
+      session: ctx.session,
     },
   })
 })

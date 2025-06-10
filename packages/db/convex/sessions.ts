@@ -1,4 +1,4 @@
-import { internalMutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 import { v } from "convex/values"
 
 const STALE_THRESHOLD = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
@@ -11,9 +11,9 @@ export const get = query({
   },
 })
 
-// The primary internal function for getting or creating a session.
+// The primary function for getting or creating a session.
 // Handles authenticated users, guest users, and the transition between them.
-export const getOrCreate = internalMutation({
+export const getOrCreate = mutation({
   args: {
     userId: v.optional(v.id("users")),
     guestSessionId: v.optional(v.id("sessions")), // The ID of a potential anonymous session
@@ -89,7 +89,7 @@ export const getOrCreate = internalMutation({
 })
 
 // Adds an MCP server connection to a session
-export const addConnection = internalMutation({
+export const addConnection = mutation({
   args: {
     sessionId: v.id("sessions"),
     mcpServerId: v.id("mcp"),
@@ -112,7 +112,7 @@ export const addConnection = internalMutation({
 })
 
 // Removes an MCP server connection from a session
-export const removeConnection = internalMutation({
+export const removeConnection = mutation({
   args: {
     sessionId: v.id("sessions"),
     mcpServerId: v.id("mcp"),

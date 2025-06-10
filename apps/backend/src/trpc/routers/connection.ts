@@ -1,7 +1,7 @@
 import { convex } from "../../convex-client.js"
 import { establishMcpConnection, cleanupExistingConnection } from "../../mcp-connection.js"
 import type { Context } from "../context.js"
-import { router, protectedProcedure } from "../trpc.js"
+import { router, publicProcedure } from "../trpc.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel.js"
 import { asyncTryCatch } from "@dojo/utils"
@@ -18,86 +18,128 @@ const disconnectInputSchema = z.object({
   serverId: z.string().min(1),
 })
 
+/**
+ * Manages connections to MCP servers for both authenticated and anonymous users.
+ * The session state is persisted in the Convex database.
+ */
 export const connectionRouter = router({
-  connect: protectedProcedure
-    .input(connectInputSchema)
-    .mutation(async ({ input, ctx }: { input: z.infer<typeof connectInputSchema>; ctx: Context }) => {
-      const { userSession } = ctx
+  /**
+   * Establishes connections to one or more MCP servers. This is a public procedure,
+   * but authorization is handled internally based on server properties.
+   */
+  connect: publicProcedure.input(connectInputSchema).mutation(async ({ input, ctx }) => {
+    const { session } = ctx
 
-      if (!userSession) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "User session is required.",
+    if (!session) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Session could not be established.",
+      })
+    }
+
+    const { servers } = input
+    const mcpServers = await Promise.all(
+      servers.map((server) => convex.query(api.mcp.get, { id: server as Id<"mcp"> })),
+    )
+
+    const validMcpServers = mcpServers.filter((s): s is NonNullable<typeof s> => s !== null)
+
+    try {
+      const connectionPromises = validMcpServers.map(async (server) => {
+        // Authorization: A user must be authenticated to connect to non-public servers.
+        const isUserAuthenticated = !!session.userId
+        if (!server.isPublic && !isUserAuthenticated) {
+          throw new Error(`Authentication is required to connect to server "${server.name}".`)
+        }
+
+        if (server.localOnly && isProduction) {
+          throw new Error(`Server "${server.name}" is local-only and cannot be accessed in a production environment.`)
+        }
+
+        // The connection process is a three-step dance:
+        // 1. Clean up any lingering live connection from the in-memory cache.
+        await cleanupExistingConnection(session._id, server._id)
+
+        // 2. Establish the new live connection, which adds it to the cache.
+        const connection = await establishMcpConnection(session._id, server)
+        if (!connection?.success) {
+          throw new Error(connection?.error || `Failed to establish connection with server "${server.name}".`)
+        }
+
+        // 3. Persist the new connection state in the database for scalability.
+        await convex.mutation(api.sessions.addConnection, {
+          sessionId: session._id,
+          mcpServerId: server._id,
         })
-      }
 
-      const { servers } = input
+        return {
+          serverId: server._id,
+          success: true,
+          tools: connection.client?.client.tools || {},
+        }
+      })
 
-      const mcpServers = await Promise.all(
-        servers.map((server) => convex.query(api.mcp.get, { id: server as Id<"mcp"> })),
-      )
+      const results = await Promise.all(connectionPromises)
 
-      const validMcpServers = mcpServers.filter((s) => s !== null)
-
-      try {
-        const connectionPromises = validMcpServers.map(async (server) => {
-          if (server.localOnly && isProduction) {
-            throw new Error(`Server "${server.name}" is local-only and cannot be accessed in a production environment.`)
-          }
-
-          await cleanupExistingConnection(userSession, server._id)
-          const connection = await establishMcpConnection(userSession, server)
-
-          if (!connection?.success) {
-            throw new Error(connection?.error || `Failed to establish connection with server "${server.name}".`)
-          }
-
-          return {
-            serverId: server._id,
-            success: true,
-            tools: connection.client?.client.tools || {},
-          }
+      // We must return the sessionId so the frontend client can store it,
+      // which is crucial for new anonymous users to maintain their session.
+      return { success: true, sessionId: session._id, results }
+    } catch (error) {
+      // If any part of the connection process fails, we attempt to roll back
+      // all changes made during this request to leave the system in a clean state.
+      // This involves cleaning both the in-memory cache and the database.
+      const cleanupPromises = validMcpServers.map(async (server) => {
+        await cleanupExistingConnection(session._id, server._id)
+        // Also remove from database state
+        await convex.mutation(api.sessions.removeConnection, {
+          sessionId: session._id,
+          mcpServerId: server._id,
         })
+      })
+      await Promise.allSettled(cleanupPromises)
 
-        const results = await Promise.all(connectionPromises)
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred."
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Connection failed: ${errorMessage}. All connections have been rolled back.`,
+        cause: error instanceof Error ? error : undefined,
+      })
+    }
+  }),
+  /**
+   * Disconnects from a single MCP server.
+   */
+  disconnect: publicProcedure.input(disconnectInputSchema).mutation(async ({ input, ctx }) => {
+    const { serverId } = input
+    const { session } = ctx
 
-        return { success: true, userId: userSession.userId, results }
-      } catch (error) {
-        // rollback connections
-        const cleanupPromises = validMcpServers.map((server) => cleanupExistingConnection(userSession, server._id))
-        await Promise.allSettled(cleanupPromises)
+    if (!session) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "No active session.",
+      })
+    }
 
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred."
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Connection failed: ${errorMessage}. All connections have been rolled back.`,
-          cause: error instanceof Error ? error : undefined,
-        })
-      }
-    }),
-  disconnect: protectedProcedure
-    .input(disconnectInputSchema)
-    .mutation(async ({ input, ctx }: { input: z.infer<typeof disconnectInputSchema>; ctx: Context }) => {
-      const { serverId } = input
-      const { userSession } = ctx
+    // Disconnecting is a two-step process:
+    // 1. Clean up the live connection from the in-memory cache.
+    await cleanupExistingConnection(session._id, serverId as Id<"mcp">)
 
-      if (!userSession) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "User session is required.",
-        })
-      }
+    // 2. Remove the connection from the persisted database state.
+    const { error } = await asyncTryCatch(
+      convex.mutation(api.sessions.removeConnection, {
+        sessionId: session._id,
+        mcpServerId: serverId as Id<"mcp">,
+      }),
+    )
 
-      const { error } = await asyncTryCatch(cleanupExistingConnection(userSession, serverId))
+    if (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to disconnect from server.",
+        cause: error instanceof Error ? error : undefined,
+      })
+    }
 
-      if (error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to disconnect from server.",
-          cause: error instanceof Error ? error : undefined,
-        })
-      }
-
-      return { message: "Disconnection successful" }
-    }),
+    return { message: "Disconnection successful" }
+  }),
 })

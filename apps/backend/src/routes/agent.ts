@@ -24,7 +24,7 @@ agentRouter.post(
   createAiRequestMiddleware(agentInputSchema),
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const userSession = req.userSession
+      const session = req.session
       const aiModel = req.aiModel as LanguageModel
       const parsedInput = req.parsedInput as z.infer<typeof agentInputSchema>
 
@@ -37,14 +37,18 @@ agentRouter.post(
         return
       }
 
-      const userId = userSession ? userSession.userId : "anonymous"
-      const combinedTools = userSession ? aggregateMcpTools(userSession) : {}
+      const userIdForLogging = session?.userId || "anonymous"
+      const combinedTools = session ? aggregateMcpTools(session._id) : {}
 
-      console.log(`[REST /agent/run] request received for userId: ${userId}, using model: ${agentInfo.modelId}`)
+      console.log(
+        `[REST /agent/run] request received for userId: ${userIdForLogging}, using model: ${agentInfo.modelId}`,
+      )
 
       switch (agent.outputType) {
         case "text":
-          console.log(`[REST /agent/run]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userId}`)
+          console.log(
+            `[REST /agent/run]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`,
+          )
           await streamTextResponse({
             res,
             languageModel: aiModel,

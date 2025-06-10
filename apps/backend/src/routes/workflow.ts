@@ -24,7 +24,7 @@ workflowRouter.post(
   createAiRequestMiddleware(workflowInputSchema),
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const userSession = req.userSession
+      const session = req.session
       const aiModel = req.aiModel as LanguageModel
       const parsedInput = req.parsedInput as z.infer<typeof workflowInputSchema>
 
@@ -45,8 +45,8 @@ workflowRouter.post(
         console.warn(`[REST /workflow/run] Some agents for workflow ${workflow._id} were not found.`)
       }
 
-      const userId = userSession ? userSession.userId : "anonymous"
-      const combinedTools = userSession ? aggregateMcpTools(userSession) : {}
+      const userIdForLogging = session?.userId || "anonymous"
+      const combinedTools = session ? aggregateMcpTools(session._id) : {}
 
       // Set headers ONCE at the start for streaming
       res.setHeader("Content-Type", "text/plain; charset=utf-8")
@@ -55,10 +55,10 @@ workflowRouter.post(
       res.setHeader("Connection", "keep-alive")
 
       console.log(
-        `[REST /workflow/run] request for userId: ${userId}, model: ${workflowInfo.modelId}, steps: ${steps.length}`,
+        `[REST /workflow/run] request for userId: ${userIdForLogging}, model: ${workflowInfo.modelId}, steps: ${steps.length}`,
       )
 
-      if (userSession?.activeMcpClients) {
+      if (session?.activeMcpServerIds) {
         console.log(`[REST /workflow/run] Using ${Object.keys(combinedTools).length} total tools`)
       }
 

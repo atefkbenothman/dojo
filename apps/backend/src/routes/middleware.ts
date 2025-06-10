@@ -1,13 +1,22 @@
 import { getModelInstance, getModelRequiresApiKey, getModelFallbackApiKey } from "../ai/models.js"
 import { getConvexUser } from "../auth.js"
 import { convex } from "../convex-client.js"
-import { getOrCreateUserSession } from "../session.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
-import type { Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { Doc, Id } from "@dojo/db/convex/_generated/dataModel.js"
 import { tryCatch } from "@dojo/utils"
 import type { Request, Response, NextFunction } from "express"
 import type { ZodSchema } from "zod"
 
+/**
+ * Creates a reusable Express middleware for handling AI-related requests.
+ * This middleware is responsible for:
+ * 1. Validating the request body against a Zod schema.
+ * 2. Determining the user's session (authenticated or guest) from request headers.
+ * 3. Validating and preparing the specified AI model, including API key checks.
+ * 4. Attaching the session, AI model instance, and parsed input to the Express `req` object for downstream use.
+ * @param schema A Zod schema to validate the request body.
+ * @returns An Express middleware function.
+ */
 export function createAiRequestMiddleware(schema: ZodSchema<any>) {
   return async function aiRequestMiddleware(req: Request, res: Response, next: NextFunction) {
     const validationResult = schema.safeParse(req.body)
@@ -19,7 +28,25 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
 
     const parsedInput = validationResult.data
 
+    // Identify the user. First, check for a real user's auth token, then for a guest session ID.
     const user = await getConvexUser(req.headers.authorization)
+    const guestSessionIdHeader = req.headers["x-guest-session-id"]
+    const guestSessionId = (Array.isArray(guestSessionIdHeader) ? guestSessionIdHeader[0] : guestSessionIdHeader) as
+      | Id<"sessions">
+      | undefined
+
+    // Use a single database mutation to get or create a session.
+    // This handles all cases: new guests, returning guests, and authenticated users.
+    const session = await convex.mutation(api.sessions.getOrCreate, {
+      userId: user?._id,
+      guestSessionId: guestSessionId,
+    })
+
+    if (!session) {
+      res.status(500).json({ error: "Failed to get or create a session." })
+      return
+    }
+    req.session = session
 
     const modelId = parsedInput.chat?.modelId || parsedInput.agent?.modelId || parsedInput.workflow?.modelId
 
@@ -28,18 +55,15 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
       return
     }
 
+    // Determine the correct API key to use based on whether the user is authenticated
+    // and whether the requested model requires a key.
     const requiresApiKey = getModelRequiresApiKey(modelId)
     let apiKeyToUse: string | undefined
 
-    if (user) {
-      const userSession = getOrCreateUserSession(user._id)
-      if (!userSession) {
-        res.status(500).json({ error: "Failed to get or create user session." })
-        return
-      }
-
+    if (session.userId) {
+      // User is authenticated: look up their specific API key.
       const apiKeyObject = (await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
-        userId: user._id,
+        userId: session.userId,
         modelId: modelId,
       })) as Doc<"apiKeys"> | null
 
@@ -51,14 +75,13 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
       } else {
         apiKeyToUse = getModelFallbackApiKey(modelId)
       }
-      req.userSession = userSession
     } else {
+      // User is anonymous: they can only use models that don't require a key.
       if (requiresApiKey) {
         res.status(401).json({ error: "You must be logged in to use this model. Please log in and try again." })
         return
       }
       apiKeyToUse = getModelFallbackApiKey(modelId)
-      req.userSession = null
     }
 
     if (!apiKeyToUse) {
@@ -66,6 +89,7 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
       return
     }
 
+    // Initialize the AI model instance and attach it to the request.
     const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(modelId, apiKeyToUse))
 
     if (modelError || !modelInstance) {
@@ -78,6 +102,7 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
     req.aiModel = modelInstance
     req.parsedInput = parsedInput
 
+    // Pass control to the next middleware or route handler.
     next()
   }
 }
