@@ -5,6 +5,7 @@ export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "er
 export interface ActiveConnection {
   serverId: string
   name: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Record<any, any>
 }
 
@@ -12,6 +13,7 @@ interface ConnectionMeta {
   status: ConnectionStatus
   error: string | null
   name: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Record<any, any>
 }
 

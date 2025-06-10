@@ -1,5 +1,16 @@
 "use client"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -7,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useUser } from "@/hooks/use-user"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
@@ -20,12 +32,16 @@ interface ApiKeyManagerProps {
   user: Doc<"users"> | null | undefined
   userApiKeys: Doc<"apiKeys">[]
   providers: Doc<"providers">[]
+  upsertApiKey: (variables: {
+    apiKey: string
+    userId: Id<"users">
+    providerId: Id<"providers">
+  }) => Promise<Id<"apiKeys">>
+  removeApiKey: (variables: { userId: Id<"users">; providerId: Id<"providers"> }) => Promise<Id<"apiKeys"> | null>
 }
 
-function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
+function ApiKeyManager({ user, userApiKeys, providers, upsertApiKey, removeApiKey }: ApiKeyManagerProps) {
   const { play } = useSoundEffectContext()
-  const upsertApiKey = useMutation(api.apiKeys.upsertApiKey)
-  const removeApiKey = useMutation(api.apiKeys.removeApiKey)
 
   const [visibleKeys, setVisibleKeys] = useState<Record<Id<"providers">, boolean>>({})
   const [inputValues, setInputValues] = useState<Record<Id<"providers">, string>>({})
@@ -134,15 +150,58 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
   )
 }
 
-function UserIdManager({ user }: { user: Doc<"users"> | null | undefined }) {
+interface UserIdManagerProps {
+  user: Doc<"users"> | null | undefined
+  deleteUserMutation: (variables: { id: Id<"users"> }) => Promise<null>
+}
+
+function UserIdManager({ user, deleteUserMutation }: UserIdManagerProps) {
   if (user === undefined) return null
   if (user === null) return <p>Anonymous</p>
+
+  const handleDeleteAccount = async () => {
+    if (user) {
+      await deleteUserMutation({ id: user._id })
+      toast.success("Your account has been deleted.", {
+        icon: null,
+        id: "account-deleted",
+        duration: 5000,
+        position: "bottom-center",
+        style: successToastStyle,
+      })
+    }
+  }
+
   return (
-    <div className="flex flex-col items-center py-6 gap-3 h-full items-center justify-center">
+    <div className="flex flex-col items-center py-6 gap-3 h-full justify-center">
       <img src={user.image} alt="User avatar" className="w-20 h-20 border object-cover bg-muted shadow" />
       <div className="flex flex-col items-center gap-1 mt-2">
         <span className="text-lg font-semibold text-foreground">{user.name}</span>
         <span className="text-sm text-muted-foreground break-all">{user.email}</span>
+      </div>
+      <div className="mt-auto pt-6">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="hover:cursor-pointer">
+              Delete Account
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="sm:max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete your account and remove your data from our
+                servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="hover:cursor-pointer">Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAccount} className="hover:cursor-pointer">
+                Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
@@ -155,9 +214,10 @@ interface UserDialogProps {
 
 export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
   const { providers } = useAIModels()
-
-  const user = useQuery(api.user.currentUser)
-  const userApiKeys = useQuery(api.apiKeys.getApiKeysForUser, user && user._id ? { userId: user._id } : "skip") || []
+  const { user, userApiKeys } = useUser()
+  const deleteUserMutation = useMutation(api.user.deleteUser)
+  const upsertApiKey = useMutation(api.apiKeys.upsertApiKey)
+  const removeApiKey = useMutation(api.apiKeys.removeApiKey)
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -173,10 +233,16 @@ export function UserDialog({ isOpen, setIsOpen }: UserDialogProps) {
           </TabsList>
           <div className="flex-1 overflow-y-auto py-2 px-1">
             <TabsContent value="user" className="h-full">
-              <UserIdManager user={user} />
+              <UserIdManager user={user} deleteUserMutation={deleteUserMutation} />
             </TabsContent>
             <TabsContent value="api-keys">
-              <ApiKeyManager user={user} userApiKeys={userApiKeys} providers={providers} />
+              <ApiKeyManager
+                user={user}
+                userApiKeys={userApiKeys}
+                providers={providers}
+                upsertApiKey={upsertApiKey}
+                removeApiKey={removeApiKey}
+              />
             </TabsContent>
             <TabsContent value="other"></TabsContent>
           </div>

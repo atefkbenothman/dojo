@@ -5,10 +5,12 @@ import { AgentCard } from "@/components/agent/agent-card"
 import { Input } from "@/components/ui/input"
 import { useAgent } from "@/hooks/use-agent"
 import type { Agent } from "@dojo/db/convex/types"
+import { useConvexAuth } from "convex/react"
 import { useEffect, useState } from "react"
 
 export function Agent() {
   const { agents } = useAgent()
+  const { isAuthenticated } = useConvexAuth()
 
   const [searchInput, setSearchInput] = useState<string>("")
   const [filteredAgents, setFilteredAgents] = useState<Agent[]>(agents)
@@ -38,9 +40,9 @@ export function Agent() {
         </div>
       </div>
       <div className="flex flex-row flex-wrap gap-4 px-4 pb-4">
-        <AddAgentCard />
-        {Object.entries(filteredAgents).map(([key, agent]) => (
-          <AgentCard key={key} agent={agent} />
+        <AddAgentCard isAuthenticated={isAuthenticated} />
+        {filteredAgents.map((agent) => (
+          <AgentCard key={agent._id} agent={agent} isAuthenticated={isAuthenticated} />
         ))}
       </div>
     </div>

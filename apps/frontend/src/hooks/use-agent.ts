@@ -7,7 +7,7 @@ import { useMCP } from "@/hooks/use-mcp"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Agent } from "@dojo/db/convex/types"
 import { Message } from "ai"
-import { useQuery } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { nanoid } from "nanoid"
 import { useCallback, useMemo } from "react"
 
@@ -18,6 +18,9 @@ export function useAgent() {
   const { selectedModel } = useAIModels()
 
   const agents = useQuery(api.agents.list)
+  const create = useMutation(api.agents.create)
+  const edit = useMutation(api.agents.edit)
+  const remove = useMutation(api.agents.remove)
 
   const runAgent = useCallback(
     async (agent: Agent) => {
@@ -65,5 +68,8 @@ export function useAgent() {
   return {
     agents: stableAgents,
     runAgent,
+    create,
+    edit,
+    remove,
   }
 }

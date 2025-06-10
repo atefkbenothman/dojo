@@ -14,23 +14,28 @@ interface EnvInputFieldsProps {
   envPairs: EnvPair[]
   mode: "add" | "edit"
   onUpdateEnvPairs: (pairs: EnvPair[]) => void
+  disabled?: boolean
 }
 
-export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs }: EnvInputFieldsProps) {
+export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs, disabled = false }: EnvInputFieldsProps) {
   const handleAddKey = () => {
+    if (disabled) return
     onUpdateEnvPairs([...envPairs, { key: "API_KEY", value: "" }])
   }
 
   const handleRemoveKey = (index: number) => {
+    if (disabled) return
     onUpdateEnvPairs(envPairs.filter((_, i) => i !== index))
   }
 
   const handleKeyChange = (index: number, key: string) => {
+    if (disabled) return
     const updated = envPairs.map((pair, i) => (i === index ? { ...pair, key } : pair))
     onUpdateEnvPairs(updated)
   }
 
   const handleValueChange = (index: number, value: string) => {
+    if (disabled) return
     const updated = envPairs.map((pair, i) => (i === index ? { ...pair, value } : pair))
     onUpdateEnvPairs(updated)
   }
@@ -52,16 +57,19 @@ export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs }: EnvInputFie
                     value={pair.key}
                     onChange={(e) => handleKeyChange(index, e.target.value)}
                     className={`w-1/2 text-xs focus-visible:ring-0 focus-visible:border-inherit ${
-                      mode === "edit" ? "bg-muted/70 text-primary/70 cursor-not-allowed" : "bg-muted/70 text-primary/90"
+                      mode === "edit" || disabled
+                        ? "bg-muted/70 text-primary/70 cursor-not-allowed"
+                        : "bg-muted/70 text-primary/90"
                     }`}
                     placeholder="KEY_NAME"
-                    disabled={mode === "edit"}
+                    disabled={mode === "edit" || disabled}
                   />
                   <Input
                     value={pair.value}
                     onChange={(e) => handleValueChange(index, e.target.value)}
                     className="w-1/2 bg-muted/50 focus-visible:ring-0 focus-visible:border-inherit"
                     placeholder="Value"
+                    disabled={disabled}
                   />
                   {mode === "add" && (
                     <Button
@@ -71,6 +79,7 @@ export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs }: EnvInputFie
                       className="ml-1 text-destructive hover:cursor-pointer"
                       onClick={() => handleRemoveKey(index)}
                       aria-label={`Remove ${pair.key}`}
+                      disabled={disabled}
                     >
                       ×
                     </Button>
@@ -83,6 +92,7 @@ export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs }: EnvInputFie
                   variant="secondary"
                   className="w-full mt-2 hover:cursor-pointer"
                   onClick={handleAddKey}
+                  disabled={disabled}
                 >
                   + Add Key
                 </Button>

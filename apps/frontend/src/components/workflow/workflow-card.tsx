@@ -15,7 +15,7 @@ interface WorkflowCardProps {
 export function WorkflowCard({ workflow }: WorkflowCardProps) {
   const { runWorkflow } = useWorkflow()
 
-  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
+  const [, setIsConfigDialogOpen] = useState(false)
 
   const handleRun = useCallback(() => {
     runWorkflow(workflow)

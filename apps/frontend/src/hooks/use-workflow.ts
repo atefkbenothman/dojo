@@ -63,7 +63,7 @@ export function useWorkflow() {
       })
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, agents, getModel, play, setMessages, setSelectedModelId],
+    [append, agents, getModel, play, setMessages, setSelectedModelId, connect],
   )
 
   const stableWorkflows = useMemo(() => workflows || [], [workflows])

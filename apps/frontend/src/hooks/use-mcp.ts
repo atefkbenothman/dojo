@@ -23,6 +23,7 @@ export function useMCP() {
 
   const mcpServers = useConvexQuery(api.mcp.list)
   const createMCP = useConvexMutation(api.mcp.create)
+  const editMCP = useConvexMutation(api.mcp.edit)
   const deleteMCP = useConvexMutation(api.mcp.remove)
 
   const { connectionMeta, setConnectionStatus, setConnectionError, setConnectionMeta } = useMCPStore()
@@ -32,7 +33,7 @@ export function useMCP() {
 
   const activeConnections = useMemo(() => {
     return Object.entries(connectionMeta)
-      .filter(([_, m]) => m.status === "connected")
+      .filter(([, m]) => m.status === "connected")
       .map(([serverId, m]) => ({
         serverId,
         name: m.name,
@@ -123,33 +124,33 @@ export function useMCP() {
 
   const connect = async (serverIds: Id<"mcp">[]) => {
     if (serverIds.some((serverId) => connectionMeta[serverId]?.status === "connecting")) return
-    if (!isAuthenticated) {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      toast.error("User ID not available in context", {
-        icon: null,
-        id: "mcp-error",
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-      return
-    }
+    // if (!isAuthenticated) {
+    //   play("./sounds/error.mp3", { volume: 0.5 })
+    //   toast.error("User ID not available in context", {
+    //     icon: null,
+    //     id: "mcp-error",
+    //     duration: 5000,
+    //     position: "bottom-center",
+    //     style: errorToastStyle,
+    //   })
+    //   return
+    // }
     // use promise.all to connect to all MCP servers at once
     await Promise.all(serverIds.map((serverId) => connectMutation.mutateAsync({ serverIds: [serverId] })))
   }
 
   const disconnect = async (serverId: string) => {
-    if (!isAuthenticated) {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      toast.error("User ID not available in context", {
-        icon: null,
-        id: "mcp-error",
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-      return
-    }
+    // if (!isAuthenticated) {
+    //   play("./sounds/error.mp3", { volume: 0.5 })
+    //   toast.error("User ID not available in context", {
+    //     icon: null,
+    //     id: "mcp-error",
+    //     duration: 5000,
+    //     position: "bottom-center",
+    //     style: errorToastStyle,
+    //   })
+    //   return
+    // }
     await disconnectMutation.mutateAsync({ serverId })
     play("./sounds/disconnect.mp3", { volume: 0.5 })
   }
@@ -161,11 +162,54 @@ export function useMCP() {
   }
 
   const create = async (mcp: WithoutSystemFields<Doc<"mcp">>) => {
-    await createMCP(mcp)
+    try {
+      await createMCP(mcp)
+    } catch (error) {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to create server: ${errorMessage}`, {
+        icon: null,
+        id: "create-mcp-error",
+        duration: 5000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+      throw error
+    }
+  }
+
+  const edit = async (mcp: { id: Id<"mcp"> } & WithoutSystemFields<Doc<"mcp">>) => {
+    try {
+      await editMCP(mcp)
+    } catch (error) {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to save server: ${errorMessage}`, {
+        icon: null,
+        id: "edit-mcp-error",
+        duration: 5000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+      throw error
+    }
   }
 
   const remove = async (id: string) => {
-    await deleteMCP({ id: id as Id<"mcp"> })
+    try {
+      await deleteMCP({ id: id as Id<"mcp"> })
+    } catch (error) {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to remove server: ${errorMessage}`, {
+        icon: null,
+        id: "remove-mcp-error",
+        duration: 5000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+      throw error
+    }
   }
 
   const stableMcpServers = useMemo(() => mcpServers || [], [mcpServers])
@@ -179,6 +223,7 @@ export function useMCP() {
     disconnect,
     disconnectAll,
     create,
+    edit,
     remove,
   }
 }

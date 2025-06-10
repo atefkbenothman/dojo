@@ -7,8 +7,11 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { useQuery } from "convex/react"
 import { Server } from "lucide-react"
 
-export function AgentMCPServersPopover({ serverIds }: { serverIds: Id<"mcp">[] }) {
-  if (serverIds.length === 0) return null
+export function MCPServersPopover({ serverIds }: { serverIds: Id<"mcp">[] }) {
+  const servers = useQuery(api.mcp.list)
+  const serverNames = serverIds
+    .map((id) => servers?.find((s) => s._id === id)?.name)
+    .filter((name) => name !== undefined)
 
   return (
     <Popover>
@@ -24,13 +27,12 @@ export function AgentMCPServersPopover({ serverIds }: { serverIds: Id<"mcp">[] }
       </PopoverTrigger>
       <PopoverContent className="w-auto p-4" align="start">
         <div className="space-y-2">
-          <h4 className="font-medium">MCP Servers ({serverIds.length})</h4>
+          <h4 className="text-sm">MCP Servers ({serverIds.length})</h4>
           <div className="flex max-w-[250px] flex-wrap gap-2">
-            {serverIds.map((serverId) => {
-              const server = useQuery(api.mcp.get, { id: serverId as Id<"mcp"> })
+            {serverNames.map((name) => {
               return (
-                <div key={serverId} className="bg-secondary/40 text-foreground rounded-md px-2 py-1 text-xs">
-                  {server?.name}
+                <div key={name} className="bg-secondary/40 text-foreground rounded-md px-2 py-1 text-xs">
+                  {name}
                 </div>
               )
             })}

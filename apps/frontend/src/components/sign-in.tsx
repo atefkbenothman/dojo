@@ -15,7 +15,12 @@ export function SignIn() {
         </Button>
       </Authenticated>
       <Unauthenticated>
-        <Button variant="outline" className="hover:cursor-pointer" type="button" onClick={() => void signIn("github")}>
+        <Button
+          variant="outline"
+          className="hover:cursor-pointer"
+          type="button"
+          onClick={() => void signIn("github", { redirectTo: window.location.pathname })}
+        >
           Sign In
         </Button>
       </Unauthenticated>

@@ -8,14 +8,16 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/comp
 import { useMCP } from "@/hooks/use-mcp"
 import { cn } from "@/lib/utils"
 import type { MCPServer } from "@dojo/db/convex/types"
-import { Settings } from "lucide-react"
+import { Settings, Key } from "lucide-react"
 import { useState } from "react"
 
 interface MCPCardProps {
   server: MCPServer
+  isProd?: boolean
+  isAuthenticated?: boolean
 }
 
-export function MCPCard({ server }: MCPCardProps) {
+export function MCPCard({ server, isProd = false, isAuthenticated = false }: MCPCardProps) {
   const { getConnectionStatus, activeConnections, connect, disconnect } = useMCP()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
@@ -24,6 +26,14 @@ export function MCPCard({ server }: MCPCardProps) {
   const isConnected = status === "connected"
 
   const serverConnection = activeConnections.find((conn) => conn.serverId === server._id)
+
+  const disableConnect = (server.localOnly && isProd) || (!isAuthenticated && server.requiresUserKey)
+  const connectDisabledReason =
+    server.localOnly && isProd
+      ? "Local-only servers cannot be connected to in production."
+      : !isAuthenticated && server.requiresUserKey
+        ? "You must be logged in to connect to this server."
+        : undefined
 
   const handleConnect = async () => {
     if (isConnected) {
@@ -43,9 +53,18 @@ export function MCPCard({ server }: MCPCardProps) {
           isConnected && "border-primary/80 bg-muted/50 border-2",
         )}
       >
-        {server.localOnly && (
-          <div className="absolute top-2 right-2 z-10 bg-secondary/80 border px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            Local only
+        {(server.localOnly || server.requiresUserKey) && (
+          <div className="absolute top-2 right-2 z-10 flex flex-row items-center gap-2">
+            {server.localOnly && (
+              <div className="bg-secondary/80 border px-2 py-1 text-xs font-medium text-muted-foreground flex items-center leading-none">
+                Local only
+              </div>
+            )}
+            {server.requiresUserKey && (
+              <div className="bg-secondary/80 border px-2 py-1 text-xs font-medium text-muted-foreground flex items-center leading-none">
+                <Key className="h-4 w-4 -mt-px" />
+              </div>
+            )}
           </div>
         )}
         <CardHeader className="flex-1 min-h-0">
@@ -61,11 +80,12 @@ export function MCPCard({ server }: MCPCardProps) {
             <Button
               variant={isConnected ? "default" : "secondary"}
               onClick={handleConnect}
-              disabled={status === "connecting"}
+              disabled={status === "connecting" || disableConnect}
               className={cn(
                 "border hover:cursor-pointer",
                 isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
               )}
+              title={connectDisabledReason}
             >
               {status === "connecting" ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
             </Button>
@@ -81,7 +101,13 @@ export function MCPCard({ server }: MCPCardProps) {
           </div>
         </CardFooter>
       </Card>
-      <MCPDialog mode="edit" server={server} open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen} />
+      <MCPDialog
+        mode="edit"
+        server={server}
+        open={isConfigDialogOpen}
+        onOpenChange={setIsConfigDialogOpen}
+        isAuthenticated={isAuthenticated}
+      />
     </>
   )
 }

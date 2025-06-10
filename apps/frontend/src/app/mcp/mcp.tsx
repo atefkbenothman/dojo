@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useMCP } from "@/hooks/use-mcp"
 import type { MCPServer } from "@dojo/db/convex/types"
+import { useConvexAuth } from "convex/react"
 import { useEffect, useState } from "react"
 
 export function Mcp() {
+  const { isAuthenticated } = useConvexAuth()
   const { mcpServers, activeConnections, disconnectAll } = useMCP()
 
   const [searchInput, setSearchInput] = useState<string>("")
@@ -49,9 +51,14 @@ export function Mcp() {
         </div>
       </div>
       <div className="flex flex-row flex-wrap gap-4 px-4 pb-4">
-        <AddMCPCard />
+        <AddMCPCard disabled={!isAuthenticated} />
         {filteredServers.map((server) => (
-          <MCPCard key={server._id} server={server} />
+          <MCPCard
+            key={server._id}
+            server={server}
+            isProd={process.env.NODE_ENV === "production"}
+            isAuthenticated={isAuthenticated}
+          />
         ))}
       </div>
     </div>

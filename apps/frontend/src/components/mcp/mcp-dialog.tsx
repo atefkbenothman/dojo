@@ -58,12 +58,13 @@ export interface MCPDialogProps {
   server?: MCPServer
   open: boolean
   onOpenChange: (open: boolean) => void
+  isAuthenticated?: boolean
 }
 
-export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) {
+export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = false }: MCPDialogProps) {
   const { play } = useSoundEffectContext()
 
-  const { create, remove } = useMCP()
+  const { create, edit, remove } = useMCP()
 
   const formValues = useMemo((): MCPFormValues => {
     if (!server) {
@@ -97,36 +98,25 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
     values: formValues,
   })
 
-  const createMCPObject = (data: MCPFormValues): WithoutSystemFields<Doc<"mcp">> => {
-    const args = data.argsString
-      .split(",")
-      .map((arg) => arg.trim())
-      .filter(Boolean)
-    const env = Object.fromEntries(data.envPairs.map((pair) => [pair.key, pair.value]))
-    return {
-      name: data.serverName,
-      summary: data.serverSummary,
-      requiresUserKey: data.envPairs.length > 0,
-      config: {
-        command: data.command,
-        args,
-        ...(data.envPairs.length > 0 && {
-          env,
-          requiresEnv: data.envPairs.map((pair) => pair.key),
-        }),
-      },
-    }
-  }
-
   const handleSave = async (data: MCPFormValues) => {
-    const newOrUpdatedServer = createMCPObject(data)
-    await create(newOrUpdatedServer)
-    toast.success(`${newOrUpdatedServer.name} config ${mode === "add" ? "added to" : "saved to"} database`, {
-      icon: null,
-      duration: 5000,
-      position: "bottom-center",
-      style: successToastStyle,
-    })
+    const serverData = createMCPObject(data)
+    if (mode === "add") {
+      await create(serverData)
+      toast.success(`${serverData.name} config added to database`, {
+        icon: null,
+        duration: 5000,
+        position: "bottom-center",
+        style: successToastStyle,
+      })
+    } else if (mode === "edit" && server?._id) {
+      await edit({ id: server._id, ...serverData })
+      toast.success(`${serverData.name} config saved to database`, {
+        icon: null,
+        duration: 5000,
+        position: "bottom-center",
+        style: successToastStyle,
+      })
+    }
     setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
     onOpenChange(false)
   }
@@ -162,7 +152,7 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Server Name" {...field} />
+                      <Input placeholder="Server Name" {...field} disabled={!isAuthenticated} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -176,7 +166,11 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Summary (optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Short description of server capabilities" {...field} />
+                      <Input
+                        placeholder="Short description of server capabilities"
+                        {...field}
+                        disabled={!isAuthenticated}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -190,7 +184,7 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Command</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., python3, node, bash" {...field} />
+                      <Input placeholder="e.g., python3, node, bash" {...field} disabled={!isAuthenticated} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -204,7 +198,11 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Arguments</FormLabel>
                     <FormControl>
-                      <Input placeholder="Comma separated, e.g: -f,file.py,--verbose" {...field} />
+                      <Input
+                        placeholder="Comma separated, e.g: -f,file.py,--verbose"
+                        {...field}
+                        disabled={!isAuthenticated}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,7 +213,12 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
                 control={form.control}
                 name="envPairs"
                 render={({ field }) => (
-                  <EnvInputFields envPairs={field.value} mode={mode} onUpdateEnvPairs={field.onChange} />
+                  <EnvInputFields
+                    envPairs={field.value}
+                    mode={mode}
+                    onUpdateEnvPairs={field.onChange}
+                    disabled={!isAuthenticated}
+                  />
                 )}
               />
             </div>
@@ -227,15 +230,18 @@ export function MCPDialog({ mode, server, open, onOpenChange }: MCPDialogProps) 
                   variant="destructive"
                   onClick={handleDelete}
                   className="hover:cursor-pointer border-destructive"
+                  disabled={!isAuthenticated}
+                  title={!isAuthenticated ? "You must be logged in to delete a server." : undefined}
                 >
                   Delete
                 </Button>
               )}
               <Button
                 type="submit"
-                disabled={!form.formState.isValid}
+                disabled={!form.formState.isValid || !isAuthenticated}
                 className="hover:cursor-pointer"
                 variant="secondary"
+                title={!isAuthenticated ? "You must be logged in to save changes." : undefined}
               >
                 {mode === "add" ? "Create Server" : "Save"}
               </Button>

@@ -1,7 +1,7 @@
 "use client"
 
 import { AgentDialog } from "@/components/agent/agent-dialog"
-import { AgentMCPServersPopover } from "@/components/agent/mcp-servers-popover"
+import { MCPServersPopover } from "@/components/agent/mcp-servers-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAgent } from "@/hooks/use-agent"
@@ -12,9 +12,10 @@ import { useState, useCallback } from "react"
 
 interface AgentCardProps {
   agent: Agent
+  isAuthenticated?: boolean
 }
 
-export function AgentCard({ agent }: AgentCardProps) {
+export function AgentCard({ agent, isAuthenticated = false }: AgentCardProps) {
   const { runAgent } = useAgent()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
@@ -43,6 +44,7 @@ export function AgentCard({ agent }: AgentCardProps) {
               variant="secondary"
               onClick={handleRun}
               className="border hover:cursor-pointer bg-secondary/80 hover:bg-secondary/90"
+              disabled={!isAuthenticated}
             >
               Run
             </Button>
@@ -57,12 +59,18 @@ export function AgentCard({ agent }: AgentCardProps) {
             </Button>
 
             {agent.outputType === "text" && agent.mcpServers && agent.mcpServers.length > 0 && (
-              <AgentMCPServersPopover serverIds={agent.mcpServers} />
+              <MCPServersPopover serverIds={agent.mcpServers} />
             )}
           </div>
         </CardFooter>
       </Card>
-      <AgentDialog mode="edit" agent={agent} open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen} />
+      <AgentDialog
+        mode="edit"
+        agent={agent}
+        open={isConfigDialogOpen}
+        onOpenChange={setIsConfigDialogOpen}
+        isAuthenticated={isAuthenticated}
+      />
     </>
   )
 }

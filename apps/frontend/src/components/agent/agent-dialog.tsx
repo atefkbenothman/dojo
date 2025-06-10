@@ -10,13 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useAgent } from "@/hooks/use-agent"
-import { useAIModels } from "@/hooks/use-ai-models"
 import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { successToastStyle, errorToastStyle } from "@/lib/styles"
+import { errorToastStyle, successToastStyle } from "@/lib/styles"
+import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { nanoid } from "nanoid"
+import { WithoutSystemFields } from "convex/server"
 import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -24,42 +24,53 @@ import { z } from "zod"
 
 const agentFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
   systemPrompt: z.string().min(1, "System prompt is required"),
-  type: z.enum(["text", "object"]),
+  outputType: z.enum(["text", "object"]),
   mcpServers: z.array(z.string()).optional(),
+  isPublic: z.boolean().optional(),
 })
 
 type AgentFormValues = z.infer<typeof agentFormSchema>
+
+export function createAgentObject(data: AgentFormValues): WithoutSystemFields<Doc<"agents">> {
+  return {
+    name: data.name,
+    systemPrompt: data.systemPrompt,
+    outputType: data.outputType,
+    mcpServers: (data.mcpServers || []) as Id<"mcp">[],
+    isPublic: false,
+  }
+}
 
 export interface AgentDialogProps {
   mode: "add" | "edit"
   agent?: Agent
   open: boolean
   onOpenChange: (open: boolean) => void
+  isAuthenticated?: boolean
 }
 
-export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProps) {
+export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated = false }: AgentDialogProps) {
   const { play } = useSoundEffectContext()
-  const { selectedModel } = useAIModels()
   const { mcpServers } = useMCP()
-
-  // const { saveAgentToAvailableAgents, removeAgentFromAvailableAgents } = useAgent()
+  const { create, edit, remove } = useAgent()
 
   const formValues = useMemo((): AgentFormValues => {
     if (!agent) {
       return {
         name: "",
         systemPrompt: "",
-        type: "text",
+        outputType: "text",
         mcpServers: [],
+        isPublic: false,
       }
     }
     return {
       name: agent.name || "",
       systemPrompt: agent.systemPrompt || "",
-      type: (agent.outputType as "text" | "object") || "text",
+      outputType: (agent.outputType as "text" | "object") || "text",
       mcpServers: agent.mcpServers || [],
+      isPublic: agent.isPublic || false,
     }
   }, [agent])
 
@@ -68,64 +79,40 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
     values: formValues,
   })
 
-  // const createAgentFromForm = (data: AgentFormValues): AgentConfig => {
-  //   // if (data.output.type === "text") {
-  //   //   const mcpServers = (data.output.mcpServers || [])
-  //   //     .map((id) => allAvailableServers[id])
-  //   //     .filter((s): s is NonNullable<typeof s> => Boolean(s))
-  //   //   return {
-  //   //     id: agent?.id || nanoid(),
-  //   //     name: data.name,
-  //   //     description: data.description,
-  //   //     systemPrompt: data.systemPrompt,
-  //   //     output: {
-  //   //       type: "text",
-  //   //       ...(mcpServers.length > 0 ? { mcpServers } : {}),
-  //   //     },
-  //   //   }
-  //   // } else {
-  //   //   let parsedSchema: any
-  //   //   try {
-  //   //     parsedSchema = JSON.parse(data.output.objectJsonSchema)
-  //   //   } catch {
-  //   //     parsedSchema = {}
-  //   //   }
-  //   //   return {
-  //   //     id: agent?.id || nanoid(),
-  //   //     name: data.name,
-  //   //     description: data.description,
-  //   //     systemPrompt: data.systemPrompt,
-  //   //     output: {
-  //   //       type: "object",
-  //   //       objectJsonSchema: parsedSchema,
-  //   //     },
-  //   //   }
-  //   // }
-  // }
-
-  function handleSave(data: AgentFormValues) {
-    // const newOrUpdatedAgent = createAgentFromForm(data)
-    // saveAgentToAvailableAgents(newOrUpdatedAgent)
-    // toast.success(`${newOrUpdatedAgent.name} agent ${mode === "add" ? "added to" : "saved to"} localstorage`, {
-    //   icon: null,
-    //   duration: 5000,
-    //   position: "bottom-center",
-    //   style: successToastStyle,
-    // })
-    // setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
-    // onOpenChange(false)
+  async function handleSave(data: AgentFormValues) {
+    const agentData = createAgentObject(data)
+    if (mode === "add") {
+      await create(agentData)
+      toast.success(`${agentData.name} agent added`, {
+        icon: null,
+        duration: 5000,
+        position: "bottom-center",
+        style: successToastStyle,
+      })
+    } else if (mode === "edit" && agent) {
+      await edit({ id: agent._id, ...agentData })
+      toast.success(`${agentData.name} agent saved`, {
+        icon: null,
+        duration: 5000,
+        position: "bottom-center",
+        style: successToastStyle,
+      })
+    }
+    setTimeout(() => play("./sounds/save.mp3", { volume: 0.5 }), 100)
+    onOpenChange(false)
   }
 
-  function handleDelete() {
-    // if (agent?.id) removeAgentFromAvailableAgents(agent.id)
-    // toast.error(`${agent?.name} agent deleted from localstorage`, {
-    //   icon: null,
-    //   duration: 5000,
-    //   position: "bottom-center",
-    //   style: errorToastStyle,
-    // })
-    // setTimeout(() => play("./sounds/delete.mp3", { volume: 0.5 }), 100)
-    // onOpenChange(false)
+  async function handleDelete() {
+    if (!agent) return
+    await remove({ id: agent._id })
+    toast.error(`${agent.name} agent deleted`, {
+      icon: null,
+      duration: 5000,
+      position: "bottom-center",
+      style: errorToastStyle,
+    })
+    setTimeout(() => play("./sounds/delete.mp3", { volume: 0.5 }), 100)
+    onOpenChange(false)
   }
 
   return (
@@ -144,22 +131,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Agent Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-primary/80 text-xs">
-                      Description <span className="text-muted-foreground text-xs">(optional)</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Textarea className="h-24" placeholder="A helpful assistant..." {...field} />
+                      <Input placeholder="Agent Name" {...field} disabled={!isAuthenticated} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -172,7 +144,12 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">System Prompt</FormLabel>
                     <FormControl>
-                      <Textarea className="h-24" placeholder="You are a helpful assistant..." {...field} />
+                      <Textarea
+                        className="h-24"
+                        placeholder="You are a helpful assistant..."
+                        {...field}
+                        disabled={!isAuthenticated}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -180,12 +157,16 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
               />
               <FormField
                 control={form.control}
-                name="type"
+                name="outputType"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Output Type</FormLabel>
                     <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange} disabled={mode === "edit"}>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!isAuthenticated || mode === "edit"}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select output type...">
                             {field.value === "text" ? "Text" : "Object"}
@@ -201,7 +182,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                   </FormItem>
                 )}
               />
-              {form.watch("type") === "text" && (
+              {form.watch("outputType") === "text" && (
                 <FormField
                   control={form.control}
                   name="mcpServers"
@@ -231,6 +212,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                                         id={`service-${server._id}`}
                                         checked={checked}
                                         onCheckedChange={(isChecked) => {
+                                          if (!isAuthenticated) return
                                           if (isChecked) {
                                             field.onChange([...(field.value || []), server._id])
                                           } else {
@@ -238,12 +220,17 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                                           }
                                         }}
                                         className="rounded-none hover:cursor-pointer"
+                                        disabled={!isAuthenticated}
                                       />
                                       <div className="flex flex-1 items-center gap-2">
                                         <Label
                                           htmlFor={`service-${server._id}`}
                                           className="hover:cursor-pointer font-normal"
-                                          onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
+                                          onMouseDown={
+                                            isAuthenticated
+                                              ? () => play("./sounds/click.mp3", { volume: 0.5 })
+                                              : undefined
+                                          }
                                         >
                                           {server.name}
                                         </Label>
@@ -269,13 +256,14 @@ export function AgentDialog({ mode, agent, open, onOpenChange }: AgentDialogProp
                   variant="destructive"
                   onClick={handleDelete}
                   className="hover:cursor-pointer border-destructive"
+                  disabled={!isAuthenticated}
                 >
                   Delete
                 </Button>
               )}
               <Button
                 type="submit"
-                disabled={!form.formState.isValid}
+                disabled={!form.formState.isValid || !isAuthenticated}
                 className="hover:cursor-pointer"
                 variant="secondary"
               >

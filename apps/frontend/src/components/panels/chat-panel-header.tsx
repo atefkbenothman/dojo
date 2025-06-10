@@ -7,6 +7,7 @@ import { MessageSquare, Server, Maximize, Minimize, Plus } from "lucide-react"
 import { memo } from "react"
 
 function MCPServersPopover() {
+  const { mcpServers } = useMCP()
   const { activeConnections } = useMCP()
 
   return (
@@ -29,7 +30,7 @@ function MCPServersPopover() {
               {activeConnections.map((conn) => (
                 <div key={conn.serverId} className="flex items-center gap-2">
                   <div className="h-2 w-2 bg-green-500"></div>
-                  <span className="text-xs">{conn.name}</span>
+                  <span className="text-xs">{mcpServers.find((mcp) => mcp._id === conn.serverId)?.name}</span>
                   <span className="text-muted-foreground text-xs">({Object.keys(conn.tools || {}).length} tools)</span>
                 </div>
               ))}
