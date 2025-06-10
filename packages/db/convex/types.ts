@@ -1,5 +1,5 @@
-import { api } from "./_generated/api.js"
-import { Doc } from "./_generated/dataModel.js"
+import { api } from "./_generated/api"
+import { Doc } from "./_generated/dataModel"
 import { FunctionReturnType } from "convex/server"
 
 export type AIModel = Doc<"models">

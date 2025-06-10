@@ -16,6 +16,7 @@ export const modelsFields = {
 }
 
 export const mcpFields = {
+  userId: v.optional(v.id("users")),
   name: v.string(),
   summary: v.optional(v.string()),
   config: v.object({
@@ -26,21 +27,26 @@ export const mcpFields = {
   }),
   localOnly: v.optional(v.boolean()),
   requiresUserKey: v.boolean(),
+  isPublic: v.optional(v.boolean()),
 }
 
 export const agentsFields = {
+  userId: v.optional(v.id("users")),
   mcpServers: v.array(v.id("mcp")),
   name: v.string(),
   outputType: v.union(v.literal("text"), v.literal("object")),
   systemPrompt: v.string(),
+  isPublic: v.optional(v.boolean()),
 }
 
 export const workflowsFields = {
+  userId: v.optional(v.id("users")),
   name: v.string(),
   description: v.string(),
   instructions: v.string(),
   steps: v.array(v.id("agents")),
   aiModelId: v.id("models"),
+  isPublic: v.optional(v.boolean()),
 }
 
 export const apiKeysFields = {

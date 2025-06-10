@@ -1,5 +1,5 @@
-import { Id } from "./_generated/dataModel.js"
-import { query } from "./_generated/server.js"
+import { Id } from "./_generated/dataModel"
+import { query } from "./_generated/server"
 import { v } from "convex/values"
 
 export const getModelByModelId = query({
@@ -13,12 +13,14 @@ export const getModelByModelId = query({
 })
 
 export const list = query({
+  args: {},
   handler: async (ctx) => {
     return await ctx.db.query("models").collect()
   },
 })
 
 export const modelsWithProviders = query({
+  args: {},
   handler: async (ctx) => {
     const models = await ctx.db.query("models").collect()
     const modelsWithProviders = await Promise.all(
@@ -32,6 +34,7 @@ export const modelsWithProviders = query({
 })
 
 export const providers = query({
+  args: {},
   handler: async (ctx) => {
     return await ctx.db.query("providers").collect()
   },
