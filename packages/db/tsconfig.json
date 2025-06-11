@@ -16,8 +16,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "isolatedModules": true,
-    "skipLibCheck": true,
-    "noEmit": true
+    "skipLibCheck": true
   },
   "include": ["./**/*"],
   "exclude": ["./convex/_generated"]

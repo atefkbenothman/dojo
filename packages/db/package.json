@@ -1,10 +1,14 @@
 {
   "name": "@dojo/db",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
+  "main": "./convex/index.ts",
   "scripts": {
     "dev": "convex dev",
-    "setup": "convex dev --until-success"
+    "setup": "convex dev --until-success",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ."
   },
   "dependencies": {
     "@auth/core": "^0.37.0",
