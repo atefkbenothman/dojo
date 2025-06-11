@@ -1,9 +1,8 @@
 import { convex } from "../../convex-client.js"
 import { establishMcpConnection, cleanupExistingConnection } from "../../mcp-connection.js"
-import type { Context } from "../context.js"
 import { router, publicProcedure } from "../trpc.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
-import { Doc, Id } from "@dojo/db/convex/_generated/dataModel.js"
+import { Id } from "@dojo/db/convex/_generated/dataModel.js"
 import { asyncTryCatch } from "@dojo/utils"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
@@ -42,7 +41,7 @@ export const connectionRouter = router({
       servers.map((server) => convex.query(api.mcp.get, { id: server as Id<"mcp"> })),
     )
 
-    const validMcpServers = mcpServers.filter((s): s is NonNullable<typeof s> => s !== null)
+    const validMcpServers = mcpServers.filter((s) => s !== null)
 
     try {
       const connectionPromises = validMcpServers.map(async (server) => {
