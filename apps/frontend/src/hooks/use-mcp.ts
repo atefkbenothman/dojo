@@ -1,3 +1,4 @@
+import { useSession } from "@/hooks/use-session"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { errorToastStyle } from "@/lib/styles"
 import { useTRPCClient } from "@/lib/trpc/context"
@@ -6,9 +7,9 @@ import type { RouterOutputs } from "@dojo/backend/src/types.js"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { useMutation } from "@tanstack/react-query"
-import { useMutation as useConvexMutation, useQuery as useConvexQuery, useConvexAuth } from "convex/react"
+import { useConvexAuth, useMutation as useConvexMutation, useQuery as useConvexQuery } from "convex/react"
 import { WithoutSystemFields } from "convex/server"
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
 import { toast } from "sonner"
 
 export interface ActiveConnection {
@@ -21,13 +22,15 @@ export interface ActiveConnection {
 export function useMCP() {
   const client = useTRPCClient()
 
+  const { connectionMeta, setConnectionStatus, setConnectionError, setConnectionMeta } = useMCPStore()
+
   const mcpServers = useConvexQuery(api.mcp.list)
   const createMCP = useConvexMutation(api.mcp.create)
   const editMCP = useConvexMutation(api.mcp.edit)
   const deleteMCP = useConvexMutation(api.mcp.remove)
 
-  const { connectionMeta, setConnectionStatus, setConnectionError, setConnectionMeta } = useMCPStore()
   const { isAuthenticated } = useConvexAuth()
+  const { setGuestSessionId } = useSession()
 
   const { play } = useSoundEffectContext()
 
@@ -40,6 +43,36 @@ export function useMCP() {
         tools: m.tools,
       }))
   }, [connectionMeta])
+
+  // --- Sync existing server connections from the backend on mount ---
+  useEffect(() => {
+    let isMounted = true
+
+    async function hydrateConnections() {
+      try {
+        const { serverIds } = await client.connection.list.query()
+        if (!isMounted) return
+
+        serverIds.forEach((id: Id<"mcp">) => {
+          // Only update if we don't already have a connected status for this ID
+          if (connectionMeta[id]?.status !== "connected") {
+            setConnectionStatus(id, "connected")
+            setConnectionMeta(id, { name: id })
+          }
+        })
+      } catch (err) {
+        // Non-fatal: just log and continue.
+        console.error("[useMCP] Failed to hydrate connections:", err)
+      }
+    }
+
+    hydrateConnections()
+
+    return () => {
+      isMounted = false
+    }
+    // Intentionally excluding connectionMeta from deps to avoid re-running after store updates.
+  }, [client, setConnectionStatus, setConnectionMeta])
 
   function getConnectionStatus(serverId: string) {
     return connectionMeta[serverId]?.status ?? "disconnected"
@@ -62,6 +95,10 @@ export function useMCP() {
       })
     },
     onSuccess: (data: RouterOutputs["connection"]["connect"], variables: { serverIds: Id<"mcp">[] }) => {
+      if (!isAuthenticated && data.sessionId) {
+        setGuestSessionId(data.sessionId as Id<"sessions">)
+      }
+
       const { serverIds } = variables
       serverIds.forEach((serverId) => {
         const result = data.results.find((r) => r.serverId === serverId)
@@ -124,39 +161,16 @@ export function useMCP() {
 
   const connect = async (serverIds: Id<"mcp">[]) => {
     if (serverIds.some((serverId) => connectionMeta[serverId]?.status === "connecting")) return
-    // if (!isAuthenticated) {
-    //   play("./sounds/error.mp3", { volume: 0.5 })
-    //   toast.error("User ID not available in context", {
-    //     icon: null,
-    //     id: "mcp-error",
-    //     duration: 5000,
-    //     position: "bottom-center",
-    //     style: errorToastStyle,
-    //   })
-    //   return
-    // }
-    // use promise.all to connect to all MCP servers at once
     await Promise.all(serverIds.map((serverId) => connectMutation.mutateAsync({ serverIds: [serverId] })))
   }
 
   const disconnect = async (serverId: string) => {
-    // if (!isAuthenticated) {
-    //   play("./sounds/error.mp3", { volume: 0.5 })
-    //   toast.error("User ID not available in context", {
-    //     icon: null,
-    //     id: "mcp-error",
-    //     duration: 5000,
-    //     position: "bottom-center",
-    //     style: errorToastStyle,
-    //   })
-    //   return
-    // }
     await disconnectMutation.mutateAsync({ serverId })
     play("./sounds/disconnect.mp3", { volume: 0.5 })
   }
 
   const disconnectAll = async () => {
-    if (!isAuthenticated || activeConnections.length === 0) return
+    if (activeConnections.length === 0) return
     await Promise.all(activeConnections.map((conn) => disconnect(conn.serverId)))
     play("./sounds/disconnect.mp3", { volume: 0.5 })
   }

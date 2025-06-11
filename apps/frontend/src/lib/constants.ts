@@ -18,4 +18,6 @@ Multiple tools can be used in a single response and multiple steps can be used t
 - Use the tools to answer the user's question.
 - If you don't know the answer, use the tools to find the answer or say you don't know.`
 
-export const DEFAULT_ASSISTANT_MESSAGE = "Hello, I am an AI assistant"
+export const DEFAULT_ASSISTANT_MESSAGE = "What can I help with?"
+
+export const GUEST_SESSION_KEY = "guest-session-id"

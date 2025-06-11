@@ -1,10 +1,12 @@
 "use client"
 
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useSession } from "@/hooks/use-session"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { DEFAULT_ASSISTANT_MESSAGE, SYSTEM_PROMPT } from "@/lib/constants"
 import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
 import { useState, createContext, useContext, useCallback } from "react"
@@ -26,12 +28,25 @@ export function useAIChat() {
   const { play } = useSoundEffectContext()
   const { selectedModel } = useAIModels()
   const authToken = useAuthToken()
+  const { guestSessionId, setGuestSessionId } = useSession()
 
   const [context, setContext] = useState<string>("")
   const [chatError, setChatError] = useState<string | null>(null)
 
   const { messages, status, input, append, setMessages, error, stop } = useChat({
     api: "/api/chat",
+    headers: {
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
+    },
+    onResponse: (res) => {
+      if (res.ok && !authToken) {
+        const newSessionId = res.headers.get("X-Dojo-Session-ID") as Id<"sessions"> | null
+        if (newSessionId && newSessionId !== guestSessionId) {
+          setGuestSessionId(newSessionId)
+        }
+      }
+    },
     initialMessages: initialMessages as Message[],
     generateId: () => nanoid(),
     onError: (err) => {
@@ -69,9 +84,6 @@ export function useAIChat() {
       }
 
       await append(userMessage, {
-        headers: {
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        },
         body: {
           interactionType: "chat",
           chat: {

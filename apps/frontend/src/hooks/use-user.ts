@@ -15,9 +15,14 @@ export function useUser() {
   const user = useQuery(api.user.currentUser)
   const userApiKeys = useQuery(api.apiKeys.getApiKeysForUser, user && user._id ? { userId: user._id } : "skip") || []
 
-  if (user === null) {
-    signOut()
-  }
+  useEffect(() => {
+    if (user === undefined) {
+      return
+    }
+    if (isAuthenticated && user === null) {
+      signOut()
+    }
+  }, [isAuthenticated, user, signOut])
 
   useEffect(() => {
     if (isLoading) return
@@ -26,7 +31,7 @@ export function useUser() {
     } else {
       play("./sounds/disconnect.mp3", { volume: 0.5 })
     }
-  }, [isAuthenticated, isLoading])
+  }, [isAuthenticated, isLoading, play])
 
   return { user, userApiKeys }
 }

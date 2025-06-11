@@ -6,6 +6,17 @@ import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
 import { type CreateExpressContextOptions } from "@trpc/server/adapters/express"
 
 export const createTRPCContext = async ({ req, res }: CreateExpressContextOptions) => {
+  // For internal, server-to-server requests from the frontend, skip session creation.
+  const systemRequestHeader = req.headers["x-system-request"]
+  if (systemRequestHeader === "true") {
+    console.log("[TRPC Context] System request detected. Skipping session creation.")
+    return {
+      req,
+      res,
+      session: undefined,
+    }
+  }
+
   const authorization = req.headers.authorization
   const user = await getConvexUser(authorization)
 

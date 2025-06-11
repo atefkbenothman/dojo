@@ -12,11 +12,19 @@ function buildProxyHeaders(headers: Headers) {
   if (headers.get("x-vercel-ai-data-stream")) {
     result.set("x-vercel-ai-data-stream", headers.get("x-vercel-ai-data-stream")!)
   }
+  if (headers.get("x-dojo-session-id")) {
+    result.set("x-dojo-session-id", headers.get("x-dojo-session-id")!)
+  }
   return result
 }
 
 /* Chat */
-async function handleChat(authorization: string | null, messages: CoreMessage[], chat: { modelId: string }) {
+async function handleChat(
+  authorization: string | null,
+  guestSessionId: string | null,
+  messages: CoreMessage[],
+  chat: { modelId: string },
+) {
   if (!messages || !chat.modelId) {
     return NextResponse.json({ error: "Missing 'messages' or 'modelId' for CHAT interaction." }, { status: 400 })
   }
@@ -27,6 +35,7 @@ async function handleChat(authorization: string | null, messages: CoreMessage[],
       headers: {
         "Content-Type": "application/json",
         ...(authorization ? { Authorization: authorization } : {}),
+        ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
       },
       body: JSON.stringify({ messages, chat }),
     }),
@@ -54,6 +63,7 @@ async function handleChat(authorization: string | null, messages: CoreMessage[],
 /* Agent */
 async function handleAgent(
   authorization: string | null,
+  guestSessionId: string | null,
   messages: CoreMessage[],
   agent: { modelId: string; agentId: string },
 ) {
@@ -67,6 +77,7 @@ async function handleAgent(
       headers: {
         "Content-Type": "application/json",
         ...(authorization ? { Authorization: authorization } : {}),
+        ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
       },
       body: JSON.stringify({
         messages,
@@ -97,6 +108,7 @@ async function handleAgent(
 /* Workflow */
 const handleWorkflow = async (
   authorization: string | null,
+  guestSessionId: string | null,
   messages: CoreMessage[],
   workflow: { modelId: string; workflowId: string },
 ) => {
@@ -112,6 +124,7 @@ const handleWorkflow = async (
       headers: {
         "Content-Type": "application/json",
         ...(authorization ? { Authorization: authorization } : {}),
+        ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
       },
       body: JSON.stringify({
         messages,
@@ -136,9 +149,10 @@ export async function POST(request: Request) {
   const body = await request.json()
   const { messages, interactionType } = body
   const authorization = request.headers.get("Authorization")
+  const guestSessionId = request.headers.get("X-Guest-Session-ID")
 
-  if (!authorization) {
-    console.log("[API /chat] No authorization header. Proceeding as anonymous user.")
+  if (!authorization && !guestSessionId) {
+    console.log("[API /chat] No authorization or session header. Proceeding as new anonymous user.")
   }
 
   if (!interactionType) {
@@ -159,21 +173,21 @@ export async function POST(request: Request) {
       if (!chat) {
         return NextResponse.json({ error: "Missing 'chat' object in request body." }, { status: 400 })
       }
-      return await handleChat(authorization, messages, chat)
+      return await handleChat(authorization, guestSessionId, messages, chat)
     }
     case "agent": {
       const { agent } = body
       if (!agent) {
         return NextResponse.json({ error: "Missing 'agent' object in request body." }, { status: 400 })
       }
-      return await handleAgent(authorization, messages, agent)
+      return await handleAgent(authorization, guestSessionId, messages, agent)
     }
     case "workflow": {
       const { workflow } = body
       if (!workflow) {
         return NextResponse.json({ error: "Missing 'workflow' object in request body." }, { status: 400 })
       }
-      return await handleWorkflow(authorization, messages, workflow)
+      return await handleWorkflow(authorization, guestSessionId, messages, workflow)
     }
     default:
       console.error(`[API /chat] Unknown 'interactionType': ${interactionType}`)

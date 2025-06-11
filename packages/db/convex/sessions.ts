@@ -150,3 +150,13 @@ export const cleanup = internalMutation({
     await Promise.all(staleSessions.map((session) => ctx.db.delete(session._id)))
   },
 })
+
+// Retrieves the list of active MCP server IDs for a given session
+export const listConnections = query({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, { sessionId }) => {
+    const session = await ctx.db.get(sessionId)
+    if (!session) throw new Error(`Session not found: ${sessionId}`)
+    return session.activeMcpServerIds
+  },
+})

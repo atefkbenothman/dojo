@@ -1,6 +1,6 @@
 "use client"
 
-import { useAIModels } from "./use-ai-models"
+// import { useAIModels } from "./use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useTRPCClient } from "@/lib/trpc/context"
@@ -18,13 +18,13 @@ export function useImage() {
   const { setIsImageGenerating } = useImageStore()
 
   const { play } = useSoundEffectContext()
-  const { setChatError, setMessages } = useChatProvider()
+  const { setMessages } = useChatProvider()
 
   const imageGenerationMutationFn = useCallback(
     function imageGenerationMutationFn(data: ImageGenerationInput) {
       return trpcClient.image.generate.mutate(data)
     },
-    [setChatError, trpcClient],
+    [trpcClient],
   )
 
   const mutation = useMutation<RouterOutputs["image"]["generate"], Error, ImageGenerationInput>({

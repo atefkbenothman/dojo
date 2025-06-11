@@ -19,6 +19,21 @@ import type { ZodSchema } from "zod"
  */
 export function createAiRequestMiddleware(schema: ZodSchema<any>) {
   return async function aiRequestMiddleware(req: Request, res: Response, next: NextFunction) {
+    // For internal, server-to-server requests from the frontend, skip session creation.
+    const systemRequestHeader = req.headers["x-system-request"]
+    if (systemRequestHeader === "true") {
+      console.log("[AI Middleware] System request detected. Bypassing session and model setup.")
+      // We still need to validate the input to make the rest of the chain happy, but we won't use it.
+      const validationResult = schema.safeParse(req.body)
+      if (validationResult.success) {
+        req.parsedInput = validationResult.data
+      }
+      // Attach undefined for session and aiModel since this is a system request.
+      req.session = undefined
+      req.aiModel = undefined
+      return next()
+    }
+
     const validationResult = schema.safeParse(req.body)
 
     if (!validationResult.success) {
@@ -46,7 +61,10 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
       res.status(500).json({ error: "Failed to get or create a session." })
       return
     }
+    // Attach the session to the request for downstream handlers.
     req.session = session
+    // Also, add the session ID to the response headers so the client can persist it.
+    res.setHeader("X-Dojo-Session-ID", session._id)
 
     const modelId = parsedInput.chat?.modelId || parsedInput.agent?.modelId || parsedInput.workflow?.modelId
 
