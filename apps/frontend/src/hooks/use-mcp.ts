@@ -72,6 +72,7 @@ export function useMCP() {
       isMounted = false
     }
     // Intentionally excluding connectionMeta from deps to avoid re-running after store updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, setConnectionStatus, setConnectionMeta])
 
   function getConnectionStatus(serverId: string) {
