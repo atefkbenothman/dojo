@@ -6,7 +6,7 @@ import { useImageStore } from "@/store/use-image-store"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"
 import { Hammer, Check, Clock, Play, Lightbulb, Info, AlertTriangle } from "lucide-react"
-import { useEffect, RefObject, memo, useMemo } from "react"
+import { useEffect, RefObject, memo, useMemo, useState } from "react"
 
 interface MessageAccordionProps {
   variant?: "error" | "system" | "reasoning" | "tool"
@@ -129,15 +129,20 @@ function ErrorMessage({ errorMessage }: { errorMessage: string }) {
 }
 
 function LoadingAnimation() {
+  const [frameIndex, setFrameIndex] = useState(0)
+  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFrameIndex((prev) => (prev + 1) % frames.length)
+    }, 80)
+
+    return () => clearInterval(interval)
+  }, [frames.length])
+
   return (
-    <div className="flex items-center space-x-1 w-fit px-1 py-4 text-red-500">
-      {[0, 1, 2].map((dot) => (
-        <div
-          key={dot}
-          className="h-1.5 w-1.5 animate-bounce bg-primary/50"
-          style={{ animationDelay: `${dot * 0.2}s` }}
-        />
-      ))}
+    <div className="flex items-center w-fit px-1 py-4 text-primary">
+      <span className="text-lg font-mono">{frames[frameIndex]}</span>
     </div>
   )
 }
