@@ -21,6 +21,7 @@
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
+    "tsx": "^4.20.1",
     "turbo": "latest"
   },
   "dependencies": {

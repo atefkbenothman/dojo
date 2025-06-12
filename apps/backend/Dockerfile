@@ -53,17 +53,16 @@ RUN adduser --system --uid 1001 nodejs
 USER nodejs
 
 # Copy package.json files for runtime dependencies
-COPY --from=installer /app/package.json ./package.json
-COPY --from=installer /app/apps/backend/package.json ./apps/backend/package.json
-COPY --from=installer /app/packages/config/package.json ./packages/config/package.json
 COPY --from=installer /app/packages/utils/package.json ./packages/utils/package.json
 
+# Copy backend source (pruned output) instead of built dist
+COPY --from=installer /app/apps/backend ./apps/backend
+COPY --from=installer /app/packages/db ./packages/db
+
 # Copy only the built application code and necessary dependencies
-COPY --from=installer /app/apps/backend/dist ./apps/backend/dist
-COPY --from=installer /app/packages/config/dist ./packages/config/dist
 COPY --from=installer /app/packages/utils/dist ./packages/utils/dist
 COPY --from=installer /app/node_modules ./node_modules
 
 EXPOSE 8888
 
-CMD ["node", "apps/backend/dist/core.js"]
+CMD ["npx", "tsx", "apps/backend/src/core.ts"]

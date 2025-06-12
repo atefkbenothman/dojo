@@ -11,8 +11,6 @@ import { ImageModel, LanguageModel } from "ai"
 import cors from "cors"
 import express, { Express } from "express"
 
-console.log("Starting server...")
-
 const PORT = process.env.PORT || 8888
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 
@@ -57,6 +55,7 @@ app.use(
 
 /* Start the server */
 app.listen(PORT, () => {
+  console.log("Starting server...")
   console.log(`[Core] Server listening on port ${PORT}`)
   console.log(`[Core] Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
   console.log("[Core] tRPC router mounted at /trpc")
