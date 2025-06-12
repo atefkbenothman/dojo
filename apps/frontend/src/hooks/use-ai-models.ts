@@ -14,7 +14,7 @@ export function useAIModels() {
   const providers = useQuery(api.models.providers)
 
   const selectedModel = useMemo(() => {
-    return models?.find((model) => model._id === selectedModelId)
+    return models?.find((model) => model.modelId === selectedModelId)
   }, [models, selectedModelId])
 
   const getModel = useCallback(

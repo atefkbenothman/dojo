@@ -59,7 +59,7 @@ const ChatControls = memo(function ChatControls({
               <SelectGroup key={providerName}>
                 <SelectLabel>{providerName}</SelectLabel>
                 {models.map((model) => (
-                  <SelectItem key={model._id} value={model._id} className="hover:cursor-pointer">
+                  <SelectItem key={model.modelId} value={model.modelId} className="hover:cursor-pointer">
                     {model.name}
                     {model.requiresApiKey && (
                       <span className="text-muted-foreground text-xs ml-1 font-normal">(requires key)</span>
