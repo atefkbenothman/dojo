@@ -2,6 +2,12 @@
 
 import React, { createContext, useContext, useRef, useCallback, useState, useEffect } from "react"
 
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext
+  }
+}
+
 interface UseSoundEffectOptions {
   volume?: number
   playbackRate?: number
@@ -29,7 +35,7 @@ export function SoundEffectProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     const initAudioContext = () => {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext!)()
         // Resume context if it's suspended (required for some browsers)
         if (audioContextRef.current.state === "suspended") {
           audioContextRef.current.resume()

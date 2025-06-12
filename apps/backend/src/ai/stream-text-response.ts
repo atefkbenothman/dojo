@@ -9,7 +9,7 @@ interface StreamAiResponseOptions {
 }
 
 export async function streamTextResponse(
-  options: StreamAiResponseOptions & { end?: boolean } = { end: true } as any,
+  options: StreamAiResponseOptions & { end?: boolean },
 ): Promise<{ text: string }> {
   const { res, languageModel, messages, tools, end = true } = options
 

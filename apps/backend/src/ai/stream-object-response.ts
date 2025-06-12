@@ -1,4 +1,4 @@
-import { type CoreMessage, type LanguageModel, NoObjectGeneratedError, streamObject } from "ai"
+import { type CoreMessage, type LanguageModel, streamObject } from "ai"
 import { type Response } from "express"
 
 interface StreamAiResponseOptions {
@@ -8,8 +8,8 @@ interface StreamAiResponseOptions {
 }
 
 export async function streamObjectResponse(
-  options: StreamAiResponseOptions & { end?: boolean } = { end: true } as any,
-): Promise<{ object: any }> {
+  options: StreamAiResponseOptions & { end?: boolean },
+): Promise<{ object: unknown }> {
   const { res, languageModel, messages, end = true } = options
 
   try {

@@ -73,8 +73,8 @@ export const cleanupExistingConnection = async (sessionId: Id<"sessions">, mcpSe
 /**
  * Aggregates all tools from a session's active MCP clients into a single object.
  */
-export function aggregateMcpTools(sessionId: Id<"sessions">): Record<string, any> {
-  const combinedTools: Record<string, any> = {}
+export function aggregateMcpTools(sessionId: Id<"sessions">): Record<string, unknown> {
+  const combinedTools: Record<string, unknown> = {}
   const sessionConnections = liveConnectionCache.get(sessionId)
   if (sessionConnections) {
     for (const mcpClient of sessionConnections.values()) {
