@@ -1,5 +1,6 @@
 import "./globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
+import { SessionInitializer } from "@/components/session-initializer"
 import { AIChatProvider } from "@/hooks/use-chat"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
 import { serverTrpc } from "@/lib/trpc/client"
@@ -84,15 +85,17 @@ export default async function RootLayout({
         <body className={`antialiased ${inter.className}`}>
           <ConvexClientProvider>
             <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-              <SoundEffectProvider>
-                <DojoTRPCProvider>
-                  <AIChatProvider>
-                    <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
-                      {children}
-                    </ResizableLayout>
-                  </AIChatProvider>
-                </DojoTRPCProvider>
-              </SoundEffectProvider>
+              <SessionInitializer>
+                <SoundEffectProvider>
+                  <DojoTRPCProvider>
+                    <AIChatProvider>
+                      <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
+                        {children}
+                      </ResizableLayout>
+                    </AIChatProvider>
+                  </DojoTRPCProvider>
+                </SoundEffectProvider>
+              </SessionInitializer>
             </DarkModeProvider>
           </ConvexClientProvider>
           <Toaster toastOptions={{ style: { borderRadius: "var(--radius-sm)" } }} />

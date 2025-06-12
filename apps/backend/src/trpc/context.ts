@@ -1,53 +1,51 @@
 import { getConvexUser } from "../auth.js"
 import { convex } from "../convex-client.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
-import { Id } from "@dojo/db/convex/_generated/dataModel.js"
 import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
 import { type CreateExpressContextOptions } from "@trpc/server/adapters/express"
 
 export const createTRPCContext = async ({ req, res }: CreateExpressContextOptions) => {
-  // For internal, server-to-server requests from the frontend, skip session creation.
-  const systemRequestHeader = req.headers["x-system-request"]
-  if (systemRequestHeader === "true") {
-    console.log("[TRPC Context] System request detected. Skipping session creation.")
-    return {
-      req,
-      res,
-      session: undefined,
-    }
-  }
-
   const authorization = req.headers.authorization
   const user = await getConvexUser(authorization)
 
-  // For guest users
-  const guestSessionIdHeader = req.headers["x-guest-session-id"]
-  const guestSessionId = (Array.isArray(guestSessionIdHeader) ? guestSessionIdHeader[0] : guestSessionIdHeader) as
-    | Id<"sessions">
-    | undefined
+  let session: Doc<"sessions"> | null = null
 
-  // This one mutation handles all cases: new guests, returning guests, and authenticated users.
-  // It will also handle merging a guest session when a user logs in.
-  const session = await convex.mutation(api.sessions.getOrCreate, {
-    userId: user?._id,
-    guestSessionId: guestSessionId,
-  })
+  // Authenticated users: lookup by userId
+  if (user) {
+    session = await convex.query(api.sessions.getByUserId, {
+      userId: user._id,
+    })
 
-  if (!session) {
-    console.error("[TRPC Context] Critical error: Failed to get or create a session from Convex.")
-    return {
-      req,
-      res,
-      session: undefined,
+    if (!session) {
+      console.warn(`[TRPC Context] No session found for authenticated user ${user._id}`)
     }
-  } else {
-    console.log(`[TRPC Context] Session ${session._id} ready. User authenticated: ${!!session.userId}`)
+  }
+  // Guest users: lookup by clientSessionId
+  else {
+    const clientSessionIdHeader = req.headers["x-guest-session-id"]
+    const clientSessionId = (
+      Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader
+    ) as string | undefined
+
+    if (clientSessionId) {
+      session = await convex.query(api.sessions.getByClientSessionId, {
+        clientSessionId,
+      })
+
+      if (!session) {
+        console.warn(`[TRPC Context] No session found for guest with clientSessionId ${clientSessionId}`)
+      }
+    }
+  }
+
+  if (session) {
+    console.log(`[TRPC Context] Found session ${session._id}. User authenticated: ${!!session.userId}`)
   }
 
   return {
     req,
     res,
-    session,
+    session: session || undefined,
   }
 }
 

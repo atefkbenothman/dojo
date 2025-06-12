@@ -80,9 +80,7 @@ export const connectionRouter = router({
 
       const results = await Promise.all(connectionPromises)
 
-      // We must return the sessionId so the frontend client can store it,
-      // which is crucial for new anonymous users to maintain their session.
-      return { success: true, sessionId: session._id, results }
+      return { success: true, results }
     } catch (error) {
       // If any part of the connection process fails, we attempt to roll back
       // all changes made during this request to leave the system in a clean state.

@@ -63,6 +63,7 @@ export const apiKeysFields = {
 
 // User session configurations
 export const sessionsFields = {
+  clientSessionId: v.optional(v.string()),
   userId: v.optional(v.id("users")),
   activeMcpServerIds: v.array(v.id("mcp")),
   lastAccessed: v.number(),
@@ -79,5 +80,5 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_provider", ["providerId"])
     .index("by_user_provider", ["userId", "providerId"]),
-  sessions: defineTable(sessionsFields).index("by_user", ["userId"]),
+  sessions: defineTable(sessionsFields).index("by_user", ["userId"]).index("by_clientSessionId", ["clientSessionId"]),
 })

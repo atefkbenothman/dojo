@@ -32,16 +32,16 @@ export function Mcp() {
           <p className="text-sm font-medium">MCP Servers</p>
           <p className="text-xs text-muted-foreground">manage and connect to MCP servers</p>
         </div>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="flex flex-row items-center gap-4 flex-nowrap">
           <Input
             placeholder="Search"
-            className="ring-none bg-input/30 h-10 resize-none border-border focus-visible:ring-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border w-[16rem] text-xs"
+            className="ring-none bg-input/30 h-10 resize-none border-border focus-visible:ring-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border min-w-0 flex-1 max-w-[16rem] text-xs"
             onChange={(e) => setSearchInput(e.target.value)}
             value={searchInput}
           />
           <Button
             variant="outline"
-            className="hover:cursor-pointer h-10"
+            className="hover:cursor-pointer h-10 whitespace-nowrap flex-shrink-0"
             onClick={disconnectAll}
             disabled={activeConnections.length === 0}
             title="Disconnect all"

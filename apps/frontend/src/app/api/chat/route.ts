@@ -12,9 +12,6 @@ function buildProxyHeaders(headers: Headers) {
   if (headers.get("x-vercel-ai-data-stream")) {
     result.set("x-vercel-ai-data-stream", headers.get("x-vercel-ai-data-stream")!)
   }
-  if (headers.get("x-dojo-session-id")) {
-    result.set("x-dojo-session-id", headers.get("x-dojo-session-id")!)
-  }
   return result
 }
 
@@ -152,7 +149,7 @@ export async function POST(request: Request) {
   const guestSessionId = request.headers.get("X-Guest-Session-ID")
 
   if (!authorization && !guestSessionId) {
-    console.log("[API /chat] No authorization or session header. Proceeding as new anonymous user.")
+    console.log("[API /chat] No authorization or session header. Request may fail if backend requires session.")
   }
 
   if (!interactionType) {

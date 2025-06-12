@@ -8,9 +8,7 @@ export const serverTrpc = createTRPCClient<AppRouter>({
     httpBatchLink({
       url: `${env.BACKEND_URL}/trpc`,
       async headers() {
-        const headers: Record<string, string> = {
-          "X-System-Request": "true",
-        }
+        const headers: Record<string, string> = {}
         // This client is used on the server, so we use the server-side token helper.
         const token = await convexAuthNextjsToken()
         if (token) {

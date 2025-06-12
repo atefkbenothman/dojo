@@ -2,7 +2,7 @@ import { getModelInstance, getModelRequiresApiKey, getModelFallbackApiKey } from
 import { getConvexUser } from "../auth.js"
 import { convex } from "../convex-client.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
-import { Doc, Id } from "@dojo/db/convex/_generated/dataModel.js"
+import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
 import { tryCatch } from "@dojo/utils"
 import type { Request, Response, NextFunction } from "express"
 import type { ZodSchema } from "zod"
@@ -19,21 +19,6 @@ import type { ZodSchema } from "zod"
  */
 export function createAiRequestMiddleware(schema: ZodSchema<any>) {
   return async function aiRequestMiddleware(req: Request, res: Response, next: NextFunction) {
-    // For internal, server-to-server requests from the frontend, skip session creation.
-    const systemRequestHeader = req.headers["x-system-request"]
-    if (systemRequestHeader === "true") {
-      console.log("[AI Middleware] System request detected. Bypassing session and model setup.")
-      // We still need to validate the input to make the rest of the chain happy, but we won't use it.
-      const validationResult = schema.safeParse(req.body)
-      if (validationResult.success) {
-        req.parsedInput = validationResult.data
-      }
-      // Attach undefined for session and aiModel since this is a system request.
-      req.session = undefined
-      req.aiModel = undefined
-      return next()
-    }
-
     const validationResult = schema.safeParse(req.body)
 
     if (!validationResult.success) {
@@ -43,28 +28,38 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
 
     const parsedInput = validationResult.data
 
-    // Identify the user. First, check for a real user's auth token, then for a guest session ID.
+    // Identify the user and fetch their session
     const user = await getConvexUser(req.headers.authorization)
-    const guestSessionIdHeader = req.headers["x-guest-session-id"]
-    const guestSessionId = (Array.isArray(guestSessionIdHeader) ? guestSessionIdHeader[0] : guestSessionIdHeader) as
-      | Id<"sessions">
-      | undefined
 
-    // Use a single database mutation to get or create a session.
-    // This handles all cases: new guests, returning guests, and authenticated users.
-    const session = await convex.mutation(api.sessions.getOrCreate, {
-      userId: user?._id,
-      guestSessionId: guestSessionId,
-    })
+    let session: Doc<"sessions"> | null = null
+
+    // Authenticated users: lookup by userId
+    if (user) {
+      session = await convex.query(api.sessions.getByUserId, {
+        userId: user._id,
+      })
+    }
+    // Guest users: lookup by clientSessionId
+    else {
+      const clientSessionIdHeader = req.headers["x-guest-session-id"]
+      const clientSessionId = (
+        Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader
+      ) as string | undefined
+
+      if (clientSessionId) {
+        session = await convex.query(api.sessions.getByClientSessionId, {
+          clientSessionId,
+        })
+      }
+    }
 
     if (!session) {
-      res.status(500).json({ error: "Failed to get or create a session." })
+      res.status(401).json({ error: "No active session found. Please refresh the page and try again." })
       return
     }
+
     // Attach the session to the request for downstream handlers.
     req.session = session
-    // Also, add the session ID to the response headers so the client can persist it.
-    res.setHeader("X-Dojo-Session-ID", session._id)
 
     const modelId = parsedInput.chat?.modelId || parsedInput.agent?.modelId || parsedInput.workflow?.modelId
 

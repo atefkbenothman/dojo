@@ -20,4 +20,4 @@ Multiple tools can be used in a single response and multiple steps can be used t
 
 export const DEFAULT_ASSISTANT_MESSAGE = "What can I help with?"
 
-export const GUEST_SESSION_KEY = "guest-session-id"
+export const GUEST_SESSION_KEY = "client-session-id"

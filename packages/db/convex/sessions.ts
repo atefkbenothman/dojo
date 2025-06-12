@@ -11,80 +11,83 @@ export const get = query({
   },
 })
 
+// Retrieves a session by userId
+export const getByUserId = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db
+      .query("sessions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique()
+  },
+})
+
+// Retrieves a session by clientSessionId
+export const getByClientSessionId = query({
+  args: { clientSessionId: v.string() },
+  handler: async (ctx, { clientSessionId }) => {
+    return await ctx.db
+      .query("sessions")
+      .withIndex("by_clientSessionId", (q) => q.eq("clientSessionId", clientSessionId))
+      .unique()
+  },
+})
+
 // The primary function for getting or creating a session.
-// Handles authenticated users, guest users, and the transition between them.
+// Handles authenticated users and guest users separately - no merging.
 export const getOrCreate = mutation({
   args: {
     userId: v.optional(v.id("users")),
-    guestSessionId: v.optional(v.id("sessions")), // The ID of a potential anonymous session
+    clientSessionId: v.optional(v.string()), // Frontend-generated UUID for guests
   },
-  handler: async (ctx, { userId, guestSessionId }) => {
-    // Case 1: Authenticated User
+  handler: async (ctx, { userId, clientSessionId }) => {
+    // Authenticated User Flow
     if (userId) {
-      // Try to find a session linked to this user.
-      const existingUserSession = await ctx.db
+      // Find existing session for this user
+      const existingSession = await ctx.db
         .query("sessions")
         .withIndex("by_user", (q) => q.eq("userId", userId))
         .unique()
 
-      // If the user logs in and they had a previous guest session, merge them.
-      if (guestSessionId) {
-        const guestSession = await ctx.db.get(guestSessionId)
-        if (guestSession) {
-          if (existingUserSession) {
-            // Merge guest connections into the user's existing session
-            const combinedConnections = [...existingUserSession.activeMcpServerIds, ...guestSession.activeMcpServerIds]
-            // Use a Set to remove duplicates
-            const uniqueConnections = [...new Set(combinedConnections)]
-            await ctx.db.patch(existingUserSession._id, {
-              activeMcpServerIds: uniqueConnections,
-              lastAccessed: Date.now(),
-            })
-            await ctx.db.delete(guestSession._id) // Delete the old guest session
-            return await ctx.db.get(existingUserSession._id)
-          } else {
-            // No existing user session, so we "claim" the guest session.
-            await ctx.db.patch(guestSessionId, {
-              userId: userId,
-              lastAccessed: Date.now(),
-            })
-            return await ctx.db.get(guestSessionId)
-          }
-        }
+      if (existingSession) {
+        // Update last accessed time
+        await ctx.db.patch(existingSession._id, { lastAccessed: Date.now() })
+        return existingSession
       }
 
-      // If we found a session for the user, return it.
-      if (existingUserSession) {
-        await ctx.db.patch(existingUserSession._id, { lastAccessed: Date.now() })
-        return existingUserSession
-      }
-
-      // No existing session for this user, create a new one.
+      // Create new session for authenticated user
       const newSessionId = await ctx.db.insert("sessions", {
-        userId: userId,
+        userId,
         activeMcpServerIds: [],
         lastAccessed: Date.now(),
       })
       return await ctx.db.get(newSessionId)
     }
 
-    // Case 2: Anonymous Guest User
-    if (guestSessionId) {
-      const guestSession = await ctx.db.get(guestSessionId)
-      if (guestSession) {
-        // Found the guest session, update its timestamp and return it.
-        await ctx.db.patch(guestSession._id, { lastAccessed: Date.now() })
-        return guestSession
+    // Guest User Flow
+    if (clientSessionId) {
+      // Find existing session by clientSessionId
+      const existingSession = await ctx.db
+        .query("sessions")
+        .withIndex("by_clientSessionId", (q) => q.eq("clientSessionId", clientSessionId))
+        .unique()
+
+      if (existingSession) {
+        // Update last accessed time
+        await ctx.db.patch(existingSession._id, { lastAccessed: Date.now() })
+        return existingSession
       }
+
+      // Create new guest session
+      const newSessionId = await ctx.db.insert("sessions", {
+        clientSessionId,
+        activeMcpServerIds: [],
+        lastAccessed: Date.now(),
+      })
+      return await ctx.db.get(newSessionId)
     }
 
-    // Case 3: New Anonymous User (no valid userId or guestSessionId)
-    // Create a brand new session document.
-    const newGuestSessionId = await ctx.db.insert("sessions", {
-      activeMcpServerIds: [],
-      lastAccessed: Date.now(),
-    })
-    return await ctx.db.get(newGuestSessionId)
+    throw new Error("Either userId or clientSessionId must be provided")
   },
 })
 
@@ -138,7 +141,7 @@ export const cleanup = internalMutation({
       .query("sessions")
       .filter((q) =>
         q.and(
-          // It's an anonymous session (no user ID)
+          // It's a guest session (has clientSessionId but no userId)
           q.eq(q.field("userId"), undefined),
           // And it hasn't been accessed in over the stale threshold
           q.lt(q.field("lastAccessed"), Date.now() - STALE_THRESHOLD),
