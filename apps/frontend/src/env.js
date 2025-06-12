@@ -9,24 +9,14 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_BACKEND_URL: z.string().url(),
     NEXT_PUBLIC_CONVEX_URL: z.string().url(),
-    NEXT_PUBLIC_OPENAI_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_GOOGLE_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_GROQ_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN: z.string().optional(),
-    NEXT_PUBLIC_TICKETMASTER_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_NOTION_API_KEY: z.string().optional(),
+    NEXT_PUBLIC_ENCRYPTION_SECRET: z.string().min(32),
   },
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
     BACKEND_URL: process.env.BACKEND_URL,
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
-    NEXT_PUBLIC_OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-    NEXT_PUBLIC_GOOGLE_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
-    NEXT_PUBLIC_GROQ_API_KEY: process.env.NEXT_PUBLIC_GROQ_API_KEY,
-    NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_ACCESS_TOKEN,
-    NEXT_PUBLIC_TICKETMASTER_API_KEY: process.env.NEXT_PUBLIC_TICKETMASTER_API_KEY,
-    NEXT_PUBLIC_NOTION_API_KEY: process.env.NEXT_PUBLIC_NOTION_API_KEY,
+    NEXT_PUBLIC_ENCRYPTION_SECRET: process.env.NEXT_PUBLIC_ENCRYPTION_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

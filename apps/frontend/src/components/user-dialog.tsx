@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { env } from "@/env"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
@@ -23,6 +24,7 @@ import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useAuthActions } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
+import { encryptApiKey, decryptApiKey } from "@dojo/utils"
 import { useMutation } from "convex/react"
 import { Eye, EyeOff, TriangleAlert } from "lucide-react"
 import { Dispatch, SetStateAction, useState, useEffect } from "react"
@@ -38,21 +40,36 @@ interface ApiKeyManagerProps {
 function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
   const { play } = useSoundEffectContext()
   const { signIn } = useAuthActions()
+
   const upsertApiKey = useMutation(api.apiKeys.upsertApiKey)
   const removeApiKey = useMutation(api.apiKeys.removeApiKey)
 
   const [visibleKeys, setVisibleKeys] = useState<Record<Id<"providers">, boolean>>({})
   const [inputValues, setInputValues] = useState<Record<Id<"providers">, string>>({})
+  const [originalValues, setOriginalValues] = useState<Record<Id<"providers">, string>>({})
   const [savingState, setSavingState] = useState<Record<Id<"providers">, "idle" | "saving">>({})
 
   useEffect(() => {
     if (userApiKeys && providers) {
-      const initialInputValues: Record<Id<"providers">, string> = {}
-      providers.forEach((provider) => {
-        const found = userApiKeys.find((key) => key.providerId === provider._id)
-        initialInputValues[provider._id] = found?.apiKey || ""
-      })
-      setInputValues(initialInputValues)
+      const decryptAndSetValues = async () => {
+        const initialInputValues: Record<Id<"providers">, string> = {}
+
+        for (const provider of providers) {
+          const found = userApiKeys.find((key) => key.providerId === provider._id)
+          if (found?.apiKey) {
+            // Decrypt the API key for display
+            const decryptedKey = await decryptApiKey(found.apiKey, env.NEXT_PUBLIC_ENCRYPTION_SECRET)
+            initialInputValues[provider._id] = decryptedKey || ""
+          } else {
+            initialInputValues[provider._id] = ""
+          }
+        }
+
+        setInputValues(initialInputValues)
+        setOriginalValues(initialInputValues) // Store original decrypted values for comparison
+      }
+
+      decryptAndSetValues()
     }
   }, [userApiKeys, providers])
 
@@ -108,7 +125,9 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
           }, 100)
         }
       } else {
-        await upsertApiKey({ apiKey, userId: user!._id, providerId })
+        // Encrypt the API key before saving to database
+        const encryptedApiKey = await encryptApiKey(apiKey, env.NEXT_PUBLIC_ENCRYPTION_SECRET)
+        await upsertApiKey({ apiKey: encryptedApiKey, userId: user!._id, providerId })
         toast.success("API keys saved to database", {
           icon: null,
           id: "api-key-saved",
@@ -131,8 +150,9 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
     if (inputValues[providerId] === undefined) {
       return false
     }
-    const originalKey = userApiKeys.find((key) => key.providerId === providerId)?.apiKey || ""
-    return inputValues[providerId] !== originalKey
+    const currentValue = inputValues[providerId] || ""
+    const originalValue = originalValues[providerId] || ""
+    return currentValue !== originalValue
   }
 
   return (
