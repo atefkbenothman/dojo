@@ -69,7 +69,7 @@ export async function decryptApiKey(encryptedApiKey: string, masterSecret: strin
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted)
 
     return decoder.decode(decrypted)
-  } catch (error) {
+  } catch {
     // Return undefined on any decryption failure
     return undefined
   }

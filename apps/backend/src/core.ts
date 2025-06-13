@@ -18,8 +18,8 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 const models = await convex.query(api.models.list)
 const mcpServers = await convex.query(api.mcp.list)
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       session: Doc<"sessions"> | undefined

@@ -23,9 +23,7 @@ export const createTRPCContext = async ({ req, res }: CreateExpressContextOption
   // Guest users: lookup by clientSessionId
   else {
     const clientSessionIdHeader = req.headers["x-guest-session-id"]
-    const clientSessionId = (
-      Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader
-    ) as string | undefined
+    const clientSessionId = Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader
 
     if (clientSessionId) {
       session = await convex.query(api.sessions.getByClientSessionId, {

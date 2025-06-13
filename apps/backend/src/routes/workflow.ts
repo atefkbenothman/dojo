@@ -12,7 +12,16 @@ import { z } from "zod"
 export const workflowRouter: Router = express.Router()
 
 const workflowInputSchema = z.object({
-  messages: z.array(z.any()).min(1, { message: "Missing or invalid messages array" }),
+  messages: z
+    .array(
+      z
+        .object({
+          role: z.string(),
+          content: z.unknown(),
+        })
+        .passthrough(),
+    )
+    .min(1, { message: "Missing or invalid messages array" }),
   workflow: z.object({
     modelId: z.string(),
     workflowId: z.string(),
@@ -62,9 +71,13 @@ workflowRouter.post(
         console.log(`[REST /workflow/run] Using ${Object.keys(combinedTools).length} total tools`)
       }
 
-      let messages = [...initialMessages] as CoreMessage[]
-      let completedSteps: { instructions: string; output?: string }[] = []
-      const workflowPrompt = initialMessages.find((m: CoreMessage) => m.role === "user")?.content || ""
+      let messages: CoreMessage[] = initialMessages as CoreMessage[]
+      const completedSteps: { instructions: string; output?: string }[] = []
+      const workflowPromptMessage = messages.find((m) => m.role === "user")
+      const workflowPrompt =
+        typeof workflowPromptMessage?.content === "string"
+          ? workflowPromptMessage.content
+          : JSON.stringify(workflowPromptMessage?.content) || ""
       let lastStepOutput: string | undefined = undefined
 
       for (let i = 0; i < steps.length; i++) {

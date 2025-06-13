@@ -2,11 +2,18 @@ import { getModelInstance, getModelRequiresApiKey, getModelFallbackApiKey } from
 import { getConvexUser } from "../auth.js"
 import { convex } from "../convex-client.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
-import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { Doc, Id } from "@dojo/db/convex/_generated/dataModel.js"
 import { env } from "@dojo/env/backend"
 import { tryCatch, decryptApiKey } from "@dojo/utils"
 import type { Request, Response, NextFunction } from "express"
 import type { ZodSchema } from "zod"
+
+// Define the expected shape of parsed input
+interface ParsedInputBase {
+  chat?: { modelId: string }
+  agent?: { modelId: string }
+  workflow?: { modelId: string }
+}
 
 /**
  * Creates a reusable Express middleware for handling AI-related requests.
@@ -18,7 +25,7 @@ import type { ZodSchema } from "zod"
  * @param schema A Zod schema to validate the request body.
  * @returns An Express middleware function.
  */
-export function createAiRequestMiddleware(schema: ZodSchema<any>) {
+export function createAiRequestMiddleware<T extends ParsedInputBase>(schema: ZodSchema<T>) {
   return async function aiRequestMiddleware(req: Request, res: Response, next: NextFunction) {
     const validationResult = schema.safeParse(req.body)
 
@@ -43,9 +50,7 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
     // Guest users: lookup by clientSessionId
     else {
       const clientSessionIdHeader = req.headers["x-guest-session-id"]
-      const clientSessionId = (
-        Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader
-      ) as string | undefined
+      const clientSessionId = Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader
 
       if (clientSessionId) {
         session = await convex.query(api.sessions.getByClientSessionId, {
@@ -76,10 +81,12 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
 
     if (session.userId) {
       // User is authenticated: look up their specific API key.
-      const apiKeyObject = (await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
+      // Note: modelId comes as a string from the input, but Convex expects Id<"models">
+      // This is safe because getModelInstance will validate the modelId exists
+      const apiKeyObject = await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
         userId: session.userId,
-        modelId: modelId,
-      })) as Doc<"apiKeys"> | null
+        modelId: modelId as Id<"models">,
+      })
 
       if (apiKeyObject) {
         // Decrypt the API key before using it
@@ -117,7 +124,7 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
     }
 
     // Initialize the AI model instance and attach it to the request.
-    const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(modelId, apiKeyToUse))
+    const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(modelId as Id<"models">, apiKeyToUse))
 
     if (modelError || !modelInstance) {
       res.status(400).json({

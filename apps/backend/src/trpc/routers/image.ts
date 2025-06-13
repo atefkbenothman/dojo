@@ -1,14 +1,14 @@
-import { getModelInstance } from "../../ai/models.js"
+// import { getModelInstance } from "../../ai/models.js"
 import type { Context } from "../context.js"
 import { protectedProcedure, router } from "../trpc.js"
 import { TRPCError } from "@trpc/server"
-import { experimental_generateImage as generateImage, type ImageModel } from "ai"
+// import { experimental_generateImage as generateImage, type ImageModel } from "ai"
 import { z } from "zod"
 
-interface SDKImageObject {
-  base64?: string
-  url?: string
-}
+// interface SDKImageObject {
+//   base64?: string
+//   url?: string
+// }
 
 export const imageGenerationInputSchema = z.object({
   prompt: z.string().min(1, { message: "Prompt cannot be empty." }),
@@ -27,8 +27,9 @@ export const imageGenerationInputSchema = z.object({
 export const imageRouter = router({
   generate: protectedProcedure
     .input(imageGenerationInputSchema)
-    .mutation(async ({ input, ctx }: { input: z.infer<typeof imageGenerationInputSchema>; ctx: Context }) => {
-      const { prompt, modelId, n, size, quality, style } = input
+    .mutation(({ input, ctx }: { input: z.infer<typeof imageGenerationInputSchema>; ctx: Context }) => {
+      // const { prompt, modelId, n, size, quality, style } = input
+      const { modelId } = input
       const { session } = ctx
 
       if (!session?.userId) {
@@ -37,7 +38,7 @@ export const imageRouter = router({
 
       console.log(`[TRPC /image.generate] Request received for user: ${session.userId}, using model: ${modelId}`)
 
-      let imageModel: ImageModel
+      // let imageModel: ImageModel
       try {
         // imageModel = getModelInstance(modelId) as ImageModel
       } catch (err) {
