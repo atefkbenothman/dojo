@@ -7,8 +7,7 @@
   "scripts": {
     "dev": "convex dev",
     "setup": "convex dev --until-success",
-    "typecheck": "tsc --noEmit",
-    "build": "tsc -p ."
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@auth/core": "^0.37.0",
