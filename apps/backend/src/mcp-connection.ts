@@ -3,6 +3,7 @@ import { MCPClient } from "./mcp-client.js"
 import type { ActiveMcpClient } from "./types.js"
 import { Id } from "@dojo/db/convex/_generated/dataModel.js"
 import type { MCPServer } from "@dojo/db/convex/types.js"
+import type { ToolSet } from "ai"
 
 /**
  * Establishes an MCP connection for a given session and server config.
@@ -73,8 +74,8 @@ export const cleanupExistingConnection = async (sessionId: Id<"sessions">, mcpSe
 /**
  * Aggregates all tools from a session's active MCP clients into a single object.
  */
-export function aggregateMcpTools(sessionId: Id<"sessions">): Record<string, unknown> {
-  const combinedTools: Record<string, unknown> = {}
+export function aggregateMcpTools(sessionId: Id<"sessions">): ToolSet {
+  const combinedTools: ToolSet = {}
   const sessionConnections = liveConnectionCache.get(sessionId)
   if (sessionConnections) {
     for (const mcpClient of sessionConnections.values()) {
