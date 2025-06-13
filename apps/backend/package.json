@@ -7,7 +7,8 @@
     "start": "bun src/core.ts",
     "dev": "bun --watch src/core.ts",
     "dev:inspect": "bun --inspect src/core.ts",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "typecheck": "tsc --noEmit"
   },
   "license": "ISC",
   "dependencies": {
