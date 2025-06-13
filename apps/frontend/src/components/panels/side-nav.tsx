@@ -1,7 +1,7 @@
 "use client"
 
+import { SettingsDialog } from "@/components/settings/settings-dialog"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
-import { SettingsDialog } from "@/components/user-settings/settings-dialog"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { House, Server, Bot, User, Layers } from "lucide-react"

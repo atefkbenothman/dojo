@@ -36,7 +36,7 @@ export async function removeApiKey(userId: Id<"users">, providerId: Id<"provider
 }
 
 /**
- * Server action to get decrypted API keys for display (returns masked versions)
+ * Server action to get decrypted API keys for display
  */
 export async function getDecryptedApiKeys(userApiKeys: Array<{ providerId: Id<"providers">; apiKey: string }>) {
   const decryptedKeys: Record<Id<"providers">, string> = {}
@@ -46,12 +46,7 @@ export async function getDecryptedApiKeys(userApiKeys: Array<{ providerId: Id<"p
       // Decrypt the API key on the server side
       const decrypted = await decryptApiKey(key.apiKey, env.ENCRYPTION_SECRET)
       if (decrypted) {
-        // Return masked version for security (show first 5 and last 4 characters)
-        if (decrypted.length > 12) {
-          decryptedKeys[key.providerId] = `${decrypted.slice(0, 5)}...${decrypted.slice(-4)}`
-        } else {
-          decryptedKeys[key.providerId] = `${decrypted.slice(0, 2)}...`
-        }
+        decryptedKeys[key.providerId] = decrypted
       }
     }
   }

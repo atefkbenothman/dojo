@@ -1,5 +1,6 @@
 "use client"
 
+import { SignInCard } from "@/components/settings/sign-in-card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { SignInCard } from "@/components/user-settings/sign-in-card"
 import { successToastStyle } from "@/lib/styles"
 import { useAuthActions } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -43,6 +43,7 @@ export function UserManager({ user }: UserIdManagerProps) {
   const handleDeleteAccount = async () => {
     if (user) {
       await deleteUserMutation({ id: user._id })
+      await signOut()
       toast.success("Your account has been deleted.", {
         icon: null,
         id: "account-deleted",

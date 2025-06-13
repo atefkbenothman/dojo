@@ -1,9 +1,9 @@
 "use client"
 
+import { ApiKeyManager } from "@/components/settings/api-key-manager"
+import { UserManager } from "@/components/settings/user-manager"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ApiKeyManager } from "@/components/user-settings/api-key-manager"
-import { UserManager } from "@/components/user-settings/user-manager"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useUser } from "@/hooks/use-user"
 import { Dispatch, SetStateAction } from "react"
