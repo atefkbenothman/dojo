@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "exports": {
-    "./backend": "./src/backend.ts",
-    "./frontend": "./src/frontend.ts"
+    "./backend": "./dist/backend.js",
+    "./frontend": "./dist/frontend.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b --watch"
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.12.0",

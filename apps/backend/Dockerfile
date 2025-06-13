@@ -5,8 +5,8 @@ FROM oven/bun:1.2.8-alpine AS base
 FROM base AS builder
 WORKDIR /app
 
-# Install turbo globally using Bun
-RUN bun add -g turbo
+# Install turbo globally using npm (since the monorepo uses npm)
+RUN apk add --no-cache npm && npm install -g turbo
 
 # Copy the entire monorepo
 COPY . .
@@ -18,28 +18,22 @@ RUN turbo prune @dojo/backend --docker
 FROM base AS installer
 WORKDIR /app
 
-# First install the dependencies (as they change less often)
+# Install npm for turbo to use (since packageManager is set to npm)
+RUN apk add --no-cache npm
+
+# Copy pruned package.json files
 COPY --from=builder /app/out/json/ .
 
-# Copy bun lockfile if it exists (both text and binary formats)
-COPY --from=builder /app/out/bun.lock* ./
-COPY --from=builder /app/out/bun.lockb* ./
-COPY --from=builder /app/out/package-lock.json* ./
-
 # Install dependencies using Bun
-RUN bun install --frozen-lockfile
+# Since we're converting from npm to bun, we don't use frozen-lockfile
+RUN bun install
 
 # Copy source code from the pruned output
 COPY --from=builder /app/out/full/ .
 
-# Uncomment and use build args to enable remote caching
-# ARG TURBO_TEAM
-# ENV TURBO_TEAM=$TURBO_TEAM
-# ARG TURBO_TOKEN
-# ENV TURBO_TOKEN=$TURBO_TOKEN
-
-# Build everything using turbo to ensure correct dependency order
-RUN bunx turbo run build
+# Build dependencies that need building (like utils package)
+# Using --filter to only build dependencies of backend, not backend itself
+RUN bunx turbo run build --filter=@dojo/backend^...
 
 # Runtime stage - create the production image
 FROM base AS runner
@@ -53,16 +47,8 @@ RUN addgroup --system --gid 1001 bunuser
 RUN adduser --system --uid 1001 bunuser
 USER bunuser
 
-# Copy package.json files for runtime dependencies
-COPY --from=installer /app/packages/utils/package.json ./packages/utils/package.json
-
-# Copy backend source (pruned output) instead of built dist
-COPY --from=installer /app/apps/backend ./apps/backend
-COPY --from=installer /app/packages/db ./packages/db
-
-# Copy only the built application code and necessary dependencies
-COPY --from=installer /app/packages/utils/dist ./packages/utils/dist
-COPY --from=installer /app/node_modules ./node_modules
+# Copy the entire app from installer (includes built dependencies)
+COPY --from=installer --chown=bunuser:bunuser /app ./
 
 EXPOSE 8888
 
