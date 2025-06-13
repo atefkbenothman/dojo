@@ -39,6 +39,9 @@ RUN bunx turbo run build --filter=@dojo/backend^...
 FROM base AS runner
 WORKDIR /app
 
+# Install Node.js and npm for npx support (needed for MCP servers)
+RUN apk add --no-cache nodejs npm
+
 # Set production environment
 ENV NODE_ENV=production
 
