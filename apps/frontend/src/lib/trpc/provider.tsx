@@ -1,11 +1,11 @@
 "use client"
 
-import { env } from "@/env"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { GUEST_SESSION_KEY } from "@/lib/constants"
 import { TRPCProvider } from "@/lib/trpc/context"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { type AppRouter } from "@dojo/backend/src/trpc/router"
+import { env } from "@dojo/env/frontend"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { httpBatchLink } from "@trpc/client"
 import { createTRPCClient } from "@trpc/client"

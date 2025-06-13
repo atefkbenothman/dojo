@@ -1,5 +1,6 @@
 "use client"
 
+import { saveApiKey, removeApiKey, getDecryptedApiKeys } from "@/app/actions/api-keys"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +17,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { env } from "@/env"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
@@ -24,7 +24,6 @@ import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useAuthActions } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
-import { encryptApiKey, decryptApiKey } from "@dojo/utils"
 import { useMutation } from "convex/react"
 import { Eye, EyeOff, TriangleAlert } from "lucide-react"
 import { Dispatch, SetStateAction, useState, useEffect } from "react"
@@ -41,35 +40,34 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
   const { play } = useSoundEffectContext()
   const { signIn } = useAuthActions()
 
-  const upsertApiKey = useMutation(api.apiKeys.upsertApiKey)
-  const removeApiKey = useMutation(api.apiKeys.removeApiKey)
-
   const [visibleKeys, setVisibleKeys] = useState<Record<Id<"providers">, boolean>>({})
   const [inputValues, setInputValues] = useState<Record<Id<"providers">, string>>({})
+  const [maskedValues, setMaskedValues] = useState<Record<Id<"providers">, string>>({})
   const [originalValues, setOriginalValues] = useState<Record<Id<"providers">, string>>({})
   const [savingState, setSavingState] = useState<Record<Id<"providers">, "idle" | "saving">>({})
 
   useEffect(() => {
     if (userApiKeys && providers) {
-      const decryptAndSetValues = async () => {
+      const loadMaskedKeys = async () => {
+        const apiKeyData = userApiKeys.map((key) => ({
+          providerId: key.providerId,
+          apiKey: key.apiKey,
+        }))
+
+        // Get masked versions from server action
+        const masked = await getDecryptedApiKeys(apiKeyData)
+        setMaskedValues(masked)
+
+        // Initialize input values as empty (user will enter full keys)
         const initialInputValues: Record<Id<"providers">, string> = {}
-
         for (const provider of providers) {
-          const found = userApiKeys.find((key) => key.providerId === provider._id)
-          if (found?.apiKey) {
-            // Decrypt the API key for display
-            const decryptedKey = await decryptApiKey(found.apiKey, env.NEXT_PUBLIC_ENCRYPTION_SECRET)
-            initialInputValues[provider._id] = decryptedKey || ""
-          } else {
-            initialInputValues[provider._id] = ""
-          }
+          initialInputValues[provider._id] = ""
         }
-
         setInputValues(initialInputValues)
-        setOriginalValues(initialInputValues) // Store original decrypted values for comparison
+        setOriginalValues(initialInputValues)
       }
 
-      decryptAndSetValues()
+      loadMaskedKeys()
     }
   }, [userApiKeys, providers])
 
@@ -111,7 +109,7 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
 
     try {
       if (!apiKey) {
-        const result = await removeApiKey({ userId: user!._id, providerId })
+        const result = await removeApiKey(user!._id, providerId)
         if (result) {
           toast.error("API key removed", {
             icon: null,
@@ -125,9 +123,8 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
           }, 100)
         }
       } else {
-        // Encrypt the API key before saving to database
-        const encryptedApiKey = await encryptApiKey(apiKey, env.NEXT_PUBLIC_ENCRYPTION_SECRET)
-        await upsertApiKey({ apiKey: encryptedApiKey, userId: user!._id, providerId })
+        // Use server action to encrypt and save
+        await saveApiKey(user!._id, providerId, apiKey)
         toast.success("API keys saved to database", {
           icon: null,
           id: "api-key-saved",
@@ -139,6 +136,10 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
           play("./sounds/save.mp3", { volume: 0.5 })
         }, 100)
       }
+
+      // Clear the input after saving
+      setInputValues((prev) => ({ ...prev, [providerId]: "" }))
+      setOriginalValues((prev) => ({ ...prev, [providerId]: "" }))
     } catch (error) {
       console.error(error)
     } finally {
@@ -150,50 +151,56 @@ function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
     if (inputValues[providerId] === undefined) {
       return false
     }
+    // Check if user has entered a new value
     const currentValue = inputValues[providerId] || ""
-    const originalValue = originalValues[providerId] || ""
-    return currentValue !== originalValue
+    return currentValue.length > 0
   }
 
   return (
     <div className="space-y-4 pb-4">
-      {providers.map((provider) => (
-        <Card key={provider._id}>
-          <CardHeader>
-            <CardTitle className="capitalize">{provider.name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Input
-                id={`api-key-${provider._id}`}
-                type={visibleKeys[provider._id] ? "text" : "password"}
-                value={inputValues[provider._id] ?? ""}
-                onChange={(e) => handleInputChange(provider._id, e.target.value)}
-                className="flex-1 text-muted-foreground"
-              />
+      {providers.map((provider) => {
+        const hasExistingKey = !!maskedValues[provider._id]
+        const displayValue = inputValues[provider._id] || (hasExistingKey ? maskedValues[provider._id] : "")
+
+        return (
+          <Card key={provider._id}>
+            <CardHeader>
+              <CardTitle className="capitalize">{provider.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Input
+                  id={`api-key-${provider._id}`}
+                  type={visibleKeys[provider._id] ? "text" : "password"}
+                  value={displayValue}
+                  onChange={(e) => handleInputChange(provider._id, e.target.value)}
+                  placeholder={hasExistingKey ? "Enter new key to update" : "Enter API key"}
+                  className="flex-1 text-muted-foreground"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="hover:cursor-pointer"
+                  onClick={() => toggleVisibility(provider._id)}
+                >
+                  {visibleKeys[provider._id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end items-center">
               <Button
-                size="icon"
-                variant="outline"
+                size="default"
+                variant={savingState[provider._id] === "saving" || isDirty(provider._id) ? "default" : "secondary"}
                 className="hover:cursor-pointer"
-                onClick={() => toggleVisibility(provider._id)}
+                onClick={() => handleSave(provider._id)}
+                disabled={savingState[provider._id] === "saving" || !isDirty(provider._id)}
               >
-                {visibleKeys[provider._id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {savingState[provider._id] === "saving" ? "Saving..." : "Save"}
               </Button>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-end items-center">
-            <Button
-              size="default"
-              variant={savingState[provider._id] === "saving" || isDirty(provider._id) ? "default" : "secondary"}
-              className="hover:cursor-pointer"
-              onClick={() => handleSave(provider._id)}
-              disabled={savingState[provider._id] === "saving" || !isDirty(provider._id)}
-            >
-              {savingState[provider._id] === "saving" ? "Saving..." : "Save"}
-            </Button>
-          </CardFooter>
-        </Card>
-      ))}
+            </CardFooter>
+          </Card>
+        )
+      })}
     </div>
   )
 }

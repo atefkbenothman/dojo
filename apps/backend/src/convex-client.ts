@@ -1,8 +1,8 @@
+import { env } from "@dojo/env/backend"
 import { ConvexHttpClient } from "convex/browser"
-import "dotenv/config"
 
-if (!process.env.CONVEX_URL) {
+if (!env.CONVEX_URL) {
   throw new Error("CONVEX_URL is not set")
 }
 
-export const convex = new ConvexHttpClient(process.env.CONVEX_URL)
+export const convex = new ConvexHttpClient(env.CONVEX_URL)

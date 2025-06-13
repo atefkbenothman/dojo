@@ -3,8 +3,8 @@ import { getConvexUser } from "../auth.js"
 import { convex } from "../convex-client.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
 import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { env } from "@dojo/env/backend"
 import { tryCatch, decryptApiKey } from "@dojo/utils"
-import "dotenv/config"
 import type { Request, Response, NextFunction } from "express"
 import type { ZodSchema } from "zod"
 
@@ -83,7 +83,7 @@ export function createAiRequestMiddleware(schema: ZodSchema<any>) {
 
       if (apiKeyObject) {
         // Decrypt the API key before using it
-        const encryptionSecret = process.env.ENCRYPTION_SECRET
+        const encryptionSecret = env.ENCRYPTION_SECRET
         if (!encryptionSecret) {
           res.status(500).json({ error: "Server configuration error: missing encryption secret." })
           return

@@ -3,11 +3,12 @@ import { establishMcpConnection, cleanupExistingConnection } from "../../mcp-con
 import { router, publicProcedure } from "../trpc.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
 import { Id } from "@dojo/db/convex/_generated/dataModel.js"
+import { env } from "@dojo/env/backend"
 import { asyncTryCatch } from "@dojo/utils"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 
-const isProduction = process.env.NODE_ENV === "production"
+const isProduction = env.NODE_ENV === "production"
 
 const connectInputSchema = z.object({
   servers: z.array(z.string()).min(1),

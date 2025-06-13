@@ -1,6 +1,6 @@
-import { env } from "@/env"
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server"
 import { type AppRouter } from "@dojo/backend/src/trpc/router"
+import { env } from "@dojo/env/frontend"
 import { createTRPCClient, httpBatchLink } from "@trpc/client"
 
 export const serverTrpc = createTRPCClient<AppRouter>({

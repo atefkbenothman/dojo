@@ -6,12 +6,13 @@ import { createTRPCContext } from "./trpc/context.js"
 import { appRouter } from "./trpc/router.js"
 import { api } from "@dojo/db/convex/_generated/api.js"
 import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { env } from "@dojo/env/backend"
 import { createExpressMiddleware } from "@trpc/server/adapters/express"
 import { ImageModel, LanguageModel } from "ai"
 import cors from "cors"
 import express, { Express } from "express"
 
-const PORT = process.env.PORT || 8888
+const PORT = env.PORT || 8888
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 
 const models = await convex.query(api.models.list)

@@ -4,8 +4,8 @@ import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
 import { api } from "@dojo/db/convex/_generated/api.js"
 import { Id } from "@dojo/db/convex/_generated/dataModel.js"
+import { env } from "@dojo/env/backend"
 import { type LanguageModel, type ImageModel, wrapLanguageModel, extractReasoningMiddleware } from "ai"
-import "dotenv/config"
 
 const modelsWithProviders = await convex.query(api.models.modelsWithProviders)
 
@@ -74,7 +74,7 @@ export function getModelRequiresApiKey(modelId: string): boolean {
 export function getModelFallbackApiKey(modelId: string): string | undefined {
   const model = modelsWithProviders.find((model) => model._id === modelId)
   if (model && model.requiresApiKey === false) {
-    return process.env.GROQ_API_KEY_FALLBACK || ""
+    return env.GROQ_API_KEY_FALLBACK || ""
   }
   return undefined
 }

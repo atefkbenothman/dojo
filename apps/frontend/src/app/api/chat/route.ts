@@ -1,4 +1,4 @@
-import { env } from "@/env"
+import { env } from "@dojo/env/frontend"
 import { asyncTryCatch } from "@dojo/utils"
 import type { CoreMessage } from "ai"
 import { NextResponse } from "next/server"

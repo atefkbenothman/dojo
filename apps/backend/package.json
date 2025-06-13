@@ -16,6 +16,7 @@
     "@ai-sdk/openai": "^1.3.20",
     "@dojo/utils": "*",
     "@dojo/db": "*",
+    "@dojo/env": "*",
     "@trpc/server": "latest",
     "ai": "^4.3.13",
     "chokidar": "^4.0.3",

@@ -4,16 +4,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": [
-        "NODE_ENV",
-        "BACKEND_URL",
-        "SKIP_ENV_VALIDATION",
-        "GROQ_API_KEY_FALLBACK",
-        "CONVEX_URL",
-        "ENCRYPTION_SECRET",
-        "NEXT_PUBLIC_ENCRYPTION_SECRET"
-      ]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "dev": {
       "persistent": true,
