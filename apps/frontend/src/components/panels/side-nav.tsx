@@ -1,7 +1,7 @@
 "use client"
 
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
-import { UserDialog } from "@/components/user-dialog"
+import { SettingsDialog } from "@/components/user-settings/settings-dialog"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { House, Server, Bot, User, Layers } from "lucide-react"
@@ -87,7 +87,7 @@ export function SideNav() {
               <User className="h-5 w-5" />
             </div>
           </div>
-          <UserDialog isOpen={userDialogOpen} setIsOpen={setUserDialogOpen} />
+          <SettingsDialog isOpen={userDialogOpen} setIsOpen={setUserDialogOpen} />
         </div>
       </TooltipProvider>
     </div>
