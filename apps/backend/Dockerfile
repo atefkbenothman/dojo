@@ -1,15 +1,12 @@
-# Base Node image
-FROM node:20-alpine AS base
+# Base Bun image
+FROM oven/bun:1.2.8-alpine AS base
 
 # Builder stage for pruning the monorepo
 FROM base AS builder
-# Add libc6-compat for compatibility
-RUN apk update
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install turbo globally in the builder stage
-RUN npm install -g turbo
+# Install turbo globally using Bun
+RUN bun add -g turbo
 
 # Copy the entire monorepo
 COPY . .
@@ -19,14 +16,18 @@ RUN turbo prune @dojo/backend --docker
 
 # Installer stage - use pruned output to install dependencies
 FROM base AS installer
-RUN apk update
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # First install the dependencies (as they change less often)
 COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/package-lock.json ./package-lock.json
-RUN npm ci
+
+# Copy bun lockfile if it exists (both text and binary formats)
+COPY --from=builder /app/out/bun.lock* ./
+COPY --from=builder /app/out/bun.lockb* ./
+COPY --from=builder /app/out/package-lock.json* ./
+
+# Install dependencies using Bun
+RUN bun install --frozen-lockfile
 
 # Copy source code from the pruned output
 COPY --from=builder /app/out/full/ .
@@ -38,7 +39,7 @@ COPY --from=builder /app/out/full/ .
 # ENV TURBO_TOKEN=$TURBO_TOKEN
 
 # Build everything using turbo to ensure correct dependency order
-RUN npx turbo run build
+RUN bunx turbo run build
 
 # Runtime stage - create the production image
 FROM base AS runner
@@ -48,9 +49,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Don't run production as root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
-USER nodejs
+RUN addgroup --system --gid 1001 bunuser
+RUN adduser --system --uid 1001 bunuser
+USER bunuser
 
 # Copy package.json files for runtime dependencies
 COPY --from=installer /app/packages/utils/package.json ./packages/utils/package.json
@@ -65,4 +66,5 @@ COPY --from=installer /app/node_modules ./node_modules
 
 EXPOSE 8888
 
-CMD ["npx", "tsx", "apps/backend/src/core.ts"]
+# Use Bun to run the application directly
+CMD ["bun", "apps/backend/src/core.ts"]

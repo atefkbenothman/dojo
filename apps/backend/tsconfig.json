@@ -3,15 +3,17 @@
   "compilerOptions": {
     "lib": ["ES2022"],
     "rootDir": "./src",
-    "outDir": "./dist",
     "baseUrl": "./src",
     "paths": {
       "@/*": ["*"]
     },
     "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "bundler",
     "composite": true,
-    "incremental": true
+    "incremental": true,
+    "types": ["bun-types", "node"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

@@ -10,6 +10,6 @@ services:
     ports:
       - "8888:8888"
     environment:
-      - NODE_ENV=production
+      - BUN_ENV=production
       - PORT=8888
     restart: always

@@ -4,10 +4,10 @@
   "main": "src/core.ts",
   "type": "module",
   "scripts": {
-    "start": "tsx src/core.ts",
-    "dev": "tsx watch src/core.ts",
-    "lint": "eslint . --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "start": "bun src/core.ts",
+    "dev": "bun --watch src/core.ts",
+    "dev:inspect": "bun --inspect src/core.ts",
+    "lint": "eslint . --ext .ts"
   },
   "license": "ISC",
   "dependencies": {
@@ -29,13 +29,11 @@
   "devDependencies": {
     "@dojo/eslint": "*",
     "@dojo/tsconfig": "*",
+    "@types/bun": "^1.2.16",
     "@types/chokidar": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/node": "^22.14.0",
-    "nodemon": "^3.1.9",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^3.15.0",
     "typescript": "^5.8.3"
   }
 }
