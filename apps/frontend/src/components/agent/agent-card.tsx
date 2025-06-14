@@ -16,14 +16,15 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, isAuthenticated = false }: AgentCardProps) {
-  const { runAgent, getAgentStatus, getAgentError, getAgentProgress } = useAgent()
+  const { runAgent, agentMeta } = useAgent()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
 
-  // Get current agent state
-  const status = getAgentStatus(agent._id)
-  const error = getAgentError(agent._id)
-  // const progress = getAgentProgress(agent._id)
+  // Get current agent state - using agentMeta ensures reactivity
+  const meta = agentMeta[agent._id]
+  const status = meta?.status || "idle"
+  const error = meta?.error || null
+  const progress = meta?.progress || null
   const isRunning = status === "preparing" || status === "running"
 
   const handleRun = useCallback(() => {

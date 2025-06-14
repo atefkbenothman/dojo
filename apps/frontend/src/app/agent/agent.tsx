@@ -10,15 +10,16 @@ import { useConvexAuth } from "convex/react"
 import { useEffect, useState, useMemo } from "react"
 
 export function Agent() {
-  const { agents, getRunningAgents, stopAllAgents } = useAgent()
+  const { agents, stopAllAgents, agentMeta } = useAgent()
   const { isAuthenticated } = useConvexAuth()
 
   const [searchInput, setSearchInput] = useState<string>("")
   const [filteredAgents, setFilteredAgents] = useState<Agent[]>(agents)
 
-  // Track running agents count
-  const runningAgentIds = getRunningAgents()
-  const runningCount = runningAgentIds.length
+  // Track running agents count - using agentMeta ensures reactivity
+  const runningCount = useMemo(() => {
+    return Object.values(agentMeta).filter((meta) => meta.status === "preparing" || meta.status === "running").length
+  }, [agentMeta])
 
   useEffect(() => {
     const filtered =

@@ -6,7 +6,7 @@ import { useChatProvider } from "@/hooks/use-chat"
 import { useMCP } from "@/hooks/use-mcp"
 import { useUser } from "@/hooks/use-user"
 import { errorToastStyle } from "@/lib/styles"
-import { useAgentStore } from "@/store/use-agent-store"
+import { useAgentStore, type AgentMeta } from "@/store/use-agent-store"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
@@ -35,6 +35,7 @@ export function useAgent() {
     getAgentError,
     getAgentProgress,
     getRunningAgents,
+    agentMeta,
   } = useAgentStore()
 
   const agents = useQuery(api.agents.list)
@@ -68,10 +69,14 @@ export function useAgent() {
     // Mark agents as idle if they're not in the session
     allAgentIds.forEach((agentId) => {
       if (!sessionAgentIds.includes(agentId)) {
+        const currentStatus = getAgentStatus(agentId)
+        if (currentStatus !== "idle") {
+          // Agent completed or was stopped
+        }
         setAgentStatus(agentId, "idle")
       }
     })
-  }, [currentSession, agents, setAgentStatus, setAgentProgress])
+  }, [currentSession, agents, setAgentStatus, setAgentProgress, getAgentStatus])
 
   const runAgent = useCallback(
     async (agent: Agent) => {
@@ -113,7 +118,6 @@ export function useAgent() {
           agentId: agent._id,
         })
       } catch (error) {
-        console.error("Failed to add running agent to session:", error)
         // Continue anyway - this is not critical for agent execution
       }
 
@@ -152,7 +156,7 @@ export function useAgent() {
               agentId: agent._id,
             })
           } catch (removeError) {
-            console.error("Failed to remove running agent from session:", removeError)
+            // Continue anyway - this is not critical for agent execution
           }
 
           toast.error(`MCP Connection Error: ${errorMessage}`, {
@@ -188,21 +192,6 @@ export function useAgent() {
             },
           },
         })
-        // Note: We can't track completion here directly as append doesn't provide callbacks
-        // The chat provider's onFinish/onError will handle the overall chat state
-        // For now, we'll reset to idle after append completes
-        setAgentStatus(agent._id, "idle")
-        setAgentProgress(agent._id, null)
-
-        // Remove from running agents
-        try {
-          await removeRunningAgent({
-            sessionId: currentSession._id,
-            agentId: agent._id,
-          })
-        } catch (removeError) {
-          console.error("Failed to remove running agent from session:", removeError)
-        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Agent execution failed"
         setAgentStatus(agent._id, "error")
@@ -216,7 +205,7 @@ export function useAgent() {
             agentId: agent._id,
           })
         } catch (removeError) {
-          console.error("Failed to remove running agent from session:", removeError)
+          // Continue anyway - this is not critical for agent execution
         }
 
         toast.error(`Agent Error: ${errorMessage}`, {
@@ -260,7 +249,7 @@ export function useAgent() {
         agentId: agentId as Id<"agents">,
       })
     } catch (error) {
-      console.error("Failed to remove running agent from session:", error)
+      // Continue anyway - this is not critical for agent execution
     }
 
     // No toast notification - following MCP pattern
@@ -281,7 +270,7 @@ export function useAgent() {
         sessionId: currentSession._id,
       })
     } catch (error) {
-      console.error("Failed to clear running agents from session:", error)
+      // Continue anyway - this is not critical for agent execution
     }
 
     // Play sound once - following MCP's disconnectAll pattern
@@ -304,5 +293,7 @@ export function useAgent() {
     // Agent control functions
     stopAgent,
     stopAllAgents,
+    // Agent meta state for reactivity
+    agentMeta,
   }
 }

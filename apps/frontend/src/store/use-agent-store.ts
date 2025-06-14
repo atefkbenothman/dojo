@@ -2,7 +2,7 @@ import { create } from "zustand"
 
 export type AgentStatus = "idle" | "preparing" | "running" | "error"
 
-interface AgentMeta {
+export interface AgentMeta {
   status: AgentStatus
   error: string | null
   progress: string | null
