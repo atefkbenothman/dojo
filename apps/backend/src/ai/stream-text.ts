@@ -1,17 +1,17 @@
 import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel } from "ai"
 import { type Response } from "express"
 
-interface StreamAiResponseOptions {
+interface StreamTextOptions {
   res: Response
   languageModel: LanguageModel
   messages: CoreMessage[]
   tools: ToolSet
+  end?: boolean
+  returnText?: boolean // Optional flag to return the complete text
 }
 
-export async function streamTextResponse(
-  options: StreamAiResponseOptions & { end?: boolean },
-): Promise<{ text: string }> {
-  const { res, languageModel, messages, tools, end = true } = options
+export async function streamTextResponse(options: StreamTextOptions): Promise<string | void> {
+  const { res, languageModel, messages, tools, end = true, returnText = false } = options
 
   console.log(
     `[AI] Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools.`,
@@ -48,6 +48,8 @@ export async function streamTextResponse(
     res.end()
   }
 
-  const finalText = await result.text
-  return { text: finalText }
+  // Only return the text if explicitly requested
+  if (returnText) {
+    return await result.text
+  }
 }

@@ -1,5 +1,5 @@
-import { streamObjectResponse } from "../ai/stream-object-response.js"
-import { streamTextResponse } from "../ai/stream-text-response.js"
+import { streamObjectResponse } from "../ai/stream-object.js"
+import { streamTextResponse } from "../ai/stream-text.js"
 import { convex } from "../convex-client.js"
 import { aggregateMcpTools } from "../mcp-connection.js"
 import { createAiRequestMiddleware } from "./middleware.js"

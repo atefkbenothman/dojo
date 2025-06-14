@@ -1,4 +1,4 @@
-import { streamTextResponse } from "../ai/stream-text-response.js"
+import { streamTextResponse } from "../ai/stream-text.js"
 import { aggregateMcpTools } from "../mcp-connection.js"
 import { createAiRequestMiddleware } from "./middleware.js"
 import type { LanguageModel, CoreMessage } from "ai"

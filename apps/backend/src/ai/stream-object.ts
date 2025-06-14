@@ -1,19 +1,19 @@
 import { type CoreMessage, type LanguageModel, streamObject } from "ai"
 import { type Response } from "express"
 
-interface StreamAiResponseOptions {
+interface StreamObjectOptions {
   res: Response
   languageModel: LanguageModel
   messages: CoreMessage[]
+  end?: boolean
+  returnObject?: boolean
 }
 
-export async function streamObjectResponse(
-  options: StreamAiResponseOptions & { end?: boolean },
-): Promise<{ object: unknown }> {
-  const { res, languageModel, messages, end = true } = options
+export async function streamObjectResponse(options: StreamObjectOptions): Promise<unknown | void> {
+  const { res, languageModel, messages, end = true, returnObject = false } = options
 
   try {
-    const { fullStream, object } = streamObject({
+    const result = streamObject({
       model: languageModel,
       messages,
       output: "no-schema",
@@ -30,17 +30,19 @@ export async function streamObjectResponse(
 
     const encoder = new TextEncoder()
 
-    for await (const part of fullStream) {
+    for await (const part of result.fullStream) {
       if (part.type === "text-delta") {
         res.write(encoder.encode(`0:${JSON.stringify(part.textDelta)}\n\n`))
       }
     }
 
-    const finalObject = await object
     if (end && !res.writableEnded) {
       res.end()
     }
-    return { object: finalObject }
+
+    if (returnObject) {
+      return await result.object
+    }
   } catch (error) {
     console.error("[AI] Error during AI object stream processing:", error)
     if (!res.headersSent) {
@@ -50,6 +52,9 @@ export async function streamObjectResponse(
         res.end()
       }
     }
-    return { object: null }
+
+    if (returnObject) {
+      return null
+    }
   }
 }
