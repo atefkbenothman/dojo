@@ -85,3 +85,35 @@ export function aggregateMcpTools(sessionId: Id<"sessions">): ToolSet {
   }
   return combinedTools
 }
+
+/**
+ * Cleans up all active MCP connections across all sessions.
+ * Used during graceful shutdown to ensure no orphaned processes.
+ */
+export async function cleanupAllConnections(): Promise<void> {
+  console.log("[Connection] Starting cleanup of all active connections...")
+
+  const totalSessions = liveConnectionCache.size
+  let totalConnections = 0
+
+  // Count total connections
+  for (const sessionConnections of liveConnectionCache.values()) {
+    totalConnections += sessionConnections.size
+  }
+
+  console.log(`[Connection] Cleaning up ${totalConnections} connections across ${totalSessions} sessions...`)
+
+  // Clean up each connection
+  for (const [sessionId, sessionConnections] of liveConnectionCache.entries()) {
+    for (const [serverId] of sessionConnections.entries()) {
+      try {
+        await cleanupExistingConnection(sessionId, serverId)
+      } catch (error) {
+        console.error(`[Connection] Error cleaning up connection ${serverId} for session ${sessionId}:`, error)
+        // Continue with other connections even if one fails
+      }
+    }
+  }
+
+  console.log("[Connection] All connections cleaned up successfully")
+}

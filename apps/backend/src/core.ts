@@ -1,4 +1,5 @@
 import { convex } from "./convex-client.js"
+import { cleanupAllConnections } from "./mcp-connection.js"
 import { agentRouter } from "./routes/agent.js"
 import { chatRouter } from "./routes/chat.js"
 import { workflowRouter } from "./routes/workflow.js"
@@ -56,7 +57,7 @@ app.use(
 )
 
 /* Start the server */
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log("Starting server...")
   console.log(`[Core] Server listening on port ${PORT}`)
   console.log(`[Core] Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
@@ -79,4 +80,50 @@ process.on("unhandledRejection", (reason, promise) => {
   if (reason instanceof Error) {
     console.error("Stack:", reason.stack)
   }
+})
+
+// Graceful shutdown handlers
+let isShuttingDown = false
+
+async function gracefulShutdown(signal: string) {
+  if (isShuttingDown) {
+    console.log(`[Core] Already shutting down, ignoring ${signal}`)
+    return
+  }
+
+  isShuttingDown = true
+  console.log(`[Core] ${signal} received, starting graceful shutdown...`)
+
+  try {
+    // Stop accepting new connections
+    console.log("[Core] Closing HTTP server...")
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          reject(err)
+        } else {
+          console.log("[Core] HTTP server closed")
+          resolve()
+        }
+      })
+    })
+
+    // Clean up all MCP connections
+    await cleanupAllConnections()
+
+    console.log("[Core] Graceful shutdown completed")
+    process.exit(0)
+  } catch (error) {
+    console.error("[Core] Error during graceful shutdown:", error)
+    process.exit(1)
+  }
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
+process.on("SIGINT", () => gracefulShutdown("SIGINT"))
+
+// Optional: Handle nodemon restarts
+process.once("SIGUSR2", async () => {
+  await gracefulShutdown("SIGUSR2")
+  process.kill(process.pid, "SIGUSR2")
 })

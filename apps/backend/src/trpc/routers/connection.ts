@@ -140,21 +140,4 @@ export const connectionRouter = router({
 
     return { message: "Disconnection successful" }
   }),
-  /**
-   * Lists all active MCP server connections for the current session.
-   */
-  list: publicProcedure.query(async ({ ctx }) => {
-    const { session } = ctx
-
-    // If there is no session (e.g., system request), return an empty list.
-    if (!session) {
-      return { sessionId: undefined, serverIds: [] }
-    }
-
-    const serverIds = await convex.query(api.sessions.listConnections, {
-      sessionId: session._id,
-    })
-
-    return { sessionId: session._id, serverIds }
-  }),
 })

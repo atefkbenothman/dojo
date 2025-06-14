@@ -16,9 +16,15 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, isAuthenticated = false }: AgentCardProps) {
-  const { runAgent } = useAgent()
+  const { runAgent, getAgentStatus, getAgentError, getAgentProgress } = useAgent()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
+
+  // Get current agent state
+  const status = getAgentStatus(agent._id)
+  const error = getAgentError(agent._id)
+  // const progress = getAgentProgress(agent._id)
+  const isRunning = status === "preparing" || status === "running"
 
   const handleRun = useCallback(() => {
     runAgent(agent)
@@ -27,7 +33,11 @@ export function AgentCard({ agent, isAuthenticated = false }: AgentCardProps) {
   return (
     <>
       <Card
-        className={cn("relative h-[10rem] max-h-[10rem] w-full max-w-[16rem] border flex flex-col overflow-hidden")}
+        className={cn(
+          "relative h-[10rem] max-h-[10rem] w-full max-w-[16rem] border flex flex-col overflow-hidden transition-all duration-200",
+          isRunning && "border-primary/80 bg-muted/50 border-2",
+          status === "error" && "border-destructive/80 bg-destructive/5 border-2",
+        )}
       >
         <div className="absolute top-2 right-2 z-10 bg-secondary/80 border px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {agent.outputType}
@@ -35,18 +45,26 @@ export function AgentCard({ agent, isAuthenticated = false }: AgentCardProps) {
         <CardHeader className=" flex-1 min-h-0">
           <div className="flex items-center gap-2">
             <CardTitle className="text-primary/90 font-medium">{agent.name}</CardTitle>
+            {status === "preparing" && <div className="ml-2 h-2 w-2 rounded-full bg-yellow-500" />}
+            {status === "running" && <div className="ml-2 h-2 w-2 rounded-full bg-green-500" />}
+            {status === "error" && <div className="ml-2 h-2 w-2 rounded-full bg-red-500" />}
           </div>
           <CardDescription className="w-[90%] line-clamp-2 overflow-hidden">{agent.systemPrompt}</CardDescription>
+          {/* {progress && <p className="text-xs text-muted-foreground mt-1">{progress}</p>} */}
+          {error && status === "error" && <p className="text-xs text-destructive mt-1 line-clamp-1">{error}</p>}
         </CardHeader>
         <CardFooter className="mt-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
-              variant="secondary"
+              variant={isRunning ? "default" : "secondary"}
               onClick={handleRun}
-              className="border hover:cursor-pointer bg-secondary/80 hover:bg-secondary/90"
-              disabled={!isAuthenticated}
+              disabled={!isAuthenticated || isRunning}
+              className={cn(
+                "border hover:cursor-pointer",
+                isRunning ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
+              )}
             >
-              Run
+              {status === "preparing" ? "Preparing..." : status === "running" ? "Running..." : "Run"}
             </Button>
 
             <Button

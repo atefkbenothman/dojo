@@ -154,12 +154,72 @@ export const cleanup = internalMutation({
   },
 })
 
-// Retrieves the list of active MCP server IDs for a given session
-export const listConnections = query({
-  args: { sessionId: v.id("sessions") },
+// Adds a running agent to a session
+export const addRunningAgent = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+    agentId: v.id("agents"),
+  },
+  handler: async (ctx, { sessionId, agentId }) => {
+    const session = await ctx.db.get(sessionId)
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    // Initialize runningAgentIds if undefined (for existing sessions)
+    const runningAgentIds = session.runningAgentIds || []
+
+    // Avoid duplicates
+    if (runningAgentIds.includes(agentId)) {
+      return session
+    }
+
+    await ctx.db.patch(sessionId, {
+      runningAgentIds: [...runningAgentIds, agentId],
+      lastAccessed: Date.now(),
+    })
+    return await ctx.db.get(sessionId)
+  },
+})
+
+// Removes a running agent from a session
+export const removeRunningAgent = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+    agentId: v.id("agents"),
+  },
+  handler: async (ctx, { sessionId, agentId }) => {
+    const session = await ctx.db.get(sessionId)
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    // Initialize runningAgentIds if undefined (for existing sessions)
+    const runningAgentIds = session.runningAgentIds || []
+
+    await ctx.db.patch(sessionId, {
+      runningAgentIds: runningAgentIds.filter((id) => id !== agentId),
+      lastAccessed: Date.now(),
+    })
+    return await ctx.db.get(sessionId)
+  },
+})
+
+// Clears all running agents from a session
+export const clearRunningAgents = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+  },
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.db.get(sessionId)
-    if (!session) throw new Error(`Session not found: ${sessionId}`)
-    return session.activeMcpServerIds
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    await ctx.db.patch(sessionId, {
+      runningAgentIds: [],
+      lastAccessed: Date.now(),
+    })
+    return await ctx.db.get(sessionId)
   },
 })

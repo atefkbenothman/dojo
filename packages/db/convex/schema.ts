@@ -66,6 +66,7 @@ export const sessionsFields = {
   clientSessionId: v.optional(v.string()),
   userId: v.optional(v.id("users")),
   activeMcpServerIds: v.array(v.id("mcp")),
+  runningAgentIds: v.optional(v.array(v.id("agents"))),
   lastAccessed: v.number(),
 }
 
