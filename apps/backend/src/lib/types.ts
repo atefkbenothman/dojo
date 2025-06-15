@@ -1,6 +1,6 @@
-import { MCPClient } from "./mcp-client.js"
-import type { AppRouter } from "./trpc/router.js"
-import type { MCPServer } from "@dojo/db/convex/types.js"
+import type { AppRouter } from "../api/trpc/router"
+import { MCPClient } from "../services/mcp/client"
+import type { MCPServer } from "@dojo/db/convex/types"
 import type { inferRouterOutputs, inferRouterInputs } from "@trpc/server"
 import type { Tool } from "ai"
 

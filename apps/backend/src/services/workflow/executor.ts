@@ -1,6 +1,6 @@
-import { streamObjectResponse } from "../ai/stream-object.js"
-import { streamTextResponse } from "../ai/stream-text.js"
-import { type Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { streamObjectResponse } from "../ai/stream-object"
+import { streamTextResponse } from "../ai/stream-text"
+import { type Doc } from "@dojo/db/convex/_generated/dataModel"
 import { type CoreMessage, type LanguageModel } from "ai"
 import { type Response } from "express"
 
@@ -195,15 +195,13 @@ export class WorkflowExecutor {
   }
 
   private async executeTextStep(step: Doc<"agents">, stepIndex: number, messages: CoreMessage[]): Promise<void> {
-    // Use streamTextResponse with returnText flag to get the complete text
     const text = (await streamTextResponse({
       res: this.res,
       languageModel: this.aiModel,
       messages,
       tools: this.tools,
       end: false, // Don't end the response, we have more steps
-      returnText: true, // We need the text for the next step
-    })) as string // We know it returns string when returnText is true
+    })) as string
 
     this.log(`Step ${stepIndex + 1} text output:`, text)
 
@@ -225,7 +223,6 @@ export class WorkflowExecutor {
       languageModel: this.aiModel,
       messages,
       end: false, // Don't end the response, we have more steps
-      returnObject: true, // We need the object for the next step
     })
 
     const objectContent = JSON.stringify(object)

@@ -6,11 +6,10 @@ interface StreamObjectOptions {
   languageModel: LanguageModel
   messages: CoreMessage[]
   end?: boolean
-  returnObject?: boolean
 }
 
-export async function streamObjectResponse(options: StreamObjectOptions): Promise<unknown | void> {
-  const { res, languageModel, messages, end = true, returnObject = false } = options
+export async function streamObjectResponse(options: StreamObjectOptions): Promise<unknown> {
+  const { res, languageModel, messages, end = true } = options
 
   try {
     const result = streamObject({
@@ -40,9 +39,8 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
       res.end()
     }
 
-    if (returnObject) {
-      return await result.object
-    }
+    // Always return the complete object
+    return await result.object
   } catch (error) {
     console.error("[AI] Error during AI object stream processing:", error)
     if (!res.headersSent) {
@@ -53,8 +51,6 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
       }
     }
 
-    if (returnObject) {
-      return null
-    }
+    return null
   }
 }

@@ -1,5 +1,5 @@
-import type { ActiveMcpClient } from "./types.js"
-import { Id } from "@dojo/db/convex/_generated/dataModel.js"
+import type { ActiveMcpClient } from "../../lib/types"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
 
 /**
  * A simple in-memory cache to store active MCP client connections.

@@ -7,11 +7,10 @@ interface StreamTextOptions {
   messages: CoreMessage[]
   tools: ToolSet
   end?: boolean
-  returnText?: boolean // Optional flag to return the complete text
 }
 
-export async function streamTextResponse(options: StreamTextOptions): Promise<string | void> {
-  const { res, languageModel, messages, tools, end = true, returnText = false } = options
+export async function streamTextResponse(options: StreamTextOptions): Promise<string> {
+  const { res, languageModel, messages, tools, end = true } = options
 
   console.log(
     `[AI] Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools.`,
@@ -48,8 +47,5 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<st
     res.end()
   }
 
-  // Only return the text if explicitly requested
-  if (returnText) {
-    return await result.text
-  }
+  return await result.text
 }

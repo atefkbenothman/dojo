@@ -1,8 +1,8 @@
-import { liveConnectionCache } from "./connection-cache.js"
-import { MCPClient } from "./mcp-client.js"
-import type { ActiveMcpClient } from "./types.js"
-import { Id } from "@dojo/db/convex/_generated/dataModel.js"
-import type { MCPServer } from "@dojo/db/convex/types.js"
+import type { ActiveMcpClient } from "../../lib/types"
+import { liveConnectionCache } from "./cache"
+import { MCPClient } from "./client"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
+import type { MCPServer } from "@dojo/db/convex/types"
 import type { ToolSet } from "ai"
 
 /**

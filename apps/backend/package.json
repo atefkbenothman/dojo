@@ -1,12 +1,12 @@
 {
   "name": "@dojo/backend",
   "version": "1.0.0",
-  "main": "src/core.ts",
+  "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "bun src/core.ts",
-    "dev": "bun --watch src/core.ts",
-    "dev:inspect": "bun --inspect src/core.ts",
+    "start": "bun src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "dev:inspect": "bun --inspect src/index.ts",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit"
   },

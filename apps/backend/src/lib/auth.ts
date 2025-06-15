@@ -1,6 +1,6 @@
-import { convex } from "./convex-client.js"
-import { api } from "@dojo/db/convex/_generated/api.js"
-import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { convex } from "./convex-client"
+import { api } from "@dojo/db/convex/_generated/api"
+import { Doc } from "@dojo/db/convex/_generated/dataModel"
 
 export async function getConvexUser(authorization: string | undefined): Promise<Doc<"users"> | null> {
   if (!authorization || !authorization.startsWith("Bearer ")) {

@@ -1,9 +1,9 @@
-import { convex } from "../convex-client.js"
+import { convex } from "../../lib/convex-client"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
-import { api } from "@dojo/db/convex/_generated/api.js"
-import { Id } from "@dojo/db/convex/_generated/dataModel.js"
+import { api } from "@dojo/db/convex/_generated/api"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { env } from "@dojo/env/backend"
 import { type LanguageModel, type ImageModel, wrapLanguageModel, extractReasoningMiddleware } from "ai"
 

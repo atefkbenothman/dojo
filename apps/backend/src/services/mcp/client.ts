@@ -1,4 +1,4 @@
-import type { MCPServer } from "@dojo/db/convex/types.js"
+import type { MCPServer } from "@dojo/db/convex/types"
 import { asyncTryCatch } from "@dojo/utils"
 import { Tool, experimental_createMCPClient } from "ai"
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"

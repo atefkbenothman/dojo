@@ -1,7 +1,7 @@
-import { getConvexUser } from "../auth.js"
-import { convex } from "../convex-client.js"
-import { api } from "@dojo/db/convex/_generated/api.js"
-import { Doc } from "@dojo/db/convex/_generated/dataModel.js"
+import { getConvexUser } from "../../lib/auth"
+import { convex } from "../../lib/convex-client"
+import { api } from "@dojo/db/convex/_generated/api"
+import { Doc } from "@dojo/db/convex/_generated/dataModel"
 import { type CreateExpressContextOptions } from "@trpc/server/adapters/express"
 
 export const createTRPCContext = async ({ req, res }: CreateExpressContextOptions) => {
