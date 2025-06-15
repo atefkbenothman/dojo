@@ -1,4 +1,4 @@
-import { convex } from "../../lib/convex-client"
+import { convex } from "../lib/convex-client"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
