@@ -56,4 +56,4 @@ COPY --from=installer --chown=bunuser:bunuser /app ./
 EXPOSE 8888
 
 # Use Bun to run the application directly
-CMD ["bun", "apps/backend/src/core.ts"]
+CMD ["bun", "apps/backend/src/index.ts"]
