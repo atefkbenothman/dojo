@@ -1,9 +1,14 @@
+import { convex } from "../../lib/convex-client"
 import type { ActiveMcpClient } from "../../lib/types"
 import { liveConnectionCache } from "./cache"
 import { MCPClient } from "./client"
+import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import type { ToolSet } from "ai"
+
+// Generate a unique backend instance ID (could be hostname + process.pid)
+export const BACKEND_INSTANCE_ID = `${process.env.HOSTNAME || "localhost"}-${process.pid}-${Date.now()}`
 
 /**
  * Establishes an MCP connection for a given session and server config.
@@ -12,13 +17,44 @@ import type { ToolSet } from "ai"
 export async function establishMcpConnection(
   sessionId: Id<"sessions">,
   server: MCPServer,
+  userId?: Id<"users">,
 ): Promise<{ success: boolean; client?: ActiveMcpClient; error?: string }> {
+  // Create/update connection record in Convex (status: connecting)
+  let connectionId: Id<"mcpConnections"> | null = null
+  try {
+    connectionId = await convex.mutation(api.mcpConnections.upsert, {
+      mcpServerId: server._id,
+      sessionId,
+      userId,
+      backendInstanceId: BACKEND_INSTANCE_ID,
+      status: "connecting",
+    })
+  } catch (convexError) {
+    console.error(`[Connection] Failed to create connection record in Convex:`, convexError)
+    // Continue anyway - connection tracking is not critical
+  }
+
   let mcpClient: MCPClient
   try {
     mcpClient = new MCPClient(server)
   } catch (mcpClientError) {
     const errorMessage = `Failed to instantiate MCPClient for session ${sessionId}, server ${server._id}`
     console.error(`[Connection] ${errorMessage}:`, mcpClientError)
+
+    // Update connection status to error
+    if (connectionId) {
+      await convex
+        .mutation(api.mcpConnections.upsert, {
+          mcpServerId: server._id,
+          sessionId,
+          userId,
+          backendInstanceId: BACKEND_INSTANCE_ID,
+          status: "error",
+          error: errorMessage,
+        })
+        .catch(console.error)
+    }
+
     return { success: false, error: errorMessage }
   }
 
@@ -29,6 +65,21 @@ export async function establishMcpConnection(
   } catch (err) {
     const errMessage = `Failed to start MCPClient for session ${sessionId}, server ${server._id}`
     console.error(`[Connection] ${errMessage}:`, err)
+
+    // Update connection status to error
+    if (connectionId) {
+      await convex
+        .mutation(api.mcpConnections.upsert, {
+          mcpServerId: server._id,
+          sessionId,
+          userId,
+          backendInstanceId: BACKEND_INSTANCE_ID,
+          status: "error",
+          error: errMessage,
+        })
+        .catch(console.error)
+    }
+
     return { success: false, error: errMessage }
   }
 
@@ -40,6 +91,19 @@ export async function establishMcpConnection(
   }
   const sessionConnections = liveConnectionCache.get(sessionId)!
   sessionConnections.set(server._id, activeMcpClient)
+
+  // Update connection status to connected
+  if (connectionId) {
+    await convex
+      .mutation(api.mcpConnections.upsert, {
+        mcpServerId: server._id,
+        sessionId,
+        userId,
+        backendInstanceId: BACKEND_INSTANCE_ID,
+        status: "connected",
+      })
+      .catch(console.error)
+  }
 
   console.log(`[Connection] Connection established for session ${sessionId}, server ${server._id}.`)
 
@@ -58,6 +122,17 @@ export const cleanupExistingConnection = async (sessionId: Id<"sessions">, mcpSe
 
   if (existingClient) {
     console.log(`[Connection] Cleaning up connection for session ${sessionId}, server ${mcpServerId}...`)
+
+    // Update connection status to disconnecting
+    await convex
+      .mutation(api.mcpConnections.upsert, {
+        mcpServerId,
+        sessionId,
+        backendInstanceId: BACKEND_INSTANCE_ID,
+        status: "disconnecting",
+      })
+      .catch(console.error)
+
     try {
       await existingClient.client.cleanup()
     } catch (cleanupError) {
@@ -67,6 +142,17 @@ export const cleanupExistingConnection = async (sessionId: Id<"sessions">, mcpSe
     if (sessionConnections.size === 0) {
       liveConnectionCache.delete(sessionId)
     }
+
+    // Update connection status to disconnected
+    await convex
+      .mutation(api.mcpConnections.upsert, {
+        mcpServerId,
+        sessionId,
+        backendInstanceId: BACKEND_INSTANCE_ID,
+        status: "disconnected",
+      })
+      .catch(console.error)
+
     console.log(`[Connection]: Cleaned up connection for session ${sessionId}, server ${mcpServerId}.`)
   }
 }

@@ -4,7 +4,8 @@ import { workflowRouter } from "./api/rest/routes/workflow"
 import { createTRPCContext } from "./api/trpc/context"
 import { appRouter } from "./api/trpc/router"
 import { convex } from "./lib/convex-client"
-import { cleanupAllConnections } from "./services/mcp/connection"
+import { cleanupAllConnections, BACKEND_INSTANCE_ID } from "./services/mcp/connection"
+import { startHeartbeat, stopHeartbeat, disconnectAllBackendConnections } from "./services/mcp/heartbeat"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc } from "@dojo/db/convex/_generated/dataModel"
 import { env } from "@dojo/env/backend"
@@ -60,10 +61,14 @@ app.use(
 const server = app.listen(PORT, () => {
   console.log("Starting server...")
   console.log(`[Core] Server listening on port ${PORT}`)
+  console.log(`[Core] Backend instance ID: ${BACKEND_INSTANCE_ID}`)
   console.log(`[Core] Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
   console.log("[Core] tRPC router mounted at /trpc")
   console.log("[Core] Configured MCP Servers:", mcpServers.map((mcp) => mcp.name).join(", "))
   console.log("[Core] AI Models:", models.map((model) => model.modelId).join(", "))
+
+  // Start heartbeat service
+  startHeartbeat(BACKEND_INSTANCE_ID)
 })
 
 process.on("uncaughtException", (err) => {
@@ -95,6 +100,12 @@ async function gracefulShutdown(signal: string) {
   console.log(`[Core] ${signal} received, starting graceful shutdown...`)
 
   try {
+    // Stop heartbeat service
+    stopHeartbeat()
+
+    // Mark all connections from this backend as disconnected
+    await disconnectAllBackendConnections()
+
     // Stop accepting new connections
     console.log("[Core] Closing HTTP server...")
     await new Promise<void>((resolve, reject) => {

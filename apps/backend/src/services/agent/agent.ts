@@ -13,6 +13,7 @@ interface RunAgentParams {
   session: Doc<"sessions"> | undefined
   aiModel: LanguageModel
   res: Response
+  modelId: Id<"models">
 }
 
 interface RunAgentResult {
@@ -24,8 +25,8 @@ export class AgentService {
   private static readonly LOG_PREFIX = "[AgentService]"
 
   async runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-    const { agentId, messages, session, aiModel, res } = params
-    let agentAddedToSession = false
+    const { agentId, messages, session, aiModel, res, modelId } = params
+    let executionId: Id<"agentExecutions"> | null = null
 
     try {
       // Fetch agent
@@ -43,9 +44,24 @@ export class AgentService {
 
       console.log(`${AgentService.LOG_PREFIX} Running agent ${agent._id} for userId: ${userIdForLogging}`)
 
-      // Add agent to running agents in session
+      // Create execution record if we have a session
       if (session) {
-        agentAddedToSession = await this.addAgentToSession(session._id, agent._id)
+        // Get MCP servers that are currently connected
+        const mcpServerIds = agent.mcpServers || []
+
+        executionId = await convex.mutation(api.agentExecutions.create, {
+          agentId: agent._id,
+          sessionId: session._id,
+          userId: session.userId || undefined,
+          aiModelId: modelId,
+          mcpServerIds,
+        })
+
+        // Update status to running
+        await convex.mutation(api.agentExecutions.updateStatus, {
+          executionId,
+          status: "running",
+        })
       }
 
       // Execute agent based on output type
@@ -58,47 +74,32 @@ export class AgentService {
         userIdForLogging,
       })
 
+      // Update execution status to completed
+      if (executionId) {
+        await convex.mutation(api.agentExecutions.updateStatus, {
+          executionId,
+          status: "completed",
+        })
+      }
+
       console.log(`${AgentService.LOG_PREFIX} Agent ${agent._id} execution completed successfully`)
 
       return { success: true }
     } catch (error) {
+      // Update execution status to failed
+      if (executionId) {
+        await convex.mutation(api.agentExecutions.updateStatus, {
+          executionId,
+          status: "failed",
+          error: error instanceof Error ? error.message : "Internal server error",
+        })
+      }
+
       console.error(`${AgentService.LOG_PREFIX} Unhandled error:`, error)
       return {
         success: false,
         error: error instanceof Error ? error.message : "Internal server error",
       }
-    } finally {
-      // Always remove agent from running agents when done
-      if (session && agentAddedToSession) {
-        await this.removeAgentFromSession(session._id, agentId as Id<"agents">)
-      }
-    }
-  }
-
-  private async addAgentToSession(sessionId: Id<"sessions">, agentId: Id<"agents">): Promise<boolean> {
-    try {
-      await convex.mutation(api.sessions.addRunningAgent, {
-        sessionId,
-        agentId,
-      })
-      console.log(`${AgentService.LOG_PREFIX} Added agent ${agentId} to running agents for session ${sessionId}`)
-      return true
-    } catch (error) {
-      console.error(`${AgentService.LOG_PREFIX} Failed to add agent to session:`, error)
-      // Continue anyway - this is not critical for agent execution
-      return false
-    }
-  }
-
-  private async removeAgentFromSession(sessionId: Id<"sessions">, agentId: Id<"agents">): Promise<void> {
-    try {
-      await convex.mutation(api.sessions.removeRunningAgent, {
-        sessionId,
-        agentId,
-      })
-      console.log(`${AgentService.LOG_PREFIX} Removed agent ${agentId} from running agents for session ${sessionId}`)
-    } catch (error) {
-      console.error(`${AgentService.LOG_PREFIX} Failed to remove agent from session:`, error)
     }
   }
 

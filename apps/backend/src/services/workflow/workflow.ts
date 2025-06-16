@@ -24,6 +24,8 @@ interface WorkflowExecutorOptions {
   maxRetries?: number
   retryDelay?: number
   persistExecution?: boolean
+  executionId?: Id<"workflowExecutions">
+  sessionId?: Id<"sessions">
 }
 
 export class WorkflowService {
@@ -32,11 +34,12 @@ export class WorkflowService {
   private readonly defaultExecutorOptions: WorkflowExecutorOptions = {
     maxRetries: 3,
     retryDelay: 1000,
-    persistExecution: false, // TODO: Implement persistence
+    persistExecution: true,
   }
 
   async runWorkflow(params: RunWorkflowParams): Promise<RunWorkflowResult> {
     const { workflowId, messages, session, aiModel, res } = params
+    let executionId: Id<"workflowExecutions"> | null = null
 
     try {
       // Fetch and validate workflow
@@ -59,25 +62,52 @@ export class WorkflowService {
         }
       }
 
+      // Create execution record if we have a session
+      if (session) {
+        executionId = await convex.mutation(api.workflowExecutions.create, {
+          workflowId: workflow._id,
+          sessionId: session._id,
+          userId: session.userId || undefined,
+          aiModelId: workflow.aiModelId,
+          totalSteps: steps.length,
+          agentIds: steps.map((step) => step._id),
+        })
+
+        // Update status to running
+        await convex.mutation(api.workflowExecutions.updateStatus, {
+          executionId,
+          status: "running",
+        })
+      }
+
       // Prepare execution context
       const userIdForLogging = session?.userId || "anonymous"
       const combinedTools = session ? aggregateMcpTools(session._id) : {}
 
       logWorkflow(`Starting workflow ${workflow._id} for userId: ${userIdForLogging}, steps: ${steps.length}`)
 
-      if (session?.activeMcpServerIds) {
+      // Check if there are any active MCP connections for logging
+      if (Object.keys(combinedTools).length > 0) {
         logWorkflow(`Using ${Object.keys(combinedTools).length} total tools`)
       }
 
-      // Execute workflow
-      const result = await this.executeWorkflow({
-        workflow,
-        steps,
-        aiModel,
-        combinedTools,
-        res,
-        messages,
+      // Execute workflow with execution tracking
+      const executor = new WorkflowExecutor(workflow, steps, aiModel, combinedTools, res, {
+        ...this.defaultExecutorOptions,
+        executionId: executionId || undefined,
+        sessionId: session?._id,
       })
+
+      const result = await executor.execute(messages)
+
+      // Update final status
+      if (executionId) {
+        await convex.mutation(api.workflowExecutions.updateStatus, {
+          executionId,
+          status: result.success ? "completed" : "failed",
+          error: result.error,
+        })
+      }
 
       return {
         success: result.success,
@@ -85,6 +115,15 @@ export class WorkflowService {
         error: result.error,
       }
     } catch (error) {
+      // Update status on error
+      if (executionId) {
+        await convex.mutation(api.workflowExecutions.updateStatus, {
+          executionId,
+          status: "failed",
+          error: error instanceof Error ? error.message : "Internal server error",
+        })
+      }
+
       console.error(`${WorkflowService.LOG_PREFIX} Unhandled error:`, error)
       return {
         success: false,
@@ -126,30 +165,6 @@ export class WorkflowService {
       console.error(`${WorkflowService.LOG_PREFIX} Error fetching workflow steps:`, error)
       return []
     }
-  }
-
-  private async executeWorkflow(params: {
-    workflow: Doc<"workflows">
-    steps: Doc<"agents">[]
-    aiModel: LanguageModel
-    combinedTools: any
-    res: Response
-    messages: CoreMessage[]
-  }) {
-    const { workflow, steps, aiModel, combinedTools, res, messages } = params
-
-    const executor = new WorkflowExecutor(workflow, steps, aiModel, combinedTools, res, this.defaultExecutorOptions)
-
-    const result = await executor.execute(messages)
-
-    // Log the final result
-    if (result.success) {
-      logWorkflow(`Workflow completed successfully with ${result.completedSteps.length} steps`)
-    } else {
-      logWorkflow(`Workflow failed: ${result.error}`)
-    }
-
-    return result
   }
 }
 

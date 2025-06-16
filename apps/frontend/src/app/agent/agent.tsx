@@ -7,19 +7,18 @@ import { Input } from "@/components/ui/input"
 import { useAgent } from "@/hooks/use-agent"
 import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 
 export function Agent() {
-  const { agents, stopAllAgents, agentMeta } = useAgent()
+  const { agents, stopAllAgents, getRunningExecutions } = useAgent()
   const { isAuthenticated } = useConvexAuth()
 
   const [searchInput, setSearchInput] = useState<string>("")
   const [filteredAgents, setFilteredAgents] = useState<Agent[]>(agents)
 
-  // Track running agents count - using agentMeta ensures reactivity
-  const runningCount = useMemo(() => {
-    return Object.values(agentMeta).filter((meta) => meta.status === "preparing" || meta.status === "running").length
-  }, [agentMeta])
+  // Track running agents count using Convex executions
+  const runningExecutions = getRunningExecutions()
+  const runningCount = runningExecutions.length
 
   useEffect(() => {
     const filtered =
@@ -34,7 +33,7 @@ export function Agent() {
       <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">Agents</p>
-          <p className="text-xs text-muted-foreground">create and run custom agents</p>
+          <p className="text-xs text-muted-foreground">build and run custom agents</p>
         </div>
         <div className="flex flex-row items-center gap-4 flex-nowrap">
           <Input

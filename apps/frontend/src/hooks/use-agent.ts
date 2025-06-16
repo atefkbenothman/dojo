@@ -6,14 +6,13 @@ import { useChatProvider } from "@/hooks/use-chat"
 import { useMCP } from "@/hooks/use-mcp"
 import { useUser } from "@/hooks/use-user"
 import { errorToastStyle } from "@/lib/styles"
-import { useAgentStore, type AgentMeta } from "@/store/use-agent-store"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
 import { Message } from "ai"
 import { useMutation, useQuery } from "convex/react"
 import { nanoid } from "nanoid"
-import { useCallback, useMemo, useEffect } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 import { toast } from "sonner"
 
 export function useAgent() {
@@ -23,60 +22,39 @@ export function useAgent() {
   const { selectedModel } = useAIModels()
   const { currentSession } = useUser()
 
-  // Agent store integration
-  const {
-    setAgentStatus,
-    setAgentError,
-    setAgentProgress,
-    setAgentMeta,
-    clearAgentMeta,
-    clearAllAgentMeta,
-    getAgentStatus,
-    getAgentError,
-    getAgentProgress,
-    getRunningAgents,
-    agentMeta,
-  } = useAgentStore()
-
   const agents = useQuery(api.agents.list)
   const create = useMutation(api.agents.create)
   const edit = useMutation(api.agents.edit)
   const remove = useMutation(api.agents.remove)
 
-  // Session mutations for tracking running agents
-  const addRunningAgent = useMutation(api.sessions.addRunningAgent)
-  const removeRunningAgent = useMutation(api.sessions.removeRunningAgent)
-  const clearRunningAgents = useMutation(api.sessions.clearRunningAgents)
+  // Subscribe to agent executions for real-time updates
+  const agentExecutions = useQuery(
+    api.agentExecutions.getBySession,
+    currentSession ? { sessionId: currentSession._id } : "skip",
+  )
 
-  // Sync agent state from session
+  // Local state for optimistic updates during agent preparation
+  const [preparingAgents, setPreparingAgents] = useState<Set<string>>(new Set())
+
+  // Clear optimistic state when real execution appears
   useEffect(() => {
-    if (!currentSession || !agents) return
+    if (!agentExecutions || preparingAgents.size === 0) return
 
-    const sessionAgentIds = currentSession.runningAgentIds || []
+    // Check each preparing agent to see if it now has a real execution
+    preparingAgents.forEach((agentId) => {
+      const hasRealExecution = agentExecutions.some(
+        (exec) => exec.agentId === agentId && (exec.status === "preparing" || exec.status === "running"),
+      )
 
-    // Mark agents as running if they're in the session
-    sessionAgentIds.forEach((agentId) => {
-      const agent = agents.find((a) => a._id === agentId)
-      if (agent) {
-        setAgentStatus(agentId, "running")
-        setAgentProgress(agentId, "Executing agent...")
+      if (hasRealExecution) {
+        setPreparingAgents((prev) => {
+          const next = new Set(prev)
+          next.delete(agentId)
+          return next
+        })
       }
     })
-
-    // Get all agent IDs to check
-    const allAgentIds = agents.map((a) => a._id)
-
-    // Mark agents as idle if they're not in the session
-    allAgentIds.forEach((agentId) => {
-      if (!sessionAgentIds.includes(agentId)) {
-        const currentStatus = getAgentStatus(agentId)
-        if (currentStatus !== "idle") {
-          // Agent completed or was stopped
-        }
-        setAgentStatus(agentId, "idle")
-      }
-    })
-  }, [currentSession, agents, setAgentStatus, setAgentProgress, getAgentStatus])
+  }, [agentExecutions, preparingAgents])
 
   const runAgent = useCallback(
     async (agent: Agent) => {
@@ -106,20 +84,8 @@ export function useAgent() {
         return
       }
 
-      // Set initial status and clear any previous errors
-      setAgentStatus(agent._id, "preparing")
-      setAgentError(agent._id, null)
-      setAgentProgress(agent._id, null)
-
-      // Add agent to session's running agents
-      try {
-        await addRunningAgent({
-          sessionId: currentSession._id,
-          agentId: agent._id,
-        })
-      } catch (error) {
-        // Continue anyway - this is not critical for agent execution
-      }
+      // Set optimistic preparing state
+      setPreparingAgents((prev) => new Set(prev).add(agent._id))
 
       setMessages((prev) => [
         ...prev,
@@ -132,7 +98,6 @@ export function useAgent() {
 
       // Handle MCP server connections if needed
       if (agent.mcpServers.length > 0) {
-        setAgentProgress(agent._id, "Connecting to MCP servers...")
         setMessages((prev) => [
           ...prev,
           {
@@ -146,18 +111,13 @@ export function useAgent() {
           await connect(agent.mcpServers)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Failed to connect to MCP servers"
-          setAgentStatus(agent._id, "error")
-          setAgentError(agent._id, errorMessage)
 
-          // Remove from running agents
-          try {
-            await removeRunningAgent({
-              sessionId: currentSession._id,
-              agentId: agent._id,
-            })
-          } catch (removeError) {
-            // Continue anyway - this is not critical for agent execution
-          }
+          // Clear optimistic state
+          setPreparingAgents((prev) => {
+            const next = new Set(prev)
+            next.delete(agent._id)
+            return next
+          })
 
           toast.error(`MCP Connection Error: ${errorMessage}`, {
             icon: null,
@@ -171,17 +131,13 @@ export function useAgent() {
         }
       }
 
-      // Update status to running
-      setAgentStatus(agent._id, "running")
-      setAgentProgress(agent._id, "Executing agent...")
-
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
         content: agent.systemPrompt,
       }
 
-      // Append message - completion will be handled by chat callbacks
+      // Append message - backend will handle execution tracking
       try {
         await append(userMessage, {
           body: {
@@ -192,21 +148,22 @@ export function useAgent() {
             },
           },
         })
+
+        // Clear optimistic state once backend takes over
+        setPreparingAgents((prev) => {
+          const next = new Set(prev)
+          next.delete(agent._id)
+          return next
+        })
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Agent execution failed"
-        setAgentStatus(agent._id, "error")
-        setAgentError(agent._id, errorMessage)
-        setAgentProgress(agent._id, null)
 
-        // Remove from running agents
-        try {
-          await removeRunningAgent({
-            sessionId: currentSession._id,
-            agentId: agent._id,
-          })
-        } catch (removeError) {
-          // Continue anyway - this is not critical for agent execution
-        }
+        // Clear optimistic state
+        setPreparingAgents((prev) => {
+          const next = new Set(prev)
+          next.delete(agent._id)
+          return next
+        })
 
         toast.error(`Agent Error: ${errorMessage}`, {
           icon: null,
@@ -220,58 +177,29 @@ export function useAgent() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [
-      selectedModel,
-      append,
-      connect,
-      play,
-      setMessages,
-      setAgentStatus,
-      setAgentError,
-      setAgentProgress,
-      currentSession,
-      addRunningAgent,
-      removeRunningAgent,
-    ],
+    [selectedModel, append, connect, play, setMessages, currentSession],
   )
 
   const stopAgent = async (agentId: string) => {
     if (!currentSession) return
 
-    // Update local state immediately
-    setAgentStatus(agentId, "idle")
-    setAgentProgress(agentId, null)
-
-    // Remove from session
-    try {
-      await removeRunningAgent({
-        sessionId: currentSession._id,
-        agentId: agentId as Id<"agents">,
-      })
-    } catch (error) {
-      // Continue anyway - this is not critical for agent execution
-    }
-
-    // No toast notification - following MCP pattern
+    // No backend endpoint for stopping agents yet
+    // Just clear optimistic state if any
+    setPreparingAgents((prev) => {
+      const next = new Set(prev)
+      next.delete(agentId)
+      return next
+    })
   }
 
   const stopAllAgents = async () => {
     if (!currentSession) return
 
-    const runningAgentIds = getRunningAgents()
-    if (runningAgentIds.length === 0) return
+    const runningExecutions = getRunningExecutions()
+    if (runningExecutions.length === 0) return
 
-    // Clear all agent states
-    clearAllAgentMeta()
-
-    // Clear from session
-    try {
-      await clearRunningAgents({
-        sessionId: currentSession._id,
-      })
-    } catch (error) {
-      // Continue anyway - this is not critical for agent execution
-    }
+    // Clear all optimistic states
+    setPreparingAgents(new Set())
 
     // Play sound once - following MCP's disconnectAll pattern
     play("./sounds/disconnect.mp3", { volume: 0.5 })
@@ -279,21 +207,52 @@ export function useAgent() {
 
   const stableAgents = useMemo(() => agents || [], [agents])
 
+  // Helper function to get active execution for an agent
+  const getAgentExecution = useCallback(
+    (agentId: Id<"agents">) => {
+      // First check if we have a real execution from Convex
+      const realExecution =
+        agentExecutions?.find(
+          (exec) => exec.agentId === agentId && (exec.status === "preparing" || exec.status === "running"),
+        ) || null
+
+      // Only use optimistic state if there's no real execution yet
+      if (!realExecution && preparingAgents.has(agentId)) {
+        return {
+          _id: "preparing" as any,
+          agentId,
+          status: "preparing" as const,
+          sessionId: currentSession?._id as any,
+          startedAt: Date.now(),
+          aiModelId: selectedModel?._id as any,
+          mcpServerIds: [],
+          error: undefined,
+        }
+      }
+
+      return realExecution
+    },
+    [agentExecutions, preparingAgents, currentSession, selectedModel],
+  )
+
+  // Helper function to get all running executions
+  const getRunningExecutions = useCallback(() => {
+    if (!agentExecutions) return []
+    return agentExecutions.filter((exec) => exec.status === "preparing" || exec.status === "running")
+  }, [agentExecutions])
+
   return {
     agents: stableAgents,
     runAgent,
     create,
     edit,
     remove,
-    // Agent status getters
-    getAgentStatus,
-    getAgentError,
-    getAgentProgress,
-    getRunningAgents,
     // Agent control functions
     stopAgent,
     stopAllAgents,
-    // Agent meta state for reactivity
-    agentMeta,
+    // New direct Convex helpers
+    getAgentExecution,
+    getRunningExecutions,
+    agentExecutions,
   }
 }

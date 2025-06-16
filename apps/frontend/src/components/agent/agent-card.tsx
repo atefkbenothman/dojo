@@ -16,15 +16,17 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, isAuthenticated = false }: AgentCardProps) {
-  const { runAgent, agentMeta } = useAgent()
+  const { runAgent, getAgentExecution } = useAgent()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
 
-  // Get current agent state - using agentMeta ensures reactivity
-  const meta = agentMeta[agent._id]
-  const status = meta?.status || "idle"
-  const error = meta?.error || null
-  const progress = meta?.progress || null
+  // Get execution data directly from Convex
+  const execution = getAgentExecution(agent._id)
+
+  // Derive state from execution
+  const status =
+    execution?.status === "completed" ? "idle" : execution?.status === "failed" ? "error" : execution?.status || "idle"
+  const error = execution?.error || null
   const isRunning = status === "preparing" || status === "running"
 
   const handleRun = useCallback(() => {

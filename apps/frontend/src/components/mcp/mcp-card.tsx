@@ -18,12 +18,15 @@ interface MCPCardProps {
 }
 
 export function MCPCard({ server, isProd = false, isAuthenticated = false }: MCPCardProps) {
-  const { getConnectionStatus, activeConnections, connect, disconnect } = useMCP()
+  const { getConnection, activeConnections, connect, disconnect } = useMCP()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
 
-  const status = getConnectionStatus(server._id)
+  const connection = getConnection(server._id)
+  const status = connection?.isStale ? "error" : connection?.status || "disconnected"
+  const error = connection?.isStale ? "Connection lost - no heartbeat" : connection?.error
   const isConnected = status === "connected"
+  const isConnecting = status === "connecting"
 
   const serverConnection = activeConnections.find((conn) => conn.serverId === server._id)
 
@@ -51,6 +54,7 @@ export function MCPCard({ server, isProd = false, isAuthenticated = false }: MCP
         className={cn(
           "relative h-[10rem] max-h-[10rem] w-full max-w-[16rem] border flex flex-col overflow-hidden",
           isConnected && "border-primary/80 bg-muted/50 border-2",
+          status === "error" && "border-destructive/80 bg-destructive/5 border-2",
         )}
       >
         {(server.localOnly || server.requiresUserKey) && (
@@ -72,22 +76,25 @@ export function MCPCard({ server, isProd = false, isAuthenticated = false }: MCP
             {Icon && <Icon />}
             <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
             {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500" />}
+            {isConnecting && <div className="ml-2 h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />}
+            {status === "error" && <div className="ml-2 h-2 w-2 rounded-full bg-red-500" />}
           </div>
           <CardDescription className="w-[90%] line-clamp-2 overflow-hidden">{server.summary}</CardDescription>
+          {error && status === "error" && <p className="text-xs text-destructive mt-1 line-clamp-1">{error}</p>}
         </CardHeader>
         <CardFooter className="mt-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
               variant={isConnected ? "default" : "secondary"}
               onClick={handleConnect}
-              disabled={status === "connecting" || disableConnect}
+              disabled={isConnecting || disableConnect}
               className={cn(
                 "border hover:cursor-pointer",
                 isConnected ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
               )}
               title={connectDisabledReason}
             >
-              {status === "connecting" ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
+              {isConnecting ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
             </Button>
             <Button
               variant="secondary"

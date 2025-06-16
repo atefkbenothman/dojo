@@ -33,6 +33,7 @@ agentRouter.post(
       session,
       aiModel,
       res,
+      modelId: agentInfo.modelId as any,
     })
 
     if (!result.success) {

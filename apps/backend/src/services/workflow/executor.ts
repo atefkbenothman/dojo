@@ -1,6 +1,8 @@
+import { convex } from "../../lib/convex-client"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
-import { type Doc } from "@dojo/db/convex/_generated/dataModel"
+import { api } from "@dojo/db/convex/_generated/api"
+import { type Doc, type Id } from "@dojo/db/convex/_generated/dataModel"
 import { type CoreMessage, type LanguageModel } from "ai"
 import { type Response } from "express"
 
@@ -8,6 +10,8 @@ interface WorkflowExecutorOptions {
   maxRetries?: number
   retryDelay?: number
   persistExecution?: boolean
+  executionId?: Id<"workflowExecutions">
+  sessionId?: Id<"sessions">
 }
 
 interface CompletedStep {
@@ -160,37 +164,71 @@ export class WorkflowExecutor {
     workflowPrompt: string,
     initialMessages: CoreMessage[],
   ): Promise<void> {
-    // Build messages for this step
-    const systemMessage: CoreMessage = {
-      role: "system",
-      content: this.buildSystemMessage(workflowPrompt, step, stepIndex),
+    // Update step status to running
+    if (this.options.executionId) {
+      await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        executionId: this.options.executionId,
+        stepIndex,
+        agentId: step._id,
+        status: "running",
+      })
     }
 
-    const userMessage = this.buildUserMessage(stepIndex, workflowPrompt)
+    try {
+      // Build messages for this step
+      const systemMessage: CoreMessage = {
+        role: "system",
+        content: this.buildSystemMessage(workflowPrompt, step, stepIndex),
+      }
 
-    // Filter conversation history (exclude system messages and empty content)
-    const conversationHistory = initialMessages.filter(
-      (m) =>
-        m.role !== "system" &&
-        typeof m.content === "string" &&
-        !m.content.startsWith("Starting workflow") &&
-        m.content.trim() !== "",
-    )
+      const userMessage = this.buildUserMessage(stepIndex, workflowPrompt)
 
-    const currentStepMessages: CoreMessage[] = [systemMessage, userMessage]
+      // Filter conversation history (exclude system messages and empty content)
+      const conversationHistory = initialMessages.filter(
+        (m) =>
+          m.role !== "system" &&
+          typeof m.content === "string" &&
+          !m.content.startsWith("Starting workflow") &&
+          m.content.trim() !== "",
+      )
 
-    this.log(`Messages for step ${stepIndex + 1}:`, {
-      system: systemMessage.content,
-      user: userMessage.content,
-    })
+      const currentStepMessages: CoreMessage[] = [systemMessage, userMessage]
 
-    // Execute based on output type
-    if (step.outputType === "text") {
-      await this.executeTextStep(step, stepIndex, currentStepMessages)
-    } else if (step.outputType === "object") {
-      await this.executeObjectStep(step, stepIndex, currentStepMessages)
-    } else {
-      throw new Error(`Unknown output type: ${step.outputType}`)
+      this.log(`Messages for step ${stepIndex + 1}:`, {
+        system: systemMessage.content,
+        user: userMessage.content,
+      })
+
+      // Execute based on output type
+      if (step.outputType === "text") {
+        await this.executeTextStep(step, stepIndex, currentStepMessages)
+      } else if (step.outputType === "object") {
+        await this.executeObjectStep(step, stepIndex, currentStepMessages)
+      } else {
+        throw new Error(`Unknown output type: ${step.outputType}`)
+      }
+
+      // After successful execution, update step status
+      if (this.options.executionId) {
+        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+          executionId: this.options.executionId,
+          stepIndex,
+          agentId: step._id,
+          status: "completed",
+        })
+      }
+    } catch (error) {
+      // Update step status on error
+      if (this.options.executionId) {
+        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+          executionId: this.options.executionId,
+          stepIndex,
+          agentId: step._id,
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+      throw error // Re-throw to maintain existing error handling
     }
   }
 

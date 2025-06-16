@@ -58,7 +58,6 @@ export const getOrCreate = mutation({
       // Create new session for authenticated user
       const newSessionId = await ctx.db.insert("sessions", {
         userId,
-        activeMcpServerIds: [],
         lastAccessed: Date.now(),
       })
       return await ctx.db.get(newSessionId)
@@ -81,55 +80,12 @@ export const getOrCreate = mutation({
       // Create new guest session
       const newSessionId = await ctx.db.insert("sessions", {
         clientSessionId,
-        activeMcpServerIds: [],
         lastAccessed: Date.now(),
       })
       return await ctx.db.get(newSessionId)
     }
 
     throw new Error("Either userId or clientSessionId must be provided")
-  },
-})
-
-// Adds an MCP server connection to a session
-export const addConnection = mutation({
-  args: {
-    sessionId: v.id("sessions"),
-    mcpServerId: v.id("mcp"),
-  },
-  handler: async (ctx, { sessionId, mcpServerId }) => {
-    const session = await ctx.db.get(sessionId)
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`)
-    }
-    // Avoid duplicates
-    if (session.activeMcpServerIds.includes(mcpServerId)) {
-      return session
-    }
-    await ctx.db.patch(sessionId, {
-      activeMcpServerIds: [...session.activeMcpServerIds, mcpServerId],
-      lastAccessed: Date.now(),
-    })
-    return await ctx.db.get(sessionId)
-  },
-})
-
-// Removes an MCP server connection from a session
-export const removeConnection = mutation({
-  args: {
-    sessionId: v.id("sessions"),
-    mcpServerId: v.id("mcp"),
-  },
-  handler: async (ctx, { sessionId, mcpServerId }) => {
-    const session = await ctx.db.get(sessionId)
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`)
-    }
-    await ctx.db.patch(sessionId, {
-      activeMcpServerIds: session.activeMcpServerIds.filter((id) => id !== mcpServerId),
-      lastAccessed: Date.now(),
-    })
-    return await ctx.db.get(sessionId)
   },
 })
 
@@ -151,75 +107,5 @@ export const cleanup = internalMutation({
 
     // Delete all the stale sessions
     await Promise.all(staleSessions.map((session) => ctx.db.delete(session._id)))
-  },
-})
-
-// Adds a running agent to a session
-export const addRunningAgent = mutation({
-  args: {
-    sessionId: v.id("sessions"),
-    agentId: v.id("agents"),
-  },
-  handler: async (ctx, { sessionId, agentId }) => {
-    const session = await ctx.db.get(sessionId)
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`)
-    }
-
-    // Initialize runningAgentIds if undefined (for existing sessions)
-    const runningAgentIds = session.runningAgentIds || []
-
-    // Avoid duplicates
-    if (runningAgentIds.includes(agentId)) {
-      return session
-    }
-
-    await ctx.db.patch(sessionId, {
-      runningAgentIds: [...runningAgentIds, agentId],
-      lastAccessed: Date.now(),
-    })
-    return await ctx.db.get(sessionId)
-  },
-})
-
-// Removes a running agent from a session
-export const removeRunningAgent = mutation({
-  args: {
-    sessionId: v.id("sessions"),
-    agentId: v.id("agents"),
-  },
-  handler: async (ctx, { sessionId, agentId }) => {
-    const session = await ctx.db.get(sessionId)
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`)
-    }
-
-    // Initialize runningAgentIds if undefined (for existing sessions)
-    const runningAgentIds = session.runningAgentIds || []
-
-    await ctx.db.patch(sessionId, {
-      runningAgentIds: runningAgentIds.filter((id) => id !== agentId),
-      lastAccessed: Date.now(),
-    })
-    return await ctx.db.get(sessionId)
-  },
-})
-
-// Clears all running agents from a session
-export const clearRunningAgents = mutation({
-  args: {
-    sessionId: v.id("sessions"),
-  },
-  handler: async (ctx, { sessionId }) => {
-    const session = await ctx.db.get(sessionId)
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`)
-    }
-
-    await ctx.db.patch(sessionId, {
-      runningAgentIds: [],
-      lastAccessed: Date.now(),
-    })
-    return await ctx.db.get(sessionId)
   },
 })

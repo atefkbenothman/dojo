@@ -9,7 +9,7 @@ import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { useMutation } from "@tanstack/react-query"
 import { useMutation as useConvexMutation, useQuery as useConvexQuery } from "convex/react"
 import { WithoutSystemFields } from "convex/server"
-import { useMemo, useEffect } from "react"
+import { useMemo } from "react"
 import { toast } from "sonner"
 
 export interface ActiveConnection {
@@ -23,57 +23,42 @@ export function useMCP() {
   const client = useTRPCClient()
   const { currentSession } = useUser()
 
-  const { connectionMeta, setConnectionStatus, setConnectionError, setConnectionMeta } = useMCPStore()
+  // Simple store for tools data only
+  const { tools, setTools, clearTools } = useMCPStore()
 
   const mcpServers = useConvexQuery(api.mcp.list)
   const createMCP = useConvexMutation(api.mcp.create)
   const editMCP = useConvexMutation(api.mcp.edit)
   const deleteMCP = useConvexMutation(api.mcp.remove)
 
+  // Query MCP connections from Convex
+  const mcpConnections = useConvexQuery(
+    api.mcpConnections.getBySession,
+    currentSession ? { sessionId: currentSession._id } : "skip",
+  )
+
   const { play } = useSoundEffectContext()
 
+  // Get active connections from Convex data
   const activeConnections = useMemo(() => {
-    return Object.entries(connectionMeta)
-      .filter(([, m]) => m.status === "connected")
-      .map(([serverId, m]) => ({
-        serverId,
-        name: m.name,
-        tools: m.tools,
-      }))
-  }, [connectionMeta])
+    if (!mcpConnections || !mcpServers) return []
 
-  // Sync connection state from session
-  useEffect(() => {
-    if (!currentSession || !mcpServers) return
+    return mcpConnections
+      .filter((conn) => conn.status === "connected" && !conn.isStale)
+      .map((conn) => {
+        const server = mcpServers.find((s) => s._id === conn.mcpServerId)
+        return {
+          serverId: conn.mcpServerId,
+          name: server?.name || conn.mcpServerId,
+          tools: tools[conn.mcpServerId] || {}, // Get tools from simplified store
+        }
+      })
+  }, [mcpConnections, mcpServers, tools])
 
-    const sessionServerIds = currentSession.activeMcpServerIds || []
-
-    // Mark servers as connected if they're in the session
-    sessionServerIds.forEach((serverId) => {
-      const server = mcpServers.find((s) => s._id === serverId)
-      if (server) {
-        setConnectionStatus(serverId, "connected")
-        setConnectionMeta(serverId, { name: server.name })
-      }
-    })
-
-    // Get all server IDs to check
-    const allServerIds = mcpServers.map((s) => s._id)
-
-    // Mark servers as disconnected if they're not in the session
-    allServerIds.forEach((serverId) => {
-      if (!sessionServerIds.includes(serverId)) {
-        setConnectionStatus(serverId, "disconnected")
-      }
-    })
-  }, [currentSession, mcpServers, setConnectionStatus, setConnectionMeta])
-
-  function getConnectionStatus(serverId: string) {
-    return connectionMeta[serverId]?.status ?? "disconnected"
-  }
-
-  function getConnectionError(serverId: string) {
-    return connectionMeta[serverId]?.error ?? null
+  // Get connection data from Convex
+  const getConnection = (serverId: string) => {
+    if (!mcpConnections) return null
+    return mcpConnections.find((c) => c.mcpServerId === serverId) || null
   }
 
   const connectMutation = useMutation<RouterOutputs["connection"]["connect"], Error, { serverIds: Id<"mcp">[] }>({
@@ -81,27 +66,19 @@ export function useMCP() {
       return client.connection.connect.mutate({ servers: variables.serverIds })
     },
     onMutate: (variables: { serverIds: Id<"mcp">[] }) => {
-      const { serverIds } = variables
-      serverIds.forEach((serverId) => {
-        setConnectionStatus(serverId, "connecting")
-        setConnectionError(serverId, null)
-        setConnectionMeta(serverId, { name: serverId })
-      })
+      // No more optimistic updates - Convex handles status
     },
     onSuccess: (data: RouterOutputs["connection"]["connect"], variables: { serverIds: Id<"mcp">[] }) => {
       const { serverIds } = variables
       serverIds.forEach((serverId) => {
         const result = data.results.find((r) => r.serverId === serverId)
         if (result?.success) {
-          setConnectionStatus(serverId, "connected")
-          setConnectionError(serverId, null)
-          setConnectionMeta(serverId, { name: serverId, tools: result.tools || {} })
+          // Store tools in simplified store
+          setTools(serverId, result.tools || {})
           play("./sounds/connect.mp3", { volume: 0.5 })
         } else {
           const errorMsg =
             result && "error" in result && typeof result.error === "string" ? result.error : "Connection failed"
-          setConnectionStatus(serverId, "error")
-          setConnectionError(serverId, errorMsg)
           play("./sounds/error.mp3", { volume: 0.5 })
           toast.error(errorMsg, {
             icon: null,
@@ -116,8 +93,6 @@ export function useMCP() {
     onError: (error: Error, variables: { serverIds: Id<"mcp">[] }) => {
       const { serverIds } = variables
       serverIds.forEach((serverId) => {
-        setConnectionStatus(serverId, "error")
-        setConnectionError(serverId, error.message || "An unexpected error occurred during connecting")
         play("./sounds/error.mp3", { volume: 0.5 })
         toast.error(error.message, {
           icon: null,
@@ -134,18 +109,10 @@ export function useMCP() {
     mutationFn: async (variables: { serverId: string }) => {
       return client.connection.disconnect.mutate({ serverId: variables.serverId })
     },
-    onMutate: (variables: { serverId: string }) => {
-      const { serverId } = variables
-      setConnectionStatus(serverId, "disconnected")
-    },
     onSuccess: (_data: { message: string }, variables: { serverId: string }) => {
       const { serverId } = variables
-      setConnectionError(serverId, null)
-    },
-    onError: (error: Error, variables: { serverId: string }) => {
-      const { serverId } = variables
-      setConnectionStatus(serverId, "error")
-      setConnectionError(serverId, error.message || "Disconnection failed")
+      // Clear tools from store
+      clearTools(serverId)
     },
   })
 
@@ -162,7 +129,13 @@ export function useMCP() {
       return
     }
 
-    if (serverIds.some((serverId) => connectionMeta[serverId]?.status === "connecting")) return
+    // Check if already connecting using Convex data
+    const connectingServers = serverIds.filter((serverId) => {
+      const conn = getConnection(serverId)
+      return conn?.status === "connecting"
+    })
+    if (connectingServers.length > 0) return
+
     await Promise.all(serverIds.map((serverId) => connectMutation.mutateAsync({ serverIds: [serverId] })))
   }
 
@@ -233,8 +206,7 @@ export function useMCP() {
   return {
     mcpServers: stableMcpServers,
     activeConnections,
-    getConnectionStatus,
-    getConnectionError,
+    getConnection,
     connect,
     disconnect,
     disconnectAll,

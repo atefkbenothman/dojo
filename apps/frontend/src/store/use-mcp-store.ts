@@ -1,75 +1,26 @@
 import { create } from "zustand"
 
-export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
-
-export interface ActiveConnection {
-  serverId: string
-  name: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools: Record<any, any>
-}
-
-interface ConnectionMeta {
-  status: ConnectionStatus
-  error: string | null
-  name: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools: Record<any, any>
-}
-
+// Simple store for MCP tools data
+// Tools come from the backend and are too large/dynamic for Convex
 interface MCPState {
-  connectionMeta: Record<string, ConnectionMeta>
-  setConnectionStatus: (serverId: string, status: ConnectionStatus) => void
-  setConnectionError: (serverId: string, error: string | null) => void
-  setConnectionMeta: (serverId: string, meta: Partial<ConnectionMeta>) => void
-}
-
-const defaultMeta: ConnectionMeta = {
-  status: "disconnected",
-  error: null,
-  name: "",
-  tools: {},
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tools: Record<string, Record<any, any>> // serverId -> tools
+  setTools: (serverId: string, tools: Record<any, any>) => void
+  clearTools: (serverId: string) => void
 }
 
 export const useMCPStore = create<MCPState>((set) => ({
-  connectionMeta: {},
-  setConnectionStatus: (serverId, status) =>
+  tools: {},
+  setTools: (serverId, tools) =>
+    set((state) => ({
+      tools: {
+        ...state.tools,
+        [serverId]: tools,
+      },
+    })),
+  clearTools: (serverId) =>
     set((state) => {
-      const prev = state.connectionMeta[serverId] || defaultMeta
-      return {
-        connectionMeta: {
-          ...state.connectionMeta,
-          [serverId]: {
-            ...prev,
-            status,
-          },
-        },
-      }
-    }),
-  setConnectionError: (serverId, error) =>
-    set((state) => {
-      const prev = state.connectionMeta[serverId] || defaultMeta
-      return {
-        connectionMeta: {
-          ...state.connectionMeta,
-          [serverId]: {
-            ...prev,
-            error,
-          },
-        },
-      }
-    }),
-  setConnectionMeta: (serverId, meta) =>
-    set((state) => {
-      const prev = state.connectionMeta[serverId] || defaultMeta
-      return {
-        connectionMeta: {
-          ...state.connectionMeta,
-          [serverId]: {
-            ...prev,
-            ...meta,
-          },
-        },
-      }
+      const { [serverId]: _, ...rest } = state.tools
+      return { tools: rest }
     }),
 }))
