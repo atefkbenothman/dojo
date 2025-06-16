@@ -10,19 +10,22 @@ let backendInstanceId: string
 export function startHeartbeat(instanceId: string) {
   backendInstanceId = instanceId
 
-  // Update heartbeats every 30 seconds
-  heartbeatInterval = setInterval(() => {
-    void (async () => {
-      try {
-        const count = await convex.mutation(api.mcpConnections.updateHeartbeats, {
-          backendInstanceId,
-        })
-        console.log(`[Heartbeat] Updated ${count} connection heartbeats`)
-      } catch (error) {
-        console.error("[Heartbeat] Failed to update heartbeats:", error)
-      }
-    })()
-  }, 30 * 1000) // 30 seconds
+  // Update heartbeats every hour
+  heartbeatInterval = setInterval(
+    () => {
+      void (async () => {
+        try {
+          const count = await convex.mutation(api.mcpConnections.updateHeartbeats, {
+            backendInstanceId,
+          })
+          console.log(`[Heartbeat] Updated ${count} connection heartbeats`)
+        } catch (error) {
+          console.error("[Heartbeat] Failed to update heartbeats:", error)
+        }
+      })()
+    },
+    60 * 60 * 1000, // 1 hour
+  )
 
   console.log("[Heartbeat] Service started")
 }
