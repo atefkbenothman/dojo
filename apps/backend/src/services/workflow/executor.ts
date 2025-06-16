@@ -3,7 +3,7 @@ import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
 import { api } from "@dojo/db/convex/_generated/api"
 import { type Doc, type Id } from "@dojo/db/convex/_generated/dataModel"
-import { type CoreMessage, type LanguageModel } from "ai"
+import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import { type Response } from "express"
 
 interface WorkflowExecutorOptions {
@@ -50,7 +50,7 @@ export class WorkflowExecutor {
     private workflow: Doc<"workflows">,
     private steps: Doc<"agents">[],
     private aiModel: LanguageModel,
-    private tools: any,
+    private tools: ToolSet,
     private res: Response,
     private options: WorkflowExecutorOptions = {},
   ) {
@@ -192,7 +192,7 @@ export class WorkflowExecutor {
           m.content.trim() !== "",
       )
 
-      const currentStepMessages: CoreMessage[] = [systemMessage, userMessage]
+      const currentStepMessages: CoreMessage[] = [systemMessage, ...conversationHistory, userMessage]
 
       this.log(`Messages for step ${stepIndex + 1}:`, {
         system: systemMessage.content,
@@ -205,7 +205,7 @@ export class WorkflowExecutor {
       } else if (step.outputType === "object") {
         await this.executeObjectStep(step, stepIndex, currentStepMessages)
       } else {
-        throw new Error(`Unknown output type: ${step.outputType}`)
+        throw new Error("Unknown output type")
       }
 
       // After successful execution, update step status
@@ -233,13 +233,13 @@ export class WorkflowExecutor {
   }
 
   private async executeTextStep(step: Doc<"agents">, stepIndex: number, messages: CoreMessage[]): Promise<void> {
-    const text = (await streamTextResponse({
+    const text = await streamTextResponse({
       res: this.res,
       languageModel: this.aiModel,
       messages,
       tools: this.tools,
       end: false, // Don't end the response, we have more steps
-    })) as string
+    })
 
     this.log(`Step ${stepIndex + 1} text output:`, text)
 
@@ -322,7 +322,7 @@ export class WorkflowExecutor {
     return output !== undefined && output.trim() !== "" && output !== "null"
   }
 
-  private log(message: string, data?: any): void {
+  private log(message: string, data?: unknown): void {
     if (data !== undefined) {
       console.log(`${WorkflowExecutor.LOG_PREFIX} ${message}`, data)
     } else {
@@ -332,7 +332,7 @@ export class WorkflowExecutor {
 }
 
 // Export the logging function for external use
-export function logWorkflow(message: string, data?: any): void {
+export function logWorkflow(message: string, data?: unknown): void {
   if (data !== undefined) {
     console.log(`[REST /workflow/run] ${message}`, data)
   } else {

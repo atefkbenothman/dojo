@@ -65,9 +65,6 @@ export function useMCP() {
     mutationFn: async (variables: { serverIds: Id<"mcp">[] }) => {
       return client.connection.connect.mutate({ servers: variables.serverIds })
     },
-    onMutate: (variables: { serverIds: Id<"mcp">[] }) => {
-      // No more optimistic updates - Convex handles status
-    },
     onSuccess: (data: RouterOutputs["connection"]["connect"], variables: { serverIds: Id<"mcp">[] }) => {
       const { serverIds } = variables
       serverIds.forEach((serverId) => {

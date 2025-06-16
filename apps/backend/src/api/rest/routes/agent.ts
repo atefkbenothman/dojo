@@ -1,5 +1,6 @@
 import { agentService } from "../../../services/agent/agent"
 import { createAiRequestMiddleware } from "../middleware"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { LanguageModel } from "ai"
 import express, { type Request, type Response, Router } from "express"
 import { z } from "zod"
@@ -33,7 +34,7 @@ agentRouter.post(
       session,
       aiModel,
       res,
-      modelId: agentInfo.modelId as any,
+      modelId: agentInfo.modelId as Id<"models">,
     })
 
     if (!result.success) {

@@ -1,3 +1,4 @@
+import { BACKEND_INSTANCE_ID } from "../../index"
 import { convex } from "../../lib/convex-client"
 import type { ActiveMcpClient } from "../../lib/types"
 import { liveConnectionCache } from "./cache"
@@ -6,9 +7,6 @@ import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import type { ToolSet } from "ai"
-
-// Generate a unique backend instance ID (could be hostname + process.pid)
-export const BACKEND_INSTANCE_ID = `${process.env.HOSTNAME || "localhost"}-${process.pid}-${Date.now()}`
 
 /**
  * Establishes an MCP connection for a given session and server config.

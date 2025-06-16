@@ -219,12 +219,12 @@ export function useAgent() {
       // Only use optimistic state if there's no real execution yet
       if (!realExecution && preparingAgents.has(agentId)) {
         return {
-          _id: "preparing" as any,
+          _id: "preparing",
           agentId,
           status: "preparing" as const,
-          sessionId: currentSession?._id as any,
+          sessionId: currentSession?._id,
           startedAt: Date.now(),
-          aiModelId: selectedModel?._id as any,
+          aiModelId: selectedModel?._id,
           mcpServerIds: [],
           error: undefined,
         }

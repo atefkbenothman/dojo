@@ -4,7 +4,7 @@ import { workflowRouter } from "./api/rest/routes/workflow"
 import { createTRPCContext } from "./api/trpc/context"
 import { appRouter } from "./api/trpc/router"
 import { convex } from "./lib/convex-client"
-import { cleanupAllConnections, BACKEND_INSTANCE_ID } from "./services/mcp/connection"
+import { cleanupAllConnections } from "./services/mcp/connection"
 import { startHeartbeat, stopHeartbeat, disconnectAllBackendConnections } from "./services/mcp/heartbeat"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc } from "@dojo/db/convex/_generated/dataModel"
@@ -16,6 +16,9 @@ import express, { Express } from "express"
 
 const PORT = env.PORT || 8888
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
+
+// Generate a unique backend instance ID (could be hostname + process.pid)
+export const BACKEND_INSTANCE_ID = `${process.env.HOSTNAME || "localhost"}-${process.pid}-${Date.now()}`
 
 const models = await convex.query(api.models.list)
 const mcpServers = await convex.query(api.mcp.list)
@@ -130,11 +133,17 @@ async function gracefulShutdown(signal: string) {
   }
 }
 
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
-process.on("SIGINT", () => gracefulShutdown("SIGINT"))
+process.on("SIGTERM", () => {
+  void gracefulShutdown("SIGTERM")
+})
+process.on("SIGINT", () => {
+  void gracefulShutdown("SIGINT")
+})
 
 // Optional: Handle nodemon restarts
-process.once("SIGUSR2", async () => {
-  await gracefulShutdown("SIGUSR2")
-  process.kill(process.pid, "SIGUSR2")
+process.once("SIGUSR2", () => {
+  void (async () => {
+    await gracefulShutdown("SIGUSR2")
+    process.kill(process.pid, "SIGUSR2")
+  })()
 })

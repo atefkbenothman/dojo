@@ -5,6 +5,7 @@ import { create } from "zustand"
 interface MCPState {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Record<string, Record<any, any>> // serverId -> tools
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setTools: (serverId: string, tools: Record<any, any>) => void
   clearTools: (serverId: string) => void
 }
@@ -20,6 +21,7 @@ export const useMCPStore = create<MCPState>((set) => ({
     })),
   clearTools: (serverId) =>
     set((state) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [serverId]: _, ...rest } = state.tools
       return { tools: rest }
     }),

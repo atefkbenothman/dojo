@@ -4,7 +4,7 @@ import { streamTextResponse } from "../ai/stream-text"
 import { aggregateMcpTools } from "../mcp/connection"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
-import type { CoreMessage, LanguageModel } from "ai"
+import type { CoreMessage, LanguageModel, ToolSet } from "ai"
 import type { Response } from "express"
 
 interface RunAgentParams {
@@ -108,7 +108,7 @@ export class AgentService {
     aiModel: LanguageModel
     messages: CoreMessage[]
     res: Response
-    combinedTools: any
+    combinedTools: ToolSet
     userIdForLogging: string
   }): Promise<void> {
     const { agent, aiModel, messages, res, combinedTools, userIdForLogging } = params
@@ -135,8 +135,7 @@ export class AgentService {
         break
 
       default:
-        console.error(`${AgentService.LOG_PREFIX} Unknown or unhandled output type: ${agent.outputType}`)
-        throw new Error(`Unknown or unhandled output type: ${agent.outputType}`)
+        throw new Error("Unknown or unhandled output type")
     }
   }
 }

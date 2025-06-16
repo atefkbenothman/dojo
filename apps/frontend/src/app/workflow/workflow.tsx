@@ -7,7 +7,7 @@ import { WorkflowCard } from "@/components/workflow/workflow-card"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { Workflow as WorkflowType } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 
 export function Workflow() {
   const { workflows, stopAllWorkflows, getRunningExecutions } = useWorkflow()

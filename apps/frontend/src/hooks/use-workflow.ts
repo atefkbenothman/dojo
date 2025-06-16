@@ -14,7 +14,7 @@ import { Workflow } from "@dojo/db/convex/types"
 import { Message } from "ai"
 import { useQuery, useMutation } from "convex/react"
 import { nanoid } from "nanoid"
-import { useCallback, useMemo, useEffect, useRef, useState } from "react"
+import { useCallback, useMemo, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 export function useWorkflow() {
@@ -196,11 +196,10 @@ export function useWorkflow() {
     [append, agents, getModel, play, setMessages, setSelectedModelId, connect, currentSession],
   )
 
-  const stopWorkflow = async (workflowId: string) => {
-    if (!currentSession) return
-
-    // No toast notification - following MCP pattern
-  }
+  // const stopWorkflow = async (workflowId: string) => {
+  //   if (!currentSession) return
+  //   // No toast notification - following MCP pattern
+  // }
 
   const stopAllWorkflows = async () => {
     if (!currentSession) return
@@ -226,13 +225,12 @@ export function useWorkflow() {
       // Only use optimistic state if there's no real execution yet
       if (!realExecution && preparingWorkflows.has(workflowId)) {
         return {
-          _id: "preparing" as any,
           workflowId,
           status: "preparing" as const,
-          sessionId: currentSession?._id as any,
+          sessionId: currentSession?._id,
           totalSteps: workflows?.find((w) => w._id === workflowId)?.steps.length || 0,
           startedAt: Date.now(),
-          aiModelId: "" as any,
+          aiModelId: "",
           error: undefined,
           currentStep: undefined,
         }
@@ -256,7 +254,7 @@ export function useWorkflow() {
     edit,
     remove,
     // Workflow control functions
-    stopWorkflow,
+    // stopWorkflow,
     stopAllWorkflows,
     // New direct Convex helpers
     getWorkflowExecution,

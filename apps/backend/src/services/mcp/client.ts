@@ -14,7 +14,6 @@ export class MCPClient {
     console.log(`[MCP] MCPClient configured for server ${this.server._id} (${this.server.name})`)
   }
 
-  // change this to use the server config env
   private setupEnvironment(): Record<string, string> {
     const parentEnv = { ...process.env }
     const configEnv = this.server.config?.env || {}
