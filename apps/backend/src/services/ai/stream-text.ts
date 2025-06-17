@@ -30,7 +30,7 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<st
     },
   })
 
-  const responseStream = result.toDataStream()
+  const responseStream = result.toDataStream({ sendReasoning: true })
 
   if (responseStream) {
     const reader = responseStream.getReader()
