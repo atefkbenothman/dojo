@@ -57,11 +57,11 @@ export function MCPCard({ server, isProd = false, isAuthenticated = false }: MCP
           status === "error" && "border-destructive/80 bg-destructive/5 border-2",
         )}
       >
-        {(server.localOnly || server.requiresUserKey) && (
+        {(server.transportType || server.requiresUserKey) && (
           <div className="absolute top-2 right-2 z-10 flex flex-row items-center gap-2">
-            {server.localOnly && (
+            {server.transportType && (
               <div className="bg-secondary/80 border px-2 py-1 text-xs font-medium text-muted-foreground flex items-center leading-none">
-                Local only
+                {server.transportType.toUpperCase()}
               </div>
             )}
             {server.requiresUserKey && (
@@ -80,6 +80,11 @@ export function MCPCard({ server, isProd = false, isAuthenticated = false }: MCP
             {status === "error" && <div className="ml-2 h-2 w-2 rounded-full bg-red-500" />}
           </div>
           <CardDescription className="w-[90%] line-clamp-2 overflow-hidden">{server.summary}</CardDescription>
+          {server.config && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+              {server.config.type === "stdio" ? `Command: ${server.config.command}` : `URL: ${server.config.url}`}
+            </p>
+          )}
           {error && status === "error" && <p className="text-xs text-destructive mt-1 line-clamp-1">{error}</p>}
         </CardHeader>
         <CardFooter className="mt-auto flex items-center justify-between">

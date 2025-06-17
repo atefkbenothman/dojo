@@ -22,12 +22,29 @@ export const mcpFields = {
   userId: v.optional(v.id("users")),
   name: v.string(),
   summary: v.optional(v.string()),
-  config: v.object({
-    command: v.string(),
-    args: v.array(v.string()),
-    requiresEnv: v.optional(v.array(v.string())),
-    env: v.optional(v.record(v.string(), v.string())),
-  }),
+  transportType: v.union(v.literal("stdio"), v.literal("http"), v.literal("sse")),
+  config: v.union(
+    // Stdio config
+    v.object({
+      type: v.literal("stdio"),
+      command: v.string(),
+      args: v.array(v.string()),
+      requiresEnv: v.optional(v.array(v.string())),
+      env: v.optional(v.record(v.string(), v.string())),
+    }),
+    // HTTP config
+    v.object({
+      type: v.literal("http"),
+      url: v.string(),
+      headers: v.optional(v.record(v.string(), v.string())),
+    }),
+    // SSE config
+    v.object({
+      type: v.literal("sse"),
+      url: v.string(),
+      headers: v.optional(v.record(v.string(), v.string())),
+    }),
+  ),
   localOnly: v.optional(v.boolean()),
   requiresUserKey: v.boolean(),
   isPublic: v.optional(v.boolean()),

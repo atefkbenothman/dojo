@@ -52,7 +52,14 @@ export const get = query({
 export const edit = mutation({
   args: {
     id: v.id("mcp"),
-    ...mcpFields,
+    // Spread mcpFields but exclude userId since it shouldn't be editable
+    name: mcpFields.name,
+    summary: mcpFields.summary,
+    transportType: mcpFields.transportType,
+    config: mcpFields.config,
+    localOnly: mcpFields.localOnly,
+    requiresUserKey: mcpFields.requiresUserKey,
+    isPublic: mcpFields.isPublic,
   },
   handler: async (ctx, args) => {
     const { id, ...rest } = args

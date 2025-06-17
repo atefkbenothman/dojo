@@ -5,53 +5,68 @@ import { Button } from "@/components/ui/button"
 import { FormItem, FormLabel } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 
-export interface EnvPair {
+export interface KeyValuePair {
   key: string
   value: string
 }
 
-interface EnvInputFieldsProps {
-  envPairs: EnvPair[]
+interface KeyValueInputFieldsProps {
+  pairs: KeyValuePair[]
   mode: "add" | "edit"
-  onUpdateEnvPairs: (pairs: EnvPair[]) => void
+  onUpdatePairs: (pairs: KeyValuePair[]) => void
   disabled?: boolean
+  fieldName: string // "envPairs" | "headers"
+  fieldLabel: string // "Environment Variables" | "Headers"
+  placeholder?: {
+    key: string
+    value: string
+  }
 }
 
-export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs, disabled = false }: EnvInputFieldsProps) {
-  const handleAddKey = () => {
+export function KeyValueInputFields({
+  pairs,
+  mode,
+  onUpdatePairs,
+  disabled = false,
+  fieldName,
+  fieldLabel,
+  placeholder = { key: "KEY_NAME", value: "Value" },
+}: KeyValueInputFieldsProps) {
+  const handleAddPair = () => {
     if (disabled) return
-    onUpdateEnvPairs([...envPairs, { key: "API_KEY", value: "" }])
+    const defaultKey = fieldName === "headers" ? "" : "API_KEY"
+    onUpdatePairs([...pairs, { key: defaultKey, value: "" }])
   }
 
-  const handleRemoveKey = (index: number) => {
+  const handleRemovePair = (index: number) => {
     if (disabled) return
-    onUpdateEnvPairs(envPairs.filter((_, i) => i !== index))
+    onUpdatePairs(pairs.filter((_, i) => i !== index))
   }
 
   const handleKeyChange = (index: number, key: string) => {
     if (disabled) return
-    const updated = envPairs.map((pair, i) => (i === index ? { ...pair, key } : pair))
-    onUpdateEnvPairs(updated)
+    const updated = pairs.map((pair, i) => (i === index ? { ...pair, key } : pair))
+    onUpdatePairs(updated)
   }
 
   const handleValueChange = (index: number, value: string) => {
     if (disabled) return
-    const updated = envPairs.map((pair, i) => (i === index ? { ...pair, value } : pair))
-    onUpdateEnvPairs(updated)
+    const updated = pairs.map((pair, i) => (i === index ? { ...pair, value } : pair))
+    onUpdatePairs(updated)
   }
 
-  if (envPairs.length === 0 && mode === "edit") return null
+  if (pairs.length === 0 && mode === "edit") return null
 
   return (
     <FormItem>
       <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="environment">
+        <AccordionItem value={fieldName}>
           <AccordionTrigger className="hover:cursor-pointer">
-            <FormLabel className="text-primary/80 text-xs">Environment Variables</FormLabel>
+            <FormLabel className="text-primary/80 text-xs">{fieldLabel}</FormLabel>
           </AccordionTrigger>
           <AccordionContent>
             <div className="grid gap-2">
-              {envPairs.map((pair, index) => (
+              {pairs.map((pair, index) => (
                 <div key={index} className="flex gap-2 items-center">
                   <Input
                     value={pair.key}
@@ -61,14 +76,14 @@ export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs, disabled = fa
                         ? "bg-muted/70 text-primary/70 cursor-not-allowed"
                         : "bg-muted/70 text-primary/90"
                     }`}
-                    placeholder="KEY_NAME"
+                    placeholder={placeholder.key}
                     disabled={mode === "edit" || disabled}
                   />
                   <Input
                     value={pair.value}
                     onChange={(e) => handleValueChange(index, e.target.value)}
                     className="w-1/2 bg-muted/50 focus-visible:ring-0 focus-visible:border-inherit"
-                    placeholder="Value"
+                    placeholder={placeholder.value}
                     disabled={disabled}
                   />
                   {mode === "add" && (
@@ -77,7 +92,7 @@ export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs, disabled = fa
                       variant="ghost"
                       size="icon"
                       className="ml-1 text-destructive hover:cursor-pointer"
-                      onClick={() => handleRemoveKey(index)}
+                      onClick={() => handleRemovePair(index)}
                       aria-label={`Remove ${pair.key}`}
                       disabled={disabled}
                     >
@@ -91,10 +106,10 @@ export function EnvInputFields({ envPairs, mode, onUpdateEnvPairs, disabled = fa
                   type="button"
                   variant="secondary"
                   className="w-full mt-2 hover:cursor-pointer"
-                  onClick={handleAddKey}
+                  onClick={handleAddPair}
                   disabled={disabled}
                 >
-                  + Add Key
+                  + Add {fieldName === "headers" ? "Header" : "Key"}
                 </Button>
               )}
             </div>

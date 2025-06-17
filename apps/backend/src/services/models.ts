@@ -1,4 +1,5 @@
 import { convex } from "../lib/convex-client"
+import { createAnthropic } from "@ai-sdk/anthropic"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
@@ -38,6 +39,12 @@ export function getModelInstance(modelId: Id<"models">, apiKey: string): Languag
       case "groq":
         newInstance = wrapLanguageModel({
           model: createGroq({ apiKey })(model.modelId),
+          middleware: extractReasoningMiddleware({ tagName: "think" }),
+        })
+        break
+      case "anthropic":
+        newInstance = wrapLanguageModel({
+          model: createAnthropic({ apiKey })(model.modelId),
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         })
         break

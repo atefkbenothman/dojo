@@ -34,7 +34,7 @@ export async function establishMcpConnection(
 
   let mcpClient: MCPClient
   try {
-    mcpClient = new MCPClient(server)
+    mcpClient = new MCPClient(server, sessionId)
   } catch (mcpClientError) {
     const errorMessage = `Failed to instantiate MCPClient for session ${sessionId}, server ${server._id}`
     console.error(`[Connection] ${errorMessage}:`, mcpClientError)

@@ -1,52 +1,36 @@
+import { TransportFactory } from "./transport-factory"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { asyncTryCatch } from "@dojo/utils"
 import { Tool, experimental_createMCPClient } from "ai"
-import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
 
 export class MCPClient {
   private server: MCPServer
+  private sessionId: string
   private client: Awaited<ReturnType<typeof experimental_createMCPClient>> | null = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public tools: { [k: string]: Tool<any, any> } = {}
 
-  constructor(server: MCPServer) {
+  constructor(server: MCPServer, sessionId: string) {
     this.server = server
+    this.sessionId = sessionId
     console.log(`[MCP] MCPClient configured for server ${this.server._id} (${this.server.name})`)
-  }
-
-  private setupEnvironment(): Record<string, string> {
-    const parentEnv = { ...process.env }
-    const configEnv = this.server.config?.env || {}
-
-    return {
-      ...parentEnv,
-      ...configEnv,
-      PATH: configEnv.PATH || parentEnv.PATH || "",
-    }
-  }
-
-  private createTransport(envs: Record<string, string>): StdioMCPTransport {
-    if (!this.server.config) throw new Error(`No config found for MCP server ${this.server._id}`)
-    return new StdioMCPTransport({
-      command: this.server.config.command,
-      args: this.server.config.args,
-      cwd: ".",
-      env: envs,
-    })
   }
 
   public async start(): Promise<void> {
     if (this.client) return
 
     if (!this.server.config) throw new Error(`No config found for MCP server ${this.server._id}`)
-    console.log(
-      `[MCP.start] Preparing environment and transport for server ${this.server._id} (${this.server.name})...`,
+    console.log(`[MCP.start] Preparing transport for server ${this.server._id} (${this.server.name})...`)
+
+    // Use TransportFactory to create the appropriate transport
+    const transport = TransportFactory.createTransport(this.server, this.sessionId)
+
+    const { data: client, error: clientError } = await asyncTryCatch(
+      experimental_createMCPClient({
+        transport,
+        name: `dojo-${this.server.name}`,
+      }),
     )
-
-    const envs = this.setupEnvironment()
-    const transport = this.createTransport(envs)
-
-    const { data: client, error: clientError } = await asyncTryCatch(experimental_createMCPClient({ transport }))
 
     if (!client || clientError) {
       console.error(`[MCP.start] Failed to create MCP client for server ${this.server._id}: `, clientError)
