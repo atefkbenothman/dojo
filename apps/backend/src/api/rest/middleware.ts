@@ -1,6 +1,6 @@
 import { getConvexUser } from "../../lib/auth"
 import { convex } from "../../lib/convex-client"
-import { getModelInstance, getModelRequiresApiKey, getModelFallbackApiKey } from "../../services/models"
+import { getModelInstance, getModelRequiresApiKey, getModelFallbackApiKey } from "../../services/ai/models"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { env } from "@dojo/env/backend"

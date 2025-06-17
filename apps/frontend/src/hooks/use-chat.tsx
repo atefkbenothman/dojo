@@ -16,11 +16,11 @@ const initialMessages: Message[] = [
     role: "system",
     content: SYSTEM_PROMPT,
   },
-  {
-    id: "intro",
-    role: "assistant",
-    content: DEFAULT_ASSISTANT_MESSAGE,
-  },
+  // {
+  //   id: "intro",
+  //   role: "assistant",
+  //   content: DEFAULT_ASSISTANT_MESSAGE,
+  // },
 ]
 
 export function useAIChat() {

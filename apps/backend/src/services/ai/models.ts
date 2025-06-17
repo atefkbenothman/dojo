@@ -1,8 +1,9 @@
-import { convex } from "../lib/convex-client"
+import { convex } from "../../lib/convex-client"
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
+import { createPerplexity } from "@ai-sdk/perplexity"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { env } from "@dojo/env/backend"
@@ -45,6 +46,12 @@ export function getModelInstance(modelId: Id<"models">, apiKey: string): Languag
       case "anthropic":
         newInstance = wrapLanguageModel({
           model: createAnthropic({ apiKey })(model.modelId),
+          middleware: extractReasoningMiddleware({ tagName: "think" }),
+        })
+        break
+      case "perplexity":
+        newInstance = wrapLanguageModel({
+          model: createPerplexity({ apiKey })(model.modelId),
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         })
         break
