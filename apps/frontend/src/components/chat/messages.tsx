@@ -203,6 +203,8 @@ const MessageItem = memo(function MessageItem({
                 <ToolInvocationMessage content={part.toolInvocation} />
               </div>
             )
+          default:
+            return null
         }
       })}
     </div>
