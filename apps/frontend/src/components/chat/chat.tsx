@@ -2,14 +2,14 @@
 
 import { ChatFooter } from "@/components/chat/chat-footer"
 import { Messages } from "@/components/chat/messages"
-import { useRef } from "react"
+import { useRef, memo } from "react"
 
 interface ChatProps {
   isServerHealthy: boolean
 }
 
-export function Chat({ isServerHealthy }: ChatProps) {
-  const scrollRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>
+export const Chat = memo(function Chat({ isServerHealthy }: ChatProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   if (!isServerHealthy) {
     return (
@@ -33,4 +33,4 @@ export function Chat({ isServerHealthy }: ChatProps) {
       </div>
     </div>
   )
-}
+})

@@ -44,6 +44,7 @@ export function useAIChat() {
       ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
     },
     initialMessages: initialMessages as Message[],
+    experimental_throttle: 500,
     generateId: () => nanoid(),
     onError: (err) => {
       play("./sounds/error.mp3", { volume: 0.5 })

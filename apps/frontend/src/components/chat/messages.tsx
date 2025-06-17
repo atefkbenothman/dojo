@@ -6,7 +6,7 @@ import { useImageStore } from "@/store/use-image-store"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"
 import { Hammer, Check, Clock, Play, Lightbulb, Info, AlertTriangle } from "lucide-react"
-import { useEffect, RefObject, memo, useMemo, useState } from "react"
+import { useEffect, RefObject, memo, useMemo, useState, useRef } from "react"
 
 interface MessageAccordionProps {
   variant?: "error" | "system" | "reasoning" | "tool"
@@ -82,9 +82,22 @@ function ToolInvocationMessage({ content }: { content: ToolInvocation }) {
 }
 
 function ReasoningMessage({ content }: { content: string }) {
+  const contentRef = useRef<HTMLPreElement>(null)
+
+  // Auto-scroll to bottom when content updates
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight
+    }
+  }, [content])
+
   return (
-    <MessageAccordion variant="reasoning" icon={<Lightbulb className="h-4 w-4" />} title="Reasoning">
-      <pre className={preClassName}>{content}</pre>
+    <MessageAccordion variant="reasoning" icon={<Lightbulb className="h-4 w-4" />} title="Reasoning" defaultOpen={true}>
+      <div className="relative max-h-[200px] overflow-y-auto rounded-sm">
+        <pre ref={contentRef} className={cn(preClassName, "max-h-[200px] overflow-y-auto")}>
+          {content}
+        </pre>
+      </div>
     </MessageAccordion>
   )
 }
@@ -181,9 +194,16 @@ const MessageItem = memo(function MessageItem({
     }
   }
 
+  // Sort parts to ensure reasoning comes first
+  const sortedParts = useMemo(() => {
+    const reasoning = msg.parts.filter((part) => part.type === "reasoning")
+    const other = msg.parts.filter((part) => part.type !== "reasoning")
+    return [...reasoning, ...other]
+  }, [msg.parts])
+
   return (
     <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
-      {msg.parts.map((part, idx) => {
+      {sortedParts.map((part, idx) => {
         switch (part.type) {
           case "text":
             return (
