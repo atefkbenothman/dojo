@@ -10,7 +10,6 @@ interface RunWorkflowParams {
   workflowId: string
   messages: CoreMessage[]
   session: Doc<"sessions"> | undefined
-  aiModel: LanguageModel
   res: Response
 }
 
@@ -26,6 +25,7 @@ interface WorkflowExecutorOptions {
   persistExecution?: boolean
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
+  userId?: Id<"users">
 }
 
 export class WorkflowService {
@@ -38,7 +38,7 @@ export class WorkflowService {
   }
 
   async runWorkflow(params: RunWorkflowParams): Promise<RunWorkflowResult> {
-    const { workflowId, messages, session, aiModel, res } = params
+    const { workflowId, messages, session, res } = params
     let executionId: Id<"workflowExecutions"> | null = null
 
     try {
@@ -62,13 +62,23 @@ export class WorkflowService {
         }
       }
 
+      // Pre-validate that all agents have models
+      for (const step of steps) {
+        if (!step.aiModelId) {
+          return {
+            success: false,
+            completedSteps: 0,
+            error: `Agent "${step.name}" does not have an AI model configured.`,
+          }
+        }
+      }
+
       // Create execution record if we have a session
       if (session) {
         executionId = await convex.mutation(api.workflowExecutions.create, {
           workflowId: workflow._id,
           sessionId: session._id,
           userId: session.userId || undefined,
-          aiModelId: workflow.aiModelId,
           totalSteps: steps.length,
           agentIds: steps.map((step) => step._id),
         })
@@ -92,10 +102,11 @@ export class WorkflowService {
       }
 
       // Execute workflow with execution tracking
-      const executor = new WorkflowExecutor(workflow, steps, aiModel, combinedTools, res, {
+      const executor = new WorkflowExecutor(workflow, steps, combinedTools, res, {
         ...this.defaultExecutorOptions,
         executionId: executionId || undefined,
         sessionId: session?._id,
+        userId: session?.userId || undefined,
       })
 
       const result = await executor.execute(messages)

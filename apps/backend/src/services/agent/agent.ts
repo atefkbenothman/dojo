@@ -1,9 +1,12 @@
 import { convex } from "../../lib/convex-client"
+import { getModelInstance } from "../ai/models"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
 import { aggregateMcpTools } from "../mcp/connection"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
+import { env } from "@dojo/env/backend"
+import { tryCatch, decryptApiKey } from "@dojo/utils"
 import type { CoreMessage, LanguageModel, ToolSet } from "ai"
 import type { Response } from "express"
 
@@ -11,9 +14,7 @@ interface RunAgentParams {
   agentId: string
   messages: CoreMessage[]
   session: Doc<"sessions"> | undefined
-  aiModel: LanguageModel
   res: Response
-  modelId: Id<"models">
 }
 
 interface RunAgentResult {
@@ -25,7 +26,7 @@ export class AgentService {
   private static readonly LOG_PREFIX = "[AgentService]"
 
   async runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-    const { agentId, messages, session, aiModel, res, modelId } = params
+    const { agentId, messages, session, res } = params
     let executionId: Id<"agentExecutions"> | null = null
 
     try {
@@ -38,6 +39,17 @@ export class AgentService {
           error: `Agent with id ${agentId} not found.`,
         }
       }
+
+      // Validate agent has a model
+      if (!agent.aiModelId) {
+        return {
+          success: false,
+          error: `Agent "${agent.name}" does not have an AI model configured.`,
+        }
+      }
+
+      // Get the AI model for this agent
+      const aiModel = await this.getAgentModel(agent, session)
 
       const userIdForLogging = session?.userId || "anonymous"
       const combinedTools = session ? aggregateMcpTools(session._id) : {}
@@ -53,7 +65,7 @@ export class AgentService {
           agentId: agent._id,
           sessionId: session._id,
           userId: session.userId || undefined,
-          aiModelId: modelId,
+          aiModelId: agent.aiModelId, // Use agent's model
           mcpServerIds,
         })
 
@@ -101,6 +113,61 @@ export class AgentService {
         error: error instanceof Error ? error.message : "Internal server error",
       }
     }
+  }
+
+  private async getAgentModel(agent: Doc<"agents">, session: Doc<"sessions"> | undefined): Promise<LanguageModel> {
+    let apiKey: string | undefined
+
+    // For authenticated users, fetch from database
+    if (session?.userId) {
+      const apiKeyObject = await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
+        userId: session.userId,
+        modelId: agent.aiModelId,
+      })
+
+      if (apiKeyObject) {
+        const encryptionSecret = env.ENCRYPTION_SECRET
+        if (!encryptionSecret) {
+          throw new Error("Server configuration error: missing encryption secret.")
+        }
+
+        const decryptedApiKey = await decryptApiKey(apiKeyObject.apiKey, encryptionSecret)
+        if (!decryptedApiKey) {
+          throw new Error("Failed to decrypt API key.")
+        }
+
+        apiKey = decryptedApiKey
+      }
+    }
+
+    // If still no API key, check if the model requires one
+    if (!apiKey) {
+      const model = await convex.query(api.models.get, { id: agent.aiModelId })
+      if (!model) {
+        throw new Error(`Model ${agent.aiModelId} not found`)
+      }
+
+      if (model.requiresApiKey) {
+        throw new Error(`API key required for model ${model.name} used by agent ${agent.name}`)
+      }
+
+      // Use fallback API key for free models
+      apiKey = env.GROQ_API_KEY_FALLBACK || ""
+    }
+
+    if (!apiKey) {
+      throw new Error(`No API key available for model used by agent ${agent.name}`)
+    }
+
+    const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(agent.aiModelId, apiKey))
+
+    if (modelError || !modelInstance) {
+      throw new Error(
+        `Failed to initialize AI model for agent ${agent.name}: ${modelError?.message || "Unknown error"}`,
+      )
+    }
+
+    return modelInstance as LanguageModel
   }
 
   private async executeAgent(params: {

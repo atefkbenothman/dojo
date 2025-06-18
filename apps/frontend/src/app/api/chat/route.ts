@@ -62,10 +62,10 @@ async function handleAgent(
   authorization: string | null,
   guestSessionId: string | null,
   messages: CoreMessage[],
-  agent: { modelId: string; agentId: string },
+  agent: { agentId: string },
 ) {
-  if (!messages || !agent.modelId) {
-    return NextResponse.json({ error: "Missing 'messages' or 'modelId' for AGENT interaction." }, { status: 400 })
+  if (!messages || !agent.agentId) {
+    return NextResponse.json({ error: "Missing 'messages' or 'agentId' for AGENT interaction." }, { status: 400 })
   }
 
   const { data, error } = await asyncTryCatch(
@@ -107,12 +107,12 @@ const handleWorkflow = async (
   authorization: string | null,
   guestSessionId: string | null,
   messages: CoreMessage[],
-  workflow: { modelId: string; workflowId: string },
+  workflow: { workflowId: string },
 ) => {
   console.log(`[API /chat] Received workflow: ${workflow}`)
 
-  if (!messages || !workflow.modelId) {
-    return NextResponse.json({ error: "Missing 'messages' or 'modelId' for WORKFLOW interaction." }, { status: 400 })
+  if (!messages || !workflow.workflowId) {
+    return NextResponse.json({ error: "Missing 'messages' or 'workflowId' for WORKFLOW interaction." }, { status: 400 })
   }
 
   const { data, error } = await asyncTryCatch(

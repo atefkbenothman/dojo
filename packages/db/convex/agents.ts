@@ -10,6 +10,17 @@ async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
   return identity.subject.split("|")[0] as Id<"users">
 }
 
+// Helper to validate that public agents use free models
+async function validatePublicAgentModel(ctx: QueryCtx, isPublic: boolean | undefined, modelId: Id<"models">) {
+  if (isPublic) {
+    const model = await ctx.db.get(modelId)
+    if (!model) throw new Error("Model not found")
+    if (model.requiresApiKey) {
+      throw new Error("Public agents must use free models that don't require API keys")
+    }
+  }
+}
+
 // List: Return all public agents and, if authenticated, user-specific agents
 export const list = query({
   args: {},
@@ -58,6 +69,10 @@ export const edit = mutation({
     if (!agent) throw new Error("Not found")
     if (agent.isPublic) throw new Error("Default agents cannot be edited.")
     if (!userId || agent.userId !== userId) throw new Error("Unauthorized")
+
+    // Validate model choice for public agents
+    await validatePublicAgentModel(ctx, rest.isPublic, rest.aiModelId)
+
     return await ctx.db.replace(id, { ...agent, ...rest })
   },
 })
@@ -69,6 +84,10 @@ export const create = mutation({
     const userId = await getCurrentUserId(ctx)
     if (args.isPublic) throw new Error("Cannot create public agents.")
     if (!userId) throw new Error("Must be signed in to create agents.")
+
+    // Validate model choice for public agents (though currently public creation is blocked)
+    await validatePublicAgentModel(ctx, args.isPublic, args.aiModelId)
+
     return await ctx.db.insert("agents", { ...args, userId })
   },
 })

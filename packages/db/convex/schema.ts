@@ -58,6 +58,7 @@ export const agentsFields = {
   outputType: v.union(v.literal("text"), v.literal("object")),
   systemPrompt: v.string(),
   isPublic: v.optional(v.boolean()),
+  aiModelId: v.id("models"),
 }
 
 // Workflow configurations
@@ -67,7 +68,6 @@ export const workflowsFields = {
   description: v.string(),
   instructions: v.string(),
   steps: v.array(v.id("agents")),
-  aiModelId: v.id("models"),
   isPublic: v.optional(v.boolean()),
 }
 
@@ -120,7 +120,6 @@ export const workflowExecutionsFields = {
   ),
 
   // Execution context
-  aiModelId: v.id("models"),
   error: v.optional(v.string()),
 
   // Timestamps

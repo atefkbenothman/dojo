@@ -1,7 +1,6 @@
 "use client"
 
 import { useSoundEffectContext } from "./use-sound-effect"
-import { useAIModels } from "@/hooks/use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useMCP } from "@/hooks/use-mcp"
 import { useUser } from "@/hooks/use-user"
@@ -19,7 +18,6 @@ export function useAgent() {
   const { connect } = useMCP()
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
-  const { selectedModel } = useAIModels()
   const { currentSession } = useUser()
 
   const agents = useQuery(api.agents.list)
@@ -71,9 +69,9 @@ export function useAgent() {
         return
       }
 
-      // Check if model is selected before starting
-      if (!selectedModel) {
-        toast.error("Please select an AI model before running the agent.", {
+      // Check if agent has a model configured
+      if (!agent.aiModelId) {
+        toast.error("Agent does not have an AI model configured.", {
           icon: null,
           id: "agent-no-model",
           duration: 3000,
@@ -143,7 +141,6 @@ export function useAgent() {
           body: {
             interactionType: "agent",
             agent: {
-              modelId: selectedModel._id,
               agentId: agent._id,
             },
           },
@@ -177,7 +174,7 @@ export function useAgent() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [selectedModel, append, connect, play, setMessages, currentSession],
+    [append, connect, play, setMessages, currentSession],
   )
 
   const stopAgent = async (agentId: string) => {
@@ -224,7 +221,7 @@ export function useAgent() {
           status: "preparing" as const,
           sessionId: currentSession?._id,
           startedAt: Date.now(),
-          aiModelId: selectedModel?._id,
+          aiModelId: agents?.find((a) => a._id === agentId)?.aiModelId,
           mcpServerIds: [],
           error: undefined,
         }
@@ -232,7 +229,7 @@ export function useAgent() {
 
       return realExecution
     },
-    [agentExecutions, preparingAgents, currentSession, selectedModel],
+    [agentExecutions, preparingAgents, currentSession, agents],
   )
 
   // Helper function to get all running executions

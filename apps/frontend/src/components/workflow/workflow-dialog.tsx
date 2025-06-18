@@ -7,10 +7,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useAgent } from "@/hooks/use-agent"
-import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
@@ -27,7 +25,6 @@ const workflowFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
   instructions: z.string().min(1, "Instructions are required"),
-  aiModelId: z.string().min(1, "AI Model is required"),
   steps: z.array(z.string()).min(1, "At least one step is required"),
   isPublic: z.boolean().optional(),
 })
@@ -39,7 +36,6 @@ export function createWorkflowObject(data: WorkflowFormValues): WithoutSystemFie
     name: data.name,
     description: data.description,
     instructions: data.instructions,
-    aiModelId: data.aiModelId as Id<"models">,
     steps: data.steps as Id<"agents">[],
     isPublic: false,
   }
@@ -56,7 +52,6 @@ export interface WorkflowDialogProps {
 export function WorkflowDialog({ mode, workflow, open, onOpenChange, isAuthenticated = false }: WorkflowDialogProps) {
   const { play } = useSoundEffectContext()
   const { agents } = useAgent()
-  const { models } = useAIModels()
   const { create, edit, remove } = useWorkflow()
 
   const formValues = useMemo((): WorkflowFormValues => {
@@ -65,7 +60,6 @@ export function WorkflowDialog({ mode, workflow, open, onOpenChange, isAuthentic
         name: "",
         description: "",
         instructions: "",
-        aiModelId: "",
         steps: [],
         isPublic: false,
       }
@@ -74,7 +68,6 @@ export function WorkflowDialog({ mode, workflow, open, onOpenChange, isAuthentic
       name: workflow.name || "",
       description: workflow.description || "",
       instructions: workflow.instructions || "",
-      aiModelId: workflow.aiModelId || "",
       steps: workflow.steps || [],
       isPublic: workflow.isPublic || false,
     }
@@ -172,32 +165,6 @@ export function WorkflowDialog({ mode, workflow, open, onOpenChange, isAuthentic
                         {...field}
                         disabled={!isAuthenticated}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="aiModelId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-primary/80 text-xs">AI Model</FormLabel>
-                    <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange} disabled={!isAuthenticated}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select AI model...">
-                            {models.find((m) => m._id === field.value)?.name || "Select AI model..."}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {models.map((model) => (
-                            <SelectItem key={model._id} value={model._id}>
-                              {model.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

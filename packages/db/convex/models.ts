@@ -2,6 +2,13 @@ import { Id } from "./_generated/dataModel"
 import { query } from "./_generated/server"
 import { v } from "convex/values"
 
+export const get = query({
+  args: { id: v.id("models") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id)
+  },
+})
+
 export const getModelByModelId = query({
   args: { modelId: v.string() },
   handler: async (ctx, args) => {

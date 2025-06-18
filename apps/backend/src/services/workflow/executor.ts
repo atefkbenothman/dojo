@@ -1,8 +1,11 @@
 import { convex } from "../../lib/convex-client"
+import { getModelInstance } from "../ai/models"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
 import { api } from "@dojo/db/convex/_generated/api"
 import { type Doc, type Id } from "@dojo/db/convex/_generated/dataModel"
+import { env } from "@dojo/env/backend"
+import { tryCatch, decryptApiKey } from "@dojo/utils"
 import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import { type Response } from "express"
 
@@ -12,6 +15,8 @@ interface WorkflowExecutorOptions {
   persistExecution?: boolean
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
+  userId?: Id<"users">
+  userApiKeys?: Map<Id<"models">, string> // Pre-fetched API keys for models
 }
 
 interface CompletedStep {
@@ -49,7 +54,6 @@ export class WorkflowExecutor {
   constructor(
     private workflow: Doc<"workflows">,
     private steps: Doc<"agents">[],
-    private aiModel: LanguageModel,
     private tools: ToolSet,
     private res: Response,
     private options: WorkflowExecutorOptions = {},
@@ -175,6 +179,9 @@ export class WorkflowExecutor {
     }
 
     try {
+      // Get the AI model for this specific agent
+      const aiModel = await this.getAgentModel(step)
+
       // Build messages for this step
       const systemMessage: CoreMessage = {
         role: "system",
@@ -201,9 +208,9 @@ export class WorkflowExecutor {
 
       // Execute based on output type
       if (step.outputType === "text") {
-        await this.executeTextStep(step, stepIndex, currentStepMessages)
+        await this.executeTextStep(step, stepIndex, currentStepMessages, aiModel)
       } else if (step.outputType === "object") {
-        await this.executeObjectStep(step, stepIndex, currentStepMessages)
+        await this.executeObjectStep(step, stepIndex, currentStepMessages, aiModel)
       } else {
         throw new Error("Unknown output type")
       }
@@ -232,10 +239,74 @@ export class WorkflowExecutor {
     }
   }
 
-  private async executeTextStep(step: Doc<"agents">, stepIndex: number, messages: CoreMessage[]): Promise<void> {
+  private async getAgentModel(agent: Doc<"agents">): Promise<LanguageModel> {
+    // Check if we have a pre-fetched API key for this model
+    let apiKey = this.options.userApiKeys?.get(agent.aiModelId)
+
+    if (!apiKey) {
+      // If not pre-fetched, we need to get it
+      // For authenticated users, fetch from database
+      if (this.options.userId) {
+        const apiKeyObject = await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
+          userId: this.options.userId,
+          modelId: agent.aiModelId,
+        })
+
+        if (apiKeyObject) {
+          const encryptionSecret = env.ENCRYPTION_SECRET
+          if (!encryptionSecret) {
+            throw new Error("Server configuration error: missing encryption secret.")
+          }
+
+          const decryptedApiKey = await decryptApiKey(apiKeyObject.apiKey, encryptionSecret)
+          if (!decryptedApiKey) {
+            throw new Error("Failed to decrypt API key.")
+          }
+
+          apiKey = decryptedApiKey
+        }
+      }
+
+      // If still no API key, check if the model requires one
+      if (!apiKey) {
+        const model = await convex.query(api.models.get, { id: agent.aiModelId })
+        if (!model) {
+          throw new Error(`Model ${agent.aiModelId} not found`)
+        }
+
+        if (model.requiresApiKey) {
+          throw new Error(`API key required for model ${model.name} used by agent ${agent.name}`)
+        }
+
+        // Use fallback API key for free models
+        apiKey = env.GROQ_API_KEY_FALLBACK || ""
+      }
+    }
+
+    if (!apiKey) {
+      throw new Error(`No API key available for model used by agent ${agent.name}`)
+    }
+
+    const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(agent.aiModelId, apiKey))
+
+    if (modelError || !modelInstance) {
+      throw new Error(
+        `Failed to initialize AI model for agent ${agent.name}: ${modelError?.message || "Unknown error"}`,
+      )
+    }
+
+    return modelInstance as LanguageModel
+  }
+
+  private async executeTextStep(
+    step: Doc<"agents">,
+    stepIndex: number,
+    messages: CoreMessage[],
+    aiModel: LanguageModel,
+  ): Promise<void> {
     const text = await streamTextResponse({
       res: this.res,
-      languageModel: this.aiModel,
+      languageModel: aiModel,
       messages,
       tools: this.tools,
       end: false, // Don't end the response, we have more steps
@@ -254,11 +325,16 @@ export class WorkflowExecutor {
     }
   }
 
-  private async executeObjectStep(step: Doc<"agents">, stepIndex: number, messages: CoreMessage[]): Promise<void> {
+  private async executeObjectStep(
+    step: Doc<"agents">,
+    stepIndex: number,
+    messages: CoreMessage[],
+    aiModel: LanguageModel,
+  ): Promise<void> {
     // Use streamObjectResponse with returnObject flag to get the complete object
     const object = await streamObjectResponse({
       res: this.res,
-      languageModel: this.aiModel,
+      languageModel: aiModel,
       messages,
       end: false, // Don't end the response, we have more steps
     })

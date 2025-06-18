@@ -1,13 +1,11 @@
 "use client"
 
 import { useAgent } from "@/hooks/use-agent"
-import { useAIModels } from "@/hooks/use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
 import { errorToastStyle } from "@/lib/styles"
-import { useModelStore } from "@/store/use-model-store"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow } from "@dojo/db/convex/types"
@@ -18,13 +16,10 @@ import { useCallback, useMemo, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 export function useWorkflow() {
-  const setSelectedModelId = useModelStore((state) => state.setSelectedModelId)
-
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
   const { agents } = useAgent()
   const { connect } = useMCP()
-  const { getModel } = useAIModels()
   const { currentSession } = useUser()
 
   const workflows = useQuery(api.workflows.list)
@@ -76,12 +71,11 @@ export function useWorkflow() {
         return
       }
 
-      // Check if model is selected before starting
-      const model = getModel(workflow.aiModelId)
-      if (!model) {
-        toast.error("Please select an AI model before running the workflow.", {
+      // Check if workflow has steps
+      if (!workflow.steps || workflow.steps.length === 0) {
+        toast.error("Workflow has no steps configured.", {
           icon: null,
-          id: "workflow-no-model",
+          id: "workflow-no-steps",
           duration: 3000,
           position: "bottom-center",
           style: errorToastStyle,
@@ -93,7 +87,6 @@ export function useWorkflow() {
       // Set optimistic preparing state
       setPreparingWorkflows((prev) => new Set(prev).add(workflow._id))
 
-      setSelectedModelId(workflow.aiModelId)
       setMessages([
         {
           id: nanoid(),
@@ -159,7 +152,6 @@ export function useWorkflow() {
           body: {
             interactionType: "workflow",
             workflow: {
-              modelId: workflow.aiModelId,
               workflowId: workflow._id,
             },
           },
@@ -193,7 +185,7 @@ export function useWorkflow() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, agents, getModel, play, setMessages, setSelectedModelId, connect, currentSession],
+    [append, agents, play, setMessages, connect, currentSession],
   )
 
   // const stopWorkflow = async (workflowId: string) => {
@@ -230,7 +222,6 @@ export function useWorkflow() {
           sessionId: currentSession?._id,
           totalSteps: workflows?.find((w) => w._id === workflowId)?.steps.length || 0,
           startedAt: Date.now(),
-          aiModelId: "",
           error: undefined,
           currentStep: undefined,
         }

@@ -1,13 +1,15 @@
 "use client"
 
 import { MCPServersPopover } from "@/components/agent/mcp-servers-popover"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAgent } from "@/hooks/use-agent"
+import { useAIModels } from "@/hooks/use-ai-models"
 import { cn } from "@/lib/utils"
 import { Agent } from "@dojo/db/convex/types"
 import { Settings } from "lucide-react"
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 
 interface AgentCardProps {
   agent: Agent
@@ -17,9 +19,16 @@ interface AgentCardProps {
 
 export function AgentCard({ agent, isAuthenticated = false, onEditClick }: AgentCardProps) {
   const { runAgent, getAgentExecution } = useAgent()
+  const { models } = useAIModels()
 
   // Get execution data directly from Convex
   const execution = getAgentExecution(agent._id)
+
+  // Get model name
+  const modelName = useMemo(() => {
+    const model = models.find((m) => m._id === agent.aiModelId)
+    return model?.name || "Unknown Model"
+  }, [models, agent.aiModelId])
 
   // Derive state from execution
   const status =
@@ -45,6 +54,9 @@ export function AgentCard({ agent, isAuthenticated = false, onEditClick }: Agent
       <CardHeader className=" flex-1 min-h-0">
         <div className="flex items-center gap-2">
           <CardTitle className="text-primary/90 font-medium">{agent.name}</CardTitle>
+          <Badge variant="secondary" className="text-xs">
+            {modelName}
+          </Badge>
           {status === "preparing" && <div className="ml-2 h-2 w-2 rounded-full bg-yellow-500" />}
           {status === "running" && <div className="ml-2 h-2 w-2 rounded-full bg-green-500" />}
           {status === "error" && <div className="ml-2 h-2 w-2 rounded-full bg-red-500" />}
