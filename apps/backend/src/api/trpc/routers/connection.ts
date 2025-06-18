@@ -1,5 +1,5 @@
 import { convex } from "../../../lib/convex-client"
-import { establishMcpConnection, cleanupExistingConnection } from "../../../services/mcp/connection"
+import { mcpConnectionManager } from "../../../services/mcp/connection-manager"
 import { router, publicProcedure } from "../trpc"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -57,10 +57,10 @@ export const connectionRouter = router({
 
         // The connection process is a three-step dance:
         // 1. Clean up any lingering live connection from the in-memory cache.
-        await cleanupExistingConnection(session._id, server._id)
+        await mcpConnectionManager.cleanupConnection(session._id, server._id)
 
         // 2. Establish the new live connection, which adds it to the cache.
-        const connection = await establishMcpConnection(session._id, server, session.userId || undefined)
+        const connection = await mcpConnectionManager.establishConnection(session._id, server, session.userId || undefined)
         if (!connection?.success) {
           throw new Error(connection?.error || `Failed to establish connection with server "${server.name}".`)
         }
@@ -80,7 +80,7 @@ export const connectionRouter = router({
       // all changes made during this request to leave the system in a clean state.
       // This involves cleaning both the in-memory cache and the database.
       const cleanupPromises = validMcpServers.map(async (server) => {
-        await cleanupExistingConnection(session._id, server._id)
+        await mcpConnectionManager.cleanupConnection(session._id, server._id)
         // Connection cleanup is handled by cleanupExistingConnection
       })
       await Promise.allSettled(cleanupPromises)
@@ -109,7 +109,7 @@ export const connectionRouter = router({
 
     // Disconnecting is a two-step process:
     // 1. Clean up the live connection from the in-memory cache.
-    await cleanupExistingConnection(session._id, serverId as Id<"mcp">)
+    await mcpConnectionManager.cleanupConnection(session._id, serverId as Id<"mcp">)
 
     // Connection is now tracked in mcpConnections table, no need to update session
 

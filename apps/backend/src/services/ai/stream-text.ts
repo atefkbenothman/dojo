@@ -1,4 +1,5 @@
 import { smoothStream, type CoreMessage, streamText, type ToolSet, type LanguageModel } from "ai"
+import { logger } from "../../lib/logger"
 import { type Response } from "express"
 
 interface StreamTextOptions {
@@ -12,8 +13,9 @@ interface StreamTextOptions {
 export async function streamTextResponse(options: StreamTextOptions): Promise<string> {
   const { res, languageModel, messages, tools, end = true } = options
 
-  console.log(
-    `[AI] Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools.`,
+  logger.info(
+    "AI",
+    `Streaming AI response with ${messages.length} initial messages, ${Object.keys(tools).length} tools`,
   )
 
   const result = streamText({
@@ -26,7 +28,7 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<st
       chunking: "line",
     }),
     onError: (error) => {
-      console.error("[AI] Error during AI text stream processing:", error)
+      logger.error("AI", "Error during AI text stream processing", error)
     },
   })
 

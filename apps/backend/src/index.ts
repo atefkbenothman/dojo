@@ -4,13 +4,13 @@ import { workflowRouter } from "./api/rest/routes/workflow"
 import { createTRPCContext } from "./api/trpc/context"
 import { appRouter } from "./api/trpc/router"
 import { convex } from "./lib/convex-client"
-import { cleanupAllConnections } from "./services/mcp/connection"
+import { errorHandlerMiddleware } from "./lib/errors"
+import { logger } from "./lib/logger"
+import { mcpConnectionManager } from "./services/mcp/connection-manager"
 import { startHeartbeat, stopHeartbeat, disconnectAllBackendConnections } from "./services/mcp/heartbeat"
 import { api } from "@dojo/db/convex/_generated/api"
-import { Doc } from "@dojo/db/convex/_generated/dataModel"
 import { env } from "@dojo/env/backend"
 import { createExpressMiddleware } from "@trpc/server/adapters/express"
-import { ImageModel, LanguageModel } from "ai"
 import cors from "cors"
 import express, { Express } from "express"
 
@@ -27,8 +27,7 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      session: Doc<"sessions"> | undefined
-      aiModel: LanguageModel | ImageModel | undefined
+      modelId: string | undefined
       parsedInput: unknown
     }
   }
@@ -60,34 +59,30 @@ app.use(
   }),
 )
 
+// Error handling middleware - must be last
+app.use(errorHandlerMiddleware)
+
 /* Start the server */
 const server = app.listen(PORT, () => {
-  console.log("Starting server...")
-  console.log(`[Core] Server listening on port ${PORT}`)
-  console.log(`[Core] Backend instance ID: ${BACKEND_INSTANCE_ID}`)
-  console.log(`[Core] Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
-  console.log("[Core] tRPC router mounted at /trpc")
-  console.log("[Core] Configured MCP Servers:", mcpServers.map((mcp) => mcp.name).join(", "))
-  console.log("[Core] AI Models:", models.map((model) => model.modelId).join(", "))
+  logger.info("Core", "Starting server...")
+  logger.info("Core", `Server listening on port ${PORT}`)
+  logger.info("Core", `Backend instance ID: ${BACKEND_INSTANCE_ID}`)
+  logger.info("Core", `Idle timeout set to ${IDLE_TIMEOUT_MS / 60000} minutes`)
+  logger.info("Core", "tRPC router mounted at /trpc")
+  logger.info("Core", `Configured MCP Servers: ${mcpServers.map((mcp) => mcp.name).join(", ")}`)
+  logger.info("Core", `AI Models: ${models.map((model) => model.modelId).join(", ")}`)
 
   // Start heartbeat service
   startHeartbeat(BACKEND_INSTANCE_ID)
 })
 
 process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err)
-  console.error("Stack:", err.stack)
-  console.error("Name:", err.name)
-  console.error("Message:", err.message)
+  logger.error("Core", "Uncaught Exception", err)
   process.exit(1)
 })
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise)
-  console.error("Reason:", reason)
-  if (reason instanceof Error) {
-    console.error("Stack:", reason.stack)
-  }
+  logger.error("Core", "Unhandled Rejection", { reason, promise })
 })
 
 // Graceful shutdown handlers
@@ -95,12 +90,12 @@ let isShuttingDown = false
 
 async function gracefulShutdown(signal: string) {
   if (isShuttingDown) {
-    console.log(`[Core] Already shutting down, ignoring ${signal}`)
+    logger.info("Core", `Already shutting down, ignoring ${signal}`)
     return
   }
 
   isShuttingDown = true
-  console.log(`[Core] ${signal} received, starting graceful shutdown...`)
+  logger.info("Core", `${signal} received, starting graceful shutdown...`)
 
   try {
     // Stop heartbeat service
@@ -110,25 +105,25 @@ async function gracefulShutdown(signal: string) {
     await disconnectAllBackendConnections()
 
     // Stop accepting new connections
-    console.log("[Core] Closing HTTP server...")
+    logger.info("Core", "Closing HTTP server...")
     await new Promise<void>((resolve, reject) => {
       server.close((err) => {
         if (err) {
           reject(err)
         } else {
-          console.log("[Core] HTTP server closed")
+          logger.info("Core", "HTTP server closed")
           resolve()
         }
       })
     })
 
     // Clean up all MCP connections
-    await cleanupAllConnections()
+    await mcpConnectionManager.cleanupAllConnections()
 
-    console.log("[Core] Graceful shutdown completed")
+    logger.info("Core", "Graceful shutdown completed")
     process.exit(0)
   } catch (error) {
-    console.error("[Core] Error during graceful shutdown:", error)
+    logger.error("Core", "Error during graceful shutdown", error)
     process.exit(1)
   }
 }

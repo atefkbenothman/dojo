@@ -1,4 +1,5 @@
 import { convex } from "./convex-client"
+import { logger } from "./logger"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc } from "@dojo/db/convex/_generated/dataModel"
 
@@ -14,7 +15,7 @@ export async function getConvexUser(authorization: string | undefined): Promise<
   const user = await convex.query(api.user.currentUser)
 
   if (!user) {
-    console.error("[Auth] Error fetching user from Convex. Token might be invalid or expired.")
+    logger.error("Auth", "Error fetching user from Convex. Token might be invalid or expired")
     return null
   }
 

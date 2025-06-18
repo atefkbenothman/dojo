@@ -1,12 +1,11 @@
 import { convex } from "../../lib/convex-client"
-import { getModelInstance } from "../ai/models"
+import { logger } from "../../lib/logger"
+import { modelManager } from "../ai/model-manager"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
-import { aggregateMcpTools } from "../mcp/connection"
+import { mcpConnectionManager } from "../mcp/connection-manager"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
-import { env } from "@dojo/env/backend"
-import { tryCatch, decryptApiKey } from "@dojo/utils"
 import type { CoreMessage, LanguageModel, ToolSet } from "ai"
 import type { Response } from "express"
 
@@ -52,9 +51,9 @@ export class AgentService {
       const aiModel = await this.getAgentModel(agent, session)
 
       const userIdForLogging = session?.userId || "anonymous"
-      const combinedTools = session ? aggregateMcpTools(session._id) : {}
+      const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
-      console.log(`${AgentService.LOG_PREFIX} Running agent ${agent._id} for userId: ${userIdForLogging}`)
+      logger.info("Agent", `Running agent ${agent._id} for userId: ${userIdForLogging}`)
 
       // Create execution record if we have a session
       if (session) {
@@ -94,7 +93,7 @@ export class AgentService {
         })
       }
 
-      console.log(`${AgentService.LOG_PREFIX} Agent ${agent._id} execution completed successfully`)
+      logger.info("Agent", `Agent ${agent._id} execution completed successfully`)
 
       return { success: true }
     } catch (error) {
@@ -107,7 +106,7 @@ export class AgentService {
         })
       }
 
-      console.error(`${AgentService.LOG_PREFIX} Unhandled error:`, error)
+      logger.error("Agent", "Unhandled error", error)
       return {
         success: false,
         error: error instanceof Error ? error.message : "Internal server error",
@@ -116,56 +115,12 @@ export class AgentService {
   }
 
   private async getAgentModel(agent: Doc<"agents">, session: Doc<"sessions"> | undefined): Promise<LanguageModel> {
-    let apiKey: string | undefined
-
-    // For authenticated users, fetch from database
-    if (session?.userId) {
-      const apiKeyObject = await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
-        userId: session.userId,
-        modelId: agent.aiModelId,
-      })
-
-      if (apiKeyObject) {
-        const encryptionSecret = env.ENCRYPTION_SECRET
-        if (!encryptionSecret) {
-          throw new Error("Server configuration error: missing encryption secret.")
-        }
-
-        const decryptedApiKey = await decryptApiKey(apiKeyObject.apiKey, encryptionSecret)
-        if (!decryptedApiKey) {
-          throw new Error("Failed to decrypt API key.")
-        }
-
-        apiKey = decryptedApiKey
-      }
+    if (!session) {
+      throw new Error("Session is required for agent execution")
     }
 
-    // If still no API key, check if the model requires one
-    if (!apiKey) {
-      const model = await convex.query(api.models.get, { id: agent.aiModelId })
-      if (!model) {
-        throw new Error(`Model ${agent.aiModelId} not found`)
-      }
-
-      if (model.requiresApiKey) {
-        throw new Error(`API key required for model ${model.name} used by agent ${agent.name}`)
-      }
-
-      // Use fallback API key for free models
-      apiKey = env.GROQ_API_KEY_FALLBACK || ""
-    }
-
-    if (!apiKey) {
-      throw new Error(`No API key available for model used by agent ${agent.name}`)
-    }
-
-    const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(agent.aiModelId, apiKey))
-
-    if (modelError || !modelInstance) {
-      throw new Error(
-        `Failed to initialize AI model for agent ${agent.name}: ${modelError?.message || "Unknown error"}`,
-      )
-    }
+    // Use ModelManager to get the model instance (handles API keys, caching, etc.)
+    const modelInstance = await modelManager.getModel(agent.aiModelId, session)
 
     return modelInstance as LanguageModel
   }
@@ -182,8 +137,9 @@ export class AgentService {
 
     switch (agent.outputType) {
       case "text":
-        console.log(
-          `${AgentService.LOG_PREFIX} Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`,
+        logger.info(
+          "Agent",
+          `Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`,
         )
         await streamTextResponse({
           res,

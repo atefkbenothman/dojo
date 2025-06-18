@@ -1,6 +1,9 @@
 import { streamTextResponse } from "../../../services/ai/stream-text"
-import { aggregateMcpTools } from "../../../services/mcp/connection"
-import { createAiRequestMiddleware } from "../middleware"
+import { modelManager } from "../../../services/ai/model-manager"
+import { mcpConnectionManager } from "../../../services/mcp/connection-manager"
+import { logger } from "../../../lib/logger"
+import { createValidatedRequestMiddleware } from "../middleware"
+import { asyncHandler } from "../../../lib/errors"
 import type { LanguageModel, CoreMessage } from "ai"
 import express, { type Request, type Response, Router } from "express"
 import { z } from "zod"
@@ -14,32 +17,35 @@ const chatInputSchema = z.object({
   }),
 })
 
-chatRouter.post("/", createAiRequestMiddleware(chatInputSchema), async (req: Request, res: Response): Promise<void> => {
-  try {
-    const session = req.session
-    const aiModel = req.aiModel as LanguageModel
-    const parsedInput = req.parsedInput as z.infer<typeof chatInputSchema>
-    const { messages } = parsedInput
+chatRouter.post("/", createValidatedRequestMiddleware(chatInputSchema), asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  // Session and parsedInput are guaranteed to exist due to middleware
+  const session = req.session!
+  const parsedInput = req.parsedInput as z.infer<typeof chatInputSchema>
+  const modelId = req.modelId!
+  const { messages } = parsedInput
 
-    const userIdForLogging = session?.userId || "anonymous"
-    const combinedTools = session ? aggregateMcpTools(session._id) : {}
+  const userIdForLogging = session.userId || "anonymous"
 
-    console.log(
-      `[REST /chat/send-message] request received for userId: ${userIdForLogging}, using model: ${parsedInput.chat.modelId}`,
-    )
-    console.log(
-      `[REST /chat/send-message]: Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`,
-    )
-    await streamTextResponse({
-      res,
-      languageModel: aiModel,
-      messages: messages as CoreMessage[],
-      tools: combinedTools,
-    })
-  } catch (error) {
-    console.error("[REST /chat/send-message] Unhandled error:", error)
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error" })
-    }
-  }
-})
+  logger.info(
+    "REST /chat/send-message",
+    `request received for userId: ${userIdForLogging}, using model: ${modelId}`,
+  )
+
+  // Get model instance through ModelManager (handles API keys, caching, etc.)
+  const modelInstance = await modelManager.getModel(modelId, session)
+
+  const aiModel = modelInstance as LanguageModel
+  const combinedTools = mcpConnectionManager.aggregateTools(session._id)
+
+  logger.info(
+    "REST /chat/send-message",
+    `Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`,
+  )
+
+  await streamTextResponse({
+    res,
+    languageModel: aiModel,
+    messages: messages as CoreMessage[],
+    tools: combinedTools,
+  })
+}))

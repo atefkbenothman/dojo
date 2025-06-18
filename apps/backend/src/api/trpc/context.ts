@@ -1,4 +1,5 @@
 import { getConvexUser } from "../../lib/auth"
+import { logger } from "../../lib/logger"
 import { convex } from "../../lib/convex-client"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc } from "@dojo/db/convex/_generated/dataModel"
@@ -17,7 +18,7 @@ export const createTRPCContext = async ({ req, res }: CreateExpressContextOption
     })
 
     if (!session) {
-      console.warn(`[TRPC Context] No session found for authenticated user ${user._id}`)
+      logger.debug("TRPC", `No session found for authenticated user ${user._id}`)
     }
   }
   // Guest users: lookup by clientSessionId
@@ -31,13 +32,13 @@ export const createTRPCContext = async ({ req, res }: CreateExpressContextOption
       })
 
       if (!session) {
-        console.warn(`[TRPC Context] No session found for guest with clientSessionId ${clientSessionId}`)
+        logger.debug("TRPC", `No session found for guest with clientSessionId ${clientSessionId}`)
       }
     }
   }
 
   if (session) {
-    console.log(`[TRPC Context] Found session ${session._id}. User authenticated: ${!!session.userId}`)
+    logger.debug("TRPC", `Found session ${session._id}. User authenticated: ${!!session.userId}`)
   }
 
   return {

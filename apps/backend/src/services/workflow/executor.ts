@@ -1,11 +1,10 @@
 import { convex } from "../../lib/convex-client"
-import { getModelInstance } from "../ai/models"
+import { logger } from "../../lib/logger"
+import { modelManager } from "../ai/model-manager"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
 import { api } from "@dojo/db/convex/_generated/api"
 import { type Doc, type Id } from "@dojo/db/convex/_generated/dataModel"
-import { env } from "@dojo/env/backend"
-import { tryCatch, decryptApiKey } from "@dojo/utils"
 import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import { type Response } from "express"
 
@@ -16,7 +15,6 @@ interface WorkflowExecutorOptions {
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
   userId?: Id<"users">
-  userApiKeys?: Map<Id<"models">, string> // Pre-fetched API keys for models
 }
 
 interface CompletedStep {
@@ -240,60 +238,18 @@ export class WorkflowExecutor {
   }
 
   private async getAgentModel(agent: Doc<"agents">): Promise<LanguageModel> {
-    // Check if we have a pre-fetched API key for this model
-    let apiKey = this.options.userApiKeys?.get(agent.aiModelId)
-
-    if (!apiKey) {
-      // If not pre-fetched, we need to get it
-      // For authenticated users, fetch from database
-      if (this.options.userId) {
-        const apiKeyObject = await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
-          userId: this.options.userId,
-          modelId: agent.aiModelId,
-        })
-
-        if (apiKeyObject) {
-          const encryptionSecret = env.ENCRYPTION_SECRET
-          if (!encryptionSecret) {
-            throw new Error("Server configuration error: missing encryption secret.")
-          }
-
-          const decryptedApiKey = await decryptApiKey(apiKeyObject.apiKey, encryptionSecret)
-          if (!decryptedApiKey) {
-            throw new Error("Failed to decrypt API key.")
-          }
-
-          apiKey = decryptedApiKey
-        }
-      }
-
-      // If still no API key, check if the model requires one
-      if (!apiKey) {
-        const model = await convex.query(api.models.get, { id: agent.aiModelId })
-        if (!model) {
-          throw new Error(`Model ${agent.aiModelId} not found`)
-        }
-
-        if (model.requiresApiKey) {
-          throw new Error(`API key required for model ${model.name} used by agent ${agent.name}`)
-        }
-
-        // Use fallback API key for free models
-        apiKey = env.GROQ_API_KEY_FALLBACK || ""
-      }
+    // Get the session object for ModelManager
+    if (!this.options.sessionId) {
+      throw new Error("Session ID is required for agent model initialization")
     }
 
-    if (!apiKey) {
-      throw new Error(`No API key available for model used by agent ${agent.name}`)
+    const session = await convex.query(api.sessions.get, { sessionId: this.options.sessionId })
+    if (!session) {
+      throw new Error(`Session ${this.options.sessionId} not found`)
     }
 
-    const { data: modelInstance, error: modelError } = tryCatch(getModelInstance(agent.aiModelId, apiKey))
-
-    if (modelError || !modelInstance) {
-      throw new Error(
-        `Failed to initialize AI model for agent ${agent.name}: ${modelError?.message || "Unknown error"}`,
-      )
-    }
+    // Use ModelManager to get the model instance (handles API keys, caching, etc.)
+    const modelInstance = await modelManager.getModel(agent.aiModelId, session)
 
     return modelInstance as LanguageModel
   }
@@ -400,9 +356,9 @@ export class WorkflowExecutor {
 
   private log(message: string, data?: unknown): void {
     if (data !== undefined) {
-      console.log(`${WorkflowExecutor.LOG_PREFIX} ${message}`, data)
+      logger.info("Workflow", message, data)
     } else {
-      console.log(`${WorkflowExecutor.LOG_PREFIX} ${message}`)
+      logger.info("Workflow", message)
     }
   }
 }
@@ -410,8 +366,8 @@ export class WorkflowExecutor {
 // Export the logging function for external use
 export function logWorkflow(message: string, data?: unknown): void {
   if (data !== undefined) {
-    console.log(`[REST /workflow/run] ${message}`, data)
+    logger.info("REST /workflow/run", message, data)
   } else {
-    console.log(`[REST /workflow/run] ${message}`)
+    logger.info("REST /workflow/run", message)
   }
 }

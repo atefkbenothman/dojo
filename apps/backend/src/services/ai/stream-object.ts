@@ -1,4 +1,5 @@
 import { type CoreMessage, type LanguageModel, streamObject } from "ai"
+import { logger } from "../../lib/logger"
 import { type Response } from "express"
 
 interface StreamObjectOptions {
@@ -18,7 +19,7 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
       output: "no-schema",
       mode: "json",
       onError: (err) => {
-        console.error("[AI] Error during AI object stream processing:", err)
+        logger.error("AI", "Error during AI object stream processing", err)
         if (!res.headersSent) {
           res.status(500).json({ message: "Error processing AI stream" })
         } else {
@@ -42,7 +43,7 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
     // Always return the complete object
     return await result.object
   } catch (error) {
-    console.error("[AI] Error during AI object stream processing:", error)
+    logger.error("AI", "Error during AI object stream processing", error)
     if (!res.headersSent) {
       res.status(500).json({ message: "Error processing AI stream" })
     } else {

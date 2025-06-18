@@ -1,5 +1,6 @@
 // import { getModelInstance } from "../../../services/ai/models"
 import type { Context } from "../context"
+import { logger } from "../../../lib/logger"
 import { protectedProcedure, router } from "../trpc"
 import { TRPCError } from "@trpc/server"
 // import { experimental_generateImage as generateImage, type ImageModel } from "ai"
@@ -36,13 +37,13 @@ export const imageRouter = router({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated." })
       }
 
-      console.log(`[TRPC /image.generate] Request received for user: ${session.userId}, using model: ${modelId}`)
+      logger.info("TRPC /image.generate", `Request received for user: ${session.userId}, using model: ${modelId}`)
 
       // let imageModel: ImageModel
       try {
         // imageModel = getModelInstance(modelId) as ImageModel
       } catch (err) {
-        console.error(`[TRPC /image.generate] Error getting model instance for user ${session.userId}:`, err)
+        logger.error("TRPC /image.generate", `Error getting model instance for user ${session.userId}`, err)
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: err instanceof Error ? err.message : "Failed to get model instance.",

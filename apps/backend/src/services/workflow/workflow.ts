@@ -1,9 +1,10 @@
 import { convex } from "../../lib/convex-client"
-import { aggregateMcpTools } from "../mcp/connection"
+import { logger } from "../../lib/logger"
+import { mcpConnectionManager } from "../mcp/connection-manager"
 import { logWorkflow, WorkflowExecutor } from "./executor"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
-import type { CoreMessage, LanguageModel } from "ai"
+import type { CoreMessage } from "ai"
 import type { Response } from "express"
 
 interface RunWorkflowParams {
@@ -92,7 +93,7 @@ export class WorkflowService {
 
       // Prepare execution context
       const userIdForLogging = session?.userId || "anonymous"
-      const combinedTools = session ? aggregateMcpTools(session._id) : {}
+      const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
       logWorkflow(`Starting workflow ${workflow._id} for userId: ${userIdForLogging}, steps: ${steps.length}`)
 
@@ -135,7 +136,7 @@ export class WorkflowService {
         })
       }
 
-      console.error(`${WorkflowService.LOG_PREFIX} Unhandled error:`, error)
+      logger.error("Workflow", "Unhandled error", error)
       return {
         success: false,
         completedSteps: 0,
@@ -151,7 +152,7 @@ export class WorkflowService {
       })
       return workflow
     } catch (error) {
-      console.error(`${WorkflowService.LOG_PREFIX} Error fetching workflow:`, error)
+      logger.error("Workflow", "Error fetching workflow", error)
       return null
     }
   }
@@ -173,7 +174,7 @@ export class WorkflowService {
 
       return validSteps
     } catch (error) {
-      console.error(`${WorkflowService.LOG_PREFIX} Error fetching workflow steps:`, error)
+      logger.error("Workflow", "Error fetching workflow steps", error)
       return []
     }
   }

@@ -1,4 +1,5 @@
 import { convex } from "../../lib/convex-client"
+import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
 
 let heartbeatInterval: NodeJS.Timeout | null = null
@@ -18,16 +19,16 @@ export function startHeartbeat(instanceId: string) {
           const count = await convex.mutation(api.mcpConnections.updateHeartbeats, {
             backendInstanceId,
           })
-          console.log(`[Heartbeat] Updated ${count} connection heartbeats`)
+          logger.debug("Heartbeat", `Updated ${count} connection heartbeats`)
         } catch (error) {
-          console.error("[Heartbeat] Failed to update heartbeats:", error)
+          logger.error("Heartbeat", "Failed to update heartbeats", error)
         }
       })()
     },
     60 * 60 * 1000, // 1 hour
   )
 
-  console.log("[Heartbeat] Service started")
+  logger.info("Heartbeat", "Service started")
 }
 
 /**
@@ -37,7 +38,7 @@ export function stopHeartbeat() {
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval)
     heartbeatInterval = null
-    console.log("[Heartbeat] Service stopped")
+    logger.info("Heartbeat", "Service stopped")
   }
 }
 
@@ -51,8 +52,8 @@ export async function disconnectAllBackendConnections() {
     const count = await convex.mutation(api.mcpConnections.disconnectByBackend, {
       backendInstanceId,
     })
-    console.log(`[Heartbeat] Marked ${count} connections as disconnected`)
+    logger.info("Heartbeat", `Marked ${count} connections as disconnected`)
   } catch (error) {
-    console.error("[Heartbeat] Failed to disconnect backend connections:", error)
+    logger.error("Heartbeat", "Failed to disconnect backend connections", error)
   }
 }
