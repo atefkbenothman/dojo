@@ -44,8 +44,8 @@ export function SideNav() {
   const [userDialogOpen, setUserDialogOpen] = useState(false)
 
   return (
-    <div className="bg-card w-[42px] flex-shrink-0 border-r h-full flex flex-col">
-      <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b">
+    <div className="bg-card w-[42px] flex-shrink-0 border-r-[1.5px] h-full flex flex-col">
+      <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b-[1.5px]">
         <p className="text-base font-medium">⛩️</p>
       </div>
       <TooltipProvider>
@@ -77,7 +77,7 @@ export function SideNav() {
           })}
         </div>
         {/* User Dialog */}
-        <div className="flex w-full items-center border-t justify-center py-4">
+        <div className="flex w-full items-center border-t-[1.5px] justify-center py-4">
           <div
             onClick={() => setUserDialogOpen(true)}
             onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}

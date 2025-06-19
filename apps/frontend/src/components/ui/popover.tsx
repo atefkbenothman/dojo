@@ -3,7 +3,7 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
-import * as React from "react"
+import { useCallback } from "react"
 
 function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
@@ -12,13 +12,11 @@ function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root
 function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
   const { play } = useSoundEffectContext()
 
-  return (
-    <PopoverPrimitive.Trigger
-      data-slot="popover-trigger"
-      onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
-      {...props}
-    />
-  )
+  const handleMouseDown = useCallback(() => {
+    play("./sounds/click.mp3", { volume: 0.5 })
+  }, [play])
+
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" onMouseDown={handleMouseDown} {...props} />
 }
 
 function PopoverContent({
