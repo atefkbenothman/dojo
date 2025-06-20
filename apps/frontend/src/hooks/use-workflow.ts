@@ -5,14 +5,14 @@ import { useChatProvider } from "@/hooks/use-chat"
 import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
-import { errorToastStyle } from "@/lib/styles"
+import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow } from "@dojo/db/convex/types"
 import { Message } from "ai"
 import { useQuery, useMutation } from "convex/react"
 import { nanoid } from "nanoid"
-import { useCallback, useMemo, useEffect, useState } from "react"
+import { useCallback, useMemo, useEffect, useState, useRef } from "react"
 import { toast } from "sonner"
 
 export function useWorkflow() {
@@ -55,6 +55,78 @@ export function useWorkflow() {
       }
     })
   }, [workflowExecutions, preparingWorkflows])
+
+  // Track current workflow execution status for toast notifications
+  const currentExecutionRef = useRef<{ id: string; status: string } | null>(null)
+
+  // Show toast when workflow execution completes or fails
+  useEffect(() => {
+    if (!workflowExecutions || !workflows) return
+
+    // Find the most recent running execution
+    const runningExecution = workflowExecutions.find(exec => 
+      exec.status === "preparing" || exec.status === "running"
+    )
+
+    if (runningExecution) {
+      // Update current execution tracking
+      currentExecutionRef.current = { 
+        id: runningExecution._id, 
+        status: runningExecution.status 
+      }
+    } else if (currentExecutionRef.current) {
+      // Check if our tracked execution finished
+      const finishedExecution = workflowExecutions.find(exec => 
+        exec._id === currentExecutionRef.current?.id && 
+        (exec.status === "completed" || exec.status === "failed")
+      )
+
+      if (finishedExecution) {
+        const workflow = workflows.find(w => w._id === finishedExecution.workflowId)
+        if (workflow) {
+          const duration = finishedExecution.completedAt && finishedExecution.startedAt 
+            ? Math.round((finishedExecution.completedAt - finishedExecution.startedAt) / 1000)
+            : undefined
+
+          const formatDuration = (seconds: number) => {
+            if (seconds < 60) return `${seconds}s`
+            const minutes = Math.floor(seconds / 60)
+            const remainingSeconds = seconds % 60
+            return `${minutes}m ${remainingSeconds}s`
+          }
+
+          if (finishedExecution.status === "completed") {
+            const message = duration 
+              ? `${workflow.name} completed in ${formatDuration(duration)}`
+              : `${workflow.name} completed`
+            
+            toast.success(message, {
+              icon: null,
+              duration: 5000,
+              position: "bottom-center",
+              style: successToastStyle,
+            })
+            play("./sounds/save.mp3", { volume: 0.5 })
+          } else if (finishedExecution.status === "failed") {
+            const message = finishedExecution.error 
+              ? `${workflow.name} failed: ${finishedExecution.error}`
+              : `${workflow.name} failed`
+            
+            toast.error(message, {
+              icon: null,
+              duration: 7000,
+              position: "bottom-center",
+              style: errorToastStyle,
+            })
+            play("./sounds/error.mp3", { volume: 0.5 })
+          }
+        }
+
+        // Clear tracking since we've shown the toast
+        currentExecutionRef.current = null
+      }
+    }
+  }, [workflowExecutions, workflows, play])
 
   const runWorkflow = useCallback(
     async (workflow: Workflow) => {
@@ -205,17 +277,22 @@ export function useWorkflow() {
 
   const stableWorkflows = useMemo(() => workflows || [], [workflows])
 
-  // Helper function to get active execution for a workflow
+  // Helper function to get the most recent execution for a workflow (for persistence)
   const getWorkflowExecution = useCallback(
     (workflowId: Id<"workflows">) => {
-      // First check if we have a real execution from Convex
-      const realExecution =
+      // First check if we have an active execution from Convex
+      const activeExecution =
         workflowExecutions?.find(
           (exec) => exec.workflowId === workflowId && (exec.status === "preparing" || exec.status === "running"),
         ) || null
 
+      // If we have an active execution, return it
+      if (activeExecution) {
+        return activeExecution
+      }
+
       // Only use optimistic state if there's no real execution yet
-      if (!realExecution && preparingWorkflows.has(workflowId)) {
+      if (preparingWorkflows.has(workflowId)) {
         return {
           workflowId,
           status: "preparing" as const,
@@ -227,7 +304,12 @@ export function useWorkflow() {
         }
       }
 
-      return realExecution
+      // For persistence: return the most recent completed/failed execution
+      const recentExecution = workflowExecutions
+        ?.filter((exec) => exec.workflowId === workflowId)
+        ?.sort((a, b) => (b.completedAt || b.startedAt) - (a.completedAt || a.startedAt))[0]
+
+      return recentExecution || null
     },
     [workflowExecutions, preparingWorkflows, workflows, currentSession],
   )

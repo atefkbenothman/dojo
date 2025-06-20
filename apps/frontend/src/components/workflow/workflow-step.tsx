@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Agent } from "@dojo/db/convex/types"
-import { ChevronDown, Copy, GripVertical, Trash } from "lucide-react"
+import { ChevronDown, Copy, GripVertical, Trash, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react"
 import { DragEvent, useState, memo, useCallback, useEffect } from "react"
 
 interface WorkflowStepProps {
@@ -22,6 +22,11 @@ interface WorkflowStepProps {
   onDragLeave?: () => void
   onDrop?: (e: DragEvent) => void
   isExpanded?: boolean
+  // Execution state props
+  executionStatus?: "pending" | "running" | "completed" | "failed"
+  isCurrentStep?: boolean
+  executionDuration?: number
+  executionError?: string
 }
 
 export const WorkflowStep = memo(function WorkflowStep({
@@ -39,6 +44,10 @@ export const WorkflowStep = memo(function WorkflowStep({
   onDragLeave,
   onDrop,
   isExpanded: globalIsExpanded,
+  executionStatus,
+  isCurrentStep = false,
+  executionDuration,
+  executionError,
 }: WorkflowStepProps) {
   const [localIsExpanded, setLocalIsExpanded] = useState(false)
   const [hasLocalOverride, setHasLocalOverride] = useState(false)
@@ -52,6 +61,54 @@ export const WorkflowStep = memo(function WorkflowStep({
       setHasLocalOverride(false)
     }
   }, [globalIsExpanded])
+
+  // Helper functions for execution status
+  const getExecutionStatusIcon = () => {
+    if (!executionStatus) return null
+    
+    const iconClass = "h-4 w-4"
+    
+    switch (executionStatus) {
+      case "completed":
+        return <CheckCircle className={cn(iconClass, "text-green-500")} />
+      case "failed":
+        return <XCircle className={cn(iconClass, "text-red-500")} />
+      case "running":
+        return <Loader2 className={cn(iconClass, "text-blue-500 animate-spin")} />
+      case "pending":
+        return <Clock className={cn(iconClass, "text-gray-400")} />
+      default:
+        return null
+    }
+  }
+
+  const getExecutionBorderColor = () => {
+    if (!executionStatus && !isCurrentStep) return ""
+    
+    if (isCurrentStep && executionStatus === "running") {
+      return "border-blue-500 shadow-blue-200 shadow-lg"
+    }
+    
+    switch (executionStatus) {
+      case "completed":
+        return "border-green-500"
+      case "failed":
+        return "border-red-500"
+      case "running":
+        return "border-blue-500 shadow-blue-200 shadow-lg"
+      default:
+        return ""
+    }
+  }
+
+  const formatDuration = (duration: number) => {
+    if (duration < 1000) return `${duration}ms`
+    const seconds = Math.round(duration / 1000)
+    if (seconds < 60) return `${seconds}s`
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}m ${remainingSeconds}s`
+  }
 
   const handleToggleExpand = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -96,9 +153,18 @@ export const WorkflowStep = memo(function WorkflowStep({
       {/* Drop indicator */}
       {isDragOver && <div className="absolute -top-1 left-0 right-0 h-0.5 bg-primary" />}
 
-      {/* Step number badge - adjusted for centered layout */}
-      <div className="absolute -left-10 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-medium">
-        {stepNumber}
+      {/* Step number badge - adjusted for centered layout with execution state */}
+      <div className={cn(
+        "absolute -left-10 top-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium transition-all",
+        !executionStatus && "bg-muted text-muted-foreground",
+        executionStatus === "pending" && "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
+        executionStatus === "running" && "bg-blue-500 text-white animate-pulse",
+        executionStatus === "completed" && "bg-green-500 text-white",
+        executionStatus === "failed" && "bg-red-500 text-white"
+      )}>
+        {executionStatus === "completed" ? "✓" : 
+         executionStatus === "failed" ? "✗" : 
+         stepNumber}
       </div>
 
       <Card
@@ -107,8 +173,43 @@ export const WorkflowStep = memo(function WorkflowStep({
           isDragging && "opacity-50",
           isDragOver && "ring-2 ring-primary",
           isExpanded && "h-[400px]",
+          getExecutionBorderColor(),
+          isCurrentStep && "ring-2 ring-blue-300 ring-opacity-50",
         )}
       >
+        {/* Execution Status Overlay */}
+        {executionStatus && (
+          <div className={cn(
+            "absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+            executionStatus === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+            executionStatus === "failed" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+            executionStatus === "running" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+            executionStatus === "pending" && "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+          )}>
+            {getExecutionStatusIcon()}
+            <span className="capitalize">{executionStatus}</span>
+            {executionDuration && executionStatus === "completed" && (
+              <span className="text-xs opacity-75">• {formatDuration(executionDuration)}</span>
+            )}
+          </div>
+        )}
+
+        {/* Current Step Pulse Animation */}
+        {isCurrentStep && executionStatus === "running" && (
+          <div className="absolute inset-0 rounded-lg pointer-events-none">
+            <div className="absolute inset-0 rounded-lg bg-blue-500 opacity-10 animate-pulse" />
+            {/* Animated border effect */}
+            <div className="absolute inset-0 rounded-lg border-2 border-blue-500 animate-ping opacity-30" />
+          </div>
+        )}
+
+        {/* Running Progress Bar */}
+        {executionStatus === "running" && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 overflow-hidden rounded-b-lg">
+            <div className="h-full w-full bg-gradient-to-r from-blue-400 via-blue-600 to-blue-400 animate-pulse" />
+          </div>
+        )}
+
         {/* Main content wrapper */}
         <div className="overflow-hidden h-full pb-9">
           {/* Collapsed view - always visible */}
@@ -143,12 +244,29 @@ export const WorkflowStep = memo(function WorkflowStep({
                     <span className="text-muted-foreground text-xs truncate">{modelName || "No model"}</span>
                   </div>
 
-                  {/* Second row: Tools if they exist */}
-                  {step.mcpServers.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      {step.mcpServers.length} {step.mcpServers.length === 1 ? "tool" : "tools"} connected
-                    </div>
-                  )}
+                  {/* Second row: Tools and execution timing */}
+                  <div className="flex items-center justify-between">
+                    {step.mcpServers.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {step.mcpServers.length} {step.mcpServers.length === 1 ? "tool" : "tools"} connected
+                      </div>
+                    )}
+                    {executionDuration && executionStatus === "completed" && (
+                      <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        {formatDuration(executionDuration)}
+                      </div>
+                    )}
+                    {executionStatus === "running" && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400 font-medium animate-pulse">
+                        Running...
+                      </div>
+                    )}
+                    {executionStatus === "failed" && (
+                      <div className="text-xs text-red-600 dark:text-red-400 font-medium">
+                        Failed
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -209,6 +327,44 @@ export const WorkflowStep = memo(function WorkflowStep({
                   </span>
                 </div>
               </div>
+
+              {/* Execution Status */}
+              {executionStatus && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Execution Status
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {getExecutionStatusIcon()}
+                    <span className={cn(
+                      "text-sm font-medium capitalize",
+                      executionStatus === "completed" && "text-green-600 dark:text-green-400",
+                      executionStatus === "failed" && "text-red-600 dark:text-red-400",
+                      executionStatus === "running" && "text-blue-600 dark:text-blue-400",
+                      executionStatus === "pending" && "text-gray-600 dark:text-gray-400"
+                    )}>
+                      {executionStatus}
+                    </span>
+                    {executionDuration && executionStatus === "completed" && (
+                      <span className="text-sm text-muted-foreground">
+                        • {formatDuration(executionDuration)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Execution Error */}
+              {executionError && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-red-600 uppercase tracking-wider">
+                    Execution Error
+                  </label>
+                  <div className="text-sm bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-2 text-red-800 dark:text-red-200">
+                    {executionError}
+                  </div>
+                </div>
+              )}
 
               {/* Configure button */}
               <div className="pt-2 border-t">

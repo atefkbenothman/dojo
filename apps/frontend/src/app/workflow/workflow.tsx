@@ -16,6 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AddStepButton } from "@/components/workflow/add-step-button"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { CanvasZoomControls } from "@/components/workflow/canvas-zoom-controls"
+import { ExecutionOutput } from "@/components/workflow/execution-output"
+import { ExecutionTimeline } from "@/components/workflow/execution-timeline"
 import { WorkflowCard } from "@/components/workflow/workflow-card"
 import { WorkflowMetadataDialog } from "@/components/workflow/workflow-metadata-dialog"
 import { WorkflowStep } from "@/components/workflow/workflow-step"
@@ -29,14 +31,16 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { Search, Edit, TriangleAlert } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, useCallback, useMemo, memo, DragEvent, useRef } from "react"
 
 export const Workflow = memo(function Workflow() {
-  const { workflows, create, edit, remove, runWorkflow, getWorkflowExecution } =
-    useWorkflow()
+  const { workflows, create, edit, remove, runWorkflow, getWorkflowExecution } = useWorkflow()
   const { agents } = useAgent()
   const { getModel } = useAIModels()
   const { isAuthenticated } = useConvexAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [searchInput, setSearchInput] = useState<string>("")
   const [filteredWorkflows, setFilteredWorkflows] = useState<WorkflowType[]>(workflows)
@@ -75,15 +79,16 @@ export const Workflow = memo(function Workflow() {
     zoomStep: 0.1,
   })
 
-
-  // Create a map of workflow execution status for efficient lookup
-  const workflowExecutionStatus = useMemo(() => {
-    const statusMap = new Map<string, boolean>()
+  // Create a map of workflow executions for efficient lookup
+  const workflowExecutions = useMemo(() => {
+    const executionMap = new Map()
     workflows.forEach((workflow) => {
       const execution = getWorkflowExecution(workflow._id)
-      statusMap.set(workflow._id, execution?.status === "preparing" || execution?.status === "running")
+      if (execution) {
+        executionMap.set(workflow._id, execution)
+      }
     })
-    return statusMap
+    return executionMap
   }, [workflows, getWorkflowExecution])
 
   useEffect(() => {
@@ -118,7 +123,6 @@ export const Workflow = memo(function Workflow() {
     // Toggle selection - if clicking the same workflow, unselect it
     setSelectedWorkflow((prev) => (prev?._id === workflow._id ? null : workflow))
   }, [])
-
 
   const handleAddFirstStep = useCallback(
     async (agent: Agent) => {
@@ -206,13 +210,10 @@ export const Workflow = memo(function Workflow() {
     [selectedWorkflow, edit],
   )
 
-  const handleConfigure = useCallback(
-    (index: number) => {
-      // TODO: Open agent configuration dialog
-      console.log("Configure step", index)
-    },
-    [],
-  )
+  const handleConfigure = useCallback((index: number) => {
+    // TODO: Open agent configuration dialog
+    console.log("Configure step", index)
+  }, [])
 
   // Create stable handler caches to prevent re-renders
   const dragStartHandlers = useMemo(() => new Map<number, (e: DragEvent) => void>(), [])
@@ -222,78 +223,142 @@ export const Workflow = memo(function Workflow() {
   const configureHandlers = useMemo(() => new Map<number, () => void>(), [])
   const duplicateHandlers = useMemo(() => new Map<string, () => void>(), [])
 
-  const getDragStartHandler = useCallback((index: number) => {
-    if (!dragStartHandlers.has(index)) {
-      dragStartHandlers.set(index, (e: DragEvent) => handleDragStart(e, index))
-    }
-    return dragStartHandlers.get(index)!
-  }, [dragStartHandlers, handleDragStart])
+  const getDragStartHandler = useCallback(
+    (index: number) => {
+      if (!dragStartHandlers.has(index)) {
+        dragStartHandlers.set(index, (e: DragEvent) => handleDragStart(e, index))
+      }
+      return dragStartHandlers.get(index)!
+    },
+    [dragStartHandlers, handleDragStart],
+  )
 
-  const getDragOverHandler = useCallback((index: number) => {
-    if (!dragOverHandlers.has(index)) {
-      dragOverHandlers.set(index, (e: DragEvent) => handleDragOver(e, index))
-    }
-    return dragOverHandlers.get(index)!
-  }, [dragOverHandlers, handleDragOver])
+  const getDragOverHandler = useCallback(
+    (index: number) => {
+      if (!dragOverHandlers.has(index)) {
+        dragOverHandlers.set(index, (e: DragEvent) => handleDragOver(e, index))
+      }
+      return dragOverHandlers.get(index)!
+    },
+    [dragOverHandlers, handleDragOver],
+  )
 
-  const getDropHandler = useCallback((index: number) => {
-    if (!dropHandlers.has(index)) {
-      dropHandlers.set(index, (e: DragEvent) => handleDrop(e, index))
-    }
-    return dropHandlers.get(index)!
-  }, [dropHandlers, handleDrop])
+  const getDropHandler = useCallback(
+    (index: number) => {
+      if (!dropHandlers.has(index)) {
+        dropHandlers.set(index, (e: DragEvent) => handleDrop(e, index))
+      }
+      return dropHandlers.get(index)!
+    },
+    [dropHandlers, handleDrop],
+  )
 
-  const getRemoveHandler = useCallback((index: number) => {
-    if (!removeHandlers.has(index)) {
-      removeHandlers.set(index, () => handleRemoveStep(index))
-    }
-    return removeHandlers.get(index)!
-  }, [removeHandlers, handleRemoveStep])
+  const getRemoveHandler = useCallback(
+    (index: number) => {
+      if (!removeHandlers.has(index)) {
+        removeHandlers.set(index, () => handleRemoveStep(index))
+      }
+      return removeHandlers.get(index)!
+    },
+    [removeHandlers, handleRemoveStep],
+  )
 
-  const getConfigureHandler = useCallback((index: number) => {
-    if (!configureHandlers.has(index)) {
-      configureHandlers.set(index, () => handleConfigure(index))
-    }
-    return configureHandlers.get(index)!
-  }, [configureHandlers, handleConfigure])
+  const getConfigureHandler = useCallback(
+    (index: number) => {
+      if (!configureHandlers.has(index)) {
+        configureHandlers.set(index, () => handleConfigure(index))
+      }
+      return configureHandlers.get(index)!
+    },
+    [configureHandlers, handleConfigure],
+  )
 
-  const getDuplicateHandler = useCallback((index: number, stepId: Id<"agents">) => {
-    const key = `${index}-${stepId}`
-    if (!duplicateHandlers.has(key)) {
-      duplicateHandlers.set(key, () => handleDuplicateStep(index, stepId))
-    }
-    return duplicateHandlers.get(key)!
-  }, [duplicateHandlers, handleDuplicateStep])
+  const getDuplicateHandler = useCallback(
+    (index: number, stepId: Id<"agents">) => {
+      const key = `${index}-${stepId}`
+      if (!duplicateHandlers.has(key)) {
+        duplicateHandlers.set(key, () => handleDuplicateStep(index, stepId))
+      }
+      return duplicateHandlers.get(key)!
+    },
+    [duplicateHandlers, handleDuplicateStep],
+  )
 
   // Create stable run handlers for each workflow to prevent re-renders
   const runHandlers = useMemo(() => new Map<string, (workflow: WorkflowType) => void>(), [])
-  
-  const getRunHandler = useCallback((workflowId: string) => {
-    if (!runHandlers.has(workflowId)) {
-      runHandlers.set(workflowId, (workflow: WorkflowType) => runWorkflow(workflow))
-    }
-    return runHandlers.get(workflowId)!
-  }, [runHandlers, runWorkflow])
+
+  const getRunHandler = useCallback(
+    (workflowId: string) => {
+      if (!runHandlers.has(workflowId)) {
+        runHandlers.set(workflowId, (workflow: WorkflowType) => runWorkflow(workflow))
+      }
+      return runHandlers.get(workflowId)!
+    },
+    [runHandlers, runWorkflow],
+  )
 
   // Stable add step handler for end of workflow - use ref to avoid recreating
   const selectedWorkflowRef = useRef(selectedWorkflow)
   selectedWorkflowRef.current = selectedWorkflow
-  
-  const handleAddAtEnd = useCallback((agent: Agent) => {
-    if (selectedWorkflowRef.current) {
-      handleAddStepAtIndex(selectedWorkflowRef.current.steps.length - 1, agent)
-    }
-  }, [handleAddStepAtIndex])
+
+  const handleAddAtEnd = useCallback(
+    (agent: Agent) => {
+      if (selectedWorkflowRef.current) {
+        handleAddStepAtIndex(selectedWorkflowRef.current.steps.length - 1, agent)
+      }
+    },
+    [handleAddStepAtIndex],
+  )
 
   // Render workflow steps
   const renderWorkflowSteps = () => {
     if (!selectedWorkflow) return null
+
+    // Get execution data for this workflow
+    const execution = workflowExecutions.get(selectedWorkflow._id)
 
     return (
       <div className="relative">
         {selectedWorkflow.steps.map((stepId, index) => {
           const agent = agents.find((a) => a._id === stepId)
           if (!agent) return null
+
+          // Calculate execution state for this step
+          const getStepExecutionStatus = () => {
+            if (!execution || !execution.stepExecutions) {
+              // If no step executions yet, determine status based on current step
+              if (execution?.currentStep === undefined) return "pending"
+              if (index < execution.currentStep) return "completed"
+              if (index === execution.currentStep) {
+                return execution.status === "running" ? "running" : "pending"
+              }
+              return "pending"
+            }
+
+            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === index)
+            return stepExecution?.status || "pending"
+          }
+
+          const getStepDuration = () => {
+            if (!execution?.stepExecutions) return undefined
+
+            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === index)
+            if (!stepExecution?.startedAt) return undefined
+
+            const endTime = stepExecution.completedAt || Date.now()
+            return endTime - stepExecution.startedAt
+          }
+
+          const getStepError = () => {
+            if (!execution?.stepExecutions) return undefined
+            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === index)
+            return stepExecution?.error
+          }
+
+          const executionStatus = getStepExecutionStatus()
+          const isCurrentStep = execution?.currentStep === index
+          const executionDuration = getStepDuration()
+          const executionError = getStepError()
 
           return (
             <div key={`${index}-${stepId}`} className="relative">
@@ -312,12 +377,21 @@ export const Workflow = memo(function Workflow() {
                 onConfigure={getConfigureHandler(index)}
                 onDuplicate={getDuplicateHandler(index, stepId)}
                 isExpanded={areAllStepsExpanded}
+                executionStatus={executionStatus as "pending" | "running" | "completed" | "failed"}
+                isCurrentStep={isCurrentStep}
+                executionDuration={executionDuration}
+                executionError={executionError}
               />
 
-              {/* Add connecting line between steps */}
+              {/* Add connecting line between steps - with execution state styling */}
               {index < selectedWorkflow.steps.length - 1 && (
                 <div className="relative py-4 w-[280px] mx-auto">
-                  <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 bg-border" />
+                  <div
+                    className={cn(
+                      "absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 transition-colors",
+                      executionStatus === "completed" ? "bg-green-300" : "bg-border",
+                    )}
+                  />
                 </div>
               )}
             </div>
@@ -325,9 +399,7 @@ export const Workflow = memo(function Workflow() {
         })}
 
         {/* Single Add Step button at the end */}
-        {selectedWorkflow.steps.length > 0 && (
-          <AddStepButton agents={agents} onSelect={handleAddAtEnd} />
-        )}
+        {selectedWorkflow.steps.length > 0 && <AddStepButton agents={agents} onSelect={handleAddAtEnd} />}
       </div>
     )
   }
@@ -361,7 +433,8 @@ export const Workflow = memo(function Workflow() {
           onDeleteClick={handleDeleteWorkflow}
           isSelected={selectedWorkflow?._id === workflow._id}
           onRun={getRunHandler(workflow._id)}
-          isRunning={workflowExecutionStatus.get(workflow._id) || false}
+          execution={workflowExecutions.get(workflow._id)}
+          agents={agents || []}
         />
       </div>
     ))
@@ -378,9 +451,11 @@ export const Workflow = memo(function Workflow() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
-        {/* Header */}
+        {/* Main Header */}
         <div className="flex flex-col gap-1 border-b-[1.5px] pb-4 -my-4 py-4 -mx-4 px-4 bg-card">
-          <p className="text-sm font-semibold">Workflows</p>
+          <div className="flex items-center gap-70">
+            <p className="text-sm font-semibold">Workflows</p>
+          </div>
         </div>
       </div>
 
@@ -453,49 +528,18 @@ export const Workflow = memo(function Workflow() {
         </div>
 
         {/* Main area - Flow canvas with tab bar */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden bg-none">
           {selectedWorkflow ? (
             <Tabs
               value={activeTab}
               onValueChange={(value) => setActiveTab(value as "build" | "run")}
-              className="h-full flex flex-col"
+              className="h-full flex flex-col bg-transparent"
             >
-              <div className="px-4 pt-4 pb-0 flex items-center justify-between">
-                <TabsList className="h-9 w-64">
-                  <TabsTrigger value="build" className="flex-1">
-                    Build
-                  </TabsTrigger>
-                  <TabsTrigger value="run" className="flex-1">
-                    Run
-                  </TabsTrigger>
-                </TabsList>
-
+              <TabsContent value="build" className="flex-1 mt-0 overflow-hidden bg-transparent">
                 {activeTab === "build" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsMetadataDialogOpen(true)}
-                    className="gap-2 h-9"
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                    Edit Workflow
-                  </Button>
-                )}
-              </div>
-
-              <TabsContent value="build" className="flex-1 mt-0 overflow-hidden">
-                {activeTab === "build" && (
-                  <div className="h-full flex flex-col">
-                    {/* Header with workflow info */}
-                    <div className="flex flex-col gap-1 px-4 py-2">
-                      <h3 className="text-sm font-medium">{selectedWorkflow.name}</h3>
-                      {selectedWorkflow.description && (
-                        <p className="text-xs text-muted-foreground">{selectedWorkflow.description}</p>
-                      )}
-                    </div>
-
+                  <div className="h-full bg-transparent">
                     {/* Canvas or Empty State */}
-                    <div className="relative flex-1 overflow-hidden">
+                    <div className="relative h-full overflow-hidden">
                       {selectedWorkflow.steps.length === 0 ? (
                         /* Empty state - not part of canvas */
                         <div className="flex items-center justify-center h-full">
@@ -526,6 +570,41 @@ export const Workflow = memo(function Workflow() {
                             </div>
                           </div>
 
+                          {/* Header and controls positioned on canvas */}
+                          <div className="absolute top-4 left-4 right-4 z-10 space-y-3">
+                            {/* Tab bar and edit button */}
+                            <div className="flex items-center justify-between">
+                              <TabsList className="h-9 w-64">
+                                <TabsTrigger value="build" className="flex-1">
+                                  Build
+                                </TabsTrigger>
+                                <TabsTrigger value="run" className="flex-1">
+                                  Run
+                                </TabsTrigger>
+                              </TabsList>
+
+                              {activeTab === "build" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setIsMetadataDialogOpen(true)}
+                                  className="gap-2 h-9"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                  Edit Workflow
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Header with workflow info */}
+                            <div className="flex flex-col gap-1">
+                              <h3 className="text-sm font-medium">{selectedWorkflow.name}</h3>
+                              {selectedWorkflow.description && (
+                                <p className="text-xs text-muted-foreground">{selectedWorkflow.description}</p>
+                              )}
+                            </div>
+                          </div>
+
                           {/* Zoom controls - only show when there are steps */}
                           <CanvasZoomControls
                             zoom={zoom}
@@ -544,7 +623,71 @@ export const Workflow = memo(function Workflow() {
               </TabsContent>
 
               <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
-                <div className="h-full bg-background">{/* Run tab content - blank for now */}</div>
+                <div className="h-full bg-background relative">
+                  {/* Header and controls positioned on top */}
+                  <div className="absolute top-4 left-4 right-4 z-10 space-y-3">
+                    {/* Tab bar */}
+                    <div className="flex items-center justify-between">
+                      <TabsList className="h-9 w-64">
+                        <TabsTrigger value="build" className="flex-1">
+                          Build
+                        </TabsTrigger>
+                        <TabsTrigger value="run" className="flex-1">
+                          Run
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
+
+                    {/* Header with workflow info */}
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-sm font-medium">{selectedWorkflow.name}</h3>
+                      {selectedWorkflow.description && (
+                        <p className="text-xs text-muted-foreground">{selectedWorkflow.description}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedWorkflow && workflowExecutions.get(selectedWorkflow._id) ? (
+                    <div className="flex h-full pt-24">
+                      {/* Timeline sidebar */}
+                      <div className="w-80 border-r flex-shrink-0">
+                        <ExecutionTimeline
+                          execution={workflowExecutions.get(selectedWorkflow._id)}
+                          agents={agents || []}
+                          workflowSteps={selectedWorkflow.steps}
+                        />
+                      </div>
+
+                      {/* Output main area */}
+                      <div className="flex-1">
+                        <ExecutionOutput
+                          execution={workflowExecutions.get(selectedWorkflow._id)}
+                          agents={agents || []}
+                          workflowSteps={selectedWorkflow.steps}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full pt-24">
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {selectedWorkflow
+                            ? "No active execution. Run the workflow to see progress here."
+                            : "Select a workflow to monitor execution progress."}
+                        </p>
+                        {selectedWorkflow && (
+                          <Button
+                            onClick={() => getRunHandler(selectedWorkflow._id)(selectedWorkflow)}
+                            disabled={!isAuthenticated || selectedWorkflow.steps.length === 0}
+                            className="mt-4"
+                          >
+                            Run Workflow
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           ) : (
@@ -554,7 +697,6 @@ export const Workflow = memo(function Workflow() {
           )}
         </div>
       </div>
-
 
       {/* Metadata Edit Dialog */}
       {selectedWorkflow && (
