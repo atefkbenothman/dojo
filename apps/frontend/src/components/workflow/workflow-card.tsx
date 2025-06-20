@@ -1,93 +1,139 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { StepsPopover } from "@/components/workflow/steps-popover"
-import { useWorkflow } from "@/hooks/use-workflow"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Workflow } from "@dojo/db/convex/types"
-import { Settings } from "lucide-react"
-import { useCallback } from "react"
+import { Play, MoreVertical, Pencil, Trash } from "lucide-react"
+import { useCallback, memo, useState } from "react"
 
 interface WorkflowCardProps {
   workflow: Workflow
   isAuthenticated?: boolean
   onEditClick?: (workflow: Workflow) => void
+  onDeleteClick?: (workflow: Workflow) => void
+  isSelected?: boolean
+  onRun?: (workflow: Workflow) => void
+  isRunning?: boolean
 }
 
-export function WorkflowCard({ workflow, isAuthenticated = false, onEditClick }: WorkflowCardProps) {
-  const { runWorkflow, getWorkflowExecution } = useWorkflow()
+export const WorkflowCard = memo(function WorkflowCard({
+  workflow,
+  isAuthenticated = false,
+  onEditClick,
+  onDeleteClick,
+  isSelected = false,
+  onRun,
+  isRunning = false,
+}: WorkflowCardProps) {
+  const { play } = useSoundEffectContext()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  // Get execution data directly from Convex
-  const execution = getWorkflowExecution(workflow._id)
+  const handleRun = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (onRun) {
+        onRun(workflow)
+      }
+    },
+    [onRun, workflow],
+  )
 
-  // Derive state from execution
-  const status =
-    execution?.status === "completed" ? "idle" : execution?.status === "failed" ? "error" : execution?.status || "idle"
-  const error = execution?.error || null
-  const currentStep = execution?.currentStep
-  const totalSteps = execution?.totalSteps || workflow.steps.length
-  const isRunning = status === "preparing" || status === "running"
+  const handleEdit = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setDropdownOpen(false)
+      if (onEditClick) {
+        onEditClick(workflow)
+      }
+    },
+    [onEditClick, workflow],
+  )
 
-  // For progress text, we'll show step info when running
-  const showStepProgress = status === "running" && currentStep !== null && currentStep !== undefined
+  const handleDelete = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setDropdownOpen(false)
+      if (onDeleteClick) {
+        onDeleteClick(workflow)
+      }
+    },
+    [onDeleteClick, workflow],
+  )
 
-  const handleRun = useCallback(() => {
-    runWorkflow(workflow)
-  }, [runWorkflow, workflow])
+  const handleMouseDown = useCallback(() => {
+    play("./sounds/click.mp3", { volume: 0.5 })
+  }, [play])
 
   return (
     <Card
       className={cn(
-        "relative h-[10rem] max-h-[10rem] w-full max-w-[16rem] border flex flex-col overflow-hidden transition-all duration-200",
-        isRunning && "border-primary/80 bg-muted/50 border-2",
-        status === "error" && "border-destructive/80 bg-destructive/5 border-2",
+        "h-14 w-full hover:bg-background/50 bg-background transition-colors",
+        isSelected && "border-primary border-2 bg-background/50",
       )}
+      onMouseDown={handleMouseDown}
     >
-      <div className="absolute top-2 right-2 z-10 bg-secondary/80 border px-2 py-0.5 text-xs font-medium text-muted-foreground">
-        {workflow.steps.length} steps
-      </div>
-      <CardHeader className=" flex-1 min-h-0">
-        <div className="flex items-center gap-2">
-          <CardTitle className="text-primary/90 font-medium">{workflow.name}</CardTitle>
-          {status === "preparing" && <div className="ml-2 h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />}
-          {status === "running" && <div className="ml-2 h-2 w-2 rounded-full bg-green-500 animate-pulse" />}
-          {status === "error" && <div className="ml-2 h-2 w-2 rounded-full bg-red-500" />}
-        </div>
-        <CardDescription className="w-[90%] line-clamp-2 overflow-hidden">{workflow.description}</CardDescription>
-        {showStepProgress && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Step {currentStep + 1} of {totalSteps}
-          </p>
-        )}
-        {error && status === "error" && <p className="text-xs text-destructive mt-1 line-clamp-1">{error}</p>}
-      </CardHeader>
-      <CardFooter className="mt-auto flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <CardContent className="p-0 h-full">
+        <div className="flex items-center h-full px-4 gap-3">
+          {/* Name - takes up most space */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{workflow.name}</p>
+          </div>
+
+          {/* Step count - minimal badge */}
+          <div className="flex items-center justify-center h-6 w-6 border text-xs font-medium">
+            {workflow.steps.length}
+          </div>
+
+          {/* Run button - moved to where edit was */}
           <Button
-            variant={isRunning ? "default" : "secondary"}
+            variant="ghost"
+            size="icon"
             onClick={handleRun}
             disabled={!isAuthenticated || isRunning}
-            className={cn(
-              "border hover:cursor-pointer",
-              isRunning ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
-            )}
+            className={cn("h-8 w-8", isRunning && "text-primary")}
           >
-            {status === "preparing" ? "Preparing..." : status === "running" ? "Running..." : "Run"}
+            <Play className={cn("h-3.5 w-3.5", isRunning && "animate-pulse")} />
           </Button>
 
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={() => onEditClick?.(workflow)}
-            className="bg-secondary/80 hover:bg-secondary/90 h-9 w-9 border hover:cursor-pointer"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-
-          <StepsPopover workflow={workflow} />
+          {/* Dropdown menu for edit/delete */}
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!isAuthenticated || workflow.isPublic}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </CardFooter>
+      </CardContent>
     </Card>
   )
-}
+})
