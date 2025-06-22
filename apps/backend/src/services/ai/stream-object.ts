@@ -1,5 +1,5 @@
-import { type CoreMessage, type LanguageModel, streamObject } from "ai"
 import { logger } from "../../lib/logger"
+import { type CoreMessage, type LanguageModel, streamObject } from "ai"
 import { type Response } from "express"
 
 interface StreamObjectOptions {
@@ -9,10 +9,25 @@ interface StreamObjectOptions {
   end?: boolean
 }
 
-export async function streamObjectResponse(options: StreamObjectOptions): Promise<unknown> {
+interface StreamObjectResult {
+  object: unknown
+  metadata?: {
+    usage?: {
+      promptTokens: number
+      completionTokens: number
+      totalTokens: number
+    }
+    model?: string
+    finishReason?: string
+  }
+}
+
+export async function streamObjectResponse(options: StreamObjectOptions): Promise<StreamObjectResult> {
   const { res, languageModel, messages, end = true } = options
 
   try {
+    let capturedMetadata: StreamObjectResult["metadata"] = {}
+
     const result = streamObject({
       model: languageModel,
       messages,
@@ -25,6 +40,24 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
         } else {
           res.end()
         }
+      },
+      onFinish: ({ usage, response }) => {
+        // Capture metadata when streaming completes
+        capturedMetadata = {
+          usage: usage
+            ? {
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                totalTokens: usage.totalTokens,
+              }
+            : undefined,
+          model: response.modelId || languageModel.modelId,
+        }
+
+        logger.info("AI", "Object stream completed with metadata", {
+          usage: capturedMetadata.usage,
+          model: capturedMetadata.model,
+        })
       },
     })
 
@@ -40,8 +73,12 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
       res.end()
     }
 
-    // Always return the complete object
-    return await result.object
+    // Return the complete object with metadata
+    const object = await result.object
+    return {
+      object,
+      metadata: capturedMetadata,
+    }
   } catch (error) {
     logger.error("AI", "Error during AI object stream processing", error)
     if (!res.headersSent) {
@@ -52,6 +89,9 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
       }
     }
 
-    return null
+    return {
+      object: null,
+      metadata: undefined,
+    }
   }
 }

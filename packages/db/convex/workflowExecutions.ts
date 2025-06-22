@@ -77,6 +77,28 @@ export const updateStepProgress = mutation({
     status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("failed")),
     error: v.optional(v.string()),
     output: v.optional(v.string()),
+    metadata: v.optional(
+      v.object({
+        usage: v.optional(
+          v.object({
+            promptTokens: v.number(),
+            completionTokens: v.number(),
+            totalTokens: v.number(),
+          }),
+        ),
+        toolCalls: v.optional(
+          v.array(
+            v.object({
+              toolCallId: v.string(),
+              toolName: v.string(),
+              args: v.any(),
+            }),
+          ),
+        ),
+        model: v.optional(v.string()),
+        finishReason: v.optional(v.string()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const execution = await ctx.db.get(args.executionId)
@@ -96,6 +118,7 @@ export const updateStepProgress = mutation({
       status: args.status,
       error: args.error,
       output: args.output !== undefined ? args.output : stepToUpdate.output,
+      metadata: args.metadata !== undefined ? args.metadata : stepToUpdate.metadata,
       startedAt: args.status === "running" ? Date.now() : stepToUpdate.startedAt,
       completedAt: args.status === "completed" || args.status === "failed" ? Date.now() : undefined,
     }

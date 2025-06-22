@@ -213,16 +213,7 @@ export class WorkflowExecutor {
         throw new Error("Unknown output type")
       }
 
-      // After successful execution, update step status with output
-      if (this.options.executionId && this.lastStepOutput) {
-        await convex.mutation(api.workflowExecutions.updateStepProgress, {
-          executionId: this.options.executionId,
-          stepIndex,
-          agentId: step._id,
-          status: "completed",
-          output: this.lastStepOutput, // Include the output from the step
-        })
-      }
+      // Note: Status update with metadata is now handled in executeTextStep/executeObjectStep
     } catch (error) {
       // Update step status on error
       if (this.options.executionId) {
@@ -261,7 +252,7 @@ export class WorkflowExecutor {
     messages: CoreMessage[],
     aiModel: LanguageModel,
   ): Promise<void> {
-    const text = await streamTextResponse({
+    const result = await streamTextResponse({
       res: this.res,
       languageModel: aiModel,
       messages,
@@ -269,15 +260,27 @@ export class WorkflowExecutor {
       end: false, // Don't end the response, we have more steps
     })
 
-    this.log(`Step ${stepIndex + 1} text output:`, text)
+    this.log(`Step ${stepIndex + 1} text output:`, result.text)
 
-    if (!this.isValidStepOutput(text)) {
+    if (!this.isValidStepOutput(result.text)) {
       this.log(`WARNING: Empty text response at step ${stepIndex + 1}`)
     } else {
-      this.lastStepOutput = text
+      this.lastStepOutput = result.text
       this.completedSteps.push({
         instructions: step.systemPrompt,
-        output: text,
+        output: result.text,
+      })
+    }
+
+    // Store metadata if available
+    if (this.options.executionId && result.metadata) {
+      await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        executionId: this.options.executionId,
+        stepIndex,
+        agentId: step._id,
+        status: "completed",
+        output: this.lastStepOutput,
+        metadata: result.metadata,
       })
     }
   }
@@ -289,14 +292,14 @@ export class WorkflowExecutor {
     aiModel: LanguageModel,
   ): Promise<void> {
     // Use streamObjectResponse with returnObject flag to get the complete object
-    const object = await streamObjectResponse({
+    const result = await streamObjectResponse({
       res: this.res,
       languageModel: aiModel,
       messages,
       end: false, // Don't end the response, we have more steps
     })
 
-    const objectContent = JSON.stringify(object)
+    const objectContent = JSON.stringify(result.object)
     this.log(`Step ${stepIndex + 1} object output:`, objectContent)
 
     if (!this.isValidStepOutput(objectContent)) {
@@ -306,6 +309,18 @@ export class WorkflowExecutor {
       this.completedSteps.push({
         instructions: step.systemPrompt,
         output: objectContent,
+      })
+    }
+
+    // Store metadata if available
+    if (this.options.executionId && result.metadata) {
+      await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        executionId: this.options.executionId,
+        stepIndex,
+        agentId: step._id,
+        status: "completed",
+        output: this.lastStepOutput,
+        metadata: result.metadata,
       })
     }
   }

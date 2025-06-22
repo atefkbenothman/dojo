@@ -116,6 +116,28 @@ export const workflowExecutionsFields = {
         completedAt: v.optional(v.number()),
         error: v.optional(v.string()),
         output: v.optional(v.string()),
+        metadata: v.optional(
+          v.object({
+            usage: v.optional(
+              v.object({
+                promptTokens: v.number(),
+                completionTokens: v.number(),
+                totalTokens: v.number(),
+              }),
+            ),
+            toolCalls: v.optional(
+              v.array(
+                v.object({
+                  toolCallId: v.string(),
+                  toolName: v.string(),
+                  args: v.any(),
+                }),
+              ),
+            ),
+            model: v.optional(v.string()),
+            finishReason: v.optional(v.string()),
+          }),
+        ),
       }),
     ),
   ),
