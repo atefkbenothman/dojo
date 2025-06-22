@@ -76,6 +76,7 @@ export const updateStepProgress = mutation({
     agentId: v.id("agents"),
     status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("failed")),
     error: v.optional(v.string()),
+    output: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const execution = await ctx.db.get(args.executionId)
@@ -94,6 +95,7 @@ export const updateStepProgress = mutation({
       agentId: args.agentId, // This should match what was set at creation
       status: args.status,
       error: args.error,
+      output: args.output !== undefined ? args.output : stepToUpdate.output,
       startedAt: args.status === "running" ? Date.now() : stepToUpdate.startedAt,
       completedAt: args.status === "completed" || args.status === "failed" ? Date.now() : undefined,
     }

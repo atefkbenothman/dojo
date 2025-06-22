@@ -213,13 +213,14 @@ export class WorkflowExecutor {
         throw new Error("Unknown output type")
       }
 
-      // After successful execution, update step status
-      if (this.options.executionId) {
+      // After successful execution, update step status with output
+      if (this.options.executionId && this.lastStepOutput) {
         await convex.mutation(api.workflowExecutions.updateStepProgress, {
           executionId: this.options.executionId,
           stepIndex,
           agentId: step._id,
           status: "completed",
+          output: this.lastStepOutput, // Include the output from the step
         })
       }
     } catch (error) {

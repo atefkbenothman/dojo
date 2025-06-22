@@ -115,6 +115,7 @@ export const workflowExecutionsFields = {
         startedAt: v.optional(v.number()),
         completedAt: v.optional(v.number()),
         error: v.optional(v.string()),
+        output: v.optional(v.string()),
       }),
     ),
   ),
