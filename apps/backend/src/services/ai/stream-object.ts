@@ -26,43 +26,41 @@ interface StreamObjectResult {
 export async function streamObjectResponse(options: StreamObjectOptions): Promise<StreamObjectResult> {
   const { res, languageModel, messages, end = true, abortSignal } = options
 
+  let capturedMetadata: StreamObjectResult["metadata"] = {}
+  let streamError: Error | null = null
+
+  const result = streamObject({
+    model: languageModel,
+    messages,
+    output: "no-schema",
+    mode: "json",
+    abortSignal,
+    onError: (err) => {
+      logger.error("AI", "Error during AI object stream processing", err)
+      // Capture the error to throw after streaming attempt
+      streamError = err instanceof Error ? err : new Error(String(err))
+    },
+    onFinish: ({ usage, response }) => {
+      // Capture metadata when streaming completes
+      capturedMetadata = {
+        usage: usage
+          ? {
+              promptTokens: usage.promptTokens,
+              completionTokens: usage.completionTokens,
+              totalTokens: usage.totalTokens,
+            }
+          : undefined,
+        model: response.modelId || languageModel.modelId,
+      }
+
+      logger.info("AI", "Object stream completed with metadata", {
+        usage: capturedMetadata.usage,
+        model: capturedMetadata.model,
+      })
+    },
+  })
+
   try {
-    let capturedMetadata: StreamObjectResult["metadata"] = {}
-
-    const result = streamObject({
-      model: languageModel,
-      messages,
-      output: "no-schema",
-      mode: "json",
-      abortSignal,
-      onError: (err) => {
-        logger.error("AI", "Error during AI object stream processing", err)
-        if (!res.headersSent) {
-          res.status(500).json({ message: "Error processing AI stream" })
-        } else {
-          res.end()
-        }
-      },
-      onFinish: ({ usage, response }) => {
-        // Capture metadata when streaming completes
-        capturedMetadata = {
-          usage: usage
-            ? {
-                promptTokens: usage.promptTokens,
-                completionTokens: usage.completionTokens,
-                totalTokens: usage.totalTokens,
-              }
-            : undefined,
-          model: response.modelId || languageModel.modelId,
-        }
-
-        logger.info("AI", "Object stream completed with metadata", {
-          usage: capturedMetadata.usage,
-          model: capturedMetadata.model,
-        })
-      },
-    })
-
     const encoder = new TextEncoder()
 
     for await (const part of result.fullStream) {
@@ -77,23 +75,25 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
 
     // Return the complete object with metadata
     const object = await result.object
+
+    // If an error occurred during streaming, throw it now
+    if (streamError) {
+      throw streamError
+    }
+
     return {
       object,
       metadata: capturedMetadata,
     }
   } catch (error) {
     logger.error("AI", "Error during AI object stream processing", error)
-    if (!res.headersSent) {
-      res.status(500).json({ message: "Error processing AI stream" })
-    } else {
-      if (!res.writableEnded) {
-        res.end()
-      }
+
+    // Ensure response is properly ended on error
+    if (!res.writableEnded) {
+      res.end()
     }
 
-    return {
-      object: null,
-      metadata: undefined,
-    }
+    // Re-throw the error so it propagates to WorkflowExecutor/AgentService
+    throw error
   }
 }

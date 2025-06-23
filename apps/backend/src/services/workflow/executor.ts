@@ -38,16 +38,11 @@ export class WorkflowExecutor {
     Connection: "keep-alive",
   } as const
 
-  private static readonly SECTIONS = {
-    CONTEXT: "=== WORKFLOW CONTEXT ===",
-    COMPLETED: "=== COMPLETED STEPS ===",
-    CURRENT: "=== CURRENT STEP ===",
-  } as const
-
   // Instance properties
   private completedSteps: CompletedStep[] = []
   private lastStepOutput?: string
   private currentStepIndex?: number
+  private hasError: boolean = false
 
   constructor(
     private workflow: Doc<"workflows">,
@@ -216,6 +211,9 @@ export class WorkflowExecutor {
       // Clear current step index after successful completion
       this.currentStepIndex = undefined
     } catch (error) {
+      // Set error flag to prevent abort handler from marking as cancelled
+      this.hasError = true
+
       // Update step status on error
       if (this.options.executionId) {
         await convex.mutation(api.workflowExecutions.updateStepProgress, {
@@ -257,37 +255,45 @@ export class WorkflowExecutor {
     messages: CoreMessage[],
     aiModel: LanguageModel,
   ): Promise<void> {
-    const result = await streamTextResponse({
-      res: this.res,
-      languageModel: aiModel,
-      messages,
-      tools: this.tools,
-      end: false, // Don't end the response, we have more steps
-      abortSignal: this.options.abortSignal,
-    })
-
-    // this.log(`Step ${stepIndex + 1} text output:`, result.text)
-
-    if (!this.isValidStepOutput(result.text)) {
-      this.log(`WARNING: Empty text response at step ${stepIndex + 1}`)
-    } else {
-      this.lastStepOutput = result.text
-      this.completedSteps.push({
-        instructions: step.systemPrompt,
-        output: result.text,
+    try {
+      const result = await streamTextResponse({
+        res: this.res,
+        languageModel: aiModel,
+        messages,
+        tools: this.tools,
+        end: false, // Don't end the response, we have more steps
+        abortSignal: this.options.abortSignal,
       })
-    }
 
-    // Store metadata if available
-    if (this.options.executionId && result.metadata) {
-      await convex.mutation(api.workflowExecutions.updateStepProgress, {
-        executionId: this.options.executionId,
-        stepIndex,
-        agentId: step._id,
-        status: "completed",
-        output: this.lastStepOutput,
-        metadata: result.metadata,
+      // this.log(`Step ${stepIndex + 1} text output:`, result.text)
+
+      if (!this.isValidStepOutput(result.text)) {
+        this.log(`WARNING: Empty text response at step ${stepIndex + 1}`)
+      } else {
+        this.lastStepOutput = result.text
+        this.completedSteps.push({
+          instructions: step.systemPrompt,
+          output: result.text,
+        })
+      }
+
+      // Store metadata if available
+      if (this.options.executionId && result.metadata) {
+        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+          executionId: this.options.executionId,
+          stepIndex,
+          agentId: step._id,
+          status: "completed",
+          output: this.lastStepOutput,
+          metadata: result.metadata,
+        })
+      }
+    } catch (error) {
+      this.log(`Error in executeTextStep for step ${stepIndex + 1}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       })
+      throw error // Re-throw to be caught by executeStep
     }
   }
 
@@ -297,38 +303,46 @@ export class WorkflowExecutor {
     messages: CoreMessage[],
     aiModel: LanguageModel,
   ): Promise<void> {
-    // Use streamObjectResponse with returnObject flag to get the complete object
-    const result = await streamObjectResponse({
-      res: this.res,
-      languageModel: aiModel,
-      messages,
-      end: false, // Don't end the response, we have more steps
-      abortSignal: this.options.abortSignal,
-    })
-
-    const objectContent = JSON.stringify(result.object)
-    this.log(`Step ${stepIndex + 1} object output:`, objectContent)
-
-    if (!this.isValidStepOutput(objectContent)) {
-      this.log(`WARNING: Empty object response at step ${stepIndex + 1}`)
-    } else {
-      this.lastStepOutput = objectContent
-      this.completedSteps.push({
-        instructions: step.systemPrompt,
-        output: objectContent,
+    try {
+      // Use streamObjectResponse with returnObject flag to get the complete object
+      const result = await streamObjectResponse({
+        res: this.res,
+        languageModel: aiModel,
+        messages,
+        end: false, // Don't end the response, we have more steps
+        abortSignal: this.options.abortSignal,
       })
-    }
 
-    // Store metadata if available
-    if (this.options.executionId && result.metadata) {
-      await convex.mutation(api.workflowExecutions.updateStepProgress, {
-        executionId: this.options.executionId,
-        stepIndex,
-        agentId: step._id,
-        status: "completed",
-        output: this.lastStepOutput,
-        metadata: result.metadata,
+      const objectContent = JSON.stringify(result.object)
+      this.log(`Step ${stepIndex + 1} object output:`, objectContent)
+
+      if (!this.isValidStepOutput(objectContent)) {
+        this.log(`WARNING: Empty object response at step ${stepIndex + 1}`)
+      } else {
+        this.lastStepOutput = objectContent
+        this.completedSteps.push({
+          instructions: step.systemPrompt,
+          output: objectContent,
+        })
+      }
+
+      // Store metadata if available
+      if (this.options.executionId && result.metadata) {
+        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+          executionId: this.options.executionId,
+          stepIndex,
+          agentId: step._id,
+          status: "completed",
+          output: this.lastStepOutput,
+          metadata: result.metadata,
+        })
+      }
+    } catch (error) {
+      this.log(`Error in executeObjectStep for step ${stepIndex + 1}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       })
+      throw error // Re-throw to be caught by executeStep
     }
   }
 
@@ -351,15 +365,18 @@ export class WorkflowExecutor {
     currentStep: { name?: string; systemPrompt: string },
     stepIndex: number,
   ): string {
-    const completedStepsSection = this.formatCompletedSteps()
+    return `<workflow_context>
+    ${workflowPrompt}
+</workflow_context>
 
-    return (
-      `${WorkflowExecutor.SECTIONS.CONTEXT}\n${workflowPrompt}\n\n` +
-      `${WorkflowExecutor.SECTIONS.COMPLETED}\n${completedStepsSection}\n\n` +
-      `${WorkflowExecutor.SECTIONS.CURRENT}\nStep ${stepIndex + 1}: ${
-        currentStep.name || ""
-      }\nInstructions: ${currentStep.systemPrompt}`
-    )
+<completed_steps>
+${this.formatCompletedSteps()}
+</completed_steps>
+
+<current_step>
+Step ${stepIndex + 1}: ${currentStep.name || ""}
+Instructions: ${currentStep.systemPrompt}
+</current_step>`
   }
 
   private buildUserMessage(stepIndex: number, workflowPrompt: string): { role: "user"; content: string } {
@@ -388,18 +405,36 @@ export class WorkflowExecutor {
   private async handleAbort(): Promise<void> {
     this.log("Workflow aborted, cleaning up running steps")
 
+    // Don't update status if we're already in an error state
+    if (this.hasError) {
+      this.log("Skipping abort status update due to existing error state")
+      return
+    }
+
     // If we have a current step that's running, mark it as cancelled
     if (this.options.executionId && this.currentStepIndex !== undefined) {
       const currentStep = this.steps[this.currentStepIndex]
       if (currentStep) {
         try {
-          await convex.mutation(api.workflowExecutions.updateStepProgress, {
+          // First check if the step has already been marked as failed
+          const execution = await convex.query(api.workflowExecutions.get, {
             executionId: this.options.executionId,
-            stepIndex: this.currentStepIndex,
-            agentId: currentStep._id,
-            status: "cancelled",
-            error: "Workflow cancelled",
           })
+
+          if (execution?.stepExecutions) {
+            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === this.currentStepIndex)
+
+            // Only update to cancelled if the step hasn't already been marked as failed
+            if (stepExecution?.status !== "failed") {
+              await convex.mutation(api.workflowExecutions.updateStepProgress, {
+                executionId: this.options.executionId,
+                stepIndex: this.currentStepIndex,
+                agentId: currentStep._id,
+                status: "cancelled",
+                error: "Workflow cancelled",
+              })
+            }
+          }
         } catch (error) {
           this.log("Error updating step status on abort:", error)
         }

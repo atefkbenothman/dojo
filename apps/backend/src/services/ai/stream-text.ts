@@ -38,6 +38,8 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
   )
 
   let capturedMetadata: StreamTextResult["metadata"] = {}
+  let streamError: Error | null = null
+  let hasErrored = false
 
   const result = streamText({
     model: languageModel,
@@ -50,60 +52,87 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
       chunking: "line",
     }),
     onError: (error) => {
-      logger.error("AI", "Error during AI text stream processing", error)
+      logger.error("AI", "Error during AI text stream processing (onError callback)", error)
+      // Capture the error to throw after streaming attempt
+      streamError = error instanceof Error ? error : new Error(String(error))
+      hasErrored = true
     },
     onFinish: ({ usage, finishReason, response }) => {
-      // Capture metadata when streaming completes
-      capturedMetadata = {
-        usage: usage
-          ? {
-              promptTokens: usage.promptTokens,
-              completionTokens: usage.completionTokens,
-              totalTokens: usage.totalTokens,
-            }
-          : undefined,
-        toolCalls: response.messages
-          .filter((msg): msg is any => msg.role === "assistant" && "toolInvocations" in msg)
-          .flatMap((msg) => msg.toolInvocations || [])
-          .map((toolInvocation: any) => ({
-            toolCallId: toolInvocation.toolCallId,
-            toolName: toolInvocation.toolName,
-            args: toolInvocation.args,
-          })),
-        model: response.modelId || languageModel.modelId,
-        finishReason: finishReason,
+      // Only capture metadata if we haven't errored
+      if (!hasErrored) {
+        capturedMetadata = {
+          usage: usage
+            ? {
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                totalTokens: usage.totalTokens,
+              }
+            : undefined,
+          toolCalls: response.messages
+            .filter((msg): msg is any => msg.role === "assistant" && "toolInvocations" in msg)
+            .flatMap((msg) => msg.toolInvocations || [])
+            .map((toolInvocation: any) => ({
+              toolCallId: toolInvocation.toolCallId,
+              toolName: toolInvocation.toolName,
+              args: toolInvocation.args,
+            })),
+          model: response.modelId || languageModel.modelId,
+          finishReason: finishReason,
+        }
       }
-
-      // logger.info("AI", "Stream completed with metadata", {
-      //   usage: capturedMetadata.usage,
-      //   toolCallCount: capturedMetadata.toolCalls?.length || 0,
-      //   model: capturedMetadata.model,
-      //   finishReason: capturedMetadata.finishReason,
-      // })
     },
   })
 
-  const responseStream = result.toDataStream({ sendReasoning: true })
+  try {
+    const responseStream = result.toDataStream({ sendReasoning: true })
 
-  if (responseStream) {
-    const reader = responseStream.getReader()
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) {
-        break
+    if (responseStream) {
+      const reader = responseStream.getReader()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        res.write(value)
       }
-      res.write(value)
     }
-  }
 
-  if (end && !res.writableEnded) {
-    res.end()
-  }
+    if (end && !res.writableEnded) {
+      res.end()
+    }
 
-  const text = await result.text
+    // Check for errors before trying to get the text
+    if (streamError) {
+      logger.error("AI", "Throwing captured stream error before getting text", streamError)
+      throw streamError
+    }
 
-  return {
-    text,
-    metadata: capturedMetadata,
+    const text = await result.text
+
+    // Check again in case error occurred during text retrieval
+    if (streamError) {
+      logger.error("AI", "Throwing captured stream error after getting text", streamError)
+      throw streamError
+    }
+
+    return {
+      text,
+      metadata: capturedMetadata,
+    }
+  } catch (error) {
+    logger.error("AI", "Error caught in streamTextResponse try-catch", {
+      error,
+      errorName: error instanceof Error ? error.name : "unknown",
+      errorMessage: error instanceof Error ? error.message : String(error),
+      hasStreamError: !!streamError,
+    })
+
+    // Ensure response is properly ended on error
+    if (!res.writableEnded) {
+      res.end()
+    }
+
+    // Re-throw the error so it propagates to WorkflowExecutor/AgentService
+    throw error
   }
 }
