@@ -6,6 +6,7 @@
 docs/
 data/
 todo.md
+CLAUDE.md
 
 # dependencies
 node_modules/
