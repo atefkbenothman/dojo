@@ -8,6 +8,7 @@ interface StreamTextOptions {
   messages: CoreMessage[]
   tools: ToolSet
   end?: boolean
+  abortSignal?: AbortSignal
 }
 
 interface StreamTextResult {
@@ -29,7 +30,7 @@ interface StreamTextResult {
 }
 
 export async function streamTextResponse(options: StreamTextOptions): Promise<StreamTextResult> {
-  const { res, languageModel, messages, tools, end = true } = options
+  const { res, languageModel, messages, tools, end = true, abortSignal } = options
 
   logger.info(
     "AI",
@@ -43,6 +44,7 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
     messages: messages,
     tools: tools,
     maxSteps: 20,
+    abortSignal,
     experimental_transform: smoothStream({
       delayInMs: 5,
       chunking: "line",

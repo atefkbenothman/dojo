@@ -111,7 +111,13 @@ export const workflowExecutionsFields = {
       v.object({
         stepIndex: v.number(),
         agentId: v.id("agents"),
-        status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("failed")),
+        status: v.union(
+          v.literal("pending"),
+          v.literal("running"),
+          v.literal("completed"),
+          v.literal("failed"),
+          v.literal("cancelled"),
+        ),
         startedAt: v.optional(v.number()),
         completedAt: v.optional(v.number()),
         error: v.optional(v.string()),
@@ -144,6 +150,9 @@ export const workflowExecutionsFields = {
 
   // Execution context
   error: v.optional(v.string()),
+
+  // Cancellation tracking
+  cancellationRequested: v.optional(v.boolean()),
 
   // Timestamps
   startedAt: v.number(),
@@ -198,6 +207,9 @@ export const agentExecutionsFields = {
   aiModelId: v.id("models"),
   mcpServerIds: v.array(v.id("mcp")), // MCP servers used for this execution
   error: v.optional(v.string()),
+
+  // Cancellation tracking
+  cancellationRequested: v.optional(v.boolean()),
 
   // Timestamps
   startedAt: v.number(),

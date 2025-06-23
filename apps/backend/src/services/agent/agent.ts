@@ -24,11 +24,25 @@ interface RunAgentResult {
 export class AgentService {
   private static readonly LOG_PREFIX = "[AgentService]"
 
+  // Global registry of active executions
+  private static executionControllers = new Map<string, AbortController>()
+
   async runAgent(params: RunAgentParams): Promise<RunAgentResult> {
     const { agentId, messages, session, res } = params
     let executionId: Id<"agentExecutions"> | null = null
+    const abortController = new AbortController()
 
     try {
+      // Listen for client disconnection
+      res.on("close", () => {
+        logger.info("Agent", `Client disconnected for agent ${agentId}`)
+        abortController.abort()
+        // Clean up from registry if we have an execution ID
+        if (executionId) {
+          AgentService.executionControllers.delete(executionId)
+        }
+      })
+
       // Fetch agent
       const agent = await convex.query(api.agents.get, { id: agentId as Id<"agents"> })
 
@@ -73,6 +87,10 @@ export class AgentService {
           executionId,
           status: "running",
         })
+
+        // Register the abort controller
+        AgentService.executionControllers.set(executionId, abortController)
+        logger.info("Agent", `Registered abort controller for execution ${executionId}`)
       }
 
       // Execute agent based on output type
@@ -83,6 +101,7 @@ export class AgentService {
         res,
         combinedTools,
         userIdForLogging,
+        abortSignal: abortController.signal,
       })
 
       // Update execution status to completed
@@ -97,6 +116,23 @@ export class AgentService {
 
       return { success: true }
     } catch (error) {
+      // Check if it was an abort
+      if (error instanceof Error && error.name === "AbortError") {
+        logger.info("Agent", `Agent ${agentId} execution was cancelled`)
+
+        if (executionId) {
+          await convex.mutation(api.agentExecutions.updateStatus, {
+            executionId,
+            status: "cancelled",
+          })
+        }
+
+        return {
+          success: false,
+          error: "Execution cancelled",
+        }
+      }
+
       // Update execution status to failed
       if (executionId) {
         await convex.mutation(api.agentExecutions.updateStatus, {
@@ -110,6 +146,69 @@ export class AgentService {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Internal server error",
+      }
+    } finally {
+      // Clean up the controller from registry
+      if (executionId) {
+        AgentService.executionControllers.delete(executionId)
+        logger.info("Agent", `Cleaned up abort controller for execution ${executionId}`)
+      }
+    }
+  }
+
+  // New method to stop an execution
+  async stopExecution(executionId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // First, check if the execution exists and is running
+      const execution = await convex.query(api.agentExecutions.get, {
+        executionId: executionId as Id<"agentExecutions">,
+      })
+
+      if (!execution) {
+        logger.info("Agent", `Execution ${executionId} not found in database`)
+        return {
+          success: false,
+          error: "Execution not found",
+        }
+      }
+
+      // Check if execution is in a stoppable state
+      if (execution.status !== "preparing" && execution.status !== "running") {
+        logger.info("Agent", `Execution ${executionId} is not running (status: ${execution.status})`)
+        return {
+          success: true, // Return success for idempotency
+          error: `Execution already ${execution.status}`,
+        }
+      }
+
+      // Mark cancellation in database first
+      await convex.mutation(api.agentExecutions.requestCancellation, {
+        executionId: executionId as Id<"agentExecutions">,
+      })
+
+      // Update status to cancelled
+      await convex.mutation(api.agentExecutions.updateStatus, {
+        executionId: executionId as Id<"agentExecutions">,
+        status: "cancelled",
+        error: "Agent execution cancelled by user",
+      })
+
+      // Try to get the controller and abort if it exists
+      const controller = AgentService.executionControllers.get(executionId)
+      if (controller) {
+        controller.abort()
+        logger.info("Agent", `Aborted execution ${executionId}`)
+        // Controller will be cleaned up in the finally block of runAgent
+      } else {
+        logger.info("Agent", `No active controller for execution ${executionId}, updated database status only`)
+      }
+
+      return { success: true }
+    } catch (error) {
+      logger.error("Agent", `Error stopping execution ${executionId}`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to stop execution",
       }
     }
   }
@@ -132,20 +231,19 @@ export class AgentService {
     res: Response
     combinedTools: ToolSet
     userIdForLogging: string
+    abortSignal: AbortSignal
   }): Promise<void> {
-    const { agent, aiModel, messages, res, combinedTools, userIdForLogging } = params
+    const { agent, aiModel, messages, res, combinedTools, userIdForLogging, abortSignal } = params
 
     switch (agent.outputType) {
       case "text":
-        logger.info(
-          "Agent",
-          `Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`,
-        )
+        logger.info("Agent", `Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`)
         await streamTextResponse({
           res,
           languageModel: aiModel,
           messages,
           tools: combinedTools,
+          abortSignal,
         })
         break
 
@@ -154,6 +252,7 @@ export class AgentService {
           res,
           languageModel: aiModel,
           messages,
+          abortSignal,
         })
         break
 

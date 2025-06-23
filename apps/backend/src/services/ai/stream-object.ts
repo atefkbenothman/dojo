@@ -7,6 +7,7 @@ interface StreamObjectOptions {
   languageModel: LanguageModel
   messages: CoreMessage[]
   end?: boolean
+  abortSignal?: AbortSignal
 }
 
 interface StreamObjectResult {
@@ -23,7 +24,7 @@ interface StreamObjectResult {
 }
 
 export async function streamObjectResponse(options: StreamObjectOptions): Promise<StreamObjectResult> {
-  const { res, languageModel, messages, end = true } = options
+  const { res, languageModel, messages, end = true, abortSignal } = options
 
   try {
     let capturedMetadata: StreamObjectResult["metadata"] = {}
@@ -33,6 +34,7 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
       messages,
       output: "no-schema",
       mode: "json",
+      abortSignal,
       onError: (err) => {
         logger.error("AI", "Error during AI object stream processing", err)
         if (!res.headersSent) {

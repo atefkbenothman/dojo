@@ -60,6 +60,27 @@ export const updateStatus = mutation({
   },
 })
 
+// Request cancellation of an agent execution
+export const requestCancellation = mutation({
+  args: {
+    executionId: v.id("agentExecutions"),
+  },
+  handler: async (ctx, args) => {
+    const execution = await ctx.db.get(args.executionId)
+    if (!execution) throw new Error("Execution not found")
+
+    // Only allow cancellation if the execution is still running
+    if (execution.status !== "preparing" && execution.status !== "running") {
+      throw new Error(`Cannot cancel execution with status: ${execution.status}`)
+    }
+
+    // Mark cancellation as requested
+    await ctx.db.patch(args.executionId, {
+      cancellationRequested: true,
+    })
+  },
+})
+
 // Query executions by session
 export const getBySession = query({
   args: {
@@ -120,5 +141,15 @@ export const getActiveExecutions = query({
       .collect()
 
     return executions
+  },
+})
+
+// Get a single execution by ID
+export const get = query({
+  args: {
+    executionId: v.id("agentExecutions"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.executionId)
   },
 })

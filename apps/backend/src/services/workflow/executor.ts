@@ -15,6 +15,7 @@ interface WorkflowExecutorOptions {
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
   userId?: Id<"users">
+  abortSignal?: AbortSignal
 }
 
 interface CompletedStep {
@@ -48,6 +49,7 @@ export class WorkflowExecutor {
   // Instance properties
   private completedSteps: CompletedStep[] = []
   private lastStepOutput?: string
+  private currentStepIndex?: number
 
   constructor(
     private workflow: Doc<"workflows">,
@@ -61,6 +63,13 @@ export class WorkflowExecutor {
       retryDelay: 1000, // Start with 1 second
       persistExecution: false,
       ...options,
+    }
+
+    // Listen for abort signal to handle cleanup
+    if (this.options.abortSignal) {
+      this.options.abortSignal.addEventListener("abort", () => {
+        this.handleAbort()
+      })
     }
   }
 
@@ -82,6 +91,26 @@ export class WorkflowExecutor {
 
       // Execute each step sequentially
       for (let i = 0; i < this.steps.length; i++) {
+        // Check for cancellation before each step (graceful cancellation)
+        if (this.options.abortSignal?.aborted) {
+          this.log(`Workflow cancelled before step ${i + 1}`)
+
+          // Update status to cancelled
+          if (this.options.executionId) {
+            await convex.mutation(api.workflowExecutions.updateStatus, {
+              executionId: this.options.executionId,
+              status: "cancelled",
+              error: `Workflow cancelled after completing ${i} steps`,
+            })
+          }
+
+          return {
+            success: false,
+            completedSteps: this.completedSteps,
+            error: `Workflow cancelled after completing ${i} steps`,
+          }
+        }
+
         const step = this.steps[i]
         if (!step) continue
 
@@ -142,16 +171,49 @@ export class WorkflowExecutor {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         if (attempt > 0) {
+          // Check if we've been aborted before retrying
+          if (this.options.abortSignal?.aborted) {
+            throw new Error("Workflow cancelled")
+          }
+
           // Exponential backoff: 1s, 2s, 4s...
           const delay = (this.options.retryDelay || 1000) * Math.pow(2, attempt - 1)
           this.log(`Retrying step ${stepIndex + 1} after ${delay}ms (attempt ${attempt + 1}/${maxRetries})`)
-          await new Promise((resolve) => setTimeout(resolve, delay))
+
+          // Make the delay interruptible
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(resolve, delay)
+
+            // Listen for abort during delay
+            const abortHandler = () => {
+              clearTimeout(timeout)
+              reject(new Error("Workflow cancelled during retry delay"))
+            }
+
+            if (this.options.abortSignal) {
+              this.options.abortSignal.addEventListener("abort", abortHandler, { once: true })
+            }
+
+            // Clean up if resolved normally
+            setTimeout(() => {
+              if (this.options.abortSignal) {
+                this.options.abortSignal.removeEventListener("abort", abortHandler)
+              }
+            }, delay)
+          })
         }
 
         await this.executeStep(step, stepIndex, workflowPrompt, initialMessages)
         return // Success, exit retry loop
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
+
+        // Check if this is an abort error - don't retry aborts
+        if (lastError.name === "AbortError" || this.options.abortSignal?.aborted) {
+          this.log(`Step ${stepIndex + 1} was cancelled, not retrying`)
+          throw lastError
+        }
+
         this.log(`Step ${stepIndex + 1} attempt ${attempt + 1} failed:`, lastError.message)
       }
     }
@@ -166,6 +228,9 @@ export class WorkflowExecutor {
     workflowPrompt: string,
     initialMessages: CoreMessage[],
   ): Promise<void> {
+    // Track current step
+    this.currentStepIndex = stepIndex
+
     // Update step status to running
     if (this.options.executionId) {
       await convex.mutation(api.workflowExecutions.updateStepProgress, {
@@ -199,10 +264,10 @@ export class WorkflowExecutor {
 
       const currentStepMessages: CoreMessage[] = [systemMessage, ...conversationHistory, userMessage]
 
-      this.log(`Messages for step ${stepIndex + 1}:`, {
-        system: systemMessage.content,
-        user: userMessage.content,
-      })
+      // this.log(`Messages for step ${stepIndex + 1}:`, {
+      //   system: systemMessage.content,
+      //   user: userMessage.content,
+      // })
 
       // Execute based on output type
       if (step.outputType === "text") {
@@ -214,6 +279,9 @@ export class WorkflowExecutor {
       }
 
       // Note: Status update with metadata is now handled in executeTextStep/executeObjectStep
+
+      // Clear current step index after successful completion
+      this.currentStepIndex = undefined
     } catch (error) {
       // Update step status on error
       if (this.options.executionId) {
@@ -225,6 +293,10 @@ export class WorkflowExecutor {
           error: error instanceof Error ? error.message : String(error),
         })
       }
+
+      // Clear current step index
+      this.currentStepIndex = undefined
+
       throw error // Re-throw to maintain existing error handling
     }
   }
@@ -258,6 +330,7 @@ export class WorkflowExecutor {
       messages,
       tools: this.tools,
       end: false, // Don't end the response, we have more steps
+      abortSignal: this.options.abortSignal,
     })
 
     this.log(`Step ${stepIndex + 1} text output:`, result.text)
@@ -297,6 +370,7 @@ export class WorkflowExecutor {
       languageModel: aiModel,
       messages,
       end: false, // Don't end the response, we have more steps
+      abortSignal: this.options.abortSignal,
     })
 
     const objectContent = JSON.stringify(result.object)
@@ -375,6 +449,28 @@ export class WorkflowExecutor {
       logger.info("Workflow", message, data)
     } else {
       logger.info("Workflow", message)
+    }
+  }
+
+  private async handleAbort(): Promise<void> {
+    this.log("Workflow aborted, cleaning up running steps")
+
+    // If we have a current step that's running, mark it as cancelled
+    if (this.options.executionId && this.currentStepIndex !== undefined) {
+      const currentStep = this.steps[this.currentStepIndex]
+      if (currentStep) {
+        try {
+          await convex.mutation(api.workflowExecutions.updateStepProgress, {
+            executionId: this.options.executionId,
+            stepIndex: this.currentStepIndex,
+            agentId: currentStep._id,
+            status: "cancelled",
+            error: "Workflow cancelled",
+          })
+        } catch (error) {
+          this.log("Error updating step status on abort:", error)
+        }
+      }
     }
   }
 }
