@@ -2,13 +2,17 @@
 
 import { useAgent } from "@/hooks/use-agent"
 import { useChatProvider } from "@/hooks/use-chat"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
+import { GUEST_SESSION_KEY } from "@/lib/constants"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
+import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow } from "@dojo/db/convex/types"
+import { env } from "@dojo/env/frontend"
 import { Message } from "ai"
 import { useQuery, useMutation } from "convex/react"
 import { nanoid } from "nanoid"
@@ -17,15 +21,22 @@ import { toast } from "sonner"
 
 export function useWorkflow() {
   const { play } = useSoundEffectContext()
-  const { append, setMessages } = useChatProvider()
+  const { append, setMessages, stop } = useChatProvider()
   const { agents } = useAgent()
   const { connect } = useMCP()
   const { currentSession } = useUser()
+  const authToken = useAuthToken()
+  const { readStorage } = useLocalStorage()
+
+  const guestSessionId = useMemo(() => {
+    return !authToken ? readStorage<string>(GUEST_SESSION_KEY) : null
+  }, [authToken, readStorage])
 
   const workflows = useQuery(api.workflows.list)
   const create = useMutation(api.workflows.create)
   const edit = useMutation(api.workflows.edit)
   const remove = useMutation(api.workflows.remove)
+  const requestCancellation = useMutation(api.workflowExecutions.requestCancellation)
 
   // Subscribe to workflow executions for real-time updates
   const workflowExecutions = useQuery(
@@ -64,29 +75,28 @@ export function useWorkflow() {
     if (!workflowExecutions || !workflows) return
 
     // Find the most recent running execution
-    const runningExecution = workflowExecutions.find(exec => 
-      exec.status === "preparing" || exec.status === "running"
-    )
+    const runningExecution = workflowExecutions.find((exec) => exec.status === "preparing" || exec.status === "running")
 
     if (runningExecution) {
       // Update current execution tracking
-      currentExecutionRef.current = { 
-        id: runningExecution._id, 
-        status: runningExecution.status 
+      currentExecutionRef.current = {
+        id: runningExecution._id,
+        status: runningExecution.status,
       }
     } else if (currentExecutionRef.current) {
       // Check if our tracked execution finished
-      const finishedExecution = workflowExecutions.find(exec => 
-        exec._id === currentExecutionRef.current?.id && 
-        (exec.status === "completed" || exec.status === "failed")
+      const finishedExecution = workflowExecutions.find(
+        (exec) =>
+          exec._id === currentExecutionRef.current?.id && (exec.status === "completed" || exec.status === "failed"),
       )
 
       if (finishedExecution) {
-        const workflow = workflows.find(w => w._id === finishedExecution.workflowId)
+        const workflow = workflows.find((w) => w._id === finishedExecution.workflowId)
         if (workflow) {
-          const duration = finishedExecution.completedAt && finishedExecution.startedAt 
-            ? Math.round((finishedExecution.completedAt - finishedExecution.startedAt) / 1000)
-            : undefined
+          const duration =
+            finishedExecution.completedAt && finishedExecution.startedAt
+              ? Math.round((finishedExecution.completedAt - finishedExecution.startedAt) / 1000)
+              : undefined
 
           const formatDuration = (seconds: number) => {
             if (seconds < 60) return `${seconds}s`
@@ -96,10 +106,10 @@ export function useWorkflow() {
           }
 
           if (finishedExecution.status === "completed") {
-            const message = duration 
+            const message = duration
               ? `${workflow.name} completed in ${formatDuration(duration)}`
               : `${workflow.name} completed`
-            
+
             toast.success(message, {
               icon: null,
               duration: 5000,
@@ -108,10 +118,10 @@ export function useWorkflow() {
             })
             play("./sounds/save.mp3", { volume: 0.5 })
           } else if (finishedExecution.status === "failed") {
-            const message = finishedExecution.error 
+            const message = finishedExecution.error
               ? `${workflow.name} failed: ${finishedExecution.error}`
               : `${workflow.name} failed`
-            
+
             toast.error(message, {
               icon: null,
               duration: 7000,
@@ -260,10 +270,52 @@ export function useWorkflow() {
     [append, agents, play, setMessages, connect, currentSession],
   )
 
-  // const stopWorkflow = async (workflowId: string) => {
-  //   if (!currentSession) return
-  //   // No toast notification - following MCP pattern
-  // }
+  const stopWorkflow = async (workflowId: string) => {
+    if (!currentSession) return
+
+    const execution = getWorkflowExecution(workflowId as Id<"workflows">)
+    if (!execution || !("_id" in execution)) return
+
+    try {
+      // Call the stop endpoint
+      const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/workflow/execution/${execution._id}/stop`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to stop workflow: ${response.statusText}`)
+      }
+
+      // Clear optimistic state if any
+      setPreparingWorkflows((prev) => {
+        const next = new Set(prev)
+        next.delete(workflowId)
+        return next
+      })
+
+      // Show cancelling toast
+      toast.info(`Cancelling ${workflows?.find((w) => w._id === workflowId)?.name || "workflow"}...`, {
+        icon: null,
+        duration: 3000,
+        position: "bottom-center",
+      })
+
+      play("./sounds/disconnect.mp3", { volume: 0.5 })
+    } catch (error) {
+      console.error("Failed to stop workflow:", error)
+      toast.error("Failed to stop workflow", {
+        icon: null,
+        duration: 3000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+    }
+  }
 
   const stopAllWorkflows = async () => {
     if (!currentSession) return
@@ -271,8 +323,39 @@ export function useWorkflow() {
     const runningExecutions = getRunningExecutions()
     if (runningExecutions.length === 0) return
 
-    // Play sound once - following MCP's disconnectAll pattern
-    play("./sounds/disconnect.mp3", { volume: 0.5 })
+    try {
+      // Call stop endpoint for all running executions
+      await Promise.all(
+        runningExecutions.map(async (execution) => {
+          const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/workflow/execution/${execution._id}/stop`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+              ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
+            },
+          })
+
+          if (!response.ok) {
+            console.error(`Failed to stop execution ${execution._id}:`, response.statusText)
+          }
+        }),
+      )
+
+      // Clear all optimistic states
+      setPreparingWorkflows(new Set())
+
+      // Play sound once - following MCP's disconnectAll pattern
+      play("./sounds/disconnect.mp3", { volume: 0.5 })
+    } catch (error) {
+      console.error("Failed to stop all workflows:", error)
+      toast.error("Failed to stop some workflows", {
+        icon: null,
+        duration: 3000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+    }
   }
 
   const stableWorkflows = useMemo(() => workflows || [], [workflows])
@@ -304,10 +387,18 @@ export function useWorkflow() {
         }
       }
 
-      // For persistence: return the most recent completed/failed execution
+      // For persistence: return the most recent completed/failed execution within 12 hours
       const recentExecution = workflowExecutions
         ?.filter((exec) => exec.workflowId === workflowId)
         ?.sort((a, b) => (b.completedAt || b.startedAt) - (a.completedAt || a.startedAt))[0]
+
+      // Only return if completed within last 12 hours
+      if (recentExecution && recentExecution.completedAt) {
+        const twelveHoursAgo = Date.now() - 12 * 60 * 60 * 1000
+        if (recentExecution.completedAt < twelveHoursAgo) {
+          return null
+        }
+      }
 
       return recentExecution || null
     },
@@ -327,7 +418,7 @@ export function useWorkflow() {
     edit,
     remove,
     // Workflow control functions
-    // stopWorkflow,
+    stopWorkflow,
     stopAllWorkflows,
     // New direct Convex helpers
     getWorkflowExecution,

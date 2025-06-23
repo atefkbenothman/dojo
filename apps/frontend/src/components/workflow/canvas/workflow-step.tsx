@@ -2,10 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { useMCP } from "@/hooks/use-mcp"
 import { cn } from "@/lib/utils"
 import { Agent } from "@dojo/db/convex/types"
 import { ChevronDown, Copy, GripVertical, Trash, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react"
-import { DragEvent, useState, memo, useCallback, useEffect } from "react"
+import { DragEvent, useState, memo, useCallback, useEffect, useMemo } from "react"
 
 interface WorkflowStepProps {
   step: Agent
@@ -49,11 +50,21 @@ export const WorkflowStep = memo(function WorkflowStep({
   executionDuration,
   executionError,
 }: WorkflowStepProps) {
+  const { mcpServers } = useMCP()
+
   const [localIsExpanded, setLocalIsExpanded] = useState(false)
   const [hasLocalOverride, setHasLocalOverride] = useState(false)
 
+  const connectedServerNames = useMemo(
+    () =>
+      step.mcpServers
+        .map((id) => mcpServers?.find((s) => s._id === id)?.name)
+        .filter((name): name is string => name !== undefined),
+    [step.mcpServers, mcpServers],
+  )
+
   // Use local state if user has clicked individually, otherwise use global state
-  const isExpanded = hasLocalOverride ? localIsExpanded : globalIsExpanded ?? false
+  const isExpanded = hasLocalOverride ? localIsExpanded : (globalIsExpanded ?? false)
 
   // Reset local override when global state changes
   useEffect(() => {
@@ -65,9 +76,9 @@ export const WorkflowStep = memo(function WorkflowStep({
   // Helper functions for execution status
   const getExecutionStatusIcon = () => {
     if (!executionStatus) return null
-    
+
     const iconClass = "h-4 w-4"
-    
+
     switch (executionStatus) {
       case "completed":
         return <CheckCircle className={cn(iconClass, "text-green-500")} />
@@ -84,11 +95,11 @@ export const WorkflowStep = memo(function WorkflowStep({
 
   const getExecutionBorderColor = () => {
     if (!executionStatus && !isCurrentStep) return ""
-    
+
     if (isCurrentStep && executionStatus === "running") {
       return "border-blue-500 shadow-blue-200 shadow-lg"
     }
-    
+
     switch (executionStatus) {
       case "completed":
         return "border-green-500"
@@ -110,11 +121,14 @@ export const WorkflowStep = memo(function WorkflowStep({
     return `${minutes}m ${remainingSeconds}s`
   }
 
-  const handleToggleExpand = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setHasLocalOverride(true)
-    setLocalIsExpanded(!isExpanded)
-  }, [isExpanded])
+  const handleToggleExpand = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setHasLocalOverride(true)
+      setLocalIsExpanded(!isExpanded)
+    },
+    [isExpanded],
+  )
 
   const handleConfigure = useCallback(
     (e: React.MouseEvent) => {
@@ -154,17 +168,17 @@ export const WorkflowStep = memo(function WorkflowStep({
       {isDragOver && <div className="absolute -top-1 left-0 right-0 h-0.5 bg-primary" />}
 
       {/* Step number badge - adjusted for centered layout with execution state */}
-      <div className={cn(
-        "absolute -left-10 top-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium transition-all",
-        !executionStatus && "bg-muted text-muted-foreground",
-        executionStatus === "pending" && "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
-        executionStatus === "running" && "bg-blue-500 text-white animate-pulse",
-        executionStatus === "completed" && "bg-green-500 text-white",
-        executionStatus === "failed" && "bg-red-500 text-white"
-      )}>
-        {executionStatus === "completed" ? "✓" : 
-         executionStatus === "failed" ? "✗" : 
-         stepNumber}
+      <div
+        className={cn(
+          "absolute -left-10 top-2 flex h-5 w-5 items-center justify-center text-xs font-medium transition-all",
+          !executionStatus && "bg-muted text-muted-foreground ",
+          executionStatus === "pending" && "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
+          executionStatus === "running" && "bg-blue-500 text-white animate-pulse",
+          executionStatus === "completed" && "bg-green-500 text-white",
+          executionStatus === "failed" && "bg-red-500 text-white",
+        )}
+      >
+        {executionStatus === "completed" ? "✓" : executionStatus === "failed" ? "✗" : stepNumber}
       </div>
 
       <Card
@@ -179,13 +193,15 @@ export const WorkflowStep = memo(function WorkflowStep({
       >
         {/* Execution Status Overlay */}
         {executionStatus && (
-          <div className={cn(
-            "absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-            executionStatus === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-            executionStatus === "failed" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-            executionStatus === "running" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-            executionStatus === "pending" && "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-          )}>
+          <div
+            className={cn(
+              "absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+              executionStatus === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+              executionStatus === "failed" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+              executionStatus === "running" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+              executionStatus === "pending" && "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+            )}
+          >
             {getExecutionStatusIcon()}
             <span className="capitalize">{executionStatus}</span>
             {executionDuration && executionStatus === "completed" && (
@@ -246,9 +262,9 @@ export const WorkflowStep = memo(function WorkflowStep({
 
                   {/* Second row: Tools and execution timing */}
                   <div className="flex items-center justify-between">
-                    {step.mcpServers.length > 0 && (
-                      <div className="text-xs text-muted-foreground">
-                        {step.mcpServers.length} {step.mcpServers.length === 1 ? "tool" : "tools"} connected
+                    {connectedServerNames.length > 0 && (
+                      <div className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        {connectedServerNames.join(", ")}
                       </div>
                     )}
                     {executionDuration && executionStatus === "completed" && (
@@ -262,9 +278,7 @@ export const WorkflowStep = memo(function WorkflowStep({
                       </div>
                     )}
                     {executionStatus === "failed" && (
-                      <div className="text-xs text-red-600 dark:text-red-400 font-medium">
-                        Failed
-                      </div>
+                      <div className="text-xs text-red-600 dark:text-red-400 font-medium">Failed</div>
                     )}
                   </div>
                 </div>
@@ -300,56 +314,17 @@ export const WorkflowStep = memo(function WorkflowStep({
               </div>
 
               {/* MCP Servers */}
-              {step.mcpServers.length > 0 && (
+              {connectedServerNames.length > 0 && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Connected Tools ({step.mcpServers.length})
+                    Connected Tools ({connectedServerNames.length})
                   </label>
-                  <div className="text-sm text-muted-foreground">
-                    {step.mcpServers.length} MCP {step.mcpServers.length === 1 ? "server" : "servers"} providing tools
-                  </div>
-                </div>
-              )}
-
-              {/* Visibility */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Visibility</label>
-                <div className="text-sm flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
-                      step.isPublic
-                        ? "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
-                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-                    )}
-                  >
-                    {step.isPublic ? "Public" : "Private"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Execution Status */}
-              {executionStatus && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Execution Status
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {getExecutionStatusIcon()}
-                    <span className={cn(
-                      "text-sm font-medium capitalize",
-                      executionStatus === "completed" && "text-green-600 dark:text-green-400",
-                      executionStatus === "failed" && "text-red-600 dark:text-red-400",
-                      executionStatus === "running" && "text-blue-600 dark:text-blue-400",
-                      executionStatus === "pending" && "text-gray-600 dark:text-gray-400"
-                    )}>
-                      {executionStatus}
-                    </span>
-                    {executionDuration && executionStatus === "completed" && (
-                      <span className="text-sm text-muted-foreground">
-                        • {formatDuration(executionDuration)}
-                      </span>
-                    )}
+                  <div className="space-y-1">
+                    {connectedServerNames.map((name) => (
+                      <div key={name} className="text-sm bg-muted/30 rounded-md px-2 py-1">
+                        {name}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -357,21 +332,12 @@ export const WorkflowStep = memo(function WorkflowStep({
               {/* Execution Error */}
               {executionError && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-red-600 uppercase tracking-wider">
-                    Execution Error
-                  </label>
+                  <label className="text-xs font-medium text-red-600 uppercase tracking-wider">Execution Error</label>
                   <div className="text-sm bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-2 text-red-800 dark:text-red-200">
                     {executionError}
                   </div>
                 </div>
               )}
-
-              {/* Configure button */}
-              <div className="pt-2 border-t">
-                <Button variant="outline" size="sm" className="w-full" onClick={handleConfigure}>
-                  Configure Agent
-                </Button>
-              </div>
             </div>
           </div>
         </div>

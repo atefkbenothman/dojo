@@ -2,28 +2,40 @@
 
 import { useSoundEffectContext } from "./use-sound-effect"
 import { useChatProvider } from "@/hooks/use-chat"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useMCP } from "@/hooks/use-mcp"
 import { useUser } from "@/hooks/use-user"
-import { errorToastStyle } from "@/lib/styles"
+import { GUEST_SESSION_KEY } from "@/lib/constants"
+import { errorToastStyle, successToastStyle } from "@/lib/styles"
+import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
+import { env } from "@dojo/env/frontend"
 import { Message } from "ai"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation, useQuery, useConvex } from "convex/react"
 import { nanoid } from "nanoid"
-import { useCallback, useMemo, useState, useEffect } from "react"
+import { useCallback, useMemo, useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 
 export function useAgent() {
   const { connect } = useMCP()
   const { play } = useSoundEffectContext()
-  const { append, setMessages } = useChatProvider()
+  const { append, setMessages, stop } = useChatProvider()
   const { currentSession } = useUser()
+  const convex = useConvex()
+  const authToken = useAuthToken()
+  const { readStorage } = useLocalStorage()
+
+  const guestSessionId = useMemo(() => {
+    return !authToken ? readStorage<string>(GUEST_SESSION_KEY) : null
+  }, [authToken, readStorage])
 
   const agents = useQuery(api.agents.list)
   const create = useMutation(api.agents.create)
   const edit = useMutation(api.agents.edit)
   const remove = useMutation(api.agents.remove)
+  const requestCancellation = useMutation(api.agentExecutions.requestCancellation)
 
   // Subscribe to agent executions for real-time updates
   const agentExecutions = useQuery(
@@ -180,13 +192,41 @@ export function useAgent() {
   const stopAgent = async (agentId: string) => {
     if (!currentSession) return
 
-    // No backend endpoint for stopping agents yet
-    // Just clear optimistic state if any
-    setPreparingAgents((prev) => {
-      const next = new Set(prev)
-      next.delete(agentId)
-      return next
-    })
+    const execution = getAgentExecution(agentId as Id<"agents">)
+    if (!execution || execution._id === "preparing") return
+
+    try {
+      // Call the stop endpoint
+      const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/agent/execution/${execution._id}/stop`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to stop agent: ${response.statusText}`)
+      }
+
+      // Clear optimistic state if any
+      setPreparingAgents((prev) => {
+        const next = new Set(prev)
+        next.delete(agentId)
+        return next
+      })
+
+      play("./sounds/disconnect.mp3", { volume: 0.5 })
+    } catch (error) {
+      console.error("Failed to stop agent:", error)
+      toast.error("Failed to stop agent", {
+        icon: null,
+        duration: 3000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+    }
   }
 
   const stopAllAgents = async () => {
@@ -195,11 +235,39 @@ export function useAgent() {
     const runningExecutions = getRunningExecutions()
     if (runningExecutions.length === 0) return
 
-    // Clear all optimistic states
-    setPreparingAgents(new Set())
+    try {
+      // Call stop endpoint for all running executions
+      await Promise.all(
+        runningExecutions.map(async (execution) => {
+          const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/agent/execution/${execution._id}/stop`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+              ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
+            },
+          })
 
-    // Play sound once - following MCP's disconnectAll pattern
-    play("./sounds/disconnect.mp3", { volume: 0.5 })
+          if (!response.ok) {
+            console.error(`Failed to stop execution ${execution._id}:`, response.statusText)
+          }
+        }),
+      )
+
+      // Clear all optimistic states
+      setPreparingAgents(new Set())
+
+      // Play sound once - following MCP's disconnectAll pattern
+      play("./sounds/disconnect.mp3", { volume: 0.5 })
+    } catch (error) {
+      console.error("Failed to stop all agents:", error)
+      toast.error("Failed to stop some agents", {
+        icon: null,
+        duration: 3000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+    }
   }
 
   const stableAgents = useMemo(() => agents || [], [agents])
