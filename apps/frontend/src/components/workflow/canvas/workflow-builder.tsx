@@ -197,6 +197,24 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
               onMouseDown={handleMouseDown}
               data-canvas-container
             >
+              {/* Dot pattern background */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: "radial-gradient(circle, rgb(0 0 0 / 0.08) 1px, transparent 1px)",
+                  backgroundSize: "20px 20px",
+                  backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
+                }}
+              />
+              <div
+                className="absolute inset-0 dark:block hidden"
+                style={{
+                  backgroundImage: "radial-gradient(circle, rgb(255 255 255 / 0.08) 1px, transparent 1px)",
+                  backgroundSize: "20px 20px",
+                  backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
+                }}
+              />
+
               {/* Canvas content with zoom and pan transforms */}
               <div className="absolute inset-0" style={canvasTransformStyle}>
                 <div className="py-8 px-4 min-h-full" data-canvas-content>

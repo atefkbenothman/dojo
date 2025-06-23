@@ -285,7 +285,11 @@ export const WorkflowCard = memo(function WorkflowCard({
     <Card
       className={cn(
         "w-full hover:bg-background/50 bg-background transition-colors overflow-hidden p-0",
-        isSelected && "border-black dark:border-white border-2 bg-background/50",
+        // Running state takes highest priority
+        execution && isActiveExecution && "border-blue-500 border-2 dark:border-blue-500",
+        // Selected state only applies if not running
+        isSelected && !isActiveExecution && "border-black dark:border-white border-2 bg-background/50",
+        // Other states only apply if not selected and not running
         !isSelected &&
           execution &&
           !isActiveExecution &&
