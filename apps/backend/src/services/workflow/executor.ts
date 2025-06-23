@@ -1,6 +1,7 @@
 import { convex } from "../../lib/convex-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
+import { mcpConnectionManager } from "../mcp/connection-manager"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -80,6 +81,15 @@ export class WorkflowExecutor {
 
       this.log(`Starting workflow execution with ${this.steps.length} steps`)
 
+      // Auto-establish required MCP connections for this workflow
+      await this.establishWorkflowConnections()
+
+      // Refresh tools after establishing connections
+      if (this.options.sessionId) {
+        this.tools = mcpConnectionManager.aggregateTools(this.options.sessionId)
+        this.log(`Updated tools after establishing connections: ${Object.keys(this.tools).length} total tools`)
+      }
+
       // Execute each step sequentially
       for (let i = 0; i < this.steps.length; i++) {
         // Check for cancellation before each step (graceful cancellation)
@@ -146,6 +156,11 @@ export class WorkflowExecutor {
         success: false,
         completedSteps: this.completedSteps,
         error: errorMessage,
+      }
+    } finally {
+      // Cleanup workflow-specific MCP connections
+      if (this.options.executionId) {
+        await mcpConnectionManager.cleanupWorkflowConnections(this.options.executionId)
       }
     }
   }
@@ -402,6 +417,88 @@ Instructions: ${currentStep.systemPrompt}
     }
   }
 
+  /**
+   * Establishes MCP connections required by all agents in the workflow.
+   * Connections are tagged with the workflow execution ID for automatic cleanup.
+   */
+  private async establishWorkflowConnections(): Promise<void> {
+    if (!this.options.sessionId || !this.options.executionId) {
+      this.log("Skipping MCP connection setup - no session or execution ID")
+      return
+    }
+
+    try {
+      // Collect all required MCP servers from all agents
+      const requiredServers = new Set<Id<"mcp">>()
+      for (const agent of this.steps) {
+        for (const serverId of agent.mcpServers || []) {
+          requiredServers.add(serverId)
+        }
+      }
+
+      if (requiredServers.size === 0) {
+        this.log("No MCP servers required for this workflow")
+        return
+      }
+
+      this.log(`Establishing connections to ${requiredServers.size} MCP servers for workflow`)
+
+      // Get MCP server configurations
+      const serverPromises = Array.from(requiredServers).map(async (serverId) => {
+        try {
+          const server = await convex.query(api.mcp.get, { id: serverId })
+          return server
+        } catch (error) {
+          this.log(`Error fetching MCP server ${serverId}:`, error)
+          return null
+        }
+      })
+
+      const servers = (await Promise.all(serverPromises)).filter((s) => s !== null)
+
+      // Establish connections for each server
+      const connectionPromises = servers.map(async (server) => {
+        try {
+          const result = await mcpConnectionManager.establishConnection(
+            this.options.sessionId!,
+            server,
+            this.options.userId,
+            {
+              workflowExecutionId: this.options.executionId,
+              connectionType: "workflow",
+            }
+          )
+
+          if (result.success) {
+            this.log(`Successfully connected to MCP server: ${server.name}`)
+          } else {
+            this.log(`Failed to connect to MCP server ${server.name}: ${result.error}`)
+          }
+
+          return result
+        } catch (error) {
+          this.log(`Error connecting to MCP server ${server.name}:`, error)
+          return { success: false, error: String(error) }
+        }
+      })
+
+      const results = await Promise.all(connectionPromises)
+      const successCount = results.filter((r) => r.success).length
+      const failedConnections = results.filter((r) => !r.success)
+
+      this.log(`Established ${successCount}/${servers.length} MCP connections for workflow`)
+
+      // Fail workflow if any required connections failed
+      if (failedConnections.length > 0) {
+        const errorMessages = failedConnections.map((r) => r.error).join("; ")
+        throw new Error(`Failed to establish ${failedConnections.length} required MCP connections: ${errorMessages}`)
+      }
+    } catch (error) {
+      // Re-throw connection errors to fail the workflow setup
+      throw error
+    }
+  }
+
   private async handleAbort(): Promise<void> {
     this.log("Workflow aborted, cleaning up running steps")
 
@@ -439,6 +536,11 @@ Instructions: ${currentStep.systemPrompt}
           this.log("Error updating step status on abort:", error)
         }
       }
+    }
+
+    // Also cleanup workflow-specific connections on abort
+    if (this.options.executionId) {
+      await mcpConnectionManager.cleanupWorkflowConnections(this.options.executionId)
     }
   }
 }

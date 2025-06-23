@@ -68,7 +68,7 @@ export const WorkflowStep = memo(function WorkflowStep({
   const [localIsExpanded, setLocalIsExpanded] = useState(false)
   const [hasLocalOverride, setHasLocalOverride] = useState(false)
 
-  const connectedServerNames = useMemo(
+  const requiredServerNames = useMemo(
     () =>
       step.mcpServers
         .map((id) => mcpServers?.find((s) => s._id === id)?.name)
@@ -255,11 +255,11 @@ export const WorkflowStep = memo(function WorkflowStep({
                       </span>
                       <span className="text-muted-foreground">•</span>
                       <span className="text-muted-foreground truncate text-xs">{modelName || "No model"}</span>
-                      {connectedServerNames.length > 0 && (
+                      {requiredServerNames.length > 0 && (
                         <>
                           <span className="text-muted-foreground">•</span>
                           <span className="text-xs text-muted-foreground">
-                            {connectedServerNames.length} {connectedServerNames.length === 1 ? "tool" : "tools"}
+                            {requiredServerNames.length} {requiredServerNames.length === 1 ? "tool" : "tools"}
                           </span>
                         </>
                       )}
@@ -359,17 +359,20 @@ export const WorkflowStep = memo(function WorkflowStep({
                 </div>
 
                 {/* MCP Servers */}
-                {connectedServerNames.length > 0 && (
+                {requiredServerNames.length > 0 && (
                   <div className="space-y-0.5">
                     <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                      Connected Tools ({connectedServerNames.length})
+                      Required Tools ({requiredServerNames.length})
                     </label>
                     <div className="flex flex-wrap gap-0.5">
-                      {connectedServerNames.map((name) => (
+                      {requiredServerNames.map((name) => (
                         <div key={name} className="text-[10px] bg-muted/30 rounded-md px-1 py-0.5">
                           {name}
                         </div>
                       ))}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground italic">
+                      Auto-connected during workflow execution
                     </div>
                   </div>
                 )}

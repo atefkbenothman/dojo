@@ -108,13 +108,15 @@ export class WorkflowService {
 
       // Prepare execution context
       const userIdForLogging = session?.userId || "anonymous"
+      
+      // Note: Tools will be dynamically aggregated after workflow connections are established
       const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
       logWorkflow(`Starting workflow ${workflow._id} for userId: ${userIdForLogging}, steps: ${steps.length}`)
 
       // Check if there are any active MCP connections for logging
       if (Object.keys(combinedTools).length > 0) {
-        logWorkflow(`Using ${Object.keys(combinedTools).length} total tools`)
+        logWorkflow(`Using ${Object.keys(combinedTools).length} existing tools`)
       }
 
       // Execute workflow with execution tracking

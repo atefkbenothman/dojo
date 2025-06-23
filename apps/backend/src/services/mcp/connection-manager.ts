@@ -22,6 +22,10 @@ export class MCPConnectionManager {
     sessionId: Id<"sessions">,
     server: MCPServer,
     userId?: Id<"users">,
+    options?: {
+      workflowExecutionId?: Id<"workflowExecutions">
+      connectionType?: "user" | "workflow"
+    },
   ): Promise<{ success: boolean; client?: ActiveMcpClient; error?: string }> {
     // Create/update connection record in Convex (status: connecting)
     let connectionId: Id<"mcpConnections"> | null = null
@@ -32,6 +36,8 @@ export class MCPConnectionManager {
         userId,
         backendInstanceId: BACKEND_INSTANCE_ID,
         status: "connecting",
+        workflowExecutionId: options?.workflowExecutionId,
+        connectionType: options?.connectionType || "user",
       })
     } catch (convexError) {
       logger.error("Connection", "Failed to create connection record in Convex", convexError)
@@ -55,6 +61,8 @@ export class MCPConnectionManager {
             backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
             error: errorMessage,
+            workflowExecutionId: options?.workflowExecutionId,
+            connectionType: options?.connectionType || "user",
           })
           .catch((err) => logger.error("Connection", "Failed to update connection status to error", err))
       }
@@ -80,6 +88,8 @@ export class MCPConnectionManager {
             backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
             error: errMessage,
+            workflowExecutionId: options?.workflowExecutionId,
+            connectionType: options?.connectionType || "user",
           })
           .catch((err) => logger.error("Connection", "Failed to update connection status to error", err))
       }
@@ -105,6 +115,8 @@ export class MCPConnectionManager {
           userId,
           backendInstanceId: BACKEND_INSTANCE_ID,
           status: "connected",
+          workflowExecutionId: options?.workflowExecutionId,
+          connectionType: options?.connectionType || "user",
         })
         .catch((err) => logger.error("Connection", "Failed to update connection status to connected", err))
     }
@@ -134,6 +146,7 @@ export class MCPConnectionManager {
           sessionId,
           backendInstanceId: BACKEND_INSTANCE_ID,
           status: "disconnecting",
+          connectionType: "user", // Default for cleanup calls
         })
         .catch((err) => logger.error("Connection", "Failed to update connection status to disconnecting", err))
 
@@ -154,6 +167,7 @@ export class MCPConnectionManager {
           sessionId,
           backendInstanceId: BACKEND_INSTANCE_ID,
           status: "disconnected",
+          connectionType: "user", // Default for cleanup calls
         })
         .catch((err) => logger.error("Connection", "Failed to update connection status to disconnected", err))
 
@@ -175,6 +189,72 @@ export class MCPConnectionManager {
     }
     return combinedTools
   }
+
+  /**
+   * Cleans up multiple specific MCP connections for a given session.
+   * Used to disconnect workflow-specific connections after execution.
+   */
+  async cleanupConnections(sessionId: Id<"sessions">, mcpServerIds: Id<"mcp">[]): Promise<void> {
+    if (mcpServerIds.length === 0) return
+
+    logger.info("Connection", `Cleaning up ${mcpServerIds.length} connections for session ${sessionId}...`)
+
+    const cleanupPromises = mcpServerIds.map(async (serverId) => {
+      try {
+        await this.cleanupConnection(sessionId, serverId)
+      } catch (error) {
+        logger.error("Connection", `Error cleaning up connection ${serverId} for session ${sessionId}`, error)
+        // Continue with other connections even if one fails
+      }
+    })
+
+    await Promise.allSettled(cleanupPromises)
+    logger.info("Connection", `Completed cleanup of ${mcpServerIds.length} connections for session ${sessionId}`)
+  }
+
+  /**
+   * Gets the list of currently connected MCP server IDs for a session.
+   * Used to track which connections were established before workflow execution.
+   */
+  getConnectedServerIds(sessionId: Id<"sessions">): Id<"mcp">[] {
+    const sessionConnections = this.connectionCache.get(sessionId)
+    if (!sessionConnections) return []
+    
+    return Array.from(sessionConnections.keys())
+  }
+
+  /**
+   * Cleans up all MCP connections for a specific workflow execution.
+   * Used to auto-disconnect workflow-managed connections after execution.
+   */
+  async cleanupWorkflowConnections(workflowExecutionId: Id<"workflowExecutions">): Promise<void> {
+    try {
+      logger.info("Connection", `Cleaning up workflow connections for execution ${workflowExecutionId}...`)
+
+      // Get all workflow connections for this execution from the database
+      const workflowConnections = await convex.query(api.mcpConnections.getByWorkflowExecution, {
+        workflowExecutionId,
+      })
+
+      logger.info("Connection", `Found ${workflowConnections.length} connections to cleanup for execution ${workflowExecutionId}`)
+
+      // Clean up each connection
+      const cleanupPromises = workflowConnections.map(async (connection) => {
+        try {
+          await this.cleanupConnection(connection.sessionId, connection.mcpServerId)
+        } catch (error) {
+          logger.error("Connection", `Error cleaning up connection ${connection.mcpServerId} for session ${connection.sessionId}`, error)
+        }
+      })
+
+      await Promise.allSettled(cleanupPromises)
+      logger.info("Connection", `Completed cleanup for workflow execution ${workflowExecutionId}`)
+    } catch (error) {
+      logger.error("Connection", `Error cleaning up workflow connections for execution ${workflowExecutionId}`, error)
+      // Don't throw - cleanup errors shouldn't fail the workflow
+    }
+  }
+
 
   /**
    * Cleans up all active MCP connections across all sessions.

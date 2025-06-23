@@ -3,7 +3,6 @@
 import { useAgent } from "@/hooks/use-agent"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useLocalStorage } from "@/hooks/use-local-storage"
-import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
 import { GUEST_SESSION_KEY } from "@/lib/constants"
@@ -23,7 +22,6 @@ export function useWorkflow() {
   const { play } = useSoundEffectContext()
   const { append, setMessages, stop } = useChatProvider()
   const { agents } = useAgent()
-  const { connect } = useMCP()
   const { currentSession } = useUser()
   const authToken = useAuthToken()
   const { readStorage } = useLocalStorage()
@@ -182,45 +180,7 @@ export function useWorkflow() {
         // },
       ])
 
-      // Handle MCP server connections if needed
-      const mcpServers = workflow.steps
-        .map((step) => agents.find((a) => a._id === step)?.mcpServers)
-        .flat()
-        .filter(Boolean) as Id<"mcp">[]
-
-      if (mcpServers.length > 0) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nanoid(),
-            role: "assistant",
-            content: "Connecting to MCP servers...",
-          },
-        ])
-
-        try {
-          await connect(mcpServers)
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Failed to connect to MCP servers"
-
-          // Clear optimistic state
-          setPreparingWorkflows((prev) => {
-            const next = new Set(prev)
-            next.delete(workflow._id)
-            return next
-          })
-
-          toast.error(`MCP Connection Error: ${errorMessage}`, {
-            icon: null,
-            id: `workflow-mcp-error-${workflow._id}`,
-            duration: 5000,
-            position: "bottom-center",
-            style: errorToastStyle,
-          })
-          play("./sounds/error.mp3", { volume: 0.5 })
-          return
-        }
-      }
+      // Note: MCP connections are now handled automatically by the backend during workflow execution
 
       const userMessage: Message = {
         id: nanoid(),
@@ -267,7 +227,7 @@ export function useWorkflow() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, agents, play, setMessages, connect, currentSession],
+    [append, agents, play, setMessages, currentSession],
   )
 
   const stopWorkflow = async (workflowId: string) => {

@@ -16,6 +16,8 @@ export const upsert = mutation({
       v.literal("error"),
     ),
     error: v.optional(v.string()),
+    workflowExecutionId: v.optional(v.id("workflowExecutions")),
+    connectionType: v.union(v.literal("user"), v.literal("workflow")),
   },
   handler: async (ctx, args) => {
     // Check if connection already exists
@@ -33,6 +35,8 @@ export const upsert = mutation({
         error: args.error,
         backendInstanceId: args.backendInstanceId,
         lastHeartbeat: now,
+        workflowExecutionId: args.workflowExecutionId,
+        connectionType: args.connectionType,
         ...(args.status === "disconnected" ? { disconnectedAt: now } : {}),
       })
       return existing._id
@@ -45,6 +49,8 @@ export const upsert = mutation({
         backendInstanceId: args.backendInstanceId,
         status: args.status,
         error: args.error,
+        workflowExecutionId: args.workflowExecutionId,
+        connectionType: args.connectionType,
         connectedAt: now,
         lastHeartbeat: now,
         disconnectedAt: undefined,
@@ -157,6 +163,21 @@ export const getConnection = query({
       ...connection,
       isStale,
     }
+  },
+})
+
+// Get connections by workflow execution ID
+export const getByWorkflowExecution = query({
+  args: {
+    workflowExecutionId: v.id("workflowExecutions"),
+  },
+  handler: async (ctx, args) => {
+    const connections = await ctx.db
+      .query("mcpConnections")
+      .withIndex("by_workflow_execution", (q) => q.eq("workflowExecutionId", args.workflowExecutionId))
+      .collect()
+
+    return connections
   },
 })
 
