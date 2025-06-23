@@ -21,8 +21,6 @@ interface RunWorkflowResult {
 }
 
 interface WorkflowExecutorOptions {
-  maxRetries?: number
-  retryDelay?: number
   persistExecution?: boolean
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
@@ -37,8 +35,6 @@ export class WorkflowService {
   private static executionControllers = new Map<string, AbortController>()
 
   private readonly defaultExecutorOptions: WorkflowExecutorOptions = {
-    maxRetries: 3,
-    retryDelay: 1000,
     persistExecution: true,
   }
 

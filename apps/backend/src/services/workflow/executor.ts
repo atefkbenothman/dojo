@@ -9,8 +9,6 @@ import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import { type Response } from "express"
 
 interface WorkflowExecutorOptions {
-  maxRetries?: number
-  retryDelay?: number
   persistExecution?: boolean
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
@@ -59,8 +57,6 @@ export class WorkflowExecutor {
     private options: WorkflowExecutorOptions = {},
   ) {
     this.options = {
-      maxRetries: 3,
-      retryDelay: 1000, // Start with 1 second
       persistExecution: false,
       ...options,
     }
@@ -117,10 +113,10 @@ export class WorkflowExecutor {
         this.log(`Executing step ${i + 1}: ${step.name || "Unnamed"}`)
 
         try {
-          await this.executeStepWithRetry(step, i, workflowPrompt, initialMessages)
+          await this.executeStep(step, i, workflowPrompt, initialMessages)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
-          this.log(`Step ${i + 1} failed after all retries:`, errorMessage)
+          this.log(`Step ${i + 1} failed:`, errorMessage)
 
           // Stop on first error
           return {
@@ -157,69 +153,6 @@ export class WorkflowExecutor {
         error: errorMessage,
       }
     }
-  }
-
-  private async executeStepWithRetry(
-    step: Doc<"agents">,
-    stepIndex: number,
-    workflowPrompt: string,
-    initialMessages: CoreMessage[],
-  ): Promise<void> {
-    let lastError: Error | null = null
-    const maxRetries = this.options.maxRetries || 3
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        if (attempt > 0) {
-          // Check if we've been aborted before retrying
-          if (this.options.abortSignal?.aborted) {
-            throw new Error("Workflow cancelled")
-          }
-
-          // Exponential backoff: 1s, 2s, 4s...
-          const delay = (this.options.retryDelay || 1000) * Math.pow(2, attempt - 1)
-          this.log(`Retrying step ${stepIndex + 1} after ${delay}ms (attempt ${attempt + 1}/${maxRetries})`)
-
-          // Make the delay interruptible
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(resolve, delay)
-
-            // Listen for abort during delay
-            const abortHandler = () => {
-              clearTimeout(timeout)
-              reject(new Error("Workflow cancelled during retry delay"))
-            }
-
-            if (this.options.abortSignal) {
-              this.options.abortSignal.addEventListener("abort", abortHandler, { once: true })
-            }
-
-            // Clean up if resolved normally
-            setTimeout(() => {
-              if (this.options.abortSignal) {
-                this.options.abortSignal.removeEventListener("abort", abortHandler)
-              }
-            }, delay)
-          })
-        }
-
-        await this.executeStep(step, stepIndex, workflowPrompt, initialMessages)
-        return // Success, exit retry loop
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
-
-        // Check if this is an abort error - don't retry aborts
-        if (lastError.name === "AbortError" || this.options.abortSignal?.aborted) {
-          this.log(`Step ${stepIndex + 1} was cancelled, not retrying`)
-          throw lastError
-        }
-
-        this.log(`Step ${stepIndex + 1} attempt ${attempt + 1} failed:`, lastError.message)
-      }
-    }
-
-    // All retries exhausted
-    throw lastError || new Error("Step execution failed")
   }
 
   private async executeStep(
@@ -333,7 +266,7 @@ export class WorkflowExecutor {
       abortSignal: this.options.abortSignal,
     })
 
-    this.log(`Step ${stepIndex + 1} text output:`, result.text)
+    // this.log(`Step ${stepIndex + 1} text output:`, result.text)
 
     if (!this.isValidStepOutput(result.text)) {
       this.log(`WARNING: Empty text response at step ${stepIndex + 1}`)

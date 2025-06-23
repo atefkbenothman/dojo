@@ -74,12 +74,12 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
         finishReason: finishReason,
       }
 
-      logger.info("AI", "Stream completed with metadata", {
-        usage: capturedMetadata.usage,
-        toolCallCount: capturedMetadata.toolCalls?.length || 0,
-        model: capturedMetadata.model,
-        finishReason: capturedMetadata.finishReason,
-      })
+      // logger.info("AI", "Stream completed with metadata", {
+      //   usage: capturedMetadata.usage,
+      //   toolCallCount: capturedMetadata.toolCalls?.length || 0,
+      //   model: capturedMetadata.model,
+      //   finishReason: capturedMetadata.finishReason,
+      // })
     },
   })
 
