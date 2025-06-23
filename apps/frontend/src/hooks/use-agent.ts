@@ -99,11 +99,11 @@ export function useAgent() {
 
       setMessages((prev) => [
         ...prev,
-        {
-          id: nanoid(),
-          role: "assistant",
-          content: `Starting agent ${agent.name}`,
-        },
+        // {
+        //   id: nanoid(),
+        //   role: "assistant",
+        //   content: `Starting agent ${agent.name}`,
+        // },
       ])
 
       // Handle MCP server connections if needed

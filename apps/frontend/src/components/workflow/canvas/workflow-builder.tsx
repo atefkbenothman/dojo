@@ -26,6 +26,7 @@ interface WorkflowBuilderProps {
   onDuplicateStep: (index: number, stepId: Id<"agents">) => void
   onConfigureStep: (index: number) => void
   onUpdateSteps: (newSteps: Id<"agents">[]) => void
+  onViewLogs: () => void
 }
 
 export const WorkflowBuilder = memo(function WorkflowBuilder({
@@ -41,6 +42,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
   onDuplicateStep,
   onConfigureStep,
   onUpdateSteps,
+  onViewLogs,
 }: WorkflowBuilderProps) {
   // Local state for expand/collapse
   const [areAllStepsExpanded, setAreAllStepsExpanded] = useState(false)
@@ -141,8 +143,9 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, index)}
                 onRemove={() => onRemoveStep(index)}
-                onConfigure={() => onConfigureStep(index)}
+                onEdit={() => onConfigureStep(index)}
                 onDuplicate={() => onDuplicateStep(index, stepId)}
+                onViewLogs={onViewLogs}
                 isExpanded={areAllStepsExpanded}
                 executionStatus={executionStatus as "pending" | "running" | "completed" | "failed" | undefined}
                 isCurrentStep={isCurrentStep}

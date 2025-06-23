@@ -1,5 +1,6 @@
 "use client"
 
+import { AgentDialog } from "@/components/agent/agent-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkflowBuilder } from "@/components/workflow/canvas/workflow-builder"
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
@@ -28,6 +29,8 @@ export const Workflow = memo(function Workflow() {
   const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
   const [workflowToDelete, setWorkflowToDelete] = useState<WorkflowType | null>(null)
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
+  const [isAgentDialogOpen, setIsAgentDialogOpen] = useState(false)
 
   // Load workflow from URL on mount and when workflows change
   useEffect(() => {
@@ -219,9 +222,21 @@ export const Workflow = memo(function Workflow() {
     [selectedWorkflow, edit],
   )
 
-  const handleConfigure = useCallback((index: number) => {
-    // TODO: Open agent configuration dialog
-    console.log("Configure step", index)
+  const handleConfigure = useCallback(
+    (index: number) => {
+      if (!selectedWorkflow) return
+      const stepId = selectedWorkflow.steps[index]
+      const agent = agents.find((a) => a._id === stepId)
+      if (agent) {
+        setEditingAgent(agent)
+        setIsAgentDialogOpen(true)
+      }
+    },
+    [selectedWorkflow, agents],
+  )
+
+  const handleViewLogs = useCallback(() => {
+    setActiveTab("run")
   }, [])
 
   // Create a wrapper for getModel that accepts string
@@ -319,6 +334,7 @@ export const Workflow = memo(function Workflow() {
                     onDuplicateStep={handleDuplicateStep}
                     onConfigureStep={handleConfigure}
                     onUpdateSteps={handleUpdateSteps}
+                    onViewLogs={handleViewLogs}
                   />
                 )}
               </TabsContent>
@@ -376,6 +392,22 @@ export const Workflow = memo(function Workflow() {
         onOpenChange={(open) => !open && setWorkflowToDelete(null)}
         onConfirm={confirmDeleteWorkflow}
       />
+
+      {/* Agent Edit Dialog */}
+      {editingAgent && (
+        <AgentDialog
+          mode="edit"
+          agent={editingAgent}
+          open={isAgentDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsAgentDialogOpen(false)
+              setEditingAgent(null)
+            }
+          }}
+          isAuthenticated={isAuthenticated}
+        />
+      )}
     </div>
   )
 })

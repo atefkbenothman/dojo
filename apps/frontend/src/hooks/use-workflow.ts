@@ -175,11 +175,11 @@ export function useWorkflow() {
           role: "system",
           content: workflow.instructions,
         },
-        {
-          id: nanoid(),
-          role: "assistant",
-          content: `Starting workflow ${workflow.name}`,
-        },
+        // {
+        //   id: nanoid(),
+        //   role: "assistant",
+        //   content: `Starting workflow ${workflow.name}`,
+        // },
       ])
 
       // Handle MCP server connections if needed
