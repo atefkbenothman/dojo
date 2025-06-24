@@ -11,7 +11,7 @@ import { useState } from "react"
 
 const navigationItems = [
   {
-    href: "/",
+    href: "/dashboard",
     icon: House,
     label: "Home",
   },
@@ -51,7 +51,7 @@ export function SideNav() {
       <TooltipProvider>
         <div className="flex flex-col gap-4 py-4 flex-1">
           {navigationItems.map(({ href, icon: Icon, label }) => {
-            const isActive = href === "/" ? pathname === href : pathname.startsWith(href)
+            const isActive = href === "/dashboard" ? pathname === href : pathname.startsWith(href)
             return (
               <div key={href} className="flex w-full items-center justify-center">
                 <Tooltip delayDuration={800}>

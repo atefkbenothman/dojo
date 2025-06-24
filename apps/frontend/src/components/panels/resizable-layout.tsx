@@ -17,10 +17,10 @@ interface ResizableLayoutProps {
   isServerHealthy: boolean
 }
 
-const CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE = 2
+const CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE = 0
 const CHAT_PANEL_EXPANDED_WIDTH_PERCENTAGE = 30
 const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
-const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 100
+const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 70
 
 export function ResizableLayout({ children, defaultLayout, isServerHealthy }: ResizableLayoutProps) {
   const { handleNewChat } = useChatProvider()
@@ -43,7 +43,6 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
   }, [])
   const onCollapse = useCallback(() => syncPanelCollapsedState(true), [syncPanelCollapsedState])
   const onExpand = useCallback(() => syncPanelCollapsedState(false), [syncPanelCollapsedState])
-  const chatPanelStyle = useMemo(() => ({ minWidth: "40px" }), [])
 
   const onChatPanelToggle = useCallback(() => handleChatPanelToggle(), [handleChatPanelToggle])
 
@@ -58,7 +57,11 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
             <div className="flex-1 overflow-auto min-w-[500px]">{children}</div>
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle className={cn(isMaximized && "hidden")} />
+        <ResizableHandle
+          withHandle
+          className={cn((isMaximized || isChatPanelCollapsed) && "hidden")}
+          hitAreaMargins={{ coarse: 10, fine: 5 }}
+        />
         {/* Chat Panel */}
         <ResizablePanel
           id="chat-panel"
@@ -71,7 +74,6 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
           className="bg-card h-full w-full flex-shrink-0"
           onCollapse={onCollapse}
           onExpand={onExpand}
-          style={chatPanelStyle}
         >
           <div className="flex h-full w-full flex-col">
             <ChatPanelHeader

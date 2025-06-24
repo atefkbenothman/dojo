@@ -2,7 +2,7 @@
 
 import { DemoVideo } from "@/components/demo-video"
 
-export default async function Home() {
+export default async function Dashboard() {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center p-4">
       <p className="text-primary p-2 text-base font-medium max-w-2xl">

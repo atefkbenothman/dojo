@@ -1,6 +1,6 @@
 "use server"
 
-import { Agent } from "@/app/agent/agent"
+import { Agent } from "@/app/(app)/agent/agent"
 
 export default async function AgentPage() {
   return <Agent />
