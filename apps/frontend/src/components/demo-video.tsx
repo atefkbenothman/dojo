@@ -21,13 +21,8 @@ function VideoPopup({ isOpen, onOpenChange }: VideoPopupProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl p-0">
-        <div className="p-4">
-          <DialogHeader className="mb-4">
-            <DialogTitle className="text-lg font-semibold">Demo</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              See how Dojo works in action
-            </DialogDescription>
-          </DialogHeader>
+        <DialogTitle />
+        <div className="p-12">
           <div className="aspect-video">
             <video src={"/demo.mp4"} controls autoPlay className="w-full h-full" tabIndex={-1} />
           </div>
@@ -45,11 +40,16 @@ export function DemoVideo() {
   const [isVideoPopupOpen, setIsVideoPopupOpen] = useState(false)
 
   return (
-    <div className="w-full max-w-2xl mt-6 px-2">
-      <Button onClick={() => setIsVideoPopupOpen(true)} className="hover:cursor-pointer">
+    <>
+      <Button
+        className="hover:cursor-pointer w-full"
+        size="default"
+        variant="outline"
+        onClick={() => setIsVideoPopupOpen(true)}
+      >
         Watch Demo
       </Button>
       <VideoPopup isOpen={isVideoPopupOpen} onOpenChange={setIsVideoPopupOpen} />
-    </div>
+    </>
   )
 }

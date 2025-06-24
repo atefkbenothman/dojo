@@ -1,7 +1,5 @@
 "use server"
 
-import { DemoVideo } from "@/components/demo-video"
-
 export default async function Dashboard() {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center p-4">
@@ -17,7 +15,6 @@ export default async function Dashboard() {
         Users can build and configure their own agents and define their behaviors, and then chain agents together to
         solve more involved, complex tasks
       </p>
-      <DemoVideo />
     </div>
   )
 }
