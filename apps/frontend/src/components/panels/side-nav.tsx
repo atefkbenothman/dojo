@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { House, Server, Bot, User, Layers } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 
 const navigationItems = [
   {
@@ -30,11 +30,6 @@ const navigationItems = [
     icon: Layers,
     label: "Workflow",
   },
-  // {
-  //   href: "/files",
-  //   icon: FileText,
-  //   label: "Files",
-  // },
 ] as const
 
 export function SideNav() {
@@ -43,10 +38,16 @@ export function SideNav() {
 
   const [userDialogOpen, setUserDialogOpen] = useState(false)
 
+  const handleClick = useCallback(() => {
+    play("./sounds/click.mp3", { volume: 0.5 })
+  }, [play])
+
   return (
     <div className="bg-card w-[42px] flex-shrink-0 border-r-[1.5px] h-full flex flex-col">
-      <div className="bg-card flex h-12 flex-shrink-0 items-center justify-center border-b-[1.5px]">
-        <p className="text-base font-medium">⛩️</p>
+      <div className="bg-card flex h-[42px] flex-shrink-0 items-center justify-center border-b-[1.5px]">
+        <Link href="/" className="hover:cursor-pointer" onMouseDown={handleClick}>
+          <p className="text-base font-medium">⛩️</p>
+        </Link>
       </div>
       <TooltipProvider>
         <div className="flex flex-col gap-4 py-4 flex-1">
@@ -80,7 +81,7 @@ export function SideNav() {
         <div className="flex w-full items-center border-t-[1.5px] justify-center py-4">
           <div
             onClick={() => setUserDialogOpen(true)}
-            onMouseDown={() => play("./sounds/click.mp3", { volume: 0.5 })}
+            onMouseDown={handleClick}
             className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
           >
             <div className="text-primary/70 group-hover:text-primary">

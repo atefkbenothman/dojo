@@ -14,8 +14,8 @@ interface MainPanelHeaderProps {
 
 export function MainPanelHeader({ onChatPanelToggle, isCollapsed }: MainPanelHeaderProps) {
   return (
-    <div className="bg-card flex h-12 flex-shrink-0 items-center border-b-[1.5px] pr-2 pl-4">
-      <p className="flex-1 pr-4 text-base font-medium">Dojo</p>
+    <div className="bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px] pr-2 pl-4">
+      <p className="flex-1 pr-4 text-base font-semibold">Dojo</p>
       <div className="flex flex-row items-center gap-2">
         <SignIn />
         <GithubLinkButton />

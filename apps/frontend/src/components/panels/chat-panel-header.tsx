@@ -58,7 +58,7 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
   onNewChat,
 }: ChatPanelHeaderProps) {
   return (
-    <div className="bg-card flex h-12 flex-shrink-0 items-center border-b-[1.5px]">
+    <div className="bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px]">
       {isCollapsed ? (
         <div className="flex w-full items-center justify-center">
           <MessageSquare className="h-4.5 w-4.5" />

@@ -1,13 +1,24 @@
-"use server"
+"use client"
 
 import { DemoVideo } from "@/components/demo-video"
 import { MCP_SERVER_ICONS } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import type { ComponentType, SVGProps } from "react"
 
-export default async function LandingPage() {
+export default function LandingPage() {
+  const router = useRouter()
   const GitHubIcon = MCP_SERVER_ICONS.github as ComponentType<SVGProps<SVGSVGElement>> | null
+
+  // Prefetch all app routes immediately when landing page loads
+  useEffect(() => {
+    router.prefetch("/dashboard")
+    router.prefetch("/mcp")
+    router.prefetch("/agent")
+    router.prefetch("/workflow")
+  }, [router])
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-background">
@@ -17,7 +28,7 @@ export default async function LandingPage() {
           <p className="text-sm text-muted-foreground">Build, Run, and Chain AI Agents</p>
         </div>
         <div className="flex flex-col gap-2">
-          <Link href="/dashboard" className="w-full">
+          <Link href="/dashboard" className="w-full" prefetch={true}>
             <Button className="hover:cursor-pointer w-full" size="default">
               Start Building
             </Button>
