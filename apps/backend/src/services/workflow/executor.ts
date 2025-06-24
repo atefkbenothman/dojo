@@ -1,9 +1,9 @@
 import { convex } from "../../lib/convex-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
-import { mcpConnectionManager } from "../mcp/connection-manager"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
+import { mcpConnectionManager } from "../mcp/connection-manager"
 import { api } from "@dojo/db/convex/_generated/api"
 import { type Doc, type Id } from "@dojo/db/convex/_generated/dataModel"
 import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
@@ -20,6 +20,8 @@ interface WorkflowExecutorOptions {
 interface CompletedStep {
   instructions: string
   output?: string
+  stepIndex: number
+  agentName: string
 }
 
 interface WorkflowExecutionResult {
@@ -41,6 +43,7 @@ export class WorkflowExecutor {
 
   // Instance properties
   private completedSteps: CompletedStep[] = []
+  private conversationHistory: CoreMessage[] = []
   private lastStepOutput?: string
   private currentStepIndex?: number
   private hasError: boolean = false
@@ -124,6 +127,7 @@ export class WorkflowExecutor {
         this.log(`Executing step ${i + 1}: ${step.name || "Unnamed"}`)
 
         try {
+          // console.log("MESSAGES", initialMessages)
           await this.executeStep(step, i, workflowPrompt, initialMessages)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
@@ -196,40 +200,17 @@ export class WorkflowExecutor {
       // Get the AI model for this specific agent
       const aiModel = await this.getAgentModel(step)
 
-      // Build messages for this step
-      const systemMessage: CoreMessage = {
-        role: "system",
-        content: this.buildSystemMessage(workflowPrompt, step, stepIndex),
-      }
-
-      const userMessage = this.buildUserMessage(stepIndex, workflowPrompt)
-
-      // Filter conversation history (exclude system messages and empty content)
-      const conversationHistory = initialMessages.filter(
-        (m) =>
-          m.role !== "system" &&
-          typeof m.content === "string" &&
-          !m.content.startsWith("Starting workflow") &&
-          m.content.trim() !== "",
-      )
-
-      const currentStepMessages: CoreMessage[] = [systemMessage, ...conversationHistory, userMessage]
-
-      // this.log(`Messages for step ${stepIndex + 1}:`, {
-      //   system: systemMessage.content,
-      //   user: userMessage.content,
-      // })
+      // Build messages for this step with full conversation history
+      const messages = this.buildMessagesWithHistory(workflowPrompt, step, stepIndex)
 
       // Execute based on output type
       if (step.outputType === "text") {
-        await this.executeTextStep(step, stepIndex, currentStepMessages, aiModel)
+        await this.executeTextStep(step, stepIndex, messages, aiModel)
       } else if (step.outputType === "object") {
-        await this.executeObjectStep(step, stepIndex, currentStepMessages, aiModel)
+        await this.executeObjectStep(step, stepIndex, messages, aiModel)
       } else {
         throw new Error("Unknown output type")
       }
-
-      // Note: Status update with metadata is now handled in executeTextStep/executeObjectStep
 
       // Clear current step index after successful completion
       this.currentStepIndex = undefined
@@ -297,6 +278,14 @@ export class WorkflowExecutor {
         this.completedSteps.push({
           instructions: step.systemPrompt,
           output: result.text,
+          stepIndex,
+          agentName: step.name || `Agent ${stepIndex + 1}`,
+        })
+
+        // Add to conversation history for next steps
+        this.conversationHistory.push({
+          role: "assistant",
+          content: result.text,
         })
       }
 
@@ -346,6 +335,14 @@ export class WorkflowExecutor {
         this.completedSteps.push({
           instructions: step.systemPrompt,
           output: objectContent,
+          stepIndex,
+          agentName: step.name || `Agent ${stepIndex + 1}`,
+        })
+
+        // Add to conversation history for next steps
+        this.conversationHistory.push({
+          role: "assistant",
+          content: objectContent,
         })
       }
 
@@ -377,39 +374,59 @@ export class WorkflowExecutor {
 
     return this.completedSteps
       .map(
-        (step, idx) =>
-          `Step ${idx + 1} Instructions: ${step.instructions}${step.output ? `\nOutput: ${step.output}` : ""}`,
+        (step) =>
+          `Step ${step.stepIndex + 1}: ${step.agentName}
+Instructions: ${step.instructions}
+Output: ${step.output || "No output"}`,
       )
       .join("\n\n")
   }
 
-  private buildSystemMessage(
+  private buildMessagesWithHistory(
     workflowPrompt: string,
-    currentStep: { name?: string; systemPrompt: string },
+    currentStep: Doc<"agents">,
     stepIndex: number,
-  ): string {
-    return `<workflow_context>
-    ${workflowPrompt}
-</workflow_context>
+  ): CoreMessage[] {
+    const messages: CoreMessage[] = []
 
-<completed_steps>
-${this.formatCompletedSteps()}
-</completed_steps>
+    // System message with workflow context and current agent info
+    messages.push({
+      role: "system",
+      content: `<original_user_request>
+${workflowPrompt}
+</original_user_request>
 
-<current_step>
-Step ${stepIndex + 1}: ${currentStep.name || ""}
-Instructions: ${currentStep.systemPrompt}
-</current_step>`
+<current_agent>
+You are Agent ${stepIndex + 1}: ${currentStep.name || "Unnamed"}
+
+IMPORTANT: You are ONLY responsible for the following task. Do NOT attempt to perform tasks from other steps.
+Your SPECIFIC role: ${currentStep.systemPrompt}
+
+Previous agents have already completed their parts. Focus solely on your assigned task.
+</current_agent>`,
+    })
+
+    // Add conversation history (all previous user/assistant interactions)
+    messages.push(...this.conversationHistory)
+
+    // Add current step's user message
+    const userMessage = this.buildUserMessage(currentStep, stepIndex)
+    messages.push(userMessage)
+
+    // Store this user message for the next step's history
+    this.conversationHistory.push(userMessage)
+
+    return messages
   }
 
-  private buildUserMessage(stepIndex: number, workflowPrompt: string): { role: "user"; content: string } {
-    if (stepIndex === 0) {
-      return { role: "user", content: workflowPrompt }
-    }
-
+  private buildUserMessage(step: Doc<"agents">, stepIndex: number): CoreMessage {
     return {
       role: "user",
-      content: `Output from previous step:\n${this.lastStepOutput || "No output from previous step."}`,
+      content: `Execute ONLY step ${stepIndex + 1}: ${step.name || "Unnamed"}
+
+Your task: ${step.systemPrompt}
+
+Do not repeat work from previous steps. Focus only on your specific assignment above.`,
     }
   }
 
@@ -428,9 +445,9 @@ Instructions: ${currentStep.systemPrompt}
   /**
    * Analyzes which MCP servers are required for a specific step.
    */
-  private async getRequiredServersForStep(step: Doc<"agents">): Promise<Array<{ id: Id<"mcp">, name: string }>> {
-    const requiredServers: Array<{ id: Id<"mcp">, name: string }> = []
-    
+  private async getRequiredServersForStep(step: Doc<"agents">): Promise<Array<{ id: Id<"mcp">; name: string }>> {
+    const requiredServers: Array<{ id: Id<"mcp">; name: string }> = []
+
     if (!step.mcpServers || step.mcpServers.length === 0) {
       return requiredServers
     }
@@ -446,7 +463,7 @@ Instructions: ${currentStep.systemPrompt}
       }
     })
 
-    const serverDetails = (await Promise.all(serverPromises)).filter(s => s !== null)
+    const serverDetails = (await Promise.all(serverPromises)).filter((s) => s !== null)
     return serverDetails
   }
 
@@ -454,10 +471,7 @@ Instructions: ${currentStep.systemPrompt}
    * Establishes MCP connections required by a specific step.
    * Returns the updated tools available after connections.
    */
-  private async establishStepConnections(
-    step: Doc<"agents">, 
-    stepIndex: number
-  ): Promise<ToolSet> {
+  private async establishStepConnections(step: Doc<"agents">, stepIndex: number): Promise<ToolSet> {
     if (!this.options.sessionId || !this.options.executionId) {
       this.log(`Skipping MCP connection setup for step ${stepIndex + 1} - no session or execution ID`)
       return this.tools
@@ -465,14 +479,16 @@ Instructions: ${currentStep.systemPrompt}
 
     try {
       const requiredServers = await this.getRequiredServersForStep(step)
-      
+
       if (requiredServers.length === 0) {
         this.log(`Step ${stepIndex + 1} requires no MCP servers`)
         return this.tools
       }
 
-      this.log(`Step ${stepIndex + 1} requires ${requiredServers.length} MCP servers: ${requiredServers.map(s => s.name).join(', ')}`)
-      
+      this.log(
+        `Step ${stepIndex + 1} requires ${requiredServers.length} MCP servers: ${requiredServers.map((s) => s.name).join(", ")}`,
+      )
+
       // Update step status to connecting
       await convex.mutation(api.workflowExecutions.updateStepProgress, {
         executionId: this.options.executionId,
@@ -480,7 +496,6 @@ Instructions: ${currentStep.systemPrompt}
         agentId: step._id,
         status: "connecting",
       })
-
 
       // Connect to each required server
       for (const server of requiredServers) {
@@ -501,11 +516,7 @@ Instructions: ${currentStep.systemPrompt}
   /**
    * Connects to a single MCP server for a specific step.
    */
-  private async connectToStepServer(
-    serverId: Id<"mcp">, 
-    serverName: string, 
-    stepIndex: number
-  ): Promise<void> {
+  private async connectToStepServer(serverId: Id<"mcp">, serverName: string, stepIndex: number): Promise<void> {
     try {
       // Check if we're already connected to this server
       const existingConnection = mcpConnectionManager.getConnection(this.options.sessionId!, serverId)
@@ -513,7 +524,6 @@ Instructions: ${currentStep.systemPrompt}
         this.log(`Step ${stepIndex + 1}: Already connected to ${serverName}, reusing connection`)
         return
       }
-
 
       // Get server configuration
       const server = await convex.query(api.mcp.get, { id: serverId })
@@ -529,7 +539,7 @@ Instructions: ${currentStep.systemPrompt}
         {
           workflowExecutionId: this.options.executionId,
           connectionType: "workflow",
-        }
+        },
       )
 
       if (result.success) {
@@ -541,8 +551,6 @@ Instructions: ${currentStep.systemPrompt}
       throw error
     }
   }
-
-
 
   private async handleAbort(): Promise<void> {
     this.log("Workflow aborted, cleaning up running steps")
