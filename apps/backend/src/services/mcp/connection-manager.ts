@@ -176,6 +176,22 @@ export class MCPConnectionManager {
   }
 
   /**
+   * Checks if a connection already exists for a session and server.
+   */
+  hasConnection(sessionId: Id<"sessions">, mcpServerId: Id<"mcp">): boolean {
+    const sessionConnections = this.connectionCache.get(sessionId)
+    return sessionConnections?.has(mcpServerId) ?? false
+  }
+
+  /**
+   * Gets an existing connection for a session and server.
+   */
+  getConnection(sessionId: Id<"sessions">, mcpServerId: Id<"mcp">): ActiveMcpClient | null {
+    const sessionConnections = this.connectionCache.get(sessionId)
+    return sessionConnections?.get(mcpServerId) ?? null
+  }
+
+  /**
    * Aggregates all tools from a session's active MCP clients into a single object.
    */
   aggregateTools(sessionId: Id<"sessions">): ToolSet {

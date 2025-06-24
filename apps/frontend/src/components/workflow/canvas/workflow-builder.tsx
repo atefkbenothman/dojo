@@ -147,7 +147,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
                 onDuplicate={() => onDuplicateStep(index, stepId)}
                 onViewLogs={onViewLogs}
                 isExpanded={areAllStepsExpanded}
-                executionStatus={executionStatus as "pending" | "running" | "completed" | "failed" | undefined}
+                executionStatus={executionStatus as "pending" | "connecting" | "running" | "completed" | "failed" | undefined}
                 isCurrentStep={isCurrentStep}
                 executionDuration={executionDuration}
                 executionError={executionError}

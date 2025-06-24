@@ -73,7 +73,9 @@ export function useWorkflow() {
     if (!workflowExecutions || !workflows) return
 
     // Find the most recent running execution
-    const runningExecution = workflowExecutions.find((exec) => exec.status === "preparing" || exec.status === "running")
+    const runningExecution = workflowExecutions.find((exec) => 
+      exec.status === "preparing" || exec.status === "running"
+    )
 
     if (runningExecution) {
       // Update current execution tracking
@@ -326,7 +328,8 @@ export function useWorkflow() {
       // First check if we have an active execution from Convex
       const activeExecution =
         workflowExecutions?.find(
-          (exec) => exec.workflowId === workflowId && (exec.status === "preparing" || exec.status === "running"),
+          (exec) => exec.workflowId === workflowId && 
+          (exec.status === "preparing" || exec.status === "running"),
         ) || null
 
       // If we have an active execution, return it
@@ -368,8 +371,31 @@ export function useWorkflow() {
   // Helper function to get all running executions
   const getRunningExecutions = useCallback(() => {
     if (!workflowExecutions) return []
-    return workflowExecutions.filter((exec) => exec.status === "preparing" || exec.status === "running")
+    return workflowExecutions.filter((exec) => 
+      exec.status === "preparing" || exec.status === "running"
+    )
   }, [workflowExecutions])
+
+  // Helper function to check if any step is currently connecting
+  const hasConnectingSteps = useCallback((workflowId: Id<"workflows">) => {
+    const execution = getWorkflowExecution(workflowId)
+    if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
+      return false
+    }
+    
+    return execution.stepExecutions.some((step: any) => step.status === "connecting")
+  }, [getWorkflowExecution])
+
+  // Helper function to get step-level connection status
+  const getStepConnectionStatus = useCallback((workflowId: Id<"workflows">, stepIndex: number) => {
+    const execution = getWorkflowExecution(workflowId)
+    if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
+      return null
+    }
+    
+    const stepExecution = execution.stepExecutions[stepIndex]
+    return stepExecution?.status === "connecting" ? "connecting" : null
+  }, [getWorkflowExecution])
 
   return {
     workflows: stableWorkflows,
@@ -384,5 +410,8 @@ export function useWorkflow() {
     getWorkflowExecution,
     getRunningExecutions,
     workflowExecutions,
+    // Step-level connection helpers
+    hasConnectingSteps,
+    getStepConnectionStatus,
   }
 }

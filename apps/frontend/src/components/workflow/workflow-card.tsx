@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
+import { useWorkflow } from "@/hooks/use-workflow"
 import { Play, MoreVertical, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square } from "lucide-react"
 import { useCallback, memo, useState } from "react"
 
@@ -168,11 +169,26 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
   isAuthenticated,
   onRun,
 }: WorkflowExecutionStatusProps) {
+  const { hasConnectingSteps } = useWorkflow()
   const isActiveExecution = execution.status === "preparing" || execution.status === "running"
 
   const getProgressPercentage = () => {
-    if (!execution.currentStep) return 0
-    return Math.round((execution.currentStep / execution.totalSteps) * 100)
+    // If we have step executions, count based on those
+    if (execution.stepExecutions && execution.stepExecutions.length > 0) {
+      const completedSteps = execution.stepExecutions.filter((se: any) => se.status === "completed").length
+      return Math.round((completedSteps / execution.totalSteps) * 100)
+    }
+    
+    // Fallback to currentStep logic, but add 1 if we're actively running
+    if (execution.currentStep === undefined) {
+      // If workflow is running but no currentStep yet, we're on step 1
+      return execution.status === "running" ? Math.round((1 / execution.totalSteps) * 100) : 0
+    }
+    
+    // currentStep is 0-indexed and represents the step being executed
+    // So progress should be (currentStep + 1) / totalSteps
+    const activeStep = execution.currentStep + 1
+    return Math.round((activeStep / execution.totalSteps) * 100)
   }
 
   const getCurrentStepName = () => {
@@ -194,6 +210,7 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
       case "running":
         const current = (execution.currentStep ?? 0) + 1
         const stepName = getCurrentStepName()
+        
         return stepName
           ? `Running: ${stepName} (${current}/${execution.totalSteps})`
           : `Running step ${current} of ${execution.totalSteps}`

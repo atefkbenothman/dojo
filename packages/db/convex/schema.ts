@@ -113,6 +113,7 @@ export const workflowExecutionsFields = {
         agentId: v.id("agents"),
         status: v.union(
           v.literal("pending"),
+          v.literal("connecting"),
           v.literal("running"),
           v.literal("completed"),
           v.literal("failed"),

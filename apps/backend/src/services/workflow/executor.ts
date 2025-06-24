@@ -81,13 +81,19 @@ export class WorkflowExecutor {
 
       this.log(`Starting workflow execution with ${this.steps.length} steps`)
 
-      // Auto-establish required MCP connections for this workflow
-      await this.establishWorkflowConnections()
-
-      // Refresh tools after establishing connections
+      // Note: MCP connections are now established per-step as needed
+      // Initialize tools from any existing connections
       if (this.options.sessionId) {
         this.tools = mcpConnectionManager.aggregateTools(this.options.sessionId)
-        this.log(`Updated tools after establishing connections: ${Object.keys(this.tools).length} total tools`)
+        this.log(`Starting with ${Object.keys(this.tools).length} existing tools`)
+      }
+
+      // Start directly in running status (no global connecting phase)
+      if (this.options.executionId) {
+        await convex.mutation(api.workflowExecutions.updateStatus, {
+          executionId: this.options.executionId,
+          status: "running",
+        })
       }
 
       // Execute each step sequentially
@@ -174,17 +180,19 @@ export class WorkflowExecutor {
     // Track current step
     this.currentStepIndex = stepIndex
 
-    // Update step status to running
-    if (this.options.executionId) {
-      await convex.mutation(api.workflowExecutions.updateStepProgress, {
-        executionId: this.options.executionId,
-        stepIndex,
-        agentId: step._id,
-        status: "running",
-      })
-    }
-
     try {
+      // First, establish required MCP connections for this step
+      this.tools = await this.establishStepConnections(step, stepIndex)
+
+      // Update step status to running (after connections are established)
+      if (this.options.executionId) {
+        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+          executionId: this.options.executionId,
+          stepIndex,
+          agentId: step._id,
+          status: "running",
+        })
+      }
       // Get the AI model for this specific agent
       const aiModel = await this.getAgentModel(step)
 
@@ -418,86 +426,123 @@ Instructions: ${currentStep.systemPrompt}
   }
 
   /**
-   * Establishes MCP connections required by all agents in the workflow.
-   * Connections are tagged with the workflow execution ID for automatic cleanup.
+   * Analyzes which MCP servers are required for a specific step.
    */
-  private async establishWorkflowConnections(): Promise<void> {
+  private async getRequiredServersForStep(step: Doc<"agents">): Promise<Array<{ id: Id<"mcp">, name: string }>> {
+    const requiredServers: Array<{ id: Id<"mcp">, name: string }> = []
+    
+    if (!step.mcpServers || step.mcpServers.length === 0) {
+      return requiredServers
+    }
+
+    // Get server configurations
+    const serverPromises = step.mcpServers.map(async (serverId) => {
+      try {
+        const server = await convex.query(api.mcp.get, { id: serverId })
+        return server ? { id: serverId, name: server.name } : null
+      } catch (error) {
+        this.log(`Error fetching MCP server ${serverId}:`, error)
+        return null
+      }
+    })
+
+    const serverDetails = (await Promise.all(serverPromises)).filter(s => s !== null)
+    return serverDetails
+  }
+
+  /**
+   * Establishes MCP connections required by a specific step.
+   * Returns the updated tools available after connections.
+   */
+  private async establishStepConnections(
+    step: Doc<"agents">, 
+    stepIndex: number
+  ): Promise<ToolSet> {
     if (!this.options.sessionId || !this.options.executionId) {
-      this.log("Skipping MCP connection setup - no session or execution ID")
-      return
+      this.log(`Skipping MCP connection setup for step ${stepIndex + 1} - no session or execution ID`)
+      return this.tools
     }
 
     try {
-      // Collect all required MCP servers from all agents
-      const requiredServers = new Set<Id<"mcp">>()
-      for (const agent of this.steps) {
-        for (const serverId of agent.mcpServers || []) {
-          requiredServers.add(serverId)
-        }
+      const requiredServers = await this.getRequiredServersForStep(step)
+      
+      if (requiredServers.length === 0) {
+        this.log(`Step ${stepIndex + 1} requires no MCP servers`)
+        return this.tools
       }
 
-      if (requiredServers.size === 0) {
-        this.log("No MCP servers required for this workflow")
-        return
-      }
-
-      this.log(`Establishing connections to ${requiredServers.size} MCP servers for workflow`)
-
-      // Get MCP server configurations
-      const serverPromises = Array.from(requiredServers).map(async (serverId) => {
-        try {
-          const server = await convex.query(api.mcp.get, { id: serverId })
-          return server
-        } catch (error) {
-          this.log(`Error fetching MCP server ${serverId}:`, error)
-          return null
-        }
+      this.log(`Step ${stepIndex + 1} requires ${requiredServers.length} MCP servers: ${requiredServers.map(s => s.name).join(', ')}`)
+      
+      // Update step status to connecting
+      await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        executionId: this.options.executionId,
+        stepIndex,
+        agentId: step._id,
+        status: "connecting",
       })
 
-      const servers = (await Promise.all(serverPromises)).filter((s) => s !== null)
 
-      // Establish connections for each server
-      const connectionPromises = servers.map(async (server) => {
-        try {
-          const result = await mcpConnectionManager.establishConnection(
-            this.options.sessionId!,
-            server,
-            this.options.userId,
-            {
-              workflowExecutionId: this.options.executionId,
-              connectionType: "workflow",
-            }
-          )
-
-          if (result.success) {
-            this.log(`Successfully connected to MCP server: ${server.name}`)
-          } else {
-            this.log(`Failed to connect to MCP server ${server.name}: ${result.error}`)
-          }
-
-          return result
-        } catch (error) {
-          this.log(`Error connecting to MCP server ${server.name}:`, error)
-          return { success: false, error: String(error) }
-        }
-      })
-
-      const results = await Promise.all(connectionPromises)
-      const successCount = results.filter((r) => r.success).length
-      const failedConnections = results.filter((r) => !r.success)
-
-      this.log(`Established ${successCount}/${servers.length} MCP connections for workflow`)
-
-      // Fail workflow if any required connections failed
-      if (failedConnections.length > 0) {
-        const errorMessages = failedConnections.map((r) => r.error).join("; ")
-        throw new Error(`Failed to establish ${failedConnections.length} required MCP connections: ${errorMessages}`)
+      // Connect to each required server
+      for (const server of requiredServers) {
+        await this.connectToStepServer(server.id, server.name, stepIndex)
       }
+
+      // Refresh tools after establishing new connections
+      this.tools = mcpConnectionManager.aggregateTools(this.options.sessionId)
+      this.log(`Step ${stepIndex + 1}: Updated tools after connections: ${Object.keys(this.tools).length} total tools`)
+
+      return this.tools
     } catch (error) {
-      // Re-throw connection errors to fail the workflow setup
+      this.log(`MCP connection setup failed for step ${stepIndex + 1}:`, error)
       throw error
     }
   }
+
+  /**
+   * Connects to a single MCP server for a specific step.
+   */
+  private async connectToStepServer(
+    serverId: Id<"mcp">, 
+    serverName: string, 
+    stepIndex: number
+  ): Promise<void> {
+    try {
+      // Check if we're already connected to this server
+      const existingConnection = mcpConnectionManager.getConnection(this.options.sessionId!, serverId)
+      if (existingConnection) {
+        this.log(`Step ${stepIndex + 1}: Already connected to ${serverName}, reusing connection`)
+        return
+      }
+
+
+      // Get server configuration
+      const server = await convex.query(api.mcp.get, { id: serverId })
+      if (!server) {
+        throw new Error(`Server ${serverId} not found`)
+      }
+
+      // Establish the actual connection
+      const result = await mcpConnectionManager.establishConnection(
+        this.options.sessionId!,
+        server,
+        this.options.userId,
+        {
+          workflowExecutionId: this.options.executionId,
+          connectionType: "workflow",
+        }
+      )
+
+      if (result.success) {
+        this.log(`Step ${stepIndex + 1}: Successfully connected to MCP server: ${serverName}`)
+      } else {
+        throw new Error(`Failed to connect to ${serverName}: ${result.error}`)
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
+
 
   private async handleAbort(): Promise<void> {
     this.log("Workflow aborted, cleaning up running steps")

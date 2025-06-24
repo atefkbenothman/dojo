@@ -14,7 +14,7 @@ interface WorkflowExecutionViewProps {
   onStop?: () => void
 }
 
-type StepStatus = "pending" | "running" | "completed" | "failed" | "cancelled"
+type StepStatus = "pending" | "connecting" | "running" | "completed" | "failed" | "cancelled"
 
 export const WorkflowExecutionView = memo(function WorkflowExecutionView({
   workflow,
@@ -79,7 +79,7 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
 
   // Auto-expand rules
   const shouldAutoExpand = (stepIndex: number, status: StepStatus): boolean => {
-    return status === "running" || status === "failed"
+    return status === "running" || status === "connecting" || status === "failed"
   }
 
   // Apply auto-expansion
@@ -120,6 +120,8 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
         return <XCircle className={cn(iconClass, "text-gray-500")} />
       case "running":
         return <Loader2 className={cn(iconClass, "text-blue-500 animate-spin")} />
+      case "connecting":
+        return <Loader2 className={cn(iconClass, "text-orange-500 animate-spin")} />
       case "pending":
         return <Circle className={cn(iconClass, "text-gray-400")} />
     }
@@ -177,6 +179,7 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
         </div>
       </div>
 
+
       {/* Steps list - more compact */}
       <div ref={viewportRef} className="flex-1 overflow-y-auto p-2 space-y-1.5">
         {workflowSteps.map((agentId, stepIndex) => {
@@ -198,6 +201,7 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                 status === "failed" && "border-red-200 dark:border-red-800",
                 status === "cancelled" && "border-gray-300 dark:border-gray-700",
                 status === "running" && "border-blue-400 dark:border-blue-600 shadow-sm",
+                status === "connecting" && "border-orange-400 dark:border-orange-600 shadow-sm",
                 status === "pending" && "border-gray-200 dark:border-gray-800",
               )}
             >
@@ -228,6 +232,11 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                   {status === "running" && (
                     <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
                       Running
+                    </span>
+                  )}
+                  {status === "connecting" && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 animate-pulse">
+                      Connecting
                     </span>
                   )}
                 </div>

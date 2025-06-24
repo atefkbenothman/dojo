@@ -36,7 +36,7 @@ interface WorkflowStepProps {
   onDrop?: (e: DragEvent) => void
   isExpanded?: boolean
   // Execution state props
-  executionStatus?: "pending" | "running" | "completed" | "failed"
+  executionStatus?: "pending" | "connecting" | "running" | "completed" | "failed"
   isCurrentStep?: boolean
   executionDuration?: number
   executionError?: string
@@ -99,6 +99,8 @@ export const WorkflowStep = memo(function WorkflowStep({
         return <XCircle className={cn(iconClass, "text-red-500")} />
       case "running":
         return <Loader2 className={cn(iconClass, "text-blue-500 animate-spin")} />
+      case "connecting":
+        return <Loader2 className={cn(iconClass, "text-orange-500 animate-spin")} />
       case "pending":
         return <Clock className={cn(iconClass, "text-gray-400")} />
       default:
@@ -116,6 +118,8 @@ export const WorkflowStep = memo(function WorkflowStep({
         return "border-red-500/40 border-2"
       case "running":
         return "border-blue-500 border-2"
+      case "connecting":
+        return "border-orange-500 border-2"
       default:
         return ""
     }
@@ -183,6 +187,7 @@ export const WorkflowStep = memo(function WorkflowStep({
           executionStatus === "completed" && "border-green-500/40 text-green-600 dark:text-green-400",
           executionStatus === "failed" && "border-red-500/40 text-red-600 dark:text-red-400",
           executionStatus === "running" && "border-blue-500 text-blue-600 dark:text-blue-400",
+          executionStatus === "connecting" && "border-orange-500 text-orange-600 dark:text-orange-400",
           executionStatus === "pending" && "text-gray-400",
         )}
       >
@@ -198,6 +203,14 @@ export const WorkflowStep = memo(function WorkflowStep({
       {executionStatus === "running" && (
         <div className="absolute left-0 -translate-x-full -ml-2.5 top-10 z-10 flex items-center justify-center h-6 px-2 border border-blue-500 bg-background text-xs font-medium text-blue-600 dark:text-blue-400 animate-pulse whitespace-nowrap">
           Running
+        </div>
+      )}
+      {executionStatus === "connecting" && (
+        <div className="absolute left-0 -translate-x-full -ml-2.5 top-10 z-10 flex items-center justify-center h-6 px-2 border border-orange-500 bg-background text-xs font-medium text-orange-600 dark:text-orange-400 animate-pulse whitespace-nowrap">
+          {requiredServerNames.length > 0 
+            ? `Connecting ${requiredServerNames.length} ${requiredServerNames.length === 1 ? "server" : "servers"}`
+            : "Connecting"
+          }
         </div>
       )}
       {executionStatus === "failed" && (
@@ -363,16 +376,30 @@ export const WorkflowStep = memo(function WorkflowStep({
                   <div className="space-y-0.5">
                     <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                       Required Tools ({requiredServerNames.length})
+                      {executionStatus === "connecting" && (
+                        <span className="text-orange-600 dark:text-orange-400 ml-1">- Connecting...</span>
+                      )}
                     </label>
                     <div className="flex flex-wrap gap-0.5">
                       {requiredServerNames.map((name) => (
-                        <div key={name} className="text-[10px] bg-muted/30 rounded-md px-1 py-0.5">
+                        <div 
+                          key={name} 
+                          className={cn(
+                            "text-[10px] rounded-md px-1 py-0.5",
+                            executionStatus === "connecting" 
+                              ? "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 animate-pulse"
+                              : "bg-muted/30"
+                          )}
+                        >
                           {name}
                         </div>
                       ))}
                     </div>
                     <div className="text-[10px] text-muted-foreground italic">
-                      Auto-connected during workflow execution
+                      {executionStatus === "connecting" 
+                        ? "Establishing connections to MCP servers..."
+                        : "Auto-connected during workflow execution"
+                      }
                     </div>
                   </div>
                 )}

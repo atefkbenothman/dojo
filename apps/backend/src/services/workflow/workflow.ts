@@ -95,11 +95,7 @@ export class WorkflowService {
           agentIds: steps.map((step) => step._id),
         })
 
-        // Update status to running
-        await convex.mutation(api.workflowExecutions.updateStatus, {
-          executionId,
-          status: "running",
-        })
+        // Note: MCP connections are now handled per-step during execution
 
         // Register the abort controller
         WorkflowService.executionControllers.set(executionId, abortController)
@@ -298,6 +294,7 @@ export class WorkflowService {
       return []
     }
   }
+
 }
 
 // Export singleton instance

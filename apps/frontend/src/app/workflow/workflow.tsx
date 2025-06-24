@@ -273,7 +273,7 @@ export const Workflow = memo(function Workflow() {
     <div className="flex flex-col h-full">
       <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
         {/* Main Header */}
-        <div className="flex flex-col gap-1 border-b-[1.5px] pb-4 -my-4 py-4 -mx-4 px-4 bg-card">
+        <div className="flex flex-col gap-1 border-b-[1.5px] pb-4 -my-4 py-4 -mx-4 px-4 bg-card w-96 border-r-[1.5px]">
           <div className="flex items-center gap-70">
             <p className="text-sm font-semibold">Workflows</p>
           </div>

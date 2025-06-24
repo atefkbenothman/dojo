@@ -76,6 +76,7 @@ export const updateStepProgress = mutation({
     agentId: v.id("agents"),
     status: v.union(
       v.literal("pending"),
+      v.literal("connecting"),
       v.literal("running"),
       v.literal("completed"),
       v.literal("failed"),
@@ -203,7 +204,10 @@ export const getActiveExecution = query({
       .filter((q) =>
         q.and(
           q.eq(q.field("workflowId"), args.workflowId),
-          q.or(q.eq(q.field("status"), "preparing"), q.eq(q.field("status"), "running")),
+          q.or(
+            q.eq(q.field("status"), "preparing"), 
+            q.eq(q.field("status"), "running")
+          ),
         ),
       )
       .first()
@@ -221,3 +225,5 @@ export const get = query({
     return await ctx.db.get(args.executionId)
   },
 })
+
+// Note: Global MCP connection status tracking removed - now handled per-step
