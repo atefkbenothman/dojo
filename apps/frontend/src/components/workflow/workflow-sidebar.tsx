@@ -1,12 +1,13 @@
 "use client"
 
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { WorkflowCard } from "@/components/workflow/workflow-card"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent, Workflow, WorkflowExecution } from "@dojo/db/convex/types"
-import { Search } from "lucide-react"
-import { useState, memo } from "react"
+import { Search, Globe, User } from "lucide-react"
+import { useState, memo, useMemo } from "react"
 
 interface WorkflowSidebarProps {
   workflows: Workflow[]
@@ -37,61 +38,140 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
 }: WorkflowSidebarProps) {
   const [searchInput, setSearchInput] = useState<string>("")
 
+  // Separate workflows into global (public) and user workflows
+  const { globalWorkflows, userWorkflows } = useMemo(() => {
+    const global: Workflow[] = []
+    const user: Workflow[] = []
+
+    workflows.forEach((workflow) => {
+      if (workflow.isPublic) {
+        global.push(workflow)
+      } else {
+        user.push(workflow)
+      }
+    })
+
+    return { globalWorkflows: global, userWorkflows: user }
+  }, [workflows])
+
   // Filter workflows based on search
-  const filteredWorkflows =
-    searchInput === ""
-      ? workflows
-      : workflows.filter((workflow) => workflow.name.toLowerCase().includes(searchInput.toLowerCase()))
+  const filterWorkflows = (workflowList: Workflow[]) => {
+    if (searchInput === "") return workflowList
+    return workflowList.filter((workflow) => workflow.name.toLowerCase().includes(searchInput.toLowerCase()))
+  }
+
+  const filteredGlobalWorkflows = filterWorkflows(globalWorkflows)
+  const filteredUserWorkflows = filterWorkflows(userWorkflows)
+
+  // Determine which accordion sections should be open by default
+  const defaultOpenSections = useMemo(() => {
+    return ["global", "user"] // Always show both sections open by default
+  }, [])
 
   return (
-    <div className="flex flex-col bg-card flex-1 min-h-0">
+    <div className="flex flex-col bg-card flex-1 min-h-0 overflow-y-auto no-scrollbar relative">
       {/* Search */}
-      <div className="relative w-full p-4 border-b-[1.5px]">
-        <Search className="absolute left-7 top-1/2 transform -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
-        <Input
-          placeholder="Search workflows"
-          className="h-9 pl-9 text-xs bg-background/50 focus-visible:ring-0"
-          onChange={(e) => setSearchInput(e.target.value)}
-          value={searchInput}
-        />
+      <div className="sticky top-0 z-30 bg-card">
+        <div className="relative w-full p-4 border-b-[1.5px]">
+          <Search className="absolute left-7 top-1/2 transform -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
+          <Input
+            placeholder="Search workflows"
+            className="h-9 pl-9 text-xs bg-background/50 focus-visible:ring-0"
+            onChange={(e) => setSearchInput(e.target.value)}
+            value={searchInput}
+          />
+        </div>
+        {/* Create */}
+        <div className="p-4 border-b-[1.5px]">
+          <Button
+            variant="outline"
+            className="w-full h-10 hover:cursor-pointer"
+            onClick={onCreateWorkflow}
+            disabled={!isAuthenticated}
+          >
+            Create Workflow
+          </Button>
+        </div>
       </div>
-      {/* Create */}
-      <div className="p-4 border-b-[1.5px]">
-        <Button
-          variant="outline"
-          className="w-full h-10 hover:cursor-pointer"
-          onClick={onCreateWorkflow}
-          disabled={!isAuthenticated}
-        >
-          Create Workflow
-        </Button>
-      </div>
-      {/* Workflow List */}
-      <div className="flex flex-col gap-4 overflow-y-auto flex-1 p-4 no-scrollbar">
-        {filteredWorkflows.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-xs text-muted-foreground">
-              {searchInput ? "No workflows found" : "Build your first workflow"}
-            </p>
-          </div>
-        ) : (
-          filteredWorkflows.map((workflow) => (
-            <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
-              <WorkflowCard
-                workflow={workflow}
-                isAuthenticated={isAuthenticated}
-                onEditClick={onEditWorkflow}
-                onDeleteClick={onDeleteWorkflow}
-                isSelected={selectedWorkflowId === workflow._id}
-                onRun={() => onRunWorkflow(workflow)}
-                onStop={() => onStopWorkflow(workflow._id)}
-                execution={workflowExecutions.get(workflow._id)}
-                agents={agents || []}
-              />
+      {/* Workflow List with Accordion Sections */}
+      <Accordion type="multiple" defaultValue={defaultOpenSections} className="w-full">
+        <AccordionItem value="global">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-20">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Global Workflows</span>
+              <span className="text-xs text-muted-foreground">({filteredGlobalWorkflows.length})</span>
             </div>
-          ))
-        )}
-      </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4 py-4">
+            <div className="flex flex-col gap-4">
+              {filteredGlobalWorkflows.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">
+                  {searchInput ? "No global workflows match your search" : "No global workflows available"}
+                </p>
+              ) : (
+                filteredGlobalWorkflows.map((workflow) => (
+                  <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
+                    <WorkflowCard
+                      workflow={workflow}
+                      isAuthenticated={isAuthenticated}
+                      onEditClick={onEditWorkflow}
+                      onDeleteClick={onDeleteWorkflow}
+                      isSelected={selectedWorkflowId === workflow._id}
+                      onRun={() => onRunWorkflow(workflow)}
+                      onStop={() => onStopWorkflow(workflow._id)}
+                      execution={workflowExecutions.get(workflow._id)}
+                      agents={agents || []}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <div className="border-b-[1px]" />
+
+        {/* User Workflows Section - Always shown */}
+        <AccordionItem value="user" className="">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10 border-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">My Workflows</span>
+              {isAuthenticated && (
+                <span className="text-xs text-muted-foreground">({filteredUserWorkflows.length})</span>
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4 py-4">
+            <div className="flex flex-col gap-4">
+              {!isAuthenticated ? (
+                <p className="text-xs text-muted-foreground py-2">Sign in to create your own workflows</p>
+              ) : filteredUserWorkflows.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  {searchInput ? "No personal workflows match your search" : "You haven't created any workflows yet"}
+                </p>
+              ) : (
+                filteredUserWorkflows.map((workflow) => (
+                  <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
+                    <WorkflowCard
+                      workflow={workflow}
+                      isAuthenticated={isAuthenticated}
+                      onEditClick={onEditWorkflow}
+                      onDeleteClick={onDeleteWorkflow}
+                      isSelected={selectedWorkflowId === workflow._id}
+                      onRun={() => onRunWorkflow(workflow)}
+                      onStop={() => onStopWorkflow(workflow._id)}
+                      execution={workflowExecutions.get(workflow._id)}
+                      agents={agents || []}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <div className="border-b-[1px]" />
+      </Accordion>
     </div>
   )
 })

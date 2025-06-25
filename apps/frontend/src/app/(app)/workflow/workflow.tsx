@@ -297,7 +297,7 @@ export const Workflow = memo(function Workflow() {
     <>
       <div className="flex h-full bg-background">
         {/* Left Sidebar */}
-        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full overflow-hidden">
+        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full">
           {/* Header */}
           <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
             <p className="text-sm font-semibold">Workflows</p>
