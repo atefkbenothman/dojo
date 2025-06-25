@@ -1,7 +1,7 @@
 import { getConvexUser } from "./auth"
-import { logger } from "./logger"
 import { convex } from "./convex-client"
 import { throwError } from "./errors"
+import { logger } from "./logger"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc } from "@dojo/db/convex/_generated/dataModel"
 import type { Request, Response, NextFunction } from "express"
@@ -64,15 +64,15 @@ export async function getSessionFromRequest(req: Request): Promise<SessionResult
  */
 export async function attachSessionMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   const result = await getSessionFromRequest(req)
-  
+
   // Attach session to request (can be null if no session found)
   req.session = result.session || undefined
-  
+
   // Also attach any error for the route handler to decide what to do
   if (result.error) {
     req.sessionError = result.error
   }
-  
+
   next()
 }
 
@@ -82,11 +82,11 @@ export async function attachSessionMiddleware(req: Request, res: Response, next:
  */
 export async function requireSessionMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   const result = await getSessionFromRequest(req)
-  
+
   if (!result.session) {
     throwError(result.error || "Session required", 401)
   }
-  
+
   req.session = result.session
   next()
 }

@@ -61,10 +61,10 @@ export const connectionRouter = router({
 
         // 2. Establish the new live connection, which adds it to the cache.
         const connection = await mcpConnectionManager.establishConnection(
-          session._id, 
-          server, 
+          session._id,
+          server,
           session.userId || undefined,
-          { connectionType: "user" } // User-initiated connections
+          { connectionType: "user" }, // User-initiated connections
         )
         if (!connection?.success) {
           throw new Error(connection?.error || `Failed to establish connection with server "${server.name}".`)

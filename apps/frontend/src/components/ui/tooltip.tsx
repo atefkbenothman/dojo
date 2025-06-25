@@ -15,19 +15,16 @@ function Tooltip({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Root
 
 function TooltipTrigger({ onMouseDown, ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
   const { play } = useSoundEffectContext()
-  
-  const handleMouseDown = React.useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    play("./sounds/click.mp3", { volume: 0.5 })
-    onMouseDown?.(e)
-  }, [play, onMouseDown])
-  
-  return (
-    <TooltipPrimitive.Trigger
-      data-slot="tooltip-trigger"
-      onMouseDown={handleMouseDown}
-      {...props}
-    />
+
+  const handleMouseDown = React.useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      play("./sounds/click.mp3", { volume: 0.5 })
+      onMouseDown?.(e)
+    },
+    [play, onMouseDown],
   )
+
+  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" onMouseDown={handleMouseDown} {...props} />
 }
 
 function TooltipContent({

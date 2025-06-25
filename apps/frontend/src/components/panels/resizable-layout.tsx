@@ -8,7 +8,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { useChatProvider } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
 import { cn } from "@/lib/utils"
-import { useRef, useCallback, useMemo } from "react"
+import { useRef, useCallback } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 
 interface ResizableLayoutProps {

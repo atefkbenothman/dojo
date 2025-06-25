@@ -1,6 +1,5 @@
 "use client"
 
-import { useAgent } from "@/hooks/use-agent"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
@@ -19,11 +18,10 @@ import { useCallback, useMemo, useEffect, useState, useRef } from "react"
 import { toast } from "sonner"
 
 export function useWorkflow() {
-  const { play } = useSoundEffectContext()
-  const { append, setMessages, stop } = useChatProvider()
-  const { agents } = useAgent()
-  const { currentSession } = useUser()
   const authToken = useAuthToken()
+  const { play } = useSoundEffectContext()
+  const { append, setMessages } = useChatProvider()
+  const { currentSession } = useUser()
   const { readStorage } = useLocalStorage()
 
   const guestSessionId = useMemo(() => {
@@ -34,7 +32,6 @@ export function useWorkflow() {
   const create = useMutation(api.workflows.create)
   const edit = useMutation(api.workflows.edit)
   const remove = useMutation(api.workflows.remove)
-  const requestCancellation = useMutation(api.workflowExecutions.requestCancellation)
 
   // Subscribe to workflow executions for real-time updates
   const workflowExecutions = useQuery(
@@ -73,9 +70,7 @@ export function useWorkflow() {
     if (!workflowExecutions || !workflows) return
 
     // Find the most recent running execution
-    const runningExecution = workflowExecutions.find((exec) => 
-      exec.status === "preparing" || exec.status === "running"
-    )
+    const runningExecution = workflowExecutions.find((exec) => exec.status === "preparing" || exec.status === "running")
 
     if (runningExecution) {
       // Update current execution tracking
@@ -182,8 +177,6 @@ export function useWorkflow() {
         // },
       ])
 
-      // Note: MCP connections are now handled automatically by the backend during workflow execution
-
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
@@ -229,7 +222,7 @@ export function useWorkflow() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, agents, play, setMessages, currentSession],
+    [append, play, setMessages, currentSession],
   )
 
   const stopWorkflow = async (workflowId: string) => {
@@ -304,10 +297,7 @@ export function useWorkflow() {
         }),
       )
 
-      // Clear all optimistic states
       setPreparingWorkflows(new Set())
-
-      // Play sound once - following MCP's disconnectAll pattern
       play("./sounds/disconnect.mp3", { volume: 0.5 })
     } catch (error) {
       console.error("Failed to stop all workflows:", error)
@@ -328,8 +318,7 @@ export function useWorkflow() {
       // First check if we have an active execution from Convex
       const activeExecution =
         workflowExecutions?.find(
-          (exec) => exec.workflowId === workflowId && 
-          (exec.status === "preparing" || exec.status === "running"),
+          (exec) => exec.workflowId === workflowId && (exec.status === "preparing" || exec.status === "running"),
         ) || null
 
       // If we have an active execution, return it
@@ -371,31 +360,35 @@ export function useWorkflow() {
   // Helper function to get all running executions
   const getRunningExecutions = useCallback(() => {
     if (!workflowExecutions) return []
-    return workflowExecutions.filter((exec) => 
-      exec.status === "preparing" || exec.status === "running"
-    )
+    return workflowExecutions.filter((exec) => exec.status === "preparing" || exec.status === "running")
   }, [workflowExecutions])
 
   // Helper function to check if any step is currently connecting
-  const hasConnectingSteps = useCallback((workflowId: Id<"workflows">) => {
-    const execution = getWorkflowExecution(workflowId)
-    if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
-      return false
-    }
-    
-    return execution.stepExecutions.some((step: any) => step.status === "connecting")
-  }, [getWorkflowExecution])
+  const hasConnectingSteps = useCallback(
+    (workflowId: Id<"workflows">) => {
+      const execution = getWorkflowExecution(workflowId)
+      if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
+        return false
+      }
+
+      return execution.stepExecutions.some((step) => step.status === "connecting")
+    },
+    [getWorkflowExecution],
+  )
 
   // Helper function to get step-level connection status
-  const getStepConnectionStatus = useCallback((workflowId: Id<"workflows">, stepIndex: number) => {
-    const execution = getWorkflowExecution(workflowId)
-    if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
-      return null
-    }
-    
-    const stepExecution = execution.stepExecutions[stepIndex]
-    return stepExecution?.status === "connecting" ? "connecting" : null
-  }, [getWorkflowExecution])
+  const getStepConnectionStatus = useCallback(
+    (workflowId: Id<"workflows">, stepIndex: number) => {
+      const execution = getWorkflowExecution(workflowId)
+      if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
+        return null
+      }
+
+      const stepExecution = execution.stepExecutions[stepIndex]
+      return stepExecution?.status === "connecting" ? "connecting" : null
+    },
+    [getWorkflowExecution],
+  )
 
   return {
     workflows: stableWorkflows,

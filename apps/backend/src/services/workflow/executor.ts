@@ -31,9 +31,6 @@ interface WorkflowExecutionResult {
 }
 
 export class WorkflowExecutor {
-  // Constants
-  private static readonly LOG_PREFIX = "[REST /workflow/run]" as const
-
   private static readonly HEADERS = {
     "Content-Type": "text/plain; charset=utf-8",
     "Transfer-Encoding": "chunked",
@@ -63,7 +60,7 @@ export class WorkflowExecutor {
     // Listen for abort signal to handle cleanup
     if (this.options.abortSignal) {
       this.options.abortSignal.addEventListener("abort", () => {
-        this.handleAbort()
+        void this.handleAbort()
       })
     }
   }
@@ -128,7 +125,7 @@ export class WorkflowExecutor {
 
         try {
           // console.log("MESSAGES", initialMessages)
-          await this.executeStep(step, i, workflowPrompt, initialMessages)
+          await this.executeStep(step, i, workflowPrompt)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
           this.log(`Step ${i + 1} failed:`, errorMessage)
@@ -175,12 +172,7 @@ export class WorkflowExecutor {
     }
   }
 
-  private async executeStep(
-    step: Doc<"agents">,
-    stepIndex: number,
-    workflowPrompt: string,
-    initialMessages: CoreMessage[],
-  ): Promise<void> {
+  private async executeStep(step: Doc<"agents">, stepIndex: number, workflowPrompt: string): Promise<void> {
     // Track current step
     this.currentStepIndex = stepIndex
 
@@ -548,6 +540,8 @@ Do not repeat work from previous steps. Focus only on your specific assignment a
         throw new Error(`Failed to connect to ${serverName}: ${result.error}`)
       }
     } catch (error) {
+      // Re-throw with additional context
+      this.log(`Error connecting to MCP server ${serverName} for step ${stepIndex + 1}:`, error)
       throw error
     }
   }
@@ -572,7 +566,7 @@ Do not repeat work from previous steps. Focus only on your specific assignment a
           })
 
           if (execution?.stepExecutions) {
-            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === this.currentStepIndex)
+            const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === this.currentStepIndex)
 
             // Only update to cancelled if the step hasn't already been marked as failed
             if (stepExecution?.status !== "failed") {

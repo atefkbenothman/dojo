@@ -36,8 +36,8 @@ export const WorkflowDeleteDialog = memo(function WorkflowDeleteDialog({
             Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the workflow "{workflow?.name}" and remove it
-            from your account.
+            This action cannot be undone. This will permanently delete the workflow &ldquo;{workflow?.name}&rdquo; and
+            remove it from your account.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

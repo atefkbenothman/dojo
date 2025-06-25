@@ -165,6 +165,14 @@ const MessageItem = memo(function MessageItem({
 }: {
   msg: UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } }
 }) {
+  // Sort parts to ensure reasoning comes first
+  const sortedParts = useMemo(() => {
+    if (!msg.parts) return []
+    const reasoning = msg.parts.filter((part) => part.type === "reasoning")
+    const other = msg.parts.filter((part) => part.type !== "reasoning")
+    return [...reasoning, ...other]
+  }, [msg.parts])
+
   if (msg.role === "user") {
     return (
       <div className="flex justify-end py-4">
@@ -193,13 +201,6 @@ const MessageItem = memo(function MessageItem({
       )
     }
   }
-
-  // Sort parts to ensure reasoning comes first
-  const sortedParts = useMemo(() => {
-    const reasoning = msg.parts.filter((part) => part.type === "reasoning")
-    const other = msg.parts.filter((part) => part.type !== "reasoning")
-    return [...reasoning, ...other]
-  }, [msg.parts])
 
   return (
     <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">

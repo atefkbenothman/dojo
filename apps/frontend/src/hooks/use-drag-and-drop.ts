@@ -26,44 +26,50 @@ export function useDragAndDrop<T>({ items, onReorder }: UseDragAndDropProps<T>) 
     setDragOverIndex(null)
   }, [])
 
-  const handleDragOver = useCallback((e: DragEvent, index: number) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = "move"
+  const handleDragOver = useCallback(
+    (e: DragEvent, index: number) => {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = "move"
 
-    if (draggedIndex === null || draggedIndex === index) return
+      if (draggedIndex === null || draggedIndex === index) return
 
-    setDragOverIndex(index)
-  }, [draggedIndex])
+      setDragOverIndex(index)
+    },
+    [draggedIndex],
+  )
 
   const handleDragLeave = useCallback(() => {
     setDragOverIndex(null)
   }, [])
 
-  const handleDrop = useCallback((e: DragEvent, dropIndex: number) => {
-    e.preventDefault()
+  const handleDrop = useCallback(
+    (e: DragEvent, dropIndex: number) => {
+      e.preventDefault()
 
-    if (draggedIndex === null || draggedIndex === dropIndex) {
+      if (draggedIndex === null || draggedIndex === dropIndex) {
+        setDragOverIndex(null)
+        return
+      }
+
+      const newItems = [...items]
+      const draggedItem = items[draggedIndex]
+
+      if (!draggedItem) {
+        setDragOverIndex(null)
+        return
+      }
+
+      newItems.splice(draggedIndex, 1)
+
+      // Adjust drop index if dragging from before to after
+      const adjustedDropIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex
+      newItems.splice(adjustedDropIndex, 0, draggedItem)
+
+      onReorder(newItems)
       setDragOverIndex(null)
-      return
-    }
-
-    const newItems = [...items]
-    const draggedItem = items[draggedIndex]
-
-    if (!draggedItem) {
-      setDragOverIndex(null)
-      return
-    }
-
-    newItems.splice(draggedIndex, 1)
-
-    // Adjust drop index if dragging from before to after
-    const adjustedDropIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex
-    newItems.splice(adjustedDropIndex, 0, draggedItem)
-
-    onReorder(newItems)
-    setDragOverIndex(null)
-  }, [draggedIndex, items, onReorder])
+    },
+    [draggedIndex, items, onReorder],
+  )
 
   return {
     draggedIndex,

@@ -104,7 +104,7 @@ export class WorkflowService {
 
       // Prepare execution context
       const userIdForLogging = session?.userId || "anonymous"
-      
+
       // Note: Tools will be dynamically aggregated after workflow connections are established
       const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
@@ -294,7 +294,6 @@ export class WorkflowService {
       return []
     }
   }
-
 }
 
 // Export singleton instance

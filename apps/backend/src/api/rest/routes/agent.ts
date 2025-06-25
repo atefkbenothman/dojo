@@ -2,6 +2,7 @@ import { asyncHandler, throwError } from "../../../lib/errors"
 import { logger } from "../../../lib/logger"
 import { requireSessionMiddleware } from "../../../lib/session"
 import { agentService } from "../../../services/agent/agent"
+import { CoreMessage } from "ai"
 import express, { type Request, type Response, Router } from "express"
 import { z } from "zod"
 
@@ -25,7 +26,7 @@ agentRouter.post(
     }
 
     const parsedInput = validationResult.data
-    const { agent: agentInfo, messages } = parsedInput
+    const { agent: agentInfo, messages } = parsedInput as { agent: { agentId: string }; messages: CoreMessage[] }
 
     // Session is guaranteed to exist due to requireSessionMiddleware
     const session = req.session!

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { WorkflowCard } from "@/components/workflow/workflow-card"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow } from "@dojo/db/convex/types"
+import { Agent, Workflow, WorkflowExecution } from "@dojo/db/convex/types"
 import { Search } from "lucide-react"
 import { useState, memo } from "react"
 
@@ -12,8 +12,8 @@ interface WorkflowSidebarProps {
   workflows: Workflow[]
   selectedWorkflowId: string | null
   isAuthenticated: boolean
-  workflowExecutions: Map<Id<"workflows">, any>
-  agents: any[]
+  workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
+  agents: Agent[]
   onSelectWorkflow: (workflow: Workflow) => void
   onCreateWorkflow: () => void
   onEditWorkflow: (workflow: Workflow) => void

@@ -1,7 +1,6 @@
 "use client"
 
 import { AddStepButton } from "@/components/workflow/add-step-button"
-import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { CanvasZoomControls } from "@/components/workflow/canvas/canvas-zoom-controls"
 import { WorkflowInstructionsStep } from "@/components/workflow/canvas/workflow-instructions-step"
 import { WorkflowStep } from "@/components/workflow/canvas/workflow-step"
@@ -9,14 +8,14 @@ import { useCanvasZoom } from "@/hooks/use-canvas-zoom"
 import { useDragAndDrop } from "@/hooks/use-drag-and-drop"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow, Agent } from "@dojo/db/convex/types"
+import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
 import { useCallback, useState, memo } from "react"
 
 interface WorkflowBuilderProps {
   workflow: Workflow
   agents: Agent[]
   isAuthenticated: boolean
-  workflowExecutions: Map<Id<"workflows">, any>
+  workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
   getModel: (modelId: string) => { name: string } | undefined
   onAddFirstStep: (agent: Agent) => void
   onAddStepAtIndex: (index: number, agent: Agent) => void
@@ -31,7 +30,6 @@ interface WorkflowBuilderProps {
 export const WorkflowBuilder = memo(function WorkflowBuilder({
   workflow,
   agents,
-  isAuthenticated,
   workflowExecutions,
   getModel,
   onAddFirstStep,
@@ -85,6 +83,50 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
     willChange: isPanning ? "transform" : "auto",
   }
 
+  // Calculate execution state for a step
+  const getStepExecutionStatus = useCallback(
+    (index: number) => {
+      if (!execution) return undefined
+
+      if (!execution.stepExecutions) {
+        if (execution.currentStep === undefined) return "pending"
+        if (index < execution.currentStep) return "completed"
+        if (index === execution.currentStep) {
+          return execution.status === "running" ? "running" : "pending"
+        }
+        return "pending"
+      }
+
+      const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === index)
+      return stepExecution?.status || "pending"
+    },
+    [execution],
+  )
+
+  // Calculate step duration
+  const getStepDuration = useCallback(
+    (index: number) => {
+      if (!execution?.stepExecutions) return undefined
+
+      const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === index)
+      if (!stepExecution?.startedAt) return undefined
+
+      const endTime = stepExecution.completedAt || Date.now()
+      return endTime - stepExecution.startedAt
+    },
+    [execution],
+  )
+
+  // Get step error
+  const getStepError = useCallback(
+    (index: number) => {
+      if (!execution?.stepExecutions) return undefined
+      const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === index)
+      return stepExecution?.error
+    },
+    [execution],
+  )
+
   // Render workflow steps
   const renderWorkflowSteps = () => {
     return (
@@ -108,44 +150,11 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
           const agent = agents.find((a) => a._id === stepId)
           if (!agent) return null
 
-          // Calculate execution state for this step
-          const getStepExecutionStatus = () => {
-            if (!execution) return undefined
-
-            if (!execution.stepExecutions) {
-              if (execution.currentStep === undefined) return "pending"
-              if (index < execution.currentStep) return "completed"
-              if (index === execution.currentStep) {
-                return execution.status === "running" ? "running" : "pending"
-              }
-              return "pending"
-            }
-
-            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === index)
-            return stepExecution?.status || "pending"
-          }
-
-          const getStepDuration = () => {
-            if (!execution?.stepExecutions) return undefined
-
-            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === index)
-            if (!stepExecution?.startedAt) return undefined
-
-            const endTime = stepExecution.completedAt || Date.now()
-            return endTime - stepExecution.startedAt
-          }
-
-          const getStepError = () => {
-            if (!execution?.stepExecutions) return undefined
-            const stepExecution = execution.stepExecutions.find((se: any) => se.stepIndex === index)
-            return stepExecution?.error
-          }
-
-          const executionStatus = getStepExecutionStatus()
+          const executionStatus = getStepExecutionStatus(index)
           // Only show current step indicator if workflow is still running
           const isCurrentStep = execution?.currentStep === index && execution?.status === "running"
-          const executionDuration = getStepDuration()
-          const executionError = getStepError()
+          const executionDuration = getStepDuration(index)
+          const executionError = getStepError(index)
 
           return (
             <div key={`${index}-${stepId}`} className="relative">

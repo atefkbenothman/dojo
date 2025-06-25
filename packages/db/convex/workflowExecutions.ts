@@ -204,10 +204,7 @@ export const getActiveExecution = query({
       .filter((q) =>
         q.and(
           q.eq(q.field("workflowId"), args.workflowId),
-          q.or(
-            q.eq(q.field("status"), "preparing"), 
-            q.eq(q.field("status"), "running")
-          ),
+          q.or(q.eq(q.field("status"), "preparing"), q.eq(q.field("status"), "running")),
         ),
       )
       .first()

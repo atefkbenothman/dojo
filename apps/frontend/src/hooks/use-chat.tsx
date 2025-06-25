@@ -3,7 +3,7 @@
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { DEFAULT_ASSISTANT_MESSAGE, GUEST_SESSION_KEY, SYSTEM_PROMPT } from "@/lib/constants"
+import { GUEST_SESSION_KEY, SYSTEM_PROMPT } from "@/lib/constants"
 import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import type { UIMessage } from "ai"

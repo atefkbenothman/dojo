@@ -41,13 +41,13 @@ export class ModelManager {
 
     // Create new model instance
     const model = this.createModelInstance(modelId, apiKeyResult.apiKey)
-    
+
     // Cache it
     this.modelCache.set(cacheKey, model)
-    
+
     // Log usage
     ApiKeyService.logApiKeyUsage(modelId, apiKeyResult.source, session.userId || undefined)
-    
+
     return model
   }
 
@@ -55,7 +55,7 @@ export class ModelManager {
     if (!this.modelsConfig) {
       throwError("Models configuration not loaded")
     }
-    
+
     const model = this.modelsConfig.find((m) => m._id === modelId)
     if (!model) {
       throwError(`Model with id '${modelId}' not found in configuration`)

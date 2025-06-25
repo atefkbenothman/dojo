@@ -6,25 +6,24 @@ import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useMCP } from "@/hooks/use-mcp"
 import { useUser } from "@/hooks/use-user"
 import { GUEST_SESSION_KEY } from "@/lib/constants"
-import { errorToastStyle, successToastStyle } from "@/lib/styles"
+import { errorToastStyle } from "@/lib/styles"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
 import { Message } from "ai"
-import { useMutation, useQuery, useConvex } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { nanoid } from "nanoid"
-import { useCallback, useMemo, useState, useEffect, useRef } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 import { toast } from "sonner"
 
 export function useAgent() {
+  const authToken = useAuthToken()
   const { connect } = useMCP()
   const { play } = useSoundEffectContext()
-  const { append, setMessages, stop } = useChatProvider()
+  const { append, setMessages } = useChatProvider()
   const { currentSession } = useUser()
-  const convex = useConvex()
-  const authToken = useAuthToken()
   const { readStorage } = useLocalStorage()
 
   const guestSessionId = useMemo(() => {
@@ -35,7 +34,6 @@ export function useAgent() {
   const create = useMutation(api.agents.create)
   const edit = useMutation(api.agents.edit)
   const remove = useMutation(api.agents.remove)
-  const requestCancellation = useMutation(api.agentExecutions.requestCancellation)
 
   // Subscribe to agent executions for real-time updates
   const agentExecutions = useQuery(
@@ -97,14 +95,14 @@ export function useAgent() {
       // Set optimistic preparing state
       setPreparingAgents((prev) => new Set(prev).add(agent._id))
 
-      setMessages((prev) => [
-        ...prev,
-        // {
-        //   id: nanoid(),
-        //   role: "assistant",
-        //   content: `Starting agent ${agent.name}`,
-        // },
-      ])
+      // setMessages((prev) => [
+      //   ...prev,
+      //   {
+      //     id: nanoid(),
+      //     role: "assistant",
+      //     content: `Starting agent ${agent.name}`,
+      //   },
+      // ])
 
       // Handle MCP server connections if needed
       if (agent.mcpServers.length > 0) {

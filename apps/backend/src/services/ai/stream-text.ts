@@ -11,6 +11,12 @@ interface StreamTextOptions {
   abortSignal?: AbortSignal
 }
 
+interface ToolCall {
+  toolCallId: string
+  toolName: string
+  args: unknown
+}
+
 interface StreamTextResult {
   text: string
   metadata?: {
@@ -19,11 +25,7 @@ interface StreamTextResult {
       completionTokens: number
       totalTokens: number
     }
-    toolCalls?: Array<{
-      toolCallId: string
-      toolName: string
-      args: any
-    }>
+    toolCalls?: ToolCall[]
     model?: string
     finishReason?: string
   }
@@ -54,7 +56,8 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
     onError: (error) => {
       logger.error("AI", "Error during AI text stream processing (onError callback)", error)
       // Capture the error to throw after streaming attempt
-      streamError = error instanceof Error ? error : new Error(String(error))
+      streamError =
+        error instanceof Error ? error : new Error(error instanceof Object ? JSON.stringify(error) : String(error))
       hasErrored = true
     },
     onFinish: ({ usage, finishReason, response }) => {
@@ -69,9 +72,15 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
               }
             : undefined,
           toolCalls: response.messages
-            .filter((msg): msg is any => msg.role === "assistant" && "toolInvocations" in msg)
-            .flatMap((msg) => msg.toolInvocations || [])
-            .map((toolInvocation: any) => ({
+            .filter((msg) => msg.role === "assistant" && "toolInvocations" in msg)
+            .flatMap((msg) => {
+              // Type assertion since we've already checked for toolInvocations
+              const assistantMsg = msg as {
+                toolInvocations?: Array<{ toolCallId: string; toolName: string; args: unknown }>
+              }
+              return assistantMsg.toolInvocations || []
+            })
+            .map((toolInvocation) => ({
               toolCallId: toolInvocation.toolCallId,
               toolName: toolInvocation.toolName,
               args: toolInvocation.args,
@@ -104,7 +113,7 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
     // Check for errors before trying to get the text
     if (streamError) {
       logger.error("AI", "Throwing captured stream error before getting text", streamError)
-      throw streamError
+      throw streamError as Error
     }
 
     const text = await result.text
@@ -112,7 +121,7 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
     // Check again in case error occurred during text retrieval
     if (streamError) {
       logger.error("AI", "Throwing captured stream error after getting text", streamError)
-      throw streamError
+      throw streamError as Error
     }
 
     return {
@@ -133,6 +142,6 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
     }
 
     // Re-throw the error so it propagates to WorkflowExecutor/AgentService
-    throw error
+    throw error instanceof Error ? error : new Error(String(error))
   }
 }

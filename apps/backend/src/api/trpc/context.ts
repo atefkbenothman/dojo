@@ -1,6 +1,6 @@
 import { getConvexUser } from "../../lib/auth"
-import { logger } from "../../lib/logger"
 import { convex } from "../../lib/convex-client"
+import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc } from "@dojo/db/convex/_generated/dataModel"
 import { type CreateExpressContextOptions } from "@trpc/server/adapters/express"

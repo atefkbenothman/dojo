@@ -12,7 +12,7 @@ interface MainPanelHeaderProps {
   isCollapsed: boolean
 }
 
-export function MainPanelHeader({ onChatPanelToggle, isCollapsed }: MainPanelHeaderProps) {
+export function MainPanelHeader({ onChatPanelToggle }: MainPanelHeaderProps) {
   return (
     <div className="bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px] pr-2 pl-4">
       <p className="flex-1 pr-4 text-base font-semibold">Dojo</p>

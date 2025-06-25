@@ -1,6 +1,6 @@
 import { BACKEND_INSTANCE_ID } from "../../index"
-import { logger } from "../../lib/logger"
 import { convex } from "../../lib/convex-client"
+import { logger } from "../../lib/logger"
 import type { ActiveMcpClient } from "../../lib/types"
 import { MCPClient } from "./client"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -235,7 +235,7 @@ export class MCPConnectionManager {
   getConnectedServerIds(sessionId: Id<"sessions">): Id<"mcp">[] {
     const sessionConnections = this.connectionCache.get(sessionId)
     if (!sessionConnections) return []
-    
+
     return Array.from(sessionConnections.keys())
   }
 
@@ -252,14 +252,21 @@ export class MCPConnectionManager {
         workflowExecutionId,
       })
 
-      logger.info("Connection", `Found ${workflowConnections.length} connections to cleanup for execution ${workflowExecutionId}`)
+      logger.info(
+        "Connection",
+        `Found ${workflowConnections.length} connections to cleanup for execution ${workflowExecutionId}`,
+      )
 
       // Clean up each connection
       const cleanupPromises = workflowConnections.map(async (connection) => {
         try {
           await this.cleanupConnection(connection.sessionId, connection.mcpServerId)
         } catch (error) {
-          logger.error("Connection", `Error cleaning up connection ${connection.mcpServerId} for session ${connection.sessionId}`, error)
+          logger.error(
+            "Connection",
+            `Error cleaning up connection ${connection.mcpServerId} for session ${connection.sessionId}`,
+            error,
+          )
         }
       })
 
@@ -270,7 +277,6 @@ export class MCPConnectionManager {
       // Don't throw - cleanup errors shouldn't fail the workflow
     }
   }
-
 
   /**
    * Cleans up all active MCP connections across all sessions.

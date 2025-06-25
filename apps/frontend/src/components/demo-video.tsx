@@ -1,14 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { X } from "lucide-react"
 import { useState } from "react"
 

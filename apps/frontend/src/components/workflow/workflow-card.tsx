@@ -11,10 +11,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { useWorkflow } from "@/hooks/use-workflow"
 import { cn } from "@/lib/utils"
 import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
-import { Play, MoreVertical, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square, Settings } from "lucide-react"
+import { Play, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square, Settings } from "lucide-react"
 import { useCallback, memo, useState } from "react"
 
 // Helper functions
@@ -48,6 +47,7 @@ const formatDuration = (startedAt: number, completedAt?: number) => {
 
 interface WorkflowCardHeaderProps {
   workflow: Workflow
+  isSelected: boolean
   isAuthenticated: boolean
   onRun?: (workflow: Workflow) => void
   onStop?: (workflow: Workflow) => void
@@ -58,6 +58,7 @@ interface WorkflowCardHeaderProps {
 
 const WorkflowCardHeader = memo(function WorkflowCardHeader({
   workflow,
+  isSelected,
   isAuthenticated,
   onRun,
   onStop,
@@ -106,7 +107,9 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
     <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
       {/* Title */}
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium truncate text-foreground">{workflow.name}</p>
+        <p className={cn("text-xs font-medium truncate text-primary/70", isSelected && "text-primary")}>
+          {workflow.name}
+        </p>
       </div>
       {/* Right Side */}
       <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
@@ -163,15 +166,13 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
   execution,
   workflow,
   agents,
-  isAuthenticated,
-  onRun,
 }: WorkflowExecutionStatusProps) {
   const isActiveExecution = execution.status === "preparing" || execution.status === "running"
 
   const getProgressPercentage = () => {
     // If we have step executions, count based on those
     if (execution.stepExecutions && execution.stepExecutions.length > 0) {
-      const completedSteps = execution.stepExecutions.filter((se: any) => se.status === "completed").length
+      const completedSteps = execution.stepExecutions.filter((se) => se.status === "completed").length
       return Math.round((completedSteps / execution.totalSteps) * 100)
     }
 
@@ -203,13 +204,14 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
     switch (execution.status) {
       case "preparing":
         return "Preparing workflow..."
-      case "running":
+      case "running": {
         const current = (execution.currentStep ?? 0) + 1
         const stepName = getCurrentStepName()
 
         return stepName
           ? `Running: ${stepName} (${current}/${execution.totalSteps})`
           : `Running step ${current} of ${execution.totalSteps}`
+      }
       case "completed":
         return `Completed in ${formatDuration(execution.startedAt, execution.completedAt)}`
       case "failed":
@@ -294,32 +296,17 @@ export const WorkflowCard = memo(function WorkflowCard({
   return (
     <Card
       className={cn(
-        "w-full bg-background overflow-hidden p-2",
+        "w-full bg-background overflow-hidden p-2 hover:bg-background/50",
         // Running state takes highest priority
-        execution && isActiveExecution && "border-blue-500 border-2 dark:border-blue-500",
+        execution && isActiveExecution && "border-blue-500 dark:border-blue-500",
         // Selected state only applies if not running
-        isSelected && !isActiveExecution && "border-primary/80 border-2 bg-background/50",
-        // Other states only apply if not selected and not running
-        !isSelected &&
-          execution &&
-          !isActiveExecution &&
-          execution.status === "completed" &&
-          "border-green-500/40 border-2 dark:border-green-600/40",
-        !isSelected &&
-          execution &&
-          !isActiveExecution &&
-          execution.status === "failed" &&
-          "border-red-200 dark:border-red-800/50",
-        !isSelected &&
-          execution &&
-          !isActiveExecution &&
-          execution.status === "cancelled" &&
-          "border-gray-300 dark:border-gray-700",
+        isSelected && !isActiveExecution && "ring-1 ring-primary/80 bg-background/50",
       )}
       onMouseDown={handleMouseDown}
     >
       <CardContent className="p-0">
         <WorkflowCardHeader
+          isSelected={isSelected}
           workflow={workflow}
           isAuthenticated={isAuthenticated}
           onRun={onRun}

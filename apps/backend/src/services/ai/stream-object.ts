@@ -38,7 +38,7 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
     onError: (err) => {
       logger.error("AI", "Error during AI object stream processing", err)
       // Capture the error to throw after streaming attempt
-      streamError = err instanceof Error ? err : new Error(String(err))
+      streamError = err instanceof Error ? err : new Error(err instanceof Object ? JSON.stringify(err) : String(err))
     },
     onFinish: ({ usage, response }) => {
       // Capture metadata when streaming completes
@@ -78,7 +78,7 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
 
     // If an error occurred during streaming, throw it now
     if (streamError) {
-      throw streamError
+      throw streamError as Error
     }
 
     return {
@@ -94,6 +94,6 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
     }
 
     // Re-throw the error so it propagates to WorkflowExecutor/AgentService
-    throw error
+    throw error instanceof Error ? error : new Error(String(error))
   }
 }

@@ -207,10 +207,9 @@ export const WorkflowStep = memo(function WorkflowStep({
       )}
       {executionStatus === "connecting" && (
         <div className="absolute left-0 -translate-x-full -ml-2.5 top-10 z-10 flex items-center justify-center h-6 px-2 border border-orange-500 bg-background text-xs font-medium text-orange-600 dark:text-orange-400 animate-pulse whitespace-nowrap">
-          {requiredServerNames.length > 0 
+          {requiredServerNames.length > 0
             ? `Connecting ${requiredServerNames.length} ${requiredServerNames.length === 1 ? "server" : "servers"}`
-            : "Connecting"
-          }
+            : "Connecting"}
         </div>
       )}
       {executionStatus === "failed" && (
@@ -382,13 +381,13 @@ export const WorkflowStep = memo(function WorkflowStep({
                     </label>
                     <div className="flex flex-wrap gap-0.5">
                       {requiredServerNames.map((name) => (
-                        <div 
-                          key={name} 
+                        <div
+                          key={name}
                           className={cn(
                             "text-[10px] rounded-md px-1 py-0.5",
-                            executionStatus === "connecting" 
+                            executionStatus === "connecting"
                               ? "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 animate-pulse"
-                              : "bg-muted/30"
+                              : "bg-muted/30",
                           )}
                         >
                           {name}
@@ -396,10 +395,9 @@ export const WorkflowStep = memo(function WorkflowStep({
                       ))}
                     </div>
                     <div className="text-[10px] text-muted-foreground italic">
-                      {executionStatus === "connecting" 
+                      {executionStatus === "connecting"
                         ? "Establishing connections to MCP servers..."
-                        : "Auto-connected during workflow execution"
-                      }
+                        : "Auto-connected during workflow execution"}
                     </div>
                   </div>
                 )}

@@ -31,12 +31,12 @@ export const logger = {
    * Use for: Performance timing, verbose model management, detailed debugging
    */
   debug: (service: string, message: string, data?: unknown) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       if (data !== undefined) {
         console.log(`[${service}] ${message}`, data)
       } else {
         console.log(`[${service}] ${message}`)
       }
     }
-  }
+  },
 }

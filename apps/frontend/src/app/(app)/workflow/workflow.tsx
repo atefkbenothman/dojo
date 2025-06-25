@@ -15,17 +15,16 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { Play, Pencil } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useCallback, useMemo, memo, useEffect, useRef } from "react"
+import { useSearchParams } from "next/navigation"
+import { useState, useCallback, useMemo, memo, useEffect } from "react"
 
 export const Workflow = memo(function Workflow() {
+  const searchParams = useSearchParams()
+
+  const { isAuthenticated } = useConvexAuth()
   const { workflows, create, edit, remove, runWorkflow, stopWorkflow, getWorkflowExecution } = useWorkflow()
   const { agents } = useAgent()
   const { getModel } = useAIModels()
-  const { isAuthenticated } = useConvexAuth()
-
-  const router = useRouter()
-  const searchParams = useSearchParams()
 
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType | null>(null)
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowType | null>(null)
