@@ -1,6 +1,7 @@
 "use client"
 
 import { AgentDialog } from "@/components/agent/agent-dialog"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkflowBuilder } from "@/components/workflow/canvas/workflow-builder"
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
@@ -13,6 +14,7 @@ import { useWorkflow } from "@/hooks/use-workflow"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
+import { Play, Pencil } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo, memo, useEffect } from "react"
 
@@ -230,6 +232,11 @@ export const Workflow = memo(function Workflow() {
     setActiveTab("run")
   }, [])
 
+  const handleRunWorkflow = useCallback(async () => {
+    if (!selectedWorkflow) return
+    await runWorkflow(selectedWorkflow)
+  }, [selectedWorkflow, runWorkflow])
+
   // Create a wrapper for getModel that accepts string
   const getModelWrapper = useCallback(
     (modelId: string) => {
@@ -291,7 +298,7 @@ export const Workflow = memo(function Workflow() {
         {/* Left Sidebar */}
         <div className="w-96 bg-card border-r-[1.5px] flex flex-col h-full overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between">
+          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
             <p className="text-sm font-semibold">Workflows</p>
             <span className="text-xs text-muted-foreground">{workflows.length} total</span>
           </div>
@@ -311,6 +318,90 @@ export const Workflow = memo(function Workflow() {
           />
         </div>
         {/* Main Content */}
+        <div className="flex flex-col flex-1">
+          {selectedWorkflow ? (
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as "build" | "run")}
+              className="h-full flex flex-col"
+            >
+              {/* Header */}
+              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-16">
+                {/* Left section - Name and Edit */}
+                <div className="flex items-center gap-2 flex-1">
+                  <p className="text-sm font-semibold">{selectedWorkflow?.name}</p>
+                  {/* Edit */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingWorkflow(selectedWorkflow)
+                      setIsMetadataDialogOpen(true)
+                    }}
+                    className="hover:cursor-pointer"
+                  >
+                    <Pencil className="h-1 w-1 text-muted-foreground" />
+                  </Button>
+                </div>
+
+                {/* Center section - Tabs */}
+                <div className="flex items-center justify-center">
+                  <TabsList className="h-9 w-64">
+                    <TabsTrigger value="build" className="flex-1">
+                      Build
+                    </TabsTrigger>
+                    <TabsTrigger value="run" className="flex-1">
+                      Logs
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Right section - Run button */}
+                <div className="flex items-center justify-end flex-1">
+                  <Button
+                    className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer"
+                    onClick={handleRunWorkflow}
+                  >
+                    <Play className="h-3 w-3 mr-1" />
+                    Run
+                  </Button>
+                </div>
+              </div>
+
+              {/* Tab Content */}
+              <TabsContent value="build" className="flex-1 overflow-hidden">
+                <WorkflowBuilder
+                  workflow={selectedWorkflow}
+                  agents={agents || []}
+                  isAuthenticated={isAuthenticated}
+                  workflowExecutions={workflowExecutions}
+                  getModel={getModelWrapper}
+                  onAddFirstStep={handleAddFirstStep}
+                  onAddStepAtIndex={handleAddStepAtIndex}
+                  onRemoveStep={handleRemoveStep}
+                  onDuplicateStep={handleDuplicateStep}
+                  onConfigureStep={handleConfigure}
+                  onUpdateSteps={handleUpdateSteps}
+                  onViewLogs={handleViewLogs}
+                />
+              </TabsContent>
+              <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
+                <WorkflowRunner
+                  workflow={selectedWorkflow}
+                  agents={agents || []}
+                  isAuthenticated={isAuthenticated}
+                  workflowExecutions={workflowExecutions}
+                  onRunWorkflow={runWorkflow}
+                  onStopWorkflow={stopWorkflow}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">Select a workflow</p>
+            </div>
+          )}
+        </div>
       </div>
       {/* Delete Confirmation Dialog */}
       <WorkflowDeleteDialog
@@ -331,6 +422,21 @@ export const Workflow = memo(function Workflow() {
             }
           }}
           onSave={handleSaveWorkflowMetadata}
+        />
+      )}
+      {/* Agent Edit Dialog */}
+      {editingAgent && (
+        <AgentDialog
+          mode="edit"
+          agent={editingAgent}
+          open={isAgentDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsAgentDialogOpen(false)
+              setEditingAgent(null)
+            }
+          }}
+          isAuthenticated={isAuthenticated}
         />
       )}
     </>

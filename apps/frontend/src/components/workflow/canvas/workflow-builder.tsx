@@ -10,7 +10,6 @@ import { useDragAndDrop } from "@/hooks/use-drag-and-drop"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent } from "@dojo/db/convex/types"
-import { Edit } from "lucide-react"
 import { useCallback, useState, memo } from "react"
 
 interface WorkflowBuilderProps {
@@ -19,7 +18,6 @@ interface WorkflowBuilderProps {
   isAuthenticated: boolean
   workflowExecutions: Map<Id<"workflows">, any>
   getModel: (modelId: string) => { name: string } | undefined
-  onEditMetadata: () => void
   onAddFirstStep: (agent: Agent) => void
   onAddStepAtIndex: (index: number, agent: Agent) => void
   onRemoveStep: (index: number) => void
@@ -35,7 +33,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
   isAuthenticated,
   workflowExecutions,
   getModel,
-  onEditMetadata,
   onAddFirstStep,
   onAddStepAtIndex,
   onRemoveStep,
@@ -147,7 +144,9 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
                 onDuplicate={() => onDuplicateStep(index, stepId)}
                 onViewLogs={onViewLogs}
                 isExpanded={areAllStepsExpanded}
-                executionStatus={executionStatus as "pending" | "connecting" | "running" | "completed" | "failed" | undefined}
+                executionStatus={
+                  executionStatus as "pending" | "connecting" | "running" | "completed" | "failed" | undefined
+                }
                 isCurrentStep={isCurrentStep}
                 executionDuration={executionDuration}
                 executionError={executionError}
@@ -221,23 +220,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
                   {/* Workflow steps */}
                   {renderWorkflowSteps()}
                 </div>
-              </div>
-            </div>
-
-            {/* Header and controls positioned on canvas */}
-            <div className="absolute top-4 left-4 right-4 z-10 space-y-3">
-              {/* Edit button */}
-              <div className="flex items-center justify-end">
-                <Button variant="outline" size="sm" onClick={onEditMetadata} className="gap-2 h-9">
-                  <Edit className="h-3.5 w-3.5" />
-                  Edit Workflow
-                </Button>
-              </div>
-
-              {/* Header with workflow info */}
-              <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-medium">{workflow.name}</h3>
-                {workflow.description && <p className="text-xs text-muted-foreground">{workflow.description}</p>}
               </div>
             </div>
 

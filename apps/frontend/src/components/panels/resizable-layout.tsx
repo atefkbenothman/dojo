@@ -20,7 +20,7 @@ interface ResizableLayoutProps {
 const CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE = 0
 const CHAT_PANEL_EXPANDED_WIDTH_PERCENTAGE = 30
 const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
-const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 70
+const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 60
 
 export function ResizableLayout({ children, defaultLayout, isServerHealthy }: ResizableLayoutProps) {
   const { handleNewChat } = useChatProvider()
