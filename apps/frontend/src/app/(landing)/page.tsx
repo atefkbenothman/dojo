@@ -21,7 +21,7 @@ export default function LandingPage() {
   }, [router])
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden no-scrollbar">
       <div className="flex min-h-full flex-col items-center justify-center bg-background p-4">
         <div className="flex flex-col gap-8">
           <div className="flex flex-col">
