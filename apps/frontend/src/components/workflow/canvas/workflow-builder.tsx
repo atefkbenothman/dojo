@@ -184,12 +184,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
           )
         })}
 
-        {/* Single Add Step button at the end */}
-        {workflow.steps.length > 0 ? (
-          <AddStepButton agents={agents} onSelect={handleAddAtEnd} />
-        ) : (
-          <AddStepButton agents={agents} onSelect={onAddFirstStep} />
-        )}
+        <AddStepButton agents={agents} onSelect={handleAddAtEnd} getModel={getModel} />
       </div>
     )
   }
