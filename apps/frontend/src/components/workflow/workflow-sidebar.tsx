@@ -10,7 +10,7 @@ import { useState, memo } from "react"
 
 interface WorkflowSidebarProps {
   workflows: Workflow[]
-  selectedWorkflow: Workflow | null
+  selectedWorkflowId: string | null
   isAuthenticated: boolean
   workflowExecutions: Map<Id<"workflows">, any>
   agents: any[]
@@ -24,7 +24,7 @@ interface WorkflowSidebarProps {
 
 export const WorkflowSidebar = memo(function WorkflowSidebar({
   workflows,
-  selectedWorkflow,
+  selectedWorkflowId,
   isAuthenticated,
   workflowExecutions,
   agents,
@@ -82,7 +82,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                 isAuthenticated={isAuthenticated}
                 onEditClick={onEditWorkflow}
                 onDeleteClick={onDeleteWorkflow}
-                isSelected={selectedWorkflow?._id === workflow._id}
+                isSelected={selectedWorkflowId === workflow._id}
                 onRun={() => onRunWorkflow(workflow)}
                 onStop={() => onStopWorkflow(workflow._id)}
                 execution={workflowExecutions.get(workflow._id)}

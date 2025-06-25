@@ -26,6 +26,7 @@ export const Workflow = memo(function Workflow() {
   const searchParams = useSearchParams()
 
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType | null>(null)
+  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowType | null>(null)
   const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
   const [workflowToDelete, setWorkflowToDelete] = useState<WorkflowType | null>(null)
@@ -52,7 +53,7 @@ export const Workflow = memo(function Workflow() {
       } else {
         params.delete("id")
       }
-      router.push(`/workflow?${params.toString()}`)
+      router.replace(`/workflow?${params.toString()}`, { scroll: false })
     },
     [router, searchParams],
   )
@@ -70,7 +71,7 @@ export const Workflow = memo(function Workflow() {
   }, [workflows, getWorkflowExecution])
 
   const handleEditWorkflow = useCallback((workflow: WorkflowType) => {
-    setSelectedWorkflow(workflow)
+    setEditingWorkflow(workflow)
     setIsMetadataDialogOpen(true)
   }, [])
 
@@ -259,6 +260,31 @@ export const Workflow = memo(function Workflow() {
     [selectedWorkflow, edit],
   )
 
+  const handleSaveWorkflowMetadata = useCallback(
+    async (updates: { name: string; description: string; instructions: string }) => {
+      if (!editingWorkflow) return
+      await edit({
+        id: editingWorkflow._id,
+        name: updates.name,
+        description: updates.description,
+        instructions: updates.instructions,
+        steps: editingWorkflow.steps,
+        isPublic: editingWorkflow.isPublic,
+        userId: editingWorkflow.userId,
+      })
+      // If we're editing the currently selected workflow, update it too
+      if (selectedWorkflow && selectedWorkflow._id === editingWorkflow._id) {
+        setSelectedWorkflow({
+          ...selectedWorkflow,
+          ...updates,
+        })
+      }
+      // Clear the editing workflow
+      setEditingWorkflow(null)
+    },
+    [editingWorkflow, selectedWorkflow, edit],
+  )
+
   return (
     <>
       <div className="flex h-full bg-background">
@@ -272,7 +298,7 @@ export const Workflow = memo(function Workflow() {
           {/* Workflow List */}
           <WorkflowSidebar
             workflows={workflows}
-            selectedWorkflow={selectedWorkflow}
+            selectedWorkflowId={selectedWorkflow?._id || null}
             isAuthenticated={isAuthenticated}
             workflowExecutions={workflowExecutions}
             agents={agents || []}
@@ -293,6 +319,20 @@ export const Workflow = memo(function Workflow() {
         onOpenChange={(open) => !open && setWorkflowToDelete(null)}
         onConfirm={confirmDeleteWorkflow}
       />
+      {/* Metadata Edit Dialog */}
+      {editingWorkflow && (
+        <WorkflowMetadataDialog
+          workflow={editingWorkflow}
+          open={isMetadataDialogOpen}
+          onOpenChange={(open) => {
+            setIsMetadataDialogOpen(open)
+            if (!open) {
+              setEditingWorkflow(null)
+            }
+          }}
+          onSave={handleSaveWorkflowMetadata}
+        />
+      )}
     </>
   )
 })
@@ -387,30 +427,7 @@ export const Workflow = memo(function Workflow() {
 //    </div>
 //  </div>
 //
-//  {/* Metadata Edit Dialog */}
-//  {selectedWorkflow && (
-//    <WorkflowMetadataDialog
-//      workflow={selectedWorkflow}
-//      open={isMetadataDialogOpen}
-//      onOpenChange={setIsMetadataDialogOpen}
-//      onSave={async (updates) => {
-//        await edit({
-//          id: selectedWorkflow._id,
-//          name: updates.name,
-//          description: updates.description,
-//          instructions: updates.instructions,
-//          steps: selectedWorkflow.steps,
-//          isPublic: selectedWorkflow.isPublic,
-//          userId: selectedWorkflow.userId,
-//        })
-//        // Update local state to reflect changes
-//        setSelectedWorkflow({
-//          ...selectedWorkflow,
-//          ...updates,
-//        })
-//      }}
-//    />
-//  )}
+
 //
 
 //

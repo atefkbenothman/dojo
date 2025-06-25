@@ -14,26 +14,25 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { cn } from "@/lib/utils"
 import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
-import { Play, MoreVertical, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square } from "lucide-react"
+import { Play, MoreVertical, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square, Settings } from "lucide-react"
 import { useCallback, memo, useState } from "react"
 
 // Helper functions
 const getStatusIcon = (execution?: WorkflowExecution) => {
-  if (!execution) return <Play className="h-2.5 w-2.5" />
-
+  if (!execution) return <Play className="h-3 w-3" />
   switch (execution.status) {
     case "preparing":
-      return <Clock className="h-2.5 w-2.5 animate-pulse text-yellow-500" />
+      return <Clock className="h-3 w-3 animate-pulse text-yellow-500" />
     case "running":
-      return <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-500" />
+      return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
     case "completed":
-      return <CheckCircle className="h-2.5 w-2.5 text-green-500" />
+      return <CheckCircle className="h-3 w-3 text-green-500" />
     case "failed":
-      return <XCircle className="h-2.5 w-2.5 text-red-500" />
+      return <XCircle className="h-3 w-3 text-red-500" />
     case "cancelled":
-      return <XCircle className="h-2.5 w-2.5 text-gray-500" />
+      return <XCircle className="h-3 w-3 text-gray-500" />
     default:
-      return <Play className="h-2.5 w-2.5" />
+      return <Play className="h-3 w-3" />
   }
 }
 
@@ -57,7 +56,6 @@ interface WorkflowCardHeaderProps {
   execution?: WorkflowExecution
 }
 
-// WorkflowCardHeader component
 const WorkflowCardHeader = memo(function WorkflowCardHeader({
   workflow,
   isAuthenticated,
@@ -105,38 +103,27 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
   )
 
   return (
-    <div className="flex items-center px-3 py-3 min-h-[1.875rem] gap-2">
-      {/* Main content area */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-medium truncate flex-1">{workflow.name}</p>
-          <div className="flex items-center justify-center h-3.5 w-3.5 border text-[10px] font-medium shrink-0">
+    <div className="p-3 flex items-center justify-between gap-2">
+      {/* Title */}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium truncate text-foreground">{workflow.name}</p>
+      </div>
+      {/* Right Side */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Number of steps */}
+        {workflow.steps.length > 0 && (
+          <div className="flex items-center justify-center size-8 border text-[10px] font-medium shrink-0">
             {workflow.steps.length}
           </div>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex gap-0.5 shrink-0 items-center">
-        {/* Run/Stop button */}
-        <Button variant="ghost" size="icon" onClick={handleRunOrStop} disabled={!isAuthenticated} className="h-6 w-6">
-          {isRunning ? <Square className="h-2.5 w-2.5" /> : <Play className="h-2.5 w-2.5" />}
-        </Button>
-
-        {/* Dropdown menu for edit/delete */}
+        )}
+        {/* Settings */}
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              disabled={!isAuthenticated || workflow.isPublic}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreVertical className="h-2.5 w-2.5" />
+            <Button variant="outline" size="icon" className="size-8 hover:cursor-pointer">
+              <Settings className="h-2.5 w-2.5 text-foreground/90" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
               <Pencil className="mr-2 h-4 w-4" />
               Edit
@@ -148,6 +135,16 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* Run/Stop button */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleRunOrStop}
+          disabled={!isAuthenticated || workflow.steps.length === 0}
+          className="size-8 hover:cursor-pointer"
+        >
+          {isRunning ? <Square className="h-2.5 w-2.5" /> : <Play className="h-2.5 w-2.5" />}
+        </Button>
       </div>
     </div>
   )
@@ -169,7 +166,6 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
   isAuthenticated,
   onRun,
 }: WorkflowExecutionStatusProps) {
-  const { hasConnectingSteps } = useWorkflow()
   const isActiveExecution = execution.status === "preparing" || execution.status === "running"
 
   const getProgressPercentage = () => {
@@ -298,7 +294,7 @@ export const WorkflowCard = memo(function WorkflowCard({
   return (
     <Card
       className={cn(
-        "w-full hover:bg-background/50 bg-background transition-colors overflow-hidden p-0",
+        "w-full bg-background overflow-hidden p-2",
         // Running state takes highest priority
         execution && isActiveExecution && "border-blue-500 border-2 dark:border-blue-500",
         // Selected state only applies if not running
