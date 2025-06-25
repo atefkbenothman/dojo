@@ -1,9 +1,9 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { AddStepButton } from "@/components/workflow/add-step-button"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { CanvasZoomControls } from "@/components/workflow/canvas/canvas-zoom-controls"
+import { WorkflowInstructionsStep } from "@/components/workflow/canvas/workflow-instructions-step"
 import { WorkflowStep } from "@/components/workflow/canvas/workflow-step"
 import { useCanvasZoom } from "@/hooks/use-canvas-zoom"
 import { useDragAndDrop } from "@/hooks/use-drag-and-drop"
@@ -25,6 +25,7 @@ interface WorkflowBuilderProps {
   onConfigureStep: (index: number) => void
   onUpdateSteps: (newSteps: Id<"agents">[]) => void
   onViewLogs: () => void
+  onEditMetadata?: () => void
 }
 
 export const WorkflowBuilder = memo(function WorkflowBuilder({
@@ -40,6 +41,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
   onConfigureStep,
   onUpdateSteps,
   onViewLogs,
+  onEditMetadata,
 }: WorkflowBuilderProps) {
   // Local state for expand/collapse
   const [areAllStepsExpanded, setAreAllStepsExpanded] = useState(false)
@@ -83,6 +85,21 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
   const renderWorkflowSteps = () => {
     return (
       <div className="relative">
+        {/* Instructions step - always shown first */}
+        <>
+          <WorkflowInstructionsStep
+            instructions={workflow.instructions}
+            isExpanded={areAllStepsExpanded}
+            onEditClick={onEditMetadata}
+          />
+          {/* Connecting line from instructions to first step */}
+          {workflow.steps.length > 0 && (
+            <div className="relative py-4 w-[280px] mx-auto">
+              <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 bg-border" />
+            </div>
+          )}
+        </>
+
         {workflow.steps.map((stepId, index) => {
           const agent = agents.find((a) => a._id === stepId)
           if (!agent) return null
@@ -168,7 +185,11 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
         })}
 
         {/* Single Add Step button at the end */}
-        {workflow.steps.length > 0 && <AddStepButton agents={agents} onSelect={handleAddAtEnd} />}
+        {workflow.steps.length > 0 ? (
+          <AddStepButton agents={agents} onSelect={handleAddAtEnd} />
+        ) : (
+          <AddStepButton agents={agents} onSelect={onAddFirstStep} />
+        )}
       </div>
     )
   }
@@ -177,64 +198,50 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
     <div className="h-full bg-transparent">
       {/* Canvas or Empty State */}
       <div className="relative h-full overflow-hidden">
-        {workflow.steps.length === 0 ? (
-          /* Empty state - not part of canvas */
-          <div className="flex items-center justify-center h-full">
-            <div className="max-w-[280px]">
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center space-y-4 bg-background">
-                <p className="text-sm text-muted-foreground">No steps yet. Add an agent to get started.</p>
-                <AgentSelectorPopover agents={agents} onSelect={onAddFirstStep} />
-              </div>
+        {/* Zoomable canvas container */}
+        <div
+          ref={containerRef}
+          className={cn("absolute inset-0 overflow-auto cursor-grab", isPanning && "cursor-grabbing")}
+          onMouseDown={handleMouseDown}
+          data-canvas-container
+        >
+          {/* Dot pattern background */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "radial-gradient(circle, rgb(0 0 0 / 0.08) 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+              backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
+            }}
+          />
+          <div
+            className="absolute inset-0 dark:block hidden"
+            style={{
+              backgroundImage: "radial-gradient(circle, rgb(255 255 255 / 0.08) 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+              backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
+            }}
+          />
+
+          {/* Canvas content with zoom and pan transforms */}
+          <div className="absolute inset-0" style={canvasTransformStyle}>
+            <div className="py-8 px-4 min-h-full" data-canvas-content>
+              {/* Workflow steps */}
+              {renderWorkflowSteps()}
             </div>
           </div>
-        ) : (
-          <>
-            {/* Zoomable canvas container */}
-            <div
-              ref={containerRef}
-              className={cn("absolute inset-0 overflow-auto cursor-grab", isPanning && "cursor-grabbing")}
-              onMouseDown={handleMouseDown}
-              data-canvas-container
-            >
-              {/* Dot pattern background */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: "radial-gradient(circle, rgb(0 0 0 / 0.08) 1px, transparent 1px)",
-                  backgroundSize: "20px 20px",
-                  backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
-                }}
-              />
-              <div
-                className="absolute inset-0 dark:block hidden"
-                style={{
-                  backgroundImage: "radial-gradient(circle, rgb(255 255 255 / 0.08) 1px, transparent 1px)",
-                  backgroundSize: "20px 20px",
-                  backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
-                }}
-              />
+        </div>
 
-              {/* Canvas content with zoom and pan transforms */}
-              <div className="absolute inset-0" style={canvasTransformStyle}>
-                <div className="py-8 px-4 min-h-full" data-canvas-content>
-                  {/* Workflow steps */}
-                  {renderWorkflowSteps()}
-                </div>
-              </div>
-            </div>
-
-            {/* Zoom controls - only show when there are steps */}
-            <CanvasZoomControls
-              zoom={zoom}
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
-              onToggleExpandAll={() => setAreAllStepsExpanded(!areAllStepsExpanded)}
-              areAllExpanded={areAllStepsExpanded}
-              minZoom={0.25}
-              maxZoom={2}
-            />
-          </>
-        )}
+        {/* Zoom controls - show when there are steps or instructions */}
+        <CanvasZoomControls
+          zoom={zoom}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onToggleExpandAll={() => setAreAllStepsExpanded(!areAllStepsExpanded)}
+          areAllExpanded={areAllStepsExpanded}
+          minZoom={0.25}
+          maxZoom={2}
+        />
       </div>
     </div>
   )

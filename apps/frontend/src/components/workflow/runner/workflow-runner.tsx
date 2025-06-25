@@ -38,20 +38,7 @@ export const WorkflowRunner = memo(function WorkflowRunner({
         />
       ) : (
         <div className="flex items-center justify-center h-full">
-          <div className="text-center space-y-3 max-w-sm">
-            <div className="space-y-1">
-              <h3 className="text-sm font-medium">{workflow.name}</h3>
-              {workflow.description && <p className="text-xs text-muted-foreground">{workflow.description}</p>}
-            </div>
-            <p className="text-xs text-muted-foreground">No active execution. Run the workflow to see progress here.</p>
-            <Button
-              onClick={() => onRunWorkflow(workflow)}
-              disabled={!isAuthenticated || workflow.steps.length === 0}
-              size="default"
-            >
-              Run Workflow
-            </Button>
-          </div>
+          <p className="text-sm text-muted-foreground">Run your workflow to see the logs</p>
         </div>
       )}
     </div>
