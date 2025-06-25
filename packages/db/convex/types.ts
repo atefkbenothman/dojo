@@ -10,3 +10,4 @@ export type Workflow = Doc<"workflows">
 export type WorkflowExecution = Doc<"workflowExecutions">
 
 export type AIModelWithProvider = FunctionReturnType<typeof api.models.modelsWithProviders>
+export type AIModelWithAvailability = FunctionReturnType<typeof api.models.modelsWithAvailability>

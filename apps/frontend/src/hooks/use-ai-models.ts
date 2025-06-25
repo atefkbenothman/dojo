@@ -10,7 +10,7 @@ export function useAIModels() {
   const selectedModelId = useModelStore((state) => state.selectedModelId)
 
   const models = useQuery(api.models.list)
-  const modelsWithProviders = useQuery(api.models.modelsWithProviders)
+  const modelsWithProviders = useQuery(api.models.modelsWithAvailability)
   const providers = useQuery(api.models.providers)
 
   const selectedModel = useMemo(() => {

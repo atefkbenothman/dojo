@@ -16,13 +16,13 @@ import { useChatProvider } from "@/hooks/use-chat"
 import { useImage } from "@/hooks/use-image"
 import { useModelStore } from "@/store/use-model-store"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { AIModel, AIModelWithProvider } from "@dojo/db/convex/types"
+import { AIModel, AIModelWithAvailability } from "@dojo/db/convex/types"
 import { ArrowUp } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 interface ChatControlsProps {
   onSend: () => void
-  modelsWithProviders: AIModelWithProvider
+  modelsWithProviders: AIModelWithAvailability
   selectedModel: AIModel | undefined
   setSelectedModelId: (id: Id<"models">) => void
 }
@@ -34,7 +34,7 @@ const ChatControls = memo(function ChatControls({
   setSelectedModelId,
 }: ChatControlsProps) {
   const groupedModels = useMemo(() => {
-    const grouped: Record<string, AIModel[]> = {}
+    const grouped: Record<string, AIModelWithAvailability[number][]> = {}
     for (const model of modelsWithProviders) {
       const provider = model.provider?.name || "unknown"
       if (!grouped[provider]) {
@@ -59,9 +59,14 @@ const ChatControls = memo(function ChatControls({
               <SelectGroup key={providerName}>
                 <SelectLabel>{providerName}</SelectLabel>
                 {models.map((model) => (
-                  <SelectItem key={model.modelId} value={model.modelId} className="hover:cursor-pointer">
+                  <SelectItem
+                    key={model.modelId}
+                    value={model.modelId}
+                    className="hover:cursor-pointer"
+                    disabled={!model.isAvailable}
+                  >
                     {model.name}
-                    {model.requiresApiKey && (
+                    {model.requiresApiKey && !model.isAvailable && (
                       <span className="text-muted-foreground text-xs ml-1 font-normal">(requires key)</span>
                     )}
                   </SelectItem>
