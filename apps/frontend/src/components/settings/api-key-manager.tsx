@@ -151,7 +151,7 @@ export function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerPro
                   type={state.visible ? "text" : "password"}
                   value={state.value}
                   onChange={(e) => updateKeyState(providerId, { value: e.target.value })}
-                  className="flex-1 text-muted-foreground"
+                  className="flex-1 text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
                 <Button
                   size="icon"

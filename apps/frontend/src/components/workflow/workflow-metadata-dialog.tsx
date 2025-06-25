@@ -77,7 +77,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of what this workflow does"
-              className="min-h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="min-h-[80px] max-h-[120px] h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
           <div className="grid gap-2">
@@ -87,7 +87,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Detailed instructions for the workflow execution"
-              className="min-h-[120px] focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="min-h-[80px] max-h-[120px] h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
         </div>

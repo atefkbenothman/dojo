@@ -225,7 +225,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
 
           {/* Canvas content with zoom and pan transforms */}
           <div className="absolute inset-0" style={canvasTransformStyle}>
-            <div className="py-8 px-4 min-h-full" data-canvas-content>
+            <div className="flex flex-col items-center justify-center min-h-full" data-canvas-content>
               {/* Workflow steps */}
               {renderWorkflowSteps()}
             </div>
