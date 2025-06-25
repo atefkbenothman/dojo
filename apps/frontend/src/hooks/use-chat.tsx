@@ -1,9 +1,9 @@
 "use client"
 
 import { useAIModels } from "@/hooks/use-ai-models"
-import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useUser } from "@/hooks/use-user"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { GUEST_SESSION_KEY, SYSTEM_PROMPT } from "@/lib/constants"
+import { SYSTEM_PROMPT } from "@/lib/constants"
 import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import type { UIMessage } from "ai"
@@ -27,15 +27,16 @@ export function useAIChat() {
   const authToken = useAuthToken()
 
   const { play } = useSoundEffectContext()
-  const { readStorage } = useLocalStorage()
+  const { currentSession } = useUser()
   const { selectedModel } = useAIModels()
 
   const [context, setContext] = useState<string>("")
   const [chatError, setChatError] = useState<string | null>(null)
 
   const guestSessionId = useMemo(() => {
-    return !authToken ? readStorage<string>(GUEST_SESSION_KEY) : null
-  }, [authToken, readStorage])
+    const sessionId = !authToken && currentSession?.clientSessionId ? currentSession.clientSessionId : null
+    return sessionId
+  }, [authToken, currentSession])
 
   const { messages, status, input, append, setMessages, error, stop } = useChat({
     api: "/api/chat",
