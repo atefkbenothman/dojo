@@ -2,12 +2,11 @@
 
 import { useLocalStorage } from "./use-local-storage"
 import { useAuthActions } from "@convex-dev/auth/react"
+import { GUEST_SESSION_KEY } from "@/lib/constants"
 import { api } from "@dojo/db/convex/_generated/api"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { useCallback, useEffect, useState, useMemo, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
-
-const CLIENT_SESSION_KEY = "client-session-id"
 
 export function useUser() {
   // Auth state
@@ -19,7 +18,6 @@ export function useUser() {
   const userApiKeys = useQuery(api.apiKeys.getApiKeysForUser, user && user._id ? { userId: user._id } : "skip") || []
 
   // Session state
-  const [isSessionReady, setIsSessionReady] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
 
   // Local storage
@@ -33,7 +31,7 @@ export function useUser() {
     if (isAuthenticated && user) {
       return user._id
     }
-    return readStorage<string>(CLIENT_SESSION_KEY)
+    return readStorage<string>(GUEST_SESSION_KEY)
   }, [isAuthenticated, user, readStorage])
 
   // Query current session
@@ -44,6 +42,11 @@ export function useUser() {
   )
 
   const currentSession = isAuthenticated ? session : guestSession
+  
+  // Derive session ready state from currentSession existence
+  const isSessionReady = useMemo(() => {
+    return !!currentSession && !isInitializing
+  }, [currentSession, isInitializing])
 
   // Convex mutations
   const createOrGetSession = useMutation(api.sessions.getOrCreate)
@@ -60,17 +63,15 @@ export function useUser() {
         await createOrGetSession({ userId: user._id })
       } else if (!isAuthenticated) {
         // Guest user: use clientSessionId
-        let clientSessionId = readStorage<string>(CLIENT_SESSION_KEY)
+        let clientSessionId = readStorage<string>(GUEST_SESSION_KEY)
 
         if (!clientSessionId) {
           clientSessionId = uuidv4()
-          writeStorage(CLIENT_SESSION_KEY, clientSessionId)
+          writeStorage(GUEST_SESSION_KEY, clientSessionId)
         }
 
         await createOrGetSession({ clientSessionId })
       }
-
-      setIsSessionReady(true)
     } catch (error) {
       console.error("Failed to initialize session:", error)
     } finally {
@@ -84,19 +85,17 @@ export function useUser() {
     await convexSignOut()
 
     // Clear existing client session ID
-    removeStorage(CLIENT_SESSION_KEY)
+    removeStorage(GUEST_SESSION_KEY)
 
     // Generate new client session ID for guest usage
     const newClientSessionId = uuidv4()
-    writeStorage(CLIENT_SESSION_KEY, newClientSessionId)
+    writeStorage(GUEST_SESSION_KEY, newClientSessionId)
 
     // Create new guest session
     try {
       await createOrGetSession({ clientSessionId: newClientSessionId })
-      setIsSessionReady(true)
     } catch (error) {
       console.error("Failed to create guest session after logout:", error)
-      setIsSessionReady(false)
     }
   }, [convexSignOut, removeStorage, writeStorage, createOrGetSession])
 
