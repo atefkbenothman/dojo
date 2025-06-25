@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useWorkflow } from "@/hooks/use-workflow"
 import { cn } from "@/lib/utils"
 import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
-import { useWorkflow } from "@/hooks/use-workflow"
 import { Play, MoreVertical, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square } from "lucide-react"
 import { useCallback, memo, useState } from "react"
 
@@ -178,13 +178,13 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
       const completedSteps = execution.stepExecutions.filter((se: any) => se.status === "completed").length
       return Math.round((completedSteps / execution.totalSteps) * 100)
     }
-    
+
     // Fallback to currentStep logic, but add 1 if we're actively running
     if (execution.currentStep === undefined) {
       // If workflow is running but no currentStep yet, we're on step 1
       return execution.status === "running" ? Math.round((1 / execution.totalSteps) * 100) : 0
     }
-    
+
     // currentStep is 0-indexed and represents the step being executed
     // So progress should be (currentStep + 1) / totalSteps
     const activeStep = execution.currentStep + 1
@@ -210,7 +210,7 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
       case "running":
         const current = (execution.currentStep ?? 0) + 1
         const stepName = getCurrentStepName()
-        
+
         return stepName
           ? `Running: ${stepName} (${current}/${execution.totalSteps})`
           : `Running step ${current} of ${execution.totalSteps}`
@@ -231,9 +231,6 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
 
   return (
     <>
-      {/* Horizontal separator */}
-      <div className="border-t" />
-
       {/* Extension content */}
       <div className="px-3 py-2 space-y-1.5">
         <div className="flex items-center gap-1 min-w-0">

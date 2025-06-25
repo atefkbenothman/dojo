@@ -91,18 +91,8 @@ export const Workflow = memo(function Workflow() {
   }, [remove, selectedWorkflow, workflowToDelete, updateUrlWithWorkflow])
 
   const handleCreateWorkflow = useCallback(async () => {
-    // Generate a smart default name with timestamp
-    const now = new Date()
-    const timestamp = now.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-
     const newWorkflow = {
-      name: `Untitled Workflow - ${timestamp}`,
+      name: "Untitled Workflow",
       description: "",
       instructions: "",
       steps: [],
@@ -270,121 +260,32 @@ export const Workflow = memo(function Workflow() {
   )
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
-        {/* Main Header */}
-        <div className="flex flex-col gap-1 border-b-[1.5px] pb-4 -my-4 py-4 -mx-4 px-4 bg-card w-96 border-r-[1.5px]">
-          <div className="flex items-center gap-70">
+    <>
+      <div className="flex h-full bg-background">
+        {/* Left Sidebar */}
+        <div className="w-96 bg-card border-r-[1.5px] flex flex-col h-full overflow-hidden">
+          {/* Header */}
+          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between">
             <p className="text-sm font-semibold">Workflows</p>
+            <span className="text-xs text-muted-foreground">{workflows.length} total</span>
           </div>
+          {/* Workflow List */}
+          <WorkflowSidebar
+            workflows={workflows}
+            selectedWorkflow={selectedWorkflow}
+            isAuthenticated={isAuthenticated}
+            workflowExecutions={workflowExecutions}
+            agents={agents || []}
+            onSelectWorkflow={handleSelectWorkflow}
+            onCreateWorkflow={handleCreateWorkflow}
+            onEditWorkflow={handleEditWorkflow}
+            onDeleteWorkflow={handleDeleteWorkflow}
+            onRunWorkflow={runWorkflow}
+            onStopWorkflow={stopWorkflow}
+          />
         </div>
+        {/* Main Content */}
       </div>
-
-      {/* 2-column layout with bottom panel */}
-      <div className="flex flex-row flex-1 min-h-0">
-        {/* Left sidebar - Workflows list */}
-        <WorkflowSidebar
-          workflows={workflows}
-          selectedWorkflow={selectedWorkflow}
-          isAuthenticated={isAuthenticated}
-          workflowExecutions={workflowExecutions}
-          agents={agents || []}
-          onSelectWorkflow={handleSelectWorkflow}
-          onCreateWorkflow={handleCreateWorkflow}
-          onEditWorkflow={handleEditWorkflow}
-          onDeleteWorkflow={handleDeleteWorkflow}
-          onRunWorkflow={runWorkflow}
-          onStopWorkflow={stopWorkflow}
-        />
-
-        {/* Main area - Flow canvas with tab bar */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-none">
-          {selectedWorkflow ? (
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as "build" | "run")}
-              className="h-full flex flex-col bg-transparent"
-            >
-              {/* Tab bar header */}
-              <div className="p-4 border-b">
-                <div className="flex items-center justify-between">
-                  <TabsList className="h-9 w-64">
-                    <TabsTrigger value="build" className="flex-1">
-                      Build
-                    </TabsTrigger>
-                    <TabsTrigger value="run" className="flex-1">
-                      Run
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-              </div>
-
-              <TabsContent value="build" className="flex-1 mt-0 overflow-hidden bg-transparent">
-                {activeTab === "build" && (
-                  <WorkflowBuilder
-                    workflow={selectedWorkflow}
-                    agents={agents || []}
-                    isAuthenticated={isAuthenticated}
-                    workflowExecutions={workflowExecutions}
-                    getModel={getModelWrapper}
-                    onEditMetadata={() => setIsMetadataDialogOpen(true)}
-                    onAddFirstStep={handleAddFirstStep}
-                    onAddStepAtIndex={handleAddStepAtIndex}
-                    onRemoveStep={handleRemoveStep}
-                    onDuplicateStep={handleDuplicateStep}
-                    onConfigureStep={handleConfigure}
-                    onUpdateSteps={handleUpdateSteps}
-                    onViewLogs={handleViewLogs}
-                  />
-                )}
-              </TabsContent>
-
-              <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
-                {activeTab === "run" && (
-                  <WorkflowRunner
-                    workflow={selectedWorkflow}
-                    agents={agents || []}
-                    isAuthenticated={isAuthenticated}
-                    workflowExecutions={workflowExecutions}
-                    onRunWorkflow={runWorkflow}
-                    onStopWorkflow={stopWorkflow}
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">Select a workflow to view its flow</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Metadata Edit Dialog */}
-      {selectedWorkflow && (
-        <WorkflowMetadataDialog
-          workflow={selectedWorkflow}
-          open={isMetadataDialogOpen}
-          onOpenChange={setIsMetadataDialogOpen}
-          onSave={async (updates) => {
-            await edit({
-              id: selectedWorkflow._id,
-              name: updates.name,
-              description: updates.description,
-              instructions: updates.instructions,
-              steps: selectedWorkflow.steps,
-              isPublic: selectedWorkflow.isPublic,
-              userId: selectedWorkflow.userId,
-            })
-            // Update local state to reflect changes
-            setSelectedWorkflow({
-              ...selectedWorkflow,
-              ...updates,
-            })
-          }}
-        />
-      )}
-
       {/* Delete Confirmation Dialog */}
       <WorkflowDeleteDialog
         workflow={workflowToDelete}
@@ -392,22 +293,140 @@ export const Workflow = memo(function Workflow() {
         onOpenChange={(open) => !open && setWorkflowToDelete(null)}
         onConfirm={confirmDeleteWorkflow}
       />
-
-      {/* Agent Edit Dialog */}
-      {editingAgent && (
-        <AgentDialog
-          mode="edit"
-          agent={editingAgent}
-          open={isAgentDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              setIsAgentDialogOpen(false)
-              setEditingAgent(null)
-            }
-          }}
-          isAuthenticated={isAuthenticated}
-        />
-      )}
-    </div>
+    </>
   )
 })
+
+//  <div className="flex flex-col h-full bg-green-500">
+//  <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-blue-500 w-96">
+//    {/* Main Header */}
+//    <div className="flex flex-col gap-1 border-b-[1.5px] pb-4 -my-4 py-4 -mx-4 px-4 bg-card w-96 border-r-[1.5px] bg-yellow-500">
+//      <div className="flex items-center gap-70">
+//        <p className="text-sm font-semibold">Workflows</p>
+//      </div>
+//    </div>
+//  </div>
+//
+//  {/* 2-column layout with bottom panel */}
+//  <div className="flex flex-row flex-1 min-h-0">
+//    {/* Left sidebar - Workflows list */}
+//    <WorkflowSidebar
+//      workflows={workflows}
+//      selectedWorkflow={selectedWorkflow}
+//      isAuthenticated={isAuthenticated}
+//      workflowExecutions={workflowExecutions}
+//      agents={agents || []}
+//      onSelectWorkflow={handleSelectWorkflow}
+//      onCreateWorkflow={handleCreateWorkflow}
+//      onEditWorkflow={handleEditWorkflow}
+//      onDeleteWorkflow={handleDeleteWorkflow}
+//      onRunWorkflow={runWorkflow}
+//      onStopWorkflow={stopWorkflow}
+//    />
+//
+//    {/* Main area - Flow canvas with tab bar */}
+//    <div className="flex-1 flex flex-col overflow-hidden">
+//      {selectedWorkflow ? (
+//        <Tabs
+//          value={activeTab}
+//          onValueChange={(value) => setActiveTab(value as "build" | "run")}
+//          className="h-full flex flex-col bg-red-400"
+//        >
+//          {/* Tab bar header */}
+//          <div className="p-4 border-b">
+//            <div className="flex items-center justify-between">
+//              <TabsList className="h-9 w-64">
+//                <TabsTrigger value="build" className="flex-1">
+//                  Build
+//                </TabsTrigger>
+//                <TabsTrigger value="run" className="flex-1">
+//                  Run
+//                </TabsTrigger>
+//              </TabsList>
+//            </div>
+//          </div>
+//
+//          <TabsContent value="build" className="flex-1 overflow-hidden">
+//            {activeTab === "build" && (
+//              <WorkflowBuilder
+//                workflow={selectedWorkflow}
+//                agents={agents || []}
+//                isAuthenticated={isAuthenticated}
+//                workflowExecutions={workflowExecutions}
+//                getModel={getModelWrapper}
+//                onEditMetadata={() => setIsMetadataDialogOpen(true)}
+//                onAddFirstStep={handleAddFirstStep}
+//                onAddStepAtIndex={handleAddStepAtIndex}
+//                onRemoveStep={handleRemoveStep}
+//                onDuplicateStep={handleDuplicateStep}
+//                onConfigureStep={handleConfigure}
+//                onUpdateSteps={handleUpdateSteps}
+//                onViewLogs={handleViewLogs}
+//              />
+//            )}
+//          </TabsContent>
+//
+//          <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
+//            {activeTab === "run" && (
+//              <WorkflowRunner
+//                workflow={selectedWorkflow}
+//                agents={agents || []}
+//                isAuthenticated={isAuthenticated}
+//                workflowExecutions={workflowExecutions}
+//                onRunWorkflow={runWorkflow}
+//                onStopWorkflow={stopWorkflow}
+//              />
+//            )}
+//          </TabsContent>
+//        </Tabs>
+//      ) : (
+//        <div className="flex items-center justify-center h-full">
+//          <p className="text-sm text-muted-foreground">Select a workflow to view its flow</p>
+//        </div>
+//      )}
+//    </div>
+//  </div>
+//
+//  {/* Metadata Edit Dialog */}
+//  {selectedWorkflow && (
+//    <WorkflowMetadataDialog
+//      workflow={selectedWorkflow}
+//      open={isMetadataDialogOpen}
+//      onOpenChange={setIsMetadataDialogOpen}
+//      onSave={async (updates) => {
+//        await edit({
+//          id: selectedWorkflow._id,
+//          name: updates.name,
+//          description: updates.description,
+//          instructions: updates.instructions,
+//          steps: selectedWorkflow.steps,
+//          isPublic: selectedWorkflow.isPublic,
+//          userId: selectedWorkflow.userId,
+//        })
+//        // Update local state to reflect changes
+//        setSelectedWorkflow({
+//          ...selectedWorkflow,
+//          ...updates,
+//        })
+//      }}
+//    />
+//  )}
+//
+
+//
+//  {/* Agent Edit Dialog */}
+//  {editingAgent && (
+//    <AgentDialog
+//      mode="edit"
+//      agent={editingAgent}
+//      open={isAgentDialogOpen}
+//      onOpenChange={(open) => {
+//        if (!open) {
+//          setIsAgentDialogOpen(false)
+//          setEditingAgent(null)
+//        }
+//      }}
+//      isAuthenticated={isAuthenticated}
+//    />
+//  )}
+//  </div>
