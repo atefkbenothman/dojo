@@ -103,13 +103,13 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
   )
 
   return (
-    <div className="p-3 flex items-center justify-between gap-2">
+    <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
       {/* Title */}
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium truncate text-foreground">{workflow.name}</p>
       </div>
       {/* Right Side */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
         {/* Number of steps */}
         {workflow.steps.length > 0 && (
           <div className="flex items-center justify-center size-8 border text-[10px] font-medium shrink-0">

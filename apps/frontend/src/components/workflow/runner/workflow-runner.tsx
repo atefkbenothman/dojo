@@ -28,19 +28,12 @@ export const WorkflowRunner = memo(function WorkflowRunner({
 
   return (
     <div className="h-full bg-background">
-      {execution ? (
-        <WorkflowExecutionView
-          workflow={workflow}
-          execution={execution as WorkflowExecution}
-          agents={agents}
-          workflowSteps={workflow.steps}
-          onStop={() => onStopWorkflow(workflow._id)}
-        />
-      ) : (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-sm text-muted-foreground">Run your workflow to see the logs</p>
-        </div>
-      )}
+      <WorkflowExecutionView
+        workflow={workflow}
+        execution={execution as WorkflowExecution | undefined}
+        agents={agents}
+        workflowSteps={workflow.steps}
+      />
     </div>
   )
 })

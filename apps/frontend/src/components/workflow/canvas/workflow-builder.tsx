@@ -63,11 +63,15 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
   // Stable add step handler for end of workflow
   const handleAddAtEnd = useCallback(
     (agent: Agent) => {
-      if (workflow.steps.length > 0) {
+      if (workflow.steps.length === 0) {
+        // If no steps, add as first step
+        onAddFirstStep(agent)
+      } else {
+        // Add after the last step (index = length - 1 will insert at position length)
         onAddStepAtIndex(workflow.steps.length - 1, agent)
       }
     },
-    [workflow.steps.length, onAddStepAtIndex],
+    [workflow.steps.length, onAddFirstStep, onAddStepAtIndex],
   )
 
   // Get execution data for this workflow
@@ -190,7 +194,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
   }
 
   return (
-    <div className="h-full bg-transparent">
+    <div className="h-full">
       {/* Canvas or Empty State */}
       <div className="relative h-full overflow-hidden">
         {/* Zoomable canvas container */}
@@ -220,7 +224,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
 
           {/* Canvas content with zoom and pan transforms */}
           <div className="absolute inset-0" style={canvasTransformStyle}>
-            <div className="flex flex-col items-center justify-center min-h-full" data-canvas-content>
+            <div className="flex flex-col items-center justify-center min-h-full py-16" data-canvas-content>
               {/* Workflow steps */}
               {renderWorkflowSteps()}
             </div>

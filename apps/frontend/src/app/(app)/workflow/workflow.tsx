@@ -16,7 +16,7 @@ import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { Play, Pencil } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useCallback, useMemo, memo, useEffect } from "react"
+import { useState, useCallback, useMemo, memo, useEffect, useRef } from "react"
 
 export const Workflow = memo(function Workflow() {
   const { workflows, create, edit, remove, runWorkflow, stopWorkflow, getWorkflowExecution } = useWorkflow()
@@ -55,9 +55,10 @@ export const Workflow = memo(function Workflow() {
       } else {
         params.delete("id")
       }
-      router.replace(`/workflow?${params.toString()}`, { scroll: false })
+      // Use window.history.replaceState to avoid component remount
+      window.history.replaceState(null, "", `/workflow?${params.toString()}`)
     },
-    [router, searchParams],
+    [searchParams],
   )
 
   // Create a map of workflow executions for efficient lookup
@@ -125,6 +126,7 @@ export const Workflow = memo(function Workflow() {
       const newSelection = selectedWorkflow?._id === workflow._id ? null : workflow
       setSelectedWorkflow(newSelection)
       updateUrlWithWorkflow(newSelection)
+      // Note: activeTab state is preserved automatically when switching workflows
     },
     [selectedWorkflow, updateUrlWithWorkflow],
   )
@@ -296,7 +298,7 @@ export const Workflow = memo(function Workflow() {
     <>
       <div className="flex h-full bg-background">
         {/* Left Sidebar */}
-        <div className="w-96 bg-card border-r-[1.5px] flex flex-col h-full overflow-hidden">
+        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full overflow-hidden">
           {/* Header */}
           <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
             <p className="text-sm font-semibold">Workflows</p>
@@ -319,97 +321,99 @@ export const Workflow = memo(function Workflow() {
         </div>
         {/* Main Content */}
         <div className="flex flex-col flex-1">
-          {selectedWorkflow ? (
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as "build" | "run")}
-              className="h-full flex flex-col"
-            >
-              {/* Header */}
-              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-16">
-                {/* Left section - Name and Edit */}
-                <div className="flex items-center gap-2 flex-1">
-                  <p className="text-sm font-semibold max-w-[160px] truncate">{selectedWorkflow?.name}</p>
-                  {/* Edit */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as "build" | "run")}
+            className="h-full flex flex-col"
+          >
+            {selectedWorkflow ? (
+              <>
+                {/* Header */}
+                <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-16">
+                  {/* Left section - Name and Edit */}
+                  <div className="flex items-center gap-2 flex-1">
+                    <p className="text-sm font-semibold max-w-[160px] truncate">{selectedWorkflow?.name}</p>
+                    {/* Edit */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingWorkflow(selectedWorkflow)
+                        setIsMetadataDialogOpen(true)
+                      }}
+                      className="hover:cursor-pointer"
+                    >
+                      <Pencil className="h-1 w-1 text-muted-foreground" />
+                    </Button>
+                  </div>
+
+                  {/* Center section - Tabs */}
+                  <div className="flex items-center justify-center">
+                    <TabsList className="h-9 w-64">
+                      <TabsTrigger value="build" className="flex-1">
+                        Build
+                      </TabsTrigger>
+                      <TabsTrigger value="run" className="flex-1">
+                        Logs
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  {/* Right section - Run button */}
+                  <div className="flex items-center justify-end flex-1">
+                    <Button
+                      className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-700"
+                      onClick={handleRunWorkflow}
+                      disabled={
+                        !selectedWorkflow.instructions ||
+                        selectedWorkflow.instructions.trim() === "" ||
+                        selectedWorkflow.steps.length === 0
+                      }
+                    >
+                      <Play className="h-3 w-3 mr-1" />
+                      Run
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tab Content */}
+                <TabsContent value="build" className="flex-1 overflow-hidden">
+                  <WorkflowBuilder
+                    workflow={selectedWorkflow}
+                    agents={agents || []}
+                    isAuthenticated={isAuthenticated}
+                    workflowExecutions={workflowExecutions}
+                    getModel={getModelWrapper}
+                    onAddFirstStep={handleAddFirstStep}
+                    onAddStepAtIndex={handleAddStepAtIndex}
+                    onRemoveStep={handleRemoveStep}
+                    onDuplicateStep={handleDuplicateStep}
+                    onConfigureStep={handleConfigure}
+                    onUpdateSteps={handleUpdateSteps}
+                    onViewLogs={handleViewLogs}
+                    onEditMetadata={() => {
                       setEditingWorkflow(selectedWorkflow)
                       setIsMetadataDialogOpen(true)
                     }}
-                    className="hover:cursor-pointer"
-                  >
-                    <Pencil className="h-1 w-1 text-muted-foreground" />
-                  </Button>
-                </div>
-
-                {/* Center section - Tabs */}
-                <div className="flex items-center justify-center">
-                  <TabsList className="h-9 w-64">
-                    <TabsTrigger value="build" className="flex-1">
-                      Build
-                    </TabsTrigger>
-                    <TabsTrigger value="run" className="flex-1">
-                      Logs
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                {/* Right section - Run button */}
-                <div className="flex items-center justify-end flex-1">
-                  <Button
-                    className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-700"
-                    onClick={handleRunWorkflow}
-                    disabled={
-                      !selectedWorkflow.instructions ||
-                      selectedWorkflow.instructions.trim() === "" ||
-                      selectedWorkflow.steps.length === 0
-                    }
-                  >
-                    <Play className="h-3 w-3 mr-1" />
-                    Run
-                  </Button>
-                </div>
+                  />
+                </TabsContent>
+                <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
+                  <WorkflowRunner
+                    workflow={selectedWorkflow}
+                    agents={agents || []}
+                    isAuthenticated={isAuthenticated}
+                    workflowExecutions={workflowExecutions}
+                    onRunWorkflow={runWorkflow}
+                    onStopWorkflow={stopWorkflow}
+                  />
+                </TabsContent>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">Select a workflow</p>
               </div>
-
-              {/* Tab Content */}
-              <TabsContent value="build" className="flex-1 overflow-hidden">
-                <WorkflowBuilder
-                  workflow={selectedWorkflow}
-                  agents={agents || []}
-                  isAuthenticated={isAuthenticated}
-                  workflowExecutions={workflowExecutions}
-                  getModel={getModelWrapper}
-                  onAddFirstStep={handleAddFirstStep}
-                  onAddStepAtIndex={handleAddStepAtIndex}
-                  onRemoveStep={handleRemoveStep}
-                  onDuplicateStep={handleDuplicateStep}
-                  onConfigureStep={handleConfigure}
-                  onUpdateSteps={handleUpdateSteps}
-                  onViewLogs={handleViewLogs}
-                  onEditMetadata={() => {
-                    setEditingWorkflow(selectedWorkflow)
-                    setIsMetadataDialogOpen(true)
-                  }}
-                />
-              </TabsContent>
-              <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
-                <WorkflowRunner
-                  workflow={selectedWorkflow}
-                  agents={agents || []}
-                  isAuthenticated={isAuthenticated}
-                  workflowExecutions={workflowExecutions}
-                  onRunWorkflow={runWorkflow}
-                  onStopWorkflow={stopWorkflow}
-                />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">Select a workflow</p>
-            </div>
-          )}
+            )}
+          </Tabs>
         </div>
       </div>
       {/* Delete Confirmation Dialog */}
