@@ -43,7 +43,7 @@ export function useUser() {
 
   const currentSession = isAuthenticated ? session : guestSession
   
-  // Derive session ready state from currentSession existence
+  // Session is ready when it exists in database and not initializing
   const isSessionReady = useMemo(() => {
     return !!currentSession && !isInitializing
   }, [currentSession, isInitializing])
@@ -109,7 +109,7 @@ export function useUser() {
     }
   }, [isAuthenticated, user, convexSignOut])
 
-  // Reinitialize session when auth state changes
+  // Handle session changes when users login/logout
   useEffect(() => {
     if (isAuthLoading) return
 
