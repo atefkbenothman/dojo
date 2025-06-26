@@ -1,10 +1,8 @@
 "use client"
 
 import { useChatProvider } from "@/hooks/use-chat"
-import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
-import { GUEST_SESSION_KEY } from "@/lib/constants"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -22,11 +20,10 @@ export function useWorkflow() {
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
   const { currentSession } = useUser()
-  const { readStorage } = useLocalStorage()
 
   const guestSessionId = useMemo(() => {
-    return !authToken ? readStorage<string>(GUEST_SESSION_KEY) : null
-  }, [authToken, readStorage])
+    return !authToken && currentSession?.clientSessionId ? currentSession.clientSessionId : null
+  }, [authToken, currentSession])
 
   const workflows = useQuery(api.workflows.list)
   const create = useMutation(api.workflows.create)

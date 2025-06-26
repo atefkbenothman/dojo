@@ -2,10 +2,8 @@
 
 import { useSoundEffectContext } from "./use-sound-effect"
 import { useChatProvider } from "@/hooks/use-chat"
-import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useMCP } from "@/hooks/use-mcp"
 import { useUser } from "@/hooks/use-user"
-import { GUEST_SESSION_KEY } from "@/lib/constants"
 import { errorToastStyle } from "@/lib/styles"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -24,11 +22,10 @@ export function useAgent() {
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
   const { currentSession } = useUser()
-  const { readStorage } = useLocalStorage()
 
   const guestSessionId = useMemo(() => {
-    return !authToken ? readStorage<string>(GUEST_SESSION_KEY) : null
-  }, [authToken, readStorage])
+    return !authToken && currentSession?.clientSessionId ? currentSession.clientSessionId : null
+  }, [authToken, currentSession])
 
   const agents = useQuery(api.agents.list)
   const create = useMutation(api.agents.create)
