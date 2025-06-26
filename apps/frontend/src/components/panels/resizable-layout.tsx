@@ -47,108 +47,63 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
   const onChatPanelToggle = useCallback(() => handleChatPanelToggle(), [handleChatPanelToggle])
 
   return (
-    <div className="h-[100dvh] w-screen overflow-hidden">
-      {/* Desktop Layout: Horizontal with sidebar on left */}
-      <div className="hidden md:flex h-full">
+    <div className="flex h-[100dvh] w-screen overflow-hidden">
+      {/* Desktop: Vertical sidebar on the left */}
+      <div className="hidden md:block">
         <SideNav />
-        <ResizablePanelGroup direction="horizontal" onLayout={onLayout}>
-          {/* Main Panel */}
-          <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
-            <div className="flex h-full flex-col">
-              <MainPanelHeader onChatPanelToggle={onChatPanelToggle} isCollapsed={isChatPanelCollapsed} />
-              <div className="flex-1 overflow-auto min-w-[500px]">{children}</div>
-            </div>
-          </ResizablePanel>
-          <ResizableHandle
-            withHandle
-            className={cn((isMaximized || isChatPanelCollapsed) && "hidden")}
-            hitAreaMargins={{ coarse: 10, fine: 5 }}
-          />
-          {/* Chat Panel */}
-          <ResizablePanel
-            id="chat-panel"
-            ref={chatPanelRef}
-            collapsible
-            collapsedSize={CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE}
-            defaultSize={defaultLayout[1]}
-            minSize={CHAT_PANEL_MIN_SIZE_PERCENTAGE}
-            maxSize={CHAT_PANEL_MAX_SIZE_PERCENTAGE}
-            className="bg-card h-full w-full flex-shrink-0"
-            onCollapse={onCollapse}
-            onExpand={onExpand}
-          >
-            <div className="flex h-full w-full flex-col">
-              <ChatPanelHeader
-                isCollapsed={isChatPanelCollapsed}
-                isMaximized={isMaximized}
-                onMaximizeToggle={handleMaximizeToggle}
-                onNewChat={handleNewChat}
-              />
-              {isChatPanelCollapsed ? (
-                <div className="flex flex-1 items-center justify-center" />
-              ) : (
-                <div className={cn("flex flex-1 flex-col overflow-hidden p-2", isMaximized && "mx-auto flex w-full")}>
-                  <div className="min-h-0 flex-1 overflow-y-auto">
-                    <Chat isServerHealthy={isServerHealthy} />
-                  </div>
-                </div>
-              )}
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
       </div>
-
-      {/* Mobile Layout: Vertical stack with horizontal nav below main header */}
-      <div className="flex md:hidden h-full flex-col">
-        <div className="flex-1 overflow-hidden">
-          <ResizablePanelGroup direction="horizontal" onLayout={onLayout}>
-            {/* Main Panel */}
-            <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
-              <div className="flex h-full flex-col">
-                <MainPanelHeader onChatPanelToggle={onChatPanelToggle} isCollapsed={isChatPanelCollapsed} />
-                <SideNav />
-                <div className="flex-1 overflow-auto">{children}</div>
-              </div>
-            </ResizablePanel>
-            <ResizableHandle
-              withHandle
-              className={cn((isMaximized || isChatPanelCollapsed) && "hidden")}
-              hitAreaMargins={{ coarse: 10, fine: 5 }}
+      
+      <ResizablePanelGroup direction="horizontal" onLayout={onLayout}>
+        {/* Main Panel */}
+        <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
+          <div className="flex h-full flex-col">
+            <MainPanelHeader onChatPanelToggle={onChatPanelToggle} isCollapsed={isChatPanelCollapsed} />
+            {/* Mobile: Horizontal nav below header */}
+            <div className="md:hidden">
+              <SideNav />
+            </div>
+            <div className="flex-1 overflow-auto md:min-w-[500px]">{children}</div>
+          </div>
+        </ResizablePanel>
+        
+        <ResizableHandle
+          withHandle
+          className={cn((isMaximized || isChatPanelCollapsed) && "hidden")}
+          hitAreaMargins={{ coarse: 10, fine: 5 }}
+        />
+        
+        {/* Chat Panel */}
+        <ResizablePanel
+          id="chat-panel"
+          ref={chatPanelRef}
+          collapsible
+          collapsedSize={CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE}
+          defaultSize={defaultLayout[1]}
+          minSize={CHAT_PANEL_MIN_SIZE_PERCENTAGE}
+          maxSize={CHAT_PANEL_MAX_SIZE_PERCENTAGE}
+          className="bg-card h-full w-full flex-shrink-0"
+          onCollapse={onCollapse}
+          onExpand={onExpand}
+        >
+          <div className="flex h-full w-full flex-col">
+            <ChatPanelHeader
+              isCollapsed={isChatPanelCollapsed}
+              isMaximized={isMaximized}
+              onMaximizeToggle={handleMaximizeToggle}
+              onNewChat={handleNewChat}
             />
-            {/* Chat Panel */}
-            <ResizablePanel
-              id="chat-panel"
-              ref={chatPanelRef}
-              collapsible
-              collapsedSize={CHAT_PANEL_COLLAPSED_SIZE_PERCENTAGE}
-              defaultSize={defaultLayout[1]}
-              minSize={CHAT_PANEL_MIN_SIZE_PERCENTAGE}
-              maxSize={CHAT_PANEL_MAX_SIZE_PERCENTAGE}
-              className="bg-card h-full w-full flex-shrink-0"
-              onCollapse={onCollapse}
-              onExpand={onExpand}
-            >
-              <div className="flex h-full w-full flex-col">
-                <ChatPanelHeader
-                  isCollapsed={isChatPanelCollapsed}
-                  isMaximized={isMaximized}
-                  onMaximizeToggle={handleMaximizeToggle}
-                  onNewChat={handleNewChat}
-                />
-                {isChatPanelCollapsed ? (
-                  <div className="flex flex-1 items-center justify-center" />
-                ) : (
-                  <div className={cn("flex flex-1 flex-col overflow-hidden p-2", isMaximized && "mx-auto flex w-full")}>
-                    <div className="min-h-0 flex-1 overflow-y-auto">
-                      <Chat isServerHealthy={isServerHealthy} />
-                    </div>
-                  </div>
-                )}
+            {isChatPanelCollapsed ? (
+              <div className="flex flex-1 items-center justify-center" />
+            ) : (
+              <div className={cn("flex flex-1 flex-col overflow-hidden p-2", isMaximized && "mx-auto flex w-full")}>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <Chat isServerHealthy={isServerHealthy} />
+                </div>
               </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </div>
-      </div>
+            )}
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 }
