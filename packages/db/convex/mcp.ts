@@ -11,23 +11,30 @@ async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
   return identity.subject.split("|")[0] as Id<"users">
 }
 
-// List: Return all public MCPs and, if authenticated, user-specific MCPs
+// List: Return all public MCPs and, if authenticated, also user-specific MCPs
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
+    
+    // Always get public MCPs
+    const publicMcps = await ctx.db
+      .query("mcp")
+      .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
+      .collect()
+    
     if (userId) {
-      // Authenticated: return only the user's MCPs
-      return await ctx.db
+      // Authenticated: also get user's private MCPs
+      const userMcps = await ctx.db
         .query("mcp")
         .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .filter((q) => q.neq(q.field("isPublic"), true))
         .collect()
+      
+      return [...publicMcps, ...userMcps]
     } else {
       // Not authenticated: return only public MCPs
-      return await ctx.db
-        .query("mcp")
-        .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
-        .collect()
+      return publicMcps
     }
   },
 })
@@ -95,5 +102,34 @@ export const remove = mutation({
     if (mcp.isPublic) throw new Error("Default MCP servers cannot be deleted.")
     if (!userId || mcp.userId !== userId) throw new Error("Unauthorized")
     return await ctx.db.delete(args.id)
+  },
+})
+
+// Clone: Create a private copy of any MCP server (public or user's own)
+export const clone = mutation({
+  args: {
+    id: v.id("mcp"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) throw new Error("Must be signed in to clone MCP servers.")
+    
+    const originalMcp = await ctx.db.get(args.id)
+    if (!originalMcp) throw new Error("MCP server not found")
+    
+    // Check if user can access this MCP (either public or owned by user)
+    if (!originalMcp.isPublic && originalMcp.userId !== userId) {
+      throw new Error("Unauthorized")
+    }
+    
+    // Create a clone with isPublic: false and new userId
+    const { _id, _creationTime, userId: _originalUserId, isPublic: _originalIsPublic, ...mcpData } = originalMcp
+    
+    return await ctx.db.insert("mcp", {
+      ...mcpData,
+      name: `${originalMcp.name} (Copy)`,
+      userId,
+      isPublic: false, // Always make clones private
+    })
   },
 })

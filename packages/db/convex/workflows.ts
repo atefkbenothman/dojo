@@ -10,23 +10,30 @@ async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
   return identity.subject.split("|")[0] as Id<"users">
 }
 
-// List: Return all public workflows and, if authenticated, user-specific workflows
+// List: Return all public workflows and, if authenticated, also user-specific workflows
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
+    
+    // Always get public workflows
+    const publicWorkflows = await ctx.db
+      .query("workflows")
+      .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
+      .collect()
+    
     if (userId) {
-      // Authenticated: return only the user's workflows
-      return await ctx.db
+      // Authenticated: also get user's private workflows
+      const userWorkflows = await ctx.db
         .query("workflows")
         .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .filter((q) => q.neq(q.field("isPublic"), true))
         .collect()
+      
+      return [...publicWorkflows, ...userWorkflows]
     } else {
       // Not authenticated: return only public workflows
-      return await ctx.db
-        .query("workflows")
-        .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
-        .collect()
+      return publicWorkflows
     }
   },
 })
@@ -85,5 +92,34 @@ export const remove = mutation({
     if (workflow.isPublic) throw new Error("Default workflows cannot be deleted.")
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
     return await ctx.db.delete(args.id)
+  },
+})
+
+// Clone: Create a private copy of any workflow (public or user's own)
+export const clone = mutation({
+  args: {
+    id: v.id("workflows"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) throw new Error("Must be signed in to clone workflows.")
+    
+    const originalWorkflow = await ctx.db.get(args.id)
+    if (!originalWorkflow) throw new Error("Workflow not found")
+    
+    // Check if user can access this workflow (either public or owned by user)
+    if (!originalWorkflow.isPublic && originalWorkflow.userId !== userId) {
+      throw new Error("Unauthorized")
+    }
+    
+    // Create a clone with isPublic: false and new userId
+    const { _id, _creationTime, userId: _originalUserId, isPublic: _originalIsPublic, ...workflowData } = originalWorkflow
+    
+    return await ctx.db.insert("workflows", {
+      ...workflowData,
+      name: `${originalWorkflow.name} (Copy)`,
+      userId,
+      isPublic: false, // Always make clones private
+    })
   },
 })

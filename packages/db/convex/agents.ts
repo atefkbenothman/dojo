@@ -21,23 +21,30 @@ async function validatePublicAgentModel(ctx: QueryCtx, isPublic: boolean | undef
   }
 }
 
-// List: Return all public agents and, if authenticated, user-specific agents
+// List: Return all public agents and, if authenticated, also user-specific agents
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
+    
+    // Always get public agents
+    const publicAgents = await ctx.db
+      .query("agents")
+      .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
+      .collect()
+    
     if (userId) {
-      // Authenticated: return only the user's agents
-      return await ctx.db
+      // Authenticated: also get user's private agents
+      const userAgents = await ctx.db
         .query("agents")
         .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .filter((q) => q.neq(q.field("isPublic"), true))
         .collect()
+      
+      return [...publicAgents, ...userAgents]
     } else {
       // Not authenticated: return only public agents
-      return await ctx.db
-        .query("agents")
-        .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
-        .collect()
+      return publicAgents
     }
   },
 })
@@ -104,5 +111,34 @@ export const remove = mutation({
     if (agent.isPublic) throw new Error("Default agents cannot be deleted.")
     if (!userId || agent.userId !== userId) throw new Error("Unauthorized")
     return await ctx.db.delete(args.id)
+  },
+})
+
+// Clone: Create a private copy of any agent (public or user's own)
+export const clone = mutation({
+  args: {
+    id: v.id("agents"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) throw new Error("Must be signed in to clone agents.")
+    
+    const originalAgent = await ctx.db.get(args.id)
+    if (!originalAgent) throw new Error("Agent not found")
+    
+    // Check if user can access this agent (either public or owned by user)
+    if (!originalAgent.isPublic && originalAgent.userId !== userId) {
+      throw new Error("Unauthorized")
+    }
+    
+    // Create a clone with isPublic: false and new userId
+    const { _id, _creationTime, userId: _originalUserId, isPublic: _originalIsPublic, ...agentData } = originalAgent
+    
+    return await ctx.db.insert("agents", {
+      ...agentData,
+      name: `${originalAgent.name} (Copy)`,
+      userId,
+      isPublic: false, // Always make clones private
+    })
   },
 })
