@@ -51,6 +51,11 @@ export const connectionRouter = router({
           throw new Error(`Authentication is required to connect to server "${server.name}".`)
         }
 
+        // Additional check: Servers requiring user keys need authentication
+        if (server.requiresUserKey && !isUserAuthenticated) {
+          throw new Error(`Authentication is required to connect to server "${server.name}" as it requires API keys or configuration.`)
+        }
+
         if (server.localOnly && isProduction) {
           throw new Error(`Server "${server.name}" is local-only and cannot be accessed in a production environment.`)
         }
