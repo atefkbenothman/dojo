@@ -106,8 +106,9 @@ export const AgentSidebar = memo(function AgentSidebar({
             className="w-full h-10 hover:cursor-pointer"
             onClick={onCreateAgent}
             disabled={!isAuthenticated}
+            title={!isAuthenticated ? "Authentication required to create agents" : undefined}
           >
-            Add Agent
+            {isAuthenticated ? "Add Agent" : "Sign in to add agents"}
           </Button>
         </div>
       </div>

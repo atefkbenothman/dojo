@@ -100,8 +100,9 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
             className="w-full h-10 hover:cursor-pointer"
             onClick={onCreateWorkflow}
             disabled={!isAuthenticated}
+            title={!isAuthenticated ? "Authentication required to create workflows" : undefined}
           >
-            Create Workflow
+            {isAuthenticated ? "Create Workflow" : "Sign in to create workflows"}
           </Button>
         </div>
       </div>

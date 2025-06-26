@@ -103,8 +103,9 @@ export const MCPSidebar = memo(function MCPSidebar({
             className="w-full h-10 hover:cursor-pointer"
             onClick={onCreateServer}
             disabled={!isAuthenticated}
+            title={!isAuthenticated ? "Authentication required to create MCP servers" : undefined}
           >
-            Add MCP Server
+            {isAuthenticated ? "Add MCP Server" : "Sign in to add servers"}
           </Button>
         </div>
       </div>
