@@ -19,6 +19,7 @@ interface WorkflowSidebarProps {
   onCreateWorkflow: () => void
   onEditWorkflow: (workflow: Workflow) => void
   onDeleteWorkflow: (workflow: Workflow) => void
+  onCloneWorkflow: (workflow: Workflow) => void
   onRunWorkflow: (workflow: Workflow) => void
   onStopWorkflow: (workflowId: string) => void
 }
@@ -33,6 +34,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
   onCreateWorkflow,
   onEditWorkflow,
   onDeleteWorkflow,
+  onCloneWorkflow,
   onRunWorkflow,
   onStopWorkflow,
 }: WorkflowSidebarProps) {
@@ -127,6 +129,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                       isAuthenticated={isAuthenticated}
                       onEditClick={onEditWorkflow}
                       onDeleteClick={onDeleteWorkflow}
+                      onCloneClick={onCloneWorkflow}
                       isSelected={selectedWorkflowId === workflow._id}
                       onRun={() => onRunWorkflow(workflow)}
                       onStop={() => onStopWorkflow(workflow._id)}
@@ -163,6 +166,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                       isAuthenticated={isAuthenticated}
                       onEditClick={onEditWorkflow}
                       onDeleteClick={onDeleteWorkflow}
+                      onCloneClick={onCloneWorkflow}
                       isSelected={selectedWorkflowId === workflow._id}
                       onRun={() => onRunWorkflow(workflow)}
                       onStop={() => onStopWorkflow(workflow._id)}
@@ -204,6 +208,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                       isAuthenticated={isAuthenticated}
                       onEditClick={onEditWorkflow}
                       onDeleteClick={onDeleteWorkflow}
+                      onCloneClick={onCloneWorkflow}
                       isSelected={selectedWorkflowId === workflow._id}
                       onRun={() => onRunWorkflow(workflow)}
                       onStop={() => onStopWorkflow(workflow._id)}

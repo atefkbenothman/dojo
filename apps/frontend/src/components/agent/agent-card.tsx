@@ -70,11 +70,18 @@ export function AgentCard({ agent, isAuthenticated = false, onEditClick }: Agent
           <Button
             variant={isRunning ? "default" : "secondary"}
             onClick={handleRun}
-            disabled={!isAuthenticated || isRunning}
+            disabled={(!isAuthenticated && !agent.isPublic) || isRunning}
             className={cn(
               "border hover:cursor-pointer",
               isRunning ? "bg-primary hover:bg-primary" : "bg-secondary/80 hover:bg-secondary/90",
             )}
+            title={
+              isRunning
+                ? "Agent is running"
+                : (!isAuthenticated && !agent.isPublic)
+                  ? "Login required to run private agents"
+                  : "Run agent"
+            }
           >
             {status === "preparing" ? "Preparing..." : status === "running" ? "Running..." : "Run"}
           </Button>
@@ -84,6 +91,14 @@ export function AgentCard({ agent, isAuthenticated = false, onEditClick }: Agent
             size="icon"
             onClick={() => onEditClick?.(agent)}
             className="bg-secondary/80 hover:bg-secondary/90 h-9 w-9 border hover:cursor-pointer"
+            disabled={!isAuthenticated || agent.isPublic}
+            title={
+              !isAuthenticated
+                ? "Login required to edit agents"
+                : agent.isPublic
+                  ? "Public agents cannot be edited"
+                  : "Edit agent"
+            }
           >
             <Settings className="h-4 w-4" />
           </Button>

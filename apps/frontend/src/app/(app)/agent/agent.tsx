@@ -13,7 +13,7 @@ import { Pencil, Play, Square } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Agent() {
-  const { agents, runAgent, stopAllAgents, getRunningExecutions, getAgentExecution } = useAgent()
+  const { agents, runAgent, stopAllAgents, getRunningExecutions, getAgentExecution, clone, remove } = useAgent()
   const { isAuthenticated } = useConvexAuth()
   const { models } = useAIModels()
 
@@ -62,7 +62,6 @@ export function Agent() {
 
   const confirmDeleteAgent = useCallback(async () => {
     if (agentToDelete) {
-      const { remove } = useAgent()
       await remove({ id: agentToDelete._id })
       // If the deleted agent was selected, clear the selection
       if (selectedAgent?._id === agentToDelete._id) {
@@ -70,7 +69,7 @@ export function Agent() {
       }
       setAgentToDelete(null)
     }
-  }, [agentToDelete, selectedAgent])
+  }, [agentToDelete, selectedAgent, remove])
 
   const handleCreateAgent = useCallback(() => {
     setEditingAgent(null)
@@ -96,6 +95,13 @@ export function Agent() {
     [agents, runAgent],
   )
 
+  const handleCloneAgent = useCallback(
+    async (agent: Agent) => {
+      await clone(agent._id)
+    },
+    [clone],
+  )
+
   return (
     <>
       <div className="flex h-full bg-background">
@@ -116,6 +122,7 @@ export function Agent() {
             onCreateAgent={handleCreateAgent}
             onEditAgent={handleEditAgent}
             onDeleteAgent={handleDeleteAgent}
+            onCloneAgent={handleCloneAgent}
             onRunAgent={handleRunAgent}
           />
         </div>
@@ -145,6 +152,14 @@ export function Agent() {
                     size="sm"
                     onClick={() => handleEditAgent(selectedAgent)}
                     className="hover:cursor-pointer"
+                    disabled={!isAuthenticated || selectedAgent.isPublic}
+                    title={
+                      !isAuthenticated
+                        ? "Login required to edit agents"
+                        : selectedAgent.isPublic
+                          ? "Public agents cannot be edited"
+                          : "Edit agent"
+                    }
                   >
                     <Pencil className="h-3 w-3 text-muted-foreground" />
                   </Button>
@@ -166,7 +181,16 @@ export function Agent() {
                             : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800",
                         )}
                         onClick={() => (isRunning ? stopAllAgents() : handleRunAgent(selectedAgent._id))}
-                        disabled={!isAuthenticated || isPreparing}
+                        disabled={(!isAuthenticated && !selectedAgent.isPublic) || isPreparing}
+                        title={
+                          isPreparing
+                            ? "Agent is preparing"
+                            : isRunning
+                              ? "Stop agent"
+                              : (!isAuthenticated && !selectedAgent.isPublic)
+                                ? "Login required to run private agents"
+                                : "Run agent"
+                        }
                       >
                         {isRunning ? (
                           <>

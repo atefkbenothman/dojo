@@ -12,7 +12,7 @@ import {
 import { useAIModels } from "@/hooks/use-ai-models"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
-import { Settings, Play, Pencil, Trash, Cpu } from "lucide-react"
+import { Settings, Play, Pencil, Trash, Cpu, Copy } from "lucide-react"
 import { useState, useMemo } from "react"
 
 interface AgentExecution {
@@ -26,6 +26,7 @@ interface AgentServerCardProps {
   isAuthenticated: boolean
   onEditClick: (agent: Agent) => void
   onDeleteClick: (agent: Agent) => void
+  onCloneClick: (agent: Agent) => void
   isSelected: boolean
   onRun: () => void
   execution?: AgentExecution
@@ -36,6 +37,7 @@ export function AgentServerCard({
   isAuthenticated,
   onEditClick,
   onDeleteClick,
+  onCloneClick,
   isSelected,
   onRun,
   execution,
@@ -71,6 +73,16 @@ export function AgentServerCard({
     e.stopPropagation()
     setDropdownOpen(false)
     onDeleteClick(agent)
+  }
+
+  // Determine if user can edit/delete this agent
+  const canEdit = isAuthenticated && !agent.isPublic
+  const canDelete = isAuthenticated && !agent.isPublic
+
+  const handleCloneClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDropdownOpen(false)
+    onCloneClick(agent)
   }
 
   const handleRunClick = (e: React.MouseEvent) => {
@@ -109,14 +121,27 @@ export function AgentServerCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
+                <DropdownMenuItem 
+                  onClick={handleEditClick} 
+                  className="cursor-pointer"
+                  disabled={!canEdit}
+                >
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleCloneClick} 
+                  className="cursor-pointer"
+                  disabled={!isAuthenticated}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Clone
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleDeleteClick}
                   className="cursor-pointer text-destructive focus:text-destructive"
+                  disabled={!canDelete}
                 >
                   <Trash className="mr-2 h-4 w-4" />
                   Delete
@@ -128,9 +153,15 @@ export function AgentServerCard({
               variant="outline"
               size="icon"
               onClick={handleRunClick}
-              disabled={!isAuthenticated || isRunning}
+              disabled={(!isAuthenticated && !agent.isPublic) || isRunning}
               className="size-8 hover:cursor-pointer"
-              title={isRunning ? "Agent is running" : "Run agent"}
+              title={
+                isRunning 
+                  ? "Agent is running" 
+                  : (!isAuthenticated && !agent.isPublic)
+                    ? "Login required to run private agents"
+                    : "Run agent"
+              }
             >
               <Play className="h-2.5 w-2.5" />
             </Button>

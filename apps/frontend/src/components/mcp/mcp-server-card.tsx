@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import type { MCPServer } from "@dojo/db/convex/types"
-import { Settings, Plug, Unplug, Key, Pencil, Trash } from "lucide-react"
+import { Settings, Plug, Unplug, Key, Pencil, Trash, Copy } from "lucide-react"
 import { useState } from "react"
 
 interface MCPServerCardProps {
@@ -20,6 +20,7 @@ interface MCPServerCardProps {
   isAuthenticated: boolean
   onEditClick: (server: MCPServer) => void
   onDeleteClick: (server: MCPServer) => void
+  onCloneClick: (server: MCPServer) => void
   isSelected: boolean
   onConnect: () => void
   onDisconnect: () => void
@@ -32,6 +33,7 @@ export function MCPServerCard({
   isAuthenticated,
   onEditClick,
   onDeleteClick,
+  onCloneClick,
   isSelected,
   onConnect,
   onDisconnect,
@@ -42,6 +44,10 @@ export function MCPServerCard({
   const isConnecting = status?.status === "connecting"
   const hasError = status?.status === "error" || status?.isStale
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  
+  // Determine if user can edit/delete this server
+  const canEdit = isAuthenticated && !server.isPublic
+  const canDelete = isAuthenticated && !server.isPublic
 
   const Icon = MCP_SERVER_ICONS[server.name.toLowerCase()] || null
 
@@ -62,6 +68,12 @@ export function MCPServerCard({
     e.stopPropagation()
     setDropdownOpen(false)
     onDeleteClick(server)
+  }
+
+  const handleCloneClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDropdownOpen(false)
+    onCloneClick(server)
   }
 
   const handleConnectionToggle = (e: React.MouseEvent) => {
@@ -123,31 +135,66 @@ export function MCPServerCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
+                <DropdownMenuItem 
+                  onClick={handleEditClick} 
+                  className="cursor-pointer"
+                  disabled={!canEdit}
+                >
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleCloneClick} 
+                  className="cursor-pointer"
+                  disabled={!isAuthenticated}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Clone
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleDeleteClick}
                   className="cursor-pointer text-destructive focus:text-destructive"
+                  disabled={!canDelete}
                 >
                   <Trash className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* Connect/Disconnect button */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleConnectionToggle}
-              disabled={!isAuthenticated || isConnecting || (server.localOnly && process.env.NODE_ENV === "production")}
-              className="size-8 hover:cursor-pointer"
-              title={isConnected ? "Disconnect" : "Connect"}
-            >
-              {isConnected ? <Unplug className="h-2.5 w-2.5" /> : <Plug className="h-2.5 w-2.5" />}
-            </Button>
+            {/* Connect/Disconnect or Clone button */}
+            {server.isPublic && server.requiresUserKey && isAuthenticated && !isConnected ? (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCloneClick}
+                className="size-8 hover:cursor-pointer"
+                title="Clone this server to add your API keys, then connect"
+              >
+                <Copy className="h-2.5 w-2.5" />
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleConnectionToggle}
+                disabled={
+                  (!isAuthenticated && server.requiresUserKey) || 
+                  isConnecting || 
+                  (server.localOnly && process.env.NODE_ENV === "production")
+                }
+                className="size-8 hover:cursor-pointer"
+                title={
+                  isConnected 
+                    ? "Disconnect" 
+                    : (!isAuthenticated && server.requiresUserKey)
+                      ? "Login required to use servers with API keys"
+                      : "Connect"
+                }
+              >
+                {isConnected ? <Unplug className="h-2.5 w-2.5" /> : <Plug className="h-2.5 w-2.5" />}
+              </Button>
+            )}
           </div>
         </div>
         {/* Badge Row */}

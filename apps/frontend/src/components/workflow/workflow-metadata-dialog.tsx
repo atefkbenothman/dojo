@@ -20,13 +20,17 @@ interface WorkflowMetadataDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (updates: { name: string; description: string; instructions: string }) => Promise<void>
+  isAuthenticated?: boolean
 }
 
-export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }: WorkflowMetadataDialogProps) {
+export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave, isAuthenticated = false }: WorkflowMetadataDialogProps) {
   const [name, setName] = useState(workflow.name)
   const [description, setDescription] = useState(workflow.description)
   const [instructions, setInstructions] = useState(workflow.instructions)
   const [isSaving, setIsSaving] = useState(false)
+  
+  // Check if this workflow can be edited
+  const canEdit = isAuthenticated && !workflow.isPublic
 
   // Reset form when workflow changes or dialog opens
   useEffect(() => {
@@ -68,6 +72,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter workflow name"
               className="focus-visible:ring-0 focus-visible:ring-offset-0"
+              disabled={!canEdit}
             />
           </div>
           <div className="grid gap-2">
@@ -78,6 +83,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of what this workflow does"
               className="min-h-[80px] max-h-[120px] h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
+              disabled={!canEdit}
             />
           </div>
           <div className="grid gap-2">
@@ -88,6 +94,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Detailed instructions for the workflow execution"
               className="min-h-[80px] max-h-[120px] h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
+              disabled={!canEdit}
             />
           </div>
         </div>
@@ -95,7 +102,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
+          <Button onClick={handleSave} disabled={!hasChanges || isSaving || !canEdit}>
             {isSaving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

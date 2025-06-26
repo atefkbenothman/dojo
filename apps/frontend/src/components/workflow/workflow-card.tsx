@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
-import { Play, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square, Settings } from "lucide-react"
+import { Play, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square, Settings, Copy } from "lucide-react"
 import { useCallback, memo, useState } from "react"
 
 // Helper functions
@@ -53,6 +53,7 @@ interface WorkflowCardHeaderProps {
   onStop?: (workflow: Workflow) => void
   onEdit?: (workflow: Workflow) => void
   onDelete?: (workflow: Workflow) => void
+  onClone?: (workflow: Workflow) => void
   execution?: WorkflowExecution
 }
 
@@ -64,10 +65,15 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
   onStop,
   onEdit,
   onDelete,
+  onClone,
   execution,
 }: WorkflowCardHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const isRunning = execution?.status === "preparing" || execution?.status === "running"
+  
+  // Determine if user can edit/delete this workflow
+  const canEdit = isAuthenticated && !workflow.isPublic
+  const canDelete = isAuthenticated && !workflow.isPublic
 
   const handleRunOrStop = useCallback(
     (e: React.MouseEvent) => {
@@ -103,6 +109,17 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
     [onDelete, workflow],
   )
 
+  const handleClone = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setDropdownOpen(false)
+      if (onClone) {
+        onClone(workflow)
+      }
+    },
+    [onClone, workflow],
+  )
+
   return (
     <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
       {/* Title */}
@@ -128,12 +145,28 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
+            <DropdownMenuItem 
+              onClick={handleEdit} 
+              className="cursor-pointer"
+              disabled={!canEdit}
+            >
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={handleClone} 
+              className="cursor-pointer"
+              disabled={!isAuthenticated}
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              Clone
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDelete} className="cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem 
+              onClick={handleDelete} 
+              className="cursor-pointer text-destructive focus:text-destructive"
+              disabled={!canDelete}
+            >
               <Trash className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
@@ -266,6 +299,7 @@ interface WorkflowCardProps {
   isAuthenticated?: boolean
   onEditClick?: (workflow: Workflow) => void
   onDeleteClick?: (workflow: Workflow) => void
+  onCloneClick?: (workflow: Workflow) => void
   isSelected?: boolean
   onRun?: (workflow: Workflow) => void
   onStop?: (workflow: Workflow) => void
@@ -278,6 +312,7 @@ export const WorkflowCard = memo(function WorkflowCard({
   isAuthenticated = false,
   onEditClick,
   onDeleteClick,
+  onCloneClick,
   isSelected = false,
   onRun,
   onStop,
@@ -313,6 +348,7 @@ export const WorkflowCard = memo(function WorkflowCard({
           onStop={onStop}
           onEdit={onEditClick}
           onDelete={onDeleteClick}
+          onClone={onCloneClick}
           execution={execution}
         />
         {execution && (

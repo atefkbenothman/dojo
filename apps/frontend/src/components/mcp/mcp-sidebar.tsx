@@ -19,6 +19,7 @@ interface MCPSidebarProps {
   onCreateServer: () => void
   onEditServer: (server: MCPServer) => void
   onDeleteServer: (server: MCPServer) => void
+  onCloneServer: (server: MCPServer) => void
   onConnect: (serverId: string) => void
   onDisconnect: (serverId: string) => void
 }
@@ -33,6 +34,7 @@ export const MCPSidebar = memo(function MCPSidebar({
   onCreateServer,
   onEditServer,
   onDeleteServer,
+  onCloneServer,
   onConnect,
   onDisconnect,
 }: MCPSidebarProps) {
@@ -133,6 +135,7 @@ export const MCPSidebar = memo(function MCPSidebar({
                         isAuthenticated={isAuthenticated}
                         onEditClick={onEditServer}
                         onDeleteClick={onDeleteServer}
+                        onCloneClick={onCloneServer}
                         isSelected={selectedServerId === server._id}
                         onConnect={() => onConnect(server._id)}
                         onDisconnect={() => onDisconnect(server._id)}
@@ -173,6 +176,7 @@ export const MCPSidebar = memo(function MCPSidebar({
                         isAuthenticated={isAuthenticated}
                         onEditClick={onEditServer}
                         onDeleteClick={onDeleteServer}
+                        onCloneClick={onCloneServer}
                         isSelected={selectedServerId === server._id}
                         onConnect={() => onConnect(server._id)}
                         onDisconnect={() => onDisconnect(server._id)}
@@ -216,6 +220,7 @@ export const MCPSidebar = memo(function MCPSidebar({
                         isAuthenticated={isAuthenticated}
                         onEditClick={onEditServer}
                         onDeleteClick={onDeleteServer}
+                        onCloneClick={onCloneServer}
                         isSelected={selectedServerId === server._id}
                         onConnect={() => onConnect(server._id)}
                         onDisconnect={() => onDisconnect(server._id)}

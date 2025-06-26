@@ -36,7 +36,6 @@ const agentFormSchema = z.object({
   systemPrompt: z.string().min(1, "System prompt is required"),
   outputType: z.enum(["text", "object"]),
   mcpServers: z.array(z.string()).optional(),
-  isPublic: z.boolean().optional(),
   aiModelId: z.string().min(1, "Model is required"),
 })
 
@@ -66,6 +65,10 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
   const { mcpServers } = useMCP()
   const { models } = useAIModels()
   const { create, edit, remove } = useAgent()
+  
+  // Check if this is a public agent that shouldn't be editable
+  const isPublicAgent = agent?.isPublic || false
+  const canEdit = isAuthenticated && !isPublicAgent
 
   // Group models by free vs paid
   const { freeModels, paidModels } = useMemo(() => {
@@ -83,7 +86,6 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
         systemPrompt: "",
         outputType: "text",
         mcpServers: [],
-        isPublic: false,
         aiModelId: defaultModel,
       }
     }
@@ -92,7 +94,6 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
       systemPrompt: agent.systemPrompt || "",
       outputType: (agent.outputType as "text" | "object") || "text",
       mcpServers: agent.mcpServers || [],
-      isPublic: agent.isPublic || false,
       aiModelId: agent.aiModelId || freeModels[0]?._id || models[0]?._id || "",
     }
   }, [agent, freeModels, models])
@@ -101,25 +102,6 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
     resolver: zodResolver(agentFormSchema),
     values: formValues,
   })
-
-  // Watch for isPublic changes to validate model selection
-  const isPublic = form.watch("isPublic")
-  const selectedModelId = form.watch("aiModelId")
-
-  // Validate public agents use free models
-  useMemo(() => {
-    if (isPublic && selectedModelId) {
-      const selectedModel = models.find((m) => m._id === selectedModelId)
-      if (selectedModel?.requiresApiKey) {
-        form.setError("aiModelId", {
-          type: "manual",
-          message: "Public agents must use free models",
-        })
-      } else {
-        form.clearErrors("aiModelId")
-      }
-    }
-  }, [isPublic, selectedModelId, models, form])
 
   async function handleSave(data: AgentFormValues) {
     const agentData = createAgentObject(data)
@@ -173,7 +155,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Agent Name" {...field} disabled={!isAuthenticated} />
+                      <Input placeholder="Agent Name" {...field} disabled={!canEdit} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -190,7 +172,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                         className="h-24"
                         placeholder="You are a helpful assistant..."
                         {...field}
-                        disabled={!isAuthenticated}
+                        disabled={!canEdit}
                       />
                     </FormControl>
                     <FormMessage />
@@ -204,7 +186,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">AI Model</FormLabel>
                     <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange} disabled={!isAuthenticated}>
+                      <Select value={field.value} onValueChange={field.onChange} disabled={!canEdit}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a model">
                             {models.find((m) => m._id === field.value)?.name || "Select a model"}
@@ -235,7 +217,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                       </Select>
                     </FormControl>
                     <FormDescription>
-                      {isPublic ? "Public agents must use free models" : "Select the AI model for this agent"}
+                      {isPublicAgent ? "Public agents must use free models" : "Select the AI model for this agent"}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -251,7 +233,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={!isAuthenticated || mode === "edit"}
+                        disabled={!canEdit || mode === "edit"}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select output type...">
@@ -298,7 +280,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                                         id={`service-${server._id}`}
                                         checked={checked}
                                         onCheckedChange={(isChecked) => {
-                                          if (!isAuthenticated) return
+                                          if (!canEdit) return
                                           if (isChecked) {
                                             field.onChange([...(field.value || []), server._id])
                                           } else {
@@ -306,14 +288,14 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                                           }
                                         }}
                                         className="rounded-none hover:cursor-pointer"
-                                        disabled={!isAuthenticated}
+                                        disabled={!canEdit}
                                       />
                                       <div className="flex flex-1 items-center gap-2">
                                         <Label
                                           htmlFor={`service-${server._id}`}
                                           className="hover:cursor-pointer font-normal"
                                           onMouseDown={
-                                            isAuthenticated
+                                            canEdit
                                               ? () => play("./sounds/click.mp3", { volume: 0.5 })
                                               : undefined
                                           }
@@ -342,14 +324,14 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                   variant="destructive"
                   onClick={handleDelete}
                   className="hover:cursor-pointer border-destructive"
-                  disabled={!isAuthenticated}
+                  disabled={!canEdit}
                 >
                   Delete
                 </Button>
               )}
               <Button
                 type="submit"
-                disabled={!form.formState.isValid || !isAuthenticated}
+                disabled={!form.formState.isValid || !canEdit}
                 className="hover:cursor-pointer"
                 variant="secondary"
               >

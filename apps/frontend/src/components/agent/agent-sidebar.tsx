@@ -24,6 +24,7 @@ interface AgentSidebarProps {
   onCreateAgent: () => void
   onEditAgent: (agent: Agent) => void
   onDeleteAgent: (agent: Agent) => void
+  onCloneAgent: (agent: Agent) => void
   onRunAgent: (agentId: string) => void
 }
 
@@ -36,6 +37,7 @@ export const AgentSidebar = memo(function AgentSidebar({
   onCreateAgent,
   onEditAgent,
   onDeleteAgent,
+  onCloneAgent,
   onRunAgent,
 }: AgentSidebarProps) {
   const [searchInput, setSearchInput] = useState<string>("")
@@ -135,6 +137,7 @@ export const AgentSidebar = memo(function AgentSidebar({
                         isAuthenticated={isAuthenticated}
                         onEditClick={onEditAgent}
                         onDeleteClick={onDeleteAgent}
+                        onCloneClick={onCloneAgent}
                         isSelected={selectedAgentId === agent._id}
                         onRun={() => onRunAgent(agent._id)}
                         execution={execution}
@@ -173,6 +176,7 @@ export const AgentSidebar = memo(function AgentSidebar({
                         isAuthenticated={isAuthenticated}
                         onEditClick={onEditAgent}
                         onDeleteClick={onDeleteAgent}
+                        onCloneClick={onCloneAgent}
                         isSelected={selectedAgentId === agent._id}
                         onRun={() => onRunAgent(agent._id)}
                         execution={execution}
@@ -213,6 +217,7 @@ export const AgentSidebar = memo(function AgentSidebar({
                         isAuthenticated={isAuthenticated}
                         onEditClick={onEditAgent}
                         onDeleteClick={onDeleteAgent}
+                        onCloneClick={onCloneAgent}
                         isSelected={selectedAgentId === agent._id}
                         onRun={() => onRunAgent(agent._id)}
                         execution={execution}

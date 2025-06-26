@@ -11,6 +11,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { MCPServer } from "@dojo/db/convex/types"
+import { TriangleAlert } from "lucide-react"
+import { memo } from "react"
 
 interface MCPDeleteDialogProps {
   server: MCPServer | null
@@ -19,26 +21,36 @@ interface MCPDeleteDialogProps {
   onConfirm: () => void
 }
 
-export function MCPDeleteDialog({ server, open, onOpenChange, onConfirm }: MCPDeleteDialogProps) {
-  if (!server) return null
+export const MCPDeleteDialog = memo(function MCPDeleteDialog({
+  server,
+  open,
+  onOpenChange,
+  onConfirm,
+}: MCPDeleteDialogProps) {
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete MCP Server</AlertDialogTitle>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <TriangleAlert className="h-5 w-5 text-destructive" />
+            Are you absolutely sure?
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete <span className="font-semibold">{server.name}</span>? This action cannot be
-            undone.
+            This action cannot be undone. This will permanently delete the MCP server &ldquo;{server?.name}&rdquo; and
+            remove it from your account.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-destructive hover:bg-destructive/90">
-            Delete
+          <AlertDialogCancel className="hover:cursor-pointer">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className="hover:cursor-pointer bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60"
+          >
+            Yes, delete server
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
-}
+})

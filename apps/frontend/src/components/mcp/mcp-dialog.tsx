@@ -128,6 +128,10 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
 
   const { create, edit, remove } = useMCP()
 
+  // Check if this is a public server that shouldn't be editable
+  const isPublicServer = server?.isPublic || false
+  const canEdit = isAuthenticated && !isPublicServer
+
   // Track the current transport type for tabs
   const [currentTransportType, setCurrentTransportType] = useState<"stdio" | "http" | "sse">("stdio")
 
@@ -283,7 +287,7 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Server Name" {...field} disabled={!isAuthenticated} />
+                      <Input placeholder="Server Name" {...field} disabled={!canEdit} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -300,7 +304,7 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                       <Input
                         placeholder="Short description of server capabilities"
                         {...field}
-                        disabled={!isAuthenticated}
+                        disabled={!canEdit}
                       />
                     </FormControl>
                     <FormMessage />
@@ -346,7 +350,7 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                           <Input
                             placeholder="Comma separated, e.g: -f,file.py,--verbose"
                             {...field}
-                            disabled={!isAuthenticated}
+                            disabled={!canEdit}
                           />
                         </FormControl>
                         <FormMessage />
@@ -362,7 +366,7 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                         pairs={field.value}
                         mode={mode}
                         onUpdatePairs={field.onChange}
-                        disabled={!isAuthenticated}
+                        disabled={!canEdit}
                         fieldName="envPairs"
                         fieldLabel="Environment Variables"
                         placeholder={{ key: "API_KEY", value: "Value" }}
@@ -394,7 +398,7 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                         pairs={field.value || []}
                         mode={mode}
                         onUpdatePairs={field.onChange}
-                        disabled={!isAuthenticated}
+                        disabled={!canEdit}
                         fieldName="headers"
                         fieldLabel="Headers"
                         placeholder={{ key: "Authorization", value: "Bearer token" }}
@@ -426,7 +430,7 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                         pairs={field.value || []}
                         mode={mode}
                         onUpdatePairs={field.onChange}
-                        disabled={!isAuthenticated}
+                        disabled={!canEdit}
                         fieldName="headers"
                         fieldLabel="Headers"
                         placeholder={{ key: "Authorization", value: "Bearer token" }}
@@ -444,18 +448,18 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                   variant="destructive"
                   onClick={handleDelete}
                   className="hover:cursor-pointer border-destructive"
-                  disabled={!isAuthenticated}
-                  title={!isAuthenticated ? "You must be logged in to delete a server." : undefined}
+                  disabled={!canEdit}
+                  title={!canEdit ? "You must be logged in to delete a server." : undefined}
                 >
                   Delete
                 </Button>
               )}
               <Button
                 type="submit"
-                disabled={!form.formState.isValid || !isAuthenticated}
+                disabled={!form.formState.isValid || !canEdit}
                 className="hover:cursor-pointer"
                 variant="secondary"
-                title={!isAuthenticated ? "You must be logged in to save changes." : undefined}
+                title={!canEdit ? "You must be logged in to save changes." : undefined}
               >
                 {mode === "add" ? "Create Server" : "Save"}
               </Button>

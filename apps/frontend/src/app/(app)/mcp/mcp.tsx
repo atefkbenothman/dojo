@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Pencil, Plug, Unplug } from "lucide-react"
+import { Pencil, Plug, Unplug, Copy } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Mcp() {
   const { isAuthenticated } = useConvexAuth()
-  const { mcpServers, activeConnections, getConnection, connect, disconnect, create, edit, remove } = useMCP()
+  const { mcpServers, activeConnections, getConnection, connect, disconnect, create, edit, remove, clone } = useMCP()
 
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null)
   const [editingServer, setEditingServer] = useState<MCPServer | null>(null)
@@ -88,6 +88,13 @@ export function Mcp() {
     [disconnect],
   )
 
+  const handleCloneServer = useCallback(
+    async (server: MCPServer) => {
+      await clone(server._id)
+    },
+    [clone],
+  )
+
   return (
     <>
       <div className="flex h-full bg-background">
@@ -109,6 +116,7 @@ export function Mcp() {
             onCreateServer={handleCreateServer}
             onEditServer={handleEditServer}
             onDeleteServer={handleDeleteServer}
+            onCloneServer={handleCloneServer}
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
           />
@@ -145,7 +153,7 @@ export function Mcp() {
                   </Button>
                 </div>
 
-                {/* Right section - Connect/Disconnect button */}
+                {/* Right section - Connect/Disconnect or Clone button */}
                 <div className="flex items-center justify-end flex-1">
                   {(() => {
                     const status = connectionStatuses.get(selectedServer._id)
@@ -154,6 +162,19 @@ export function Mcp() {
                     const disableConnect =
                       (selectedServer.localOnly && process.env.NODE_ENV === "production") ||
                       (!isAuthenticated && selectedServer.requiresUserKey)
+
+                    // Show clone button for public servers requiring keys (when authenticated and not connected)
+                    if (selectedServer.isPublic && selectedServer.requiresUserKey && isAuthenticated && !isConnected) {
+                      return (
+                        <Button
+                          className="border-[1px] hover:cursor-pointer bg-blue-700 hover:bg-blue-800 text-white border-blue-500 hover:border-blue-800"
+                          onClick={() => handleCloneServer(selectedServer)}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Clone to Configure
+                        </Button>
+                      )
+                    }
 
                     return (
                       <Button
@@ -167,6 +188,11 @@ export function Mcp() {
                           isConnected ? handleDisconnect(selectedServer._id) : handleConnect(selectedServer._id)
                         }
                         disabled={isConnecting || disableConnect}
+                        title={
+                          disableConnect && (!isAuthenticated && selectedServer.requiresUserKey)
+                            ? "Login required to use servers with API keys"
+                            : undefined
+                        }
                       >
                         {isConnected ? (
                           <>

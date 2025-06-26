@@ -22,7 +22,7 @@ export const Workflow = memo(function Workflow() {
   const searchParams = useSearchParams()
 
   const { isAuthenticated } = useConvexAuth()
-  const { workflows, create, edit, remove, runWorkflow, stopWorkflow, getWorkflowExecution } = useWorkflow()
+  const { workflows, create, edit, remove, runWorkflow, stopWorkflow, getWorkflowExecution, clone } = useWorkflow()
   const { agents } = useAgent()
   const { getModel } = useAIModels()
 
@@ -293,6 +293,13 @@ export const Workflow = memo(function Workflow() {
     [editingWorkflow, selectedWorkflow, edit],
   )
 
+  const handleCloneWorkflow = useCallback(
+    async (workflow: WorkflowType) => {
+      await clone(workflow._id)
+    },
+    [clone],
+  )
+
   return (
     <>
       <div className="flex h-full bg-background">
@@ -314,6 +321,7 @@ export const Workflow = memo(function Workflow() {
             onCreateWorkflow={handleCreateWorkflow}
             onEditWorkflow={handleEditWorkflow}
             onDeleteWorkflow={handleDeleteWorkflow}
+            onCloneWorkflow={handleCloneWorkflow}
             onRunWorkflow={runWorkflow}
             onStopWorkflow={stopWorkflow}
           />
