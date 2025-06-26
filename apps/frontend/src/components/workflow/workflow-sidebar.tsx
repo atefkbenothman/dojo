@@ -38,12 +38,21 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
 }: WorkflowSidebarProps) {
   const [searchInput, setSearchInput] = useState<string>("")
 
-  // Separate workflows into global (public) and user workflows
-  const { globalWorkflows, userWorkflows } = useMemo(() => {
+  // Separate workflows into running, global (public) and user workflows
+  const { runningWorkflows, globalWorkflows, userWorkflows } = useMemo(() => {
+    const running: Workflow[] = []
     const global: Workflow[] = []
     const user: Workflow[] = []
 
     workflows.forEach((workflow) => {
+      // Check if workflow is running
+      const execution = workflowExecutions.get(workflow._id)
+      const isRunning = execution?.status === "preparing" || execution?.status === "running"
+
+      if (isRunning) {
+        running.push(workflow)
+      }
+
       if (workflow.isPublic) {
         global.push(workflow)
       } else {
@@ -51,8 +60,8 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
       }
     })
 
-    return { globalWorkflows: global, userWorkflows: user }
-  }, [workflows])
+    return { runningWorkflows: running, globalWorkflows: global, userWorkflows: user }
+  }, [workflows, workflowExecutions])
 
   // Filter workflows based on search
   const filterWorkflows = (workflowList: Workflow[]) => {
@@ -60,12 +69,13 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
     return workflowList.filter((workflow) => workflow.name.toLowerCase().includes(searchInput.toLowerCase()))
   }
 
+  const filteredRunningWorkflows = filterWorkflows(runningWorkflows)
   const filteredGlobalWorkflows = filterWorkflows(globalWorkflows)
   const filteredUserWorkflows = filterWorkflows(userWorkflows)
 
   // Determine which accordion sections should be open by default
   const defaultOpenSections = useMemo(() => {
-    return ["global", "user"] // Always show both sections open by default
+    return [] // All sections closed by default
   }, [])
 
   return (
@@ -95,6 +105,43 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
       </div>
       {/* Workflow List with Accordion Sections */}
       <Accordion type="multiple" defaultValue={defaultOpenSections} className="w-full">
+        {/* Running Workflows Section */}
+        <AccordionItem value="running">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Running</span>
+              <span className="text-xs text-muted-foreground">({filteredRunningWorkflows.length})</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4 py-4">
+            <div className="flex flex-col gap-4">
+              {filteredRunningWorkflows.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">
+                  {searchInput ? "No running workflows match your search" : "No workflows are currently running"}
+                </p>
+              ) : (
+                filteredRunningWorkflows.map((workflow) => (
+                  <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
+                    <WorkflowCard
+                      workflow={workflow}
+                      isAuthenticated={isAuthenticated}
+                      onEditClick={onEditWorkflow}
+                      onDeleteClick={onDeleteWorkflow}
+                      isSelected={selectedWorkflowId === workflow._id}
+                      onRun={() => onRunWorkflow(workflow)}
+                      onStop={() => onStopWorkflow(workflow._id)}
+                      execution={workflowExecutions.get(workflow._id)}
+                      agents={agents || []}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <div className="border-b-[1px]" />
+
         <AccordionItem value="global">
           <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-20">
             <div className="flex items-center gap-2">

@@ -1,89 +1,225 @@
 "use client"
 
-import { AddMCPCard } from "@/components/mcp/add-mcp-card"
-import { MCPCard } from "@/components/mcp/mcp-card"
+import { MCPDeleteDialog } from "@/components/mcp/mcp-delete-dialog"
 import { MCPDialog } from "@/components/mcp/mcp-dialog"
+import { MCPServerSettings } from "@/components/mcp/mcp-server-settings"
+import { MCPSidebar } from "@/components/mcp/mcp-sidebar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { useMCP } from "@/hooks/use-mcp"
+import { cn } from "@/lib/utils"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Search } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Pencil, Plug, Unplug } from "lucide-react"
+import { useState, useCallback, useMemo } from "react"
 
 export function Mcp() {
   const { isAuthenticated } = useConvexAuth()
-  const { mcpServers, activeConnections, disconnectAll } = useMCP()
+  const { mcpServers, activeConnections, getConnection, connect, disconnect, create, edit, remove } = useMCP()
 
-  const [searchInput, setSearchInput] = useState<string>("")
-  const [filteredServers, setFilteredServers] = useState<MCPServer[]>(mcpServers)
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null)
+  const [editingServer, setEditingServer] = useState<MCPServer | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
+  const [serverToDelete, setServerToDelete] = useState<MCPServer | null>(null)
 
-  useEffect(() => {
-    const filtered =
-      searchInput === ""
-        ? mcpServers
-        : mcpServers.filter((server) => server.name.toLowerCase().includes(searchInput.toLowerCase()))
-    setFilteredServers(filtered)
-  }, [searchInput, mcpServers])
+  // Create a map of connection statuses for efficient lookup
+  const connectionStatuses = useMemo(() => {
+    const statusMap = new Map<string, { status: string; error?: string; isStale?: boolean }>()
+    mcpServers.forEach((server) => {
+      const conn = getConnection(server._id)
+      if (conn) {
+        statusMap.set(server._id, {
+          status: conn.status,
+          error: conn.error,
+          isStale: conn.isStale,
+        })
+      }
+    })
+    return statusMap
+  }, [mcpServers, getConnection])
 
-  const handleEditServer = (server: MCPServer) => {
-    setSelectedServer(server)
+  const handleEditServer = useCallback((server: MCPServer) => {
+    setEditingServer(server)
+    setDialogMode("edit")
     setIsDialogOpen(true)
-  }
+  }, [])
+
+  const handleDeleteServer = useCallback((server: MCPServer) => {
+    setServerToDelete(server)
+  }, [])
+
+  const confirmDeleteServer = useCallback(async () => {
+    if (serverToDelete) {
+      await remove(serverToDelete._id)
+      // If the deleted server was selected, clear the selection
+      if (selectedServer?._id === serverToDelete._id) {
+        setSelectedServer(null)
+      }
+      setServerToDelete(null)
+    }
+  }, [remove, selectedServer, serverToDelete])
+
+  const handleCreateServer = useCallback(() => {
+    setEditingServer(null)
+    setDialogMode("add")
+    setIsDialogOpen(true)
+  }, [])
+
+  const handleSelectServer = useCallback(
+    (server: MCPServer) => {
+      // Toggle selection - if clicking the same server, unselect it
+      setSelectedServer(selectedServer?._id === server._id ? null : server)
+    },
+    [selectedServer],
+  )
+
+  const handleConnect = useCallback(
+    async (serverId: string) => {
+      await connect([serverId as Id<"mcp">])
+    },
+    [connect],
+  )
+
+  const handleDisconnect = useCallback(
+    async (serverId: string) => {
+      await disconnect(serverId)
+    },
+    [disconnect],
+  )
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
-        {/* Heading */}
-        <div className="flex flex-col gap-1 border-b pb-4 -my-4 py-4 -mx-4 px-4">
-          <p className="text-sm font-medium">MCP Servers</p>
-          <p className="text-xs text-muted-foreground">manage and connect to MCP servers</p>
-        </div>
-        <div className="flex flex-row items-center gap-4 flex-nowrap border-b pb-4 -mx-4 px-4 py-4">
-          <div className="relative min-w-0 flex-1 max-w-[24rem]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search"
-              className="ring-none bg-input/30 h-10 resize-none border-border focus-visible:ring-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border pl-10 text-xs"
-              onChange={(e) => setSearchInput(e.target.value)}
-              value={searchInput}
-            />
+    <>
+      <div className="flex h-full bg-background">
+        {/* Left Sidebar */}
+        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full">
+          {/* Header */}
+          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
+            <p className="text-sm font-semibold">MCP Servers</p>
+            <span className="text-xs text-muted-foreground">{mcpServers.length} total</span>
           </div>
-          <Button
-            variant="outline"
-            className="hover:cursor-pointer h-10 whitespace-nowrap flex-shrink-0"
-            onClick={disconnectAll}
-            disabled={activeConnections.length === 0}
-            title="Disconnect all"
-          >
-            Disconnect All
-          </Button>
+          {/* Server List */}
+          <MCPSidebar
+            servers={mcpServers}
+            selectedServerId={selectedServer?._id || null}
+            isAuthenticated={isAuthenticated}
+            activeConnections={activeConnections}
+            connectionStatuses={connectionStatuses}
+            onSelectServer={handleSelectServer}
+            onCreateServer={handleCreateServer}
+            onEditServer={handleEditServer}
+            onDeleteServer={handleDeleteServer}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+          />
+        </div>
+        {/* Main Content */}
+        <div className="flex flex-col flex-1">
+          {selectedServer ? (
+            <>
+              {/* Header */}
+              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-16">
+                {/* Left section - Name and Edit */}
+                <div className="flex items-center gap-2 flex-1">
+                  <p className="text-sm font-semibold max-w-[160px] truncate">{selectedServer.name}</p>
+                  {/* Connection status dot */}
+                  {(() => {
+                    const status = connectionStatuses.get(selectedServer._id)
+                    const isConnected = status?.status === "connected" && !status?.isStale
+                    const isConnecting = status?.status === "connecting"
+                    const hasError = status?.status === "error" || status?.isStale
+
+                    if (isConnected) return <div className="h-2 w-2 rounded-full bg-green-500" />
+                    if (isConnecting) return <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                    if (hasError) return <div className="h-2 w-2 rounded-full bg-red-500" />
+                    return null
+                  })()}
+                  {/* Edit */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditServer(selectedServer)}
+                    className="hover:cursor-pointer"
+                  >
+                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </div>
+
+                {/* Right section - Connect/Disconnect button */}
+                <div className="flex items-center justify-end flex-1">
+                  {(() => {
+                    const status = connectionStatuses.get(selectedServer._id)
+                    const isConnected = status?.status === "connected" && !status?.isStale
+                    const isConnecting = status?.status === "connecting"
+                    const disableConnect =
+                      (selectedServer.localOnly && process.env.NODE_ENV === "production") ||
+                      (!isAuthenticated && selectedServer.requiresUserKey)
+
+                    return (
+                      <Button
+                        className={cn(
+                          "border-[1px] hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+                          isConnected
+                            ? "bg-red-700 hover:bg-red-800 text-white border-red-500 hover:border-red-800 disabled:hover:bg-red-700"
+                            : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800 disabled:hover:bg-green-700",
+                        )}
+                        onClick={() =>
+                          isConnected ? handleDisconnect(selectedServer._id) : handleConnect(selectedServer._id)
+                        }
+                        disabled={isConnecting || disableConnect}
+                      >
+                        {isConnected ? (
+                          <>
+                            <Unplug className="h-3 w-3 mr-1" />
+                            Disconnect
+                          </>
+                        ) : (
+                          <>
+                            <Plug className="h-3 w-3 mr-1" />
+                            Connect
+                          </>
+                        )}
+                      </Button>
+                    )
+                  })()}
+                </div>
+              </div>
+
+              {/* Content area - Settings */}
+              <MCPServerSettings
+                server={selectedServer}
+                isAuthenticated={isAuthenticated}
+                connectionStatus={connectionStatuses.get(selectedServer._id)}
+                activeConnection={activeConnections.find((conn) => conn.serverId === selectedServer._id)}
+              />
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">Select a server</p>
+            </div>
+          )}
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 px-4 pb-4">
-        <AddMCPCard disabled={!isAuthenticated} />
-        {filteredServers.map((server) => (
-          <MCPCard
-            key={server._id}
-            server={server}
-            isProd={process.env.NODE_ENV === "production"}
-            isAuthenticated={isAuthenticated}
-            onEditClick={handleEditServer}
-          />
-        ))}
-      </div>
-      {/* Single dialog instance for all cards */}
-      {selectedServer && (
-        <MCPDialog
-          mode="edit"
-          server={selectedServer}
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-          isAuthenticated={isAuthenticated}
-        />
-      )}
-    </div>
+      {/* Dialog for Add/Edit */}
+      <MCPDialog
+        mode={dialogMode}
+        server={editingServer || undefined}
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open)
+          if (!open) {
+            setEditingServer(null)
+          }
+        }}
+        isAuthenticated={isAuthenticated}
+      />
+      {/* Delete Confirmation Dialog */}
+      <MCPDeleteDialog
+        server={serverToDelete}
+        open={!!serverToDelete}
+        onOpenChange={(open) => !open && setServerToDelete(null)}
+        onConfirm={confirmDeleteServer}
+      />
+    </>
   )
 }

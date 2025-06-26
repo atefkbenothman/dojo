@@ -21,7 +21,7 @@ const getStatusIcon = (execution?: WorkflowExecution) => {
   if (!execution) return <Play className="h-3 w-3" />
   switch (execution.status) {
     case "preparing":
-      return <Clock className="h-3 w-3 animate-pulse text-yellow-500" />
+      return <Clock className="h-3 w-3 text-yellow-500" />
     case "running":
       return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
     case "completed":
@@ -106,10 +106,11 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
   return (
     <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
       {/* Title */}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 flex items-center gap-2">
         <p className={cn("text-xs font-medium truncate text-primary/70", isSelected && "text-primary")}>
           {workflow.name}
         </p>
+        {execution && getStatusIcon(execution)}
       </div>
       {/* Right Side */}
       <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
@@ -232,7 +233,6 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
       {/* Extension content */}
       <div className="px-3 py-2 space-y-1.5">
         <div className="flex items-center gap-1 min-w-0">
-          {getStatusIcon(execution)}
           <span
             className={cn(
               "text-[11px] truncate font-medium",

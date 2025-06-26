@@ -72,7 +72,7 @@ export function MCPCard({ server, isProd = false, isAuthenticated = false, onEdi
           {Icon && <Icon />}
           <CardTitle className="text-primary/90 font-medium">{server.name}</CardTitle>
           {isConnected && <div className="ml-2 h-2 w-2 rounded-full bg-green-500" />}
-          {isConnecting && <div className="ml-2 h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />}
+          {isConnecting && <div className="ml-2 h-2 w-2 rounded-full bg-yellow-500" />}
           {status === "error" && <div className="ml-2 h-2 w-2 rounded-full bg-red-500" />}
         </div>
         <CardDescription className="w-[90%] line-clamp-2 overflow-hidden">{server.summary}</CardDescription>

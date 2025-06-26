@@ -189,7 +189,7 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                             </span>
                           )}
                           {status === "connecting" && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 animate-pulse">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300">
                               Connecting
                             </span>
                           )}
@@ -274,7 +274,7 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                               </div>
                               <div className="bg-white dark:bg-gray-950 border rounded p-2 font-mono text-[10px] whitespace-pre-wrap overflow-x-auto max-h-64">
                                 {stepExecution.output}
-                                <span className="inline-block w-1.5 h-3 bg-blue-500 animate-pulse ml-0.5" />
+                                <span className="inline-block w-1.5 h-3 bg-blue-500  ml-0.5" />
                               </div>
                             </div>
                           ) : (

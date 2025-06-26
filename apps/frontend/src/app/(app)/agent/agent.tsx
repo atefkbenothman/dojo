@@ -1,86 +1,258 @@
 "use client"
 
-import { AddAgentCard } from "@/components/agent/add-agent-card"
-import { AgentCard } from "@/components/agent/agent-card"
+import { AgentDeleteDialog } from "@/components/agent/agent-delete-dialog"
 import { AgentDialog } from "@/components/agent/agent-dialog"
+import { AgentSidebar } from "@/components/agent/agent-sidebar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { useAgent } from "@/hooks/use-agent"
+import { useAIModels } from "@/hooks/use-ai-models"
+import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Search } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Pencil, Play, Square } from "lucide-react"
+import { useState, useCallback, useMemo } from "react"
 
 export function Agent() {
-  const { agents, stopAllAgents, getRunningExecutions } = useAgent()
+  const { agents, runAgent, stopAllAgents, getRunningExecutions, getAgentExecution } = useAgent()
   const { isAuthenticated } = useConvexAuth()
+  const { models } = useAIModels()
 
-  const [searchInput, setSearchInput] = useState<string>("")
-  const [filteredAgents, setFilteredAgents] = useState<Agent[]>(agents)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
 
-  // Track running agents count using Convex executions
+  // Get all executions for the sidebar
   const runningExecutions = getRunningExecutions()
-  const runningCount = runningExecutions.length
+  const executions = useMemo(() => {
+    return agents
+      .map((agent) => {
+        const execution = getAgentExecution(agent._id)
+        if (!execution) return null
+        return {
+          agentId: agent._id,
+          status: execution.status,
+          error: execution.error,
+        }
+      })
+      .filter(Boolean) as Array<{
+      agentId: string
+      status: "preparing" | "running" | "completed" | "failed"
+      error?: string
+    }>
+  }, [agents, getAgentExecution])
 
-  useEffect(() => {
-    const filtered =
-      searchInput === ""
-        ? agents
-        : agents.filter((agent) => agent.name.toLowerCase().includes(searchInput.toLowerCase()))
-    setFilteredAgents(filtered)
-  }, [searchInput, agents])
+  // Get selected agent's execution and model info
+  const selectedExecution = selectedAgent ? getAgentExecution(selectedAgent._id) : null
+  const selectedModel = useMemo(() => {
+    if (!selectedAgent) return null
+    return models.find((m) => m._id === selectedAgent.aiModelId)
+  }, [models, selectedAgent])
 
-  const handleEditAgent = (agent: Agent) => {
-    setSelectedAgent(agent)
+  const handleEditAgent = useCallback((agent: Agent) => {
+    setEditingAgent(agent)
+    setDialogMode("edit")
     setIsDialogOpen(true)
-  }
+  }, [])
+
+  const handleDeleteAgent = useCallback((agent: Agent) => {
+    setAgentToDelete(agent)
+  }, [])
+
+  const confirmDeleteAgent = useCallback(async () => {
+    if (agentToDelete) {
+      const { remove } = useAgent()
+      await remove({ id: agentToDelete._id })
+      // If the deleted agent was selected, clear the selection
+      if (selectedAgent?._id === agentToDelete._id) {
+        setSelectedAgent(null)
+      }
+      setAgentToDelete(null)
+    }
+  }, [agentToDelete, selectedAgent])
+
+  const handleCreateAgent = useCallback(() => {
+    setEditingAgent(null)
+    setDialogMode("add")
+    setIsDialogOpen(true)
+  }, [])
+
+  const handleSelectAgent = useCallback(
+    (agent: Agent) => {
+      // Toggle selection - if clicking the same agent, unselect it
+      setSelectedAgent(selectedAgent?._id === agent._id ? null : agent)
+    },
+    [selectedAgent],
+  )
+
+  const handleRunAgent = useCallback(
+    (agentId: string) => {
+      const agent = agents.find((a) => a._id === agentId)
+      if (agent) {
+        runAgent(agent)
+      }
+    },
+    [agents, runAgent],
+  )
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-4 p-4 sticky top-0 z-30 bg-background">
-        <div className="flex flex-col gap-1 border-b pb-4 -my-4 py-4 -mx-4 px-4">
-          <p className="text-sm font-medium">Agents</p>
-          <p className="text-xs text-muted-foreground">build and run custom agents</p>
-        </div>
-        <div className="flex flex-row items-center gap-4 flex-nowrap border-b pb-4 -mx-4 px-4 py-4">
-          <div className="relative min-w-0 flex-1 max-w-[24rem]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search"
-              className="ring-none bg-input/30 h-10 resize-none border-border focus-visible:ring-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border pl-10 text-xs"
-              onChange={(e) => setSearchInput(e.target.value)}
-              value={searchInput}
-            />
+    <>
+      <div className="flex h-full bg-background">
+        {/* Left Sidebar */}
+        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full">
+          {/* Header */}
+          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
+            <p className="text-sm font-semibold">Agents</p>
+            <span className="text-xs text-muted-foreground">{agents.length} total</span>
           </div>
-          <Button
-            variant="outline"
-            className="hover:cursor-pointer h-10 whitespace-nowrap flex-shrink-0"
-            onClick={stopAllAgents}
-            disabled={runningCount === 0}
-            title="Stop all running agents"
-          >
-            Stop All
-          </Button>
+          {/* Agent List */}
+          <AgentSidebar
+            agents={agents}
+            selectedAgentId={selectedAgent?._id || null}
+            isAuthenticated={isAuthenticated}
+            executions={executions}
+            onSelectAgent={handleSelectAgent}
+            onCreateAgent={handleCreateAgent}
+            onEditAgent={handleEditAgent}
+            onDeleteAgent={handleDeleteAgent}
+            onRunAgent={handleRunAgent}
+          />
+        </div>
+        {/* Main Content */}
+        <div className="flex flex-col flex-1">
+          {selectedAgent ? (
+            <>
+              {/* Header */}
+              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-16">
+                {/* Left section - Name and Edit */}
+                <div className="flex items-center gap-2 flex-1">
+                  <p className="text-sm font-semibold max-w-[160px] truncate">{selectedAgent.name}</p>
+                  {/* Execution status dot */}
+                  {(() => {
+                    const status = selectedExecution?.status
+                    const isRunning = status === "preparing" || status === "running"
+                    const hasError = status === "failed"
+
+                    if (isRunning && status === "running") return <div className="h-2 w-2 bg-green-500" />
+                    if (isRunning && status === "preparing") return <div className="h-2 w-2 bg-yellow-500" />
+                    if (hasError) return <div className="h-2 w-2 bg-red-500" />
+                    return null
+                  })()}
+                  {/* Edit */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditAgent(selectedAgent)}
+                    className="hover:cursor-pointer"
+                  >
+                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </div>
+
+                {/* Right section - Run/Stop button */}
+                <div className="flex items-center justify-end flex-1">
+                  {(() => {
+                    const status = selectedExecution?.status
+                    const isRunning = status === "running"
+                    const isPreparing = status === "preparing"
+
+                    return (
+                      <Button
+                        className={cn(
+                          "border-[1px] hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+                          isRunning
+                            ? "bg-red-700 hover:bg-red-800 text-white border-red-500 hover:border-red-800"
+                            : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800",
+                        )}
+                        onClick={() => (isRunning ? stopAllAgents() : handleRunAgent(selectedAgent._id))}
+                        disabled={!isAuthenticated || isPreparing}
+                      >
+                        {isRunning ? (
+                          <>
+                            <Square className="h-3 w-3 mr-1" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-3 w-3 mr-1" />
+                            Run
+                          </>
+                        )}
+                      </Button>
+                    )
+                  })()}
+                </div>
+              </div>
+
+              {/* Content area - Agent Details (placeholder for now) */}
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="max-w-3xl">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">System Prompt</h3>
+                      <p className="text-sm text-muted-foreground bg-muted/40 p-4 rounded-md">
+                        {selectedAgent.systemPrompt}
+                      </p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Model</h3>
+                        <p className="text-sm text-muted-foreground">{selectedModel?.name || "Unknown"}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Output Type</h3>
+                        <p className="text-sm text-muted-foreground">{selectedAgent.outputType}</p>
+                      </div>
+                      {selectedAgent.mcpServers && selectedAgent.mcpServers.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium mb-2">MCP Servers</h3>
+                          <p className="text-sm text-muted-foreground">{selectedAgent.mcpServers.length} connected</p>
+                        </div>
+                      )}
+                    </div>
+                    {selectedExecution && (
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Execution Status</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Status: {selectedExecution.status}
+                          {selectedExecution.error && (
+                            <span className="text-destructive block mt-1">{selectedExecution.error}</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">Select an agent</p>
+            </div>
+          )}
         </div>
       </div>
-      <div className="flex flex-row flex-wrap gap-4 px-4 pb-4">
-        <AddAgentCard isAuthenticated={isAuthenticated} />
-        {filteredAgents.map((agent) => (
-          <AgentCard key={agent._id} agent={agent} isAuthenticated={isAuthenticated} onEditClick={handleEditAgent} />
-        ))}
-      </div>
-      {/* Single dialog instance for all cards */}
-      {selectedAgent && (
-        <AgentDialog
-          mode="edit"
-          agent={selectedAgent}
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-          isAuthenticated={isAuthenticated}
-        />
-      )}
-    </div>
+      {/* Dialog for Add/Edit */}
+      <AgentDialog
+        mode={dialogMode}
+        agent={editingAgent || undefined}
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open)
+          if (!open) {
+            setEditingAgent(null)
+          }
+        }}
+        isAuthenticated={isAuthenticated}
+      />
+      {/* Delete Confirmation Dialog */}
+      <AgentDeleteDialog
+        agent={agentToDelete}
+        open={!!agentToDelete}
+        onOpenChange={(open) => !open && setAgentToDelete(null)}
+        onConfirm={confirmDeleteAgent}
+      />
+    </>
   )
 }
