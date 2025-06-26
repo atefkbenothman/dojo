@@ -53,6 +53,14 @@ export class AgentService {
         }
       }
 
+      // Validate authentication for agent execution
+      if (!agent.isPublic && !session?.userId) {
+        return {
+          success: false,
+          error: "Authentication is required to run private agents.",
+        }
+      }
+
       // Validate agent has a model
       if (!agent.aiModelId) {
         return {

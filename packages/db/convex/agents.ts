@@ -77,10 +77,13 @@ export const edit = mutation({
     if (agent.isPublic) throw new Error("Default agents cannot be edited.")
     if (!userId || agent.userId !== userId) throw new Error("Unauthorized")
 
-    // Validate model choice for public agents
-    await validatePublicAgentModel(ctx, rest.isPublic, rest.aiModelId)
+    // Force isPublic to remain unchanged (prevent users from editing this field)
+    const updatedData = { ...rest, isPublic: agent.isPublic }
 
-    return await ctx.db.replace(id, { ...agent, ...rest })
+    // Validate model choice for public agents
+    await validatePublicAgentModel(ctx, agent.isPublic, rest.aiModelId)
+
+    return await ctx.db.replace(id, { ...agent, ...updatedData })
   },
 })
 
@@ -89,13 +92,12 @@ export const create = mutation({
   args: agentsFields,
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx)
-    if (args.isPublic) throw new Error("Cannot create public agents.")
     if (!userId) throw new Error("Must be signed in to create agents.")
 
-    // Validate model choice for public agents (though currently public creation is blocked)
-    await validatePublicAgentModel(ctx, args.isPublic, args.aiModelId)
+    // Force isPublic to false for all user-created agents
+    const agentData = { ...args, isPublic: false, userId }
 
-    return await ctx.db.insert("agents", { ...args, userId })
+    return await ctx.db.insert("agents", agentData)
   },
 })
 
