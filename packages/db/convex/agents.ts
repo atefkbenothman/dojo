@@ -26,13 +26,13 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
-    
+
     // Always get public agents
     const publicAgents = await ctx.db
       .query("agents")
       .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
       .collect()
-    
+
     if (userId) {
       // Authenticated: also get user's private agents
       const userAgents = await ctx.db
@@ -40,7 +40,7 @@ export const list = query({
         .withIndex("by_userId", (q) => q.eq("userId", userId))
         .filter((q) => q.neq(q.field("isPublic"), true))
         .collect()
-      
+
       return [...publicAgents, ...userAgents]
     } else {
       // Not authenticated: return only public agents
@@ -122,18 +122,18 @@ export const clone = mutation({
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx)
     if (!userId) throw new Error("Must be signed in to clone agents.")
-    
+
     const originalAgent = await ctx.db.get(args.id)
     if (!originalAgent) throw new Error("Agent not found")
-    
+
     // Check if user can access this agent (either public or owned by user)
     if (!originalAgent.isPublic && originalAgent.userId !== userId) {
       throw new Error("Unauthorized")
     }
-    
+
     // Create a clone with isPublic: false and new userId
     const { _id, _creationTime, userId: _originalUserId, isPublic: _originalIsPublic, ...agentData } = originalAgent
-    
+
     return await ctx.db.insert("agents", {
       ...agentData,
       name: `${originalAgent.name} (Copy)`,

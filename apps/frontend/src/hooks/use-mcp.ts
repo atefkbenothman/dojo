@@ -30,6 +30,7 @@ export function useMCP() {
   const createMCP = useConvexMutation(api.mcp.create)
   const editMCP = useConvexMutation(api.mcp.edit)
   const deleteMCP = useConvexMutation(api.mcp.remove)
+  const cloneMCP = useConvexMutation(api.mcp.clone)
 
   // Query MCP connections from Convex
   const mcpConnections = useConvexQuery(
@@ -198,6 +199,30 @@ export function useMCP() {
     }
   }
 
+  const clone = async (id: string) => {
+    try {
+      await cloneMCP({ id: id as Id<"mcp"> })
+      play("./sounds/connect.mp3", { volume: 0.5 })
+      toast.success("Server cloned successfully!", {
+        icon: null,
+        id: "clone-mcp-success",
+        duration: 3000,
+        position: "bottom-center",
+      })
+    } catch (error) {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to clone server: ${errorMessage}`, {
+        icon: null,
+        id: "clone-mcp-error",
+        duration: 5000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+      throw error
+    }
+  }
+
   const stableMcpServers = useMemo(() => mcpServers || [], [mcpServers])
 
   return {
@@ -210,5 +235,6 @@ export function useMCP() {
     create,
     edit,
     remove,
+    clone,
   }
 }
