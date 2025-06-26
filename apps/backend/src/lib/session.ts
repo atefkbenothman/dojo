@@ -11,16 +11,34 @@ export interface SessionResult {
   error?: string
 }
 
+export interface SessionLookupParams {
+  authorization?: string | null
+  guestSessionId?: string | null
+}
+
 /**
- * Retrieves session information from request headers.
- * Handles both authenticated users (via Authorization header) and guest users (via x-guest-session-id header).
- * @param req Express request object
+ * Helper function to extract guest session ID from request headers.
+ * Handles both single string and array formats.
+ * @param headers Express request headers
+ * @returns Guest session ID or null if not found
+ */
+function extractGuestSessionId(headers: Request["headers"]): string | null {
+  const clientSessionIdHeader = headers["x-guest-session-id"]
+  return Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] || null : clientSessionIdHeader || null
+}
+
+/**
+ * Core session lookup logic used by both Express and TRPC.
+ * Handles both authenticated users (via authorization) and guest users (via guestSessionId).
+ * @param params Session lookup parameters
  * @returns Promise<SessionResult> containing session data or error information
  */
-export async function getSessionFromRequest(req: Request): Promise<SessionResult> {
+export async function lookupSession(params: SessionLookupParams): Promise<SessionResult> {
   try {
+    const { authorization, guestSessionId } = params
+
     // First, try to get authenticated user
-    const user = await getConvexUser(req.headers.authorization)
+    const user = await getConvexUser(authorization || undefined)
 
     let session: Doc<"sessions"> | null = null
 
@@ -29,16 +47,11 @@ export async function getSessionFromRequest(req: Request): Promise<SessionResult
       session = await convex.query(api.sessions.getByUserId, {
         userId: user._id,
       })
-    } else {
+    } else if (guestSessionId) {
       // Guest user: lookup by clientSessionId
-      const clientSessionIdHeader = req.headers["x-guest-session-id"]
-      const clientSessionId = Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader
-
-      if (clientSessionId) {
-        session = await convex.query(api.sessions.getByClientSessionId, {
-          clientSessionId,
-        })
-      }
+      session = await convex.query(api.sessions.getByClientSessionId, {
+        clientSessionId: guestSessionId,
+      })
     }
 
     if (!session) {
@@ -59,11 +72,27 @@ export async function getSessionFromRequest(req: Request): Promise<SessionResult
 }
 
 /**
+ * Retrieves session information from Express request headers.
+ * Handles both authenticated users (via Authorization header) and guest users (via x-guest-session-id header).
+ * @param req Express request object
+ * @returns Promise<SessionResult> containing session data or error information
+ */
+export async function getSessionFromRequest(req: Request): Promise<SessionResult> {
+  return lookupSession({
+    authorization: req.headers.authorization,
+    guestSessionId: extractGuestSessionId(req.headers),
+  })
+}
+
+/**
  * Express middleware that attaches session to the request object.
  * Use this when you want to handle session errors in the route handler.
  */
 export async function attachSessionMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const result = await getSessionFromRequest(req)
+  const result = await lookupSession({
+    authorization: req.headers.authorization,
+    guestSessionId: extractGuestSessionId(req.headers),
+  })
 
   // Attach session to request (can be null if no session found)
   req.session = result.session || undefined
@@ -81,7 +110,10 @@ export async function attachSessionMiddleware(req: Request, res: Response, next:
  * Throws AuthenticationError if no session is found.
  */
 export async function requireSessionMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const result = await getSessionFromRequest(req)
+  const result = await lookupSession({
+    authorization: req.headers.authorization,
+    guestSessionId: extractGuestSessionId(req.headers),
+  })
 
   if (!result.session) {
     throwError(result.error || "Session required", 401)

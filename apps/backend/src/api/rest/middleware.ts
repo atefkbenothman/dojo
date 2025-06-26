@@ -1,5 +1,5 @@
 import { throwError } from "../../lib/errors"
-import { getSessionFromRequest } from "../../lib/session"
+import { lookupSession } from "../../lib/session"
 import type { Request, Response, NextFunction } from "express"
 import type { ZodSchema } from "zod"
 
@@ -31,8 +31,15 @@ export function createValidatedRequestMiddleware<T extends ParsedInputBase>(sche
       }
       const parsedInput = validationResult.data
 
-      // 2. Get session from request
-      const sessionResult = await getSessionFromRequest(req)
+      // 2. Get session from request  
+      const clientSessionIdHeader = req.headers["x-guest-session-id"]
+      const guestSessionId = Array.isArray(clientSessionIdHeader) ? clientSessionIdHeader[0] : clientSessionIdHeader || null
+
+      const sessionResult = await lookupSession({
+        authorization: req.headers.authorization,
+        guestSessionId,
+      })
+      
       if (!sessionResult.session) {
         throwError(sessionResult.error || "No active session found", 401)
       }
