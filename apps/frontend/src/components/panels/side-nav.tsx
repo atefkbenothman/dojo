@@ -43,54 +43,108 @@ export function SideNav() {
   }, [play])
 
   return (
-    <div className="bg-card w-[42px] flex-shrink-0 border-r-[1.5px] h-full flex flex-col">
-      <div className="bg-card flex h-[42px] flex-shrink-0 items-center justify-center border-b-[1.5px]">
-        <Link href="/" className="hover:cursor-pointer" onMouseDown={handleClick}>
-          <p className="text-base font-medium">⛩️</p>
-        </Link>
-      </div>
-      <TooltipProvider>
-        <div className="flex flex-col gap-4 py-4 flex-1">
-          {navigationItems.map(({ href, icon: Icon, label }) => {
-            const isActive = href === "/dashboard" ? pathname === href : pathname.startsWith(href)
-            return (
-              <div key={href} className="flex w-full items-center justify-center">
-                <Tooltip delayDuration={800}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={href}
-                      className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
-                    >
-                      <div
-                        className={cn(
-                          "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
-                          isActive && "bg-muted border-border border",
-                        )}
+    <>
+      {/* Desktop: Vertical Sidebar */}
+      <div className="bg-card w-[42px] flex-shrink-0 border-r-[1.5px] h-full md:flex flex-col hidden">
+        <div className="bg-card flex h-[42px] flex-shrink-0 items-center justify-center border-b-[1.5px]">
+          <Link href="/" className="hover:cursor-pointer" onMouseDown={handleClick}>
+            <p className="text-base font-medium">⛩️</p>
+          </Link>
+        </div>
+        <TooltipProvider>
+          <div className="flex flex-col gap-4 py-2 flex-1">
+            {navigationItems.map(({ href, icon: Icon, label }) => {
+              const isActive = href === "/dashboard" ? pathname === href : pathname.startsWith(href)
+              return (
+                <div key={href} className="flex w-full items-center justify-center">
+                  <Tooltip delayDuration={800}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={href}
+                        className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
                       >
-                        <Icon className="h-5.5 w-5.5" />
-                      </div>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{label}</TooltipContent>
-                </Tooltip>
-              </div>
-            )
-          })}
-        </div>
-        {/* User Dialog */}
-        <div className="flex w-full items-center border-t-[1.5px] justify-center py-4">
-          <div
-            onClick={() => setUserDialogOpen(true)}
-            onMouseDown={handleClick}
-            className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
-          >
-            <div className="text-primary/70 group-hover:text-primary">
-              <User className="h-5 w-5" />
-            </div>
+                        <div
+                          className={cn(
+                            "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
+                            isActive && "bg-muted border-border border",
+                          )}
+                        >
+                          <Icon className="h-5.5 w-5.5" />
+                        </div>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{label}</TooltipContent>
+                  </Tooltip>
+                </div>
+              )
+            })}
           </div>
-          <SettingsDialog isOpen={userDialogOpen} setIsOpen={setUserDialogOpen} />
-        </div>
-      </TooltipProvider>
-    </div>
+          {/* User Dialog */}
+          <div className="flex w-full items-center border-t-[1.5px] justify-center py-2">
+            <div
+              onClick={() => setUserDialogOpen(true)}
+              onMouseDown={handleClick}
+              className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
+            >
+              <div className="text-primary/70 group-hover:text-primary">
+                <User className="h-5 w-5" />
+              </div>
+            </div>
+            <SettingsDialog isOpen={userDialogOpen} setIsOpen={setUserDialogOpen} />
+          </div>
+        </TooltipProvider>
+      </div>
+
+      {/* Mobile: Horizontal Navigation (same as desktop but horizontal) */}
+      <div className="bg-card w-full h-[42px] flex-shrink-0 border-b-[1.5px] md:hidden flex items-center">
+        <TooltipProvider>
+          {/* Navigation Items */}
+          <div className="flex items-center flex-1 gap-4 px-2">
+            {navigationItems.map(({ href, icon: Icon, label }) => {
+              const isActive = href === "/dashboard" ? pathname === href : pathname.startsWith(href)
+              return (
+                <div key={href} className="flex items-center justify-center">
+                  <Tooltip delayDuration={800}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={href}
+                        className={cn("text-primary/50 group-hover:text-primary", isActive && "text-primary")}
+                        onMouseDown={handleClick}
+                      >
+                        <div
+                          className={cn(
+                            "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
+                            isActive && "bg-muted border-border border",
+                          )}
+                        >
+                          <Icon className="h-5.5 w-5.5" />
+                        </div>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{label}</TooltipContent>
+                  </Tooltip>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* User Button */}
+          <div className="flex items-center border-l-[1.5px] h-full">
+            <div className="px-2">
+              <div
+                onClick={() => setUserDialogOpen(true)}
+                onMouseDown={handleClick}
+                className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
+              >
+                <div className="text-primary/70 group-hover:text-primary">
+                  <User className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+            <SettingsDialog isOpen={userDialogOpen} setIsOpen={setUserDialogOpen} />
+          </div>
+        </TooltipProvider>
+      </div>
+    </>
   )
 }
