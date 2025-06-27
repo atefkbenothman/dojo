@@ -2,8 +2,9 @@
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useLayout } from "@/hooks/use-layout"
 import { useMCP } from "@/hooks/use-mcp"
-import { MessageSquare, Server, Maximize, Minimize, Plus } from "lucide-react"
+import { MessageSquare, Server, Maximize, Minimize, Plus, X } from "lucide-react"
 import { memo } from "react"
 
 function MCPServersPopover() {
@@ -57,6 +58,8 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
   onMaximizeToggle,
   onNewChat,
 }: ChatPanelHeaderProps) {
+  const { isMobile } = useLayout()
+
   return (
     <div className="bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px]">
       {isCollapsed ? (
@@ -79,7 +82,13 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
           <MCPServersPopover />
 
           <Button onClick={onMaximizeToggle} size="icon" variant="outline" className="mr-2 hover:cursor-pointer">
-            {isMaximized ? <Minimize className="h-4.5 w-4.5" /> : <Maximize className="h-4.5 w-4.5" />}
+            {isMobile ? (
+              <X className="h-4.5 w-4.5" />
+            ) : isMaximized ? (
+              <Minimize className="h-4.5 w-4.5" />
+            ) : (
+              <Maximize className="h-4.5 w-4.5" />
+            )}
           </Button>
         </>
       )}

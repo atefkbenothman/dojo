@@ -2,6 +2,7 @@ import "../globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
 import { SessionInitializer } from "@/components/session-initializer"
 import { AIChatProvider } from "@/hooks/use-chat"
+import { LayoutProvider } from "@/hooks/use-layout"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
 import { serverTrpc } from "@/lib/trpc/client"
 import { DojoTRPCProvider } from "@/lib/trpc/provider"
@@ -86,11 +87,13 @@ export default async function AppLayout({
               <ConvexClientProvider>
                 <SessionInitializer>
                   <DojoTRPCProvider>
-                    <AIChatProvider>
-                      <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
-                        {children}
-                      </ResizableLayout>
-                    </AIChatProvider>
+                    <LayoutProvider>
+                      <AIChatProvider>
+                        <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
+                          {children}
+                        </ResizableLayout>
+                      </AIChatProvider>
+                    </LayoutProvider>
                   </DojoTRPCProvider>
                 </SessionInitializer>
               </ConvexClientProvider>
