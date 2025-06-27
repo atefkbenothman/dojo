@@ -9,7 +9,7 @@ import { useAIModels } from "@/hooks/use-ai-models"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Pencil, Play, Square } from "lucide-react"
+import { Pencil, Play, Square, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Agent() {
@@ -22,6 +22,7 @@ export function Agent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Get all executions for the sidebar
   const runningExecutions = getRunningExecutions()
@@ -106,11 +107,28 @@ export function Agent() {
     <>
       <div className="flex h-full bg-background">
         {/* Left Sidebar */}
-        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full">
+        <div
+          className={cn(
+            "shrink-0 bg-card border-r-[1.5px] flex flex-col h-full",
+            isSidebarCollapsed ? "w-[42px]" : "w-96",
+          )}
+        >
           {/* Header */}
-          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
-            <p className="text-sm font-semibold">Agents</p>
-            <span className="text-xs text-muted-foreground">{agents.length} total</span>
+          <div
+            className={cn(
+              "border-b-[1.5px] flex-shrink-0 flex items-center h-16",
+              isSidebarCollapsed ? "justify-center" : "justify-between p-4",
+            )}
+          >
+            {!isSidebarCollapsed && <p className="text-sm font-semibold">Agents</p>}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
           </div>
           {/* Agent List */}
           <AgentSidebar
@@ -124,6 +142,8 @@ export function Agent() {
             onDeleteAgent={handleDeleteAgent}
             onCloneAgent={handleCloneAgent}
             onRunAgent={handleRunAgent}
+            isCollapsed={isSidebarCollapsed}
+            onExpandSidebar={() => setIsSidebarCollapsed(false)}
           />
         </div>
         {/* Main Content */}
@@ -187,7 +207,7 @@ export function Agent() {
                             ? "Agent is preparing"
                             : isRunning
                               ? "Stop agent"
-                              : (!isAuthenticated && !selectedAgent.isPublic)
+                              : !isAuthenticated && !selectedAgent.isPublic
                                 ? "Login required to run private agents"
                                 : "Run agent"
                         }

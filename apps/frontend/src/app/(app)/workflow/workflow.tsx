@@ -11,10 +11,11 @@ import { WorkflowSidebar } from "@/components/workflow/workflow-sidebar"
 import { useAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useWorkflow } from "@/hooks/use-workflow"
+import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Play, Pencil } from "lucide-react"
+import { Play, Pencil, ChevronLeft, ChevronRight } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo, memo, useEffect } from "react"
 
@@ -33,6 +34,7 @@ export const Workflow = memo(function Workflow() {
   const [workflowToDelete, setWorkflowToDelete] = useState<WorkflowType | null>(null)
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [isAgentDialogOpen, setIsAgentDialogOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Load workflow from URL on mount and when workflows change
   useEffect(() => {
@@ -304,11 +306,28 @@ export const Workflow = memo(function Workflow() {
     <>
       <div className="flex h-full bg-background">
         {/* Left Sidebar */}
-        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full">
+        <div
+          className={cn(
+            "shrink-0 bg-card border-r-[1.5px] flex flex-col h-full",
+            isSidebarCollapsed ? "w-[42px]" : "w-96",
+          )}
+        >
           {/* Header */}
-          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
-            <p className="text-sm font-semibold">Workflows</p>
-            <span className="text-xs text-muted-foreground">{workflows.length} total</span>
+          <div
+            className={cn(
+              "border-b-[1.5px] flex-shrink-0 flex items-center h-16",
+              isSidebarCollapsed ? "justify-center" : "justify-between p-4",
+            )}
+          >
+            {!isSidebarCollapsed && <p className="text-sm font-semibold">Workflows</p>}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
           </div>
           {/* Workflow List */}
           <WorkflowSidebar
@@ -324,6 +343,8 @@ export const Workflow = memo(function Workflow() {
             onCloneWorkflow={handleCloneWorkflow}
             onRunWorkflow={runWorkflow}
             onStopWorkflow={stopWorkflow}
+            isCollapsed={isSidebarCollapsed}
+            onExpandSidebar={() => setIsSidebarCollapsed(false)}
           />
         </div>
         {/* Main Content */}

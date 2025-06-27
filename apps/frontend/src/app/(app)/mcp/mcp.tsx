@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Pencil, Plug, Unplug, Copy } from "lucide-react"
+import { Pencil, Plug, Unplug, Copy, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Mcp() {
@@ -22,6 +22,7 @@ export function Mcp() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [serverToDelete, setServerToDelete] = useState<MCPServer | null>(null)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Create a map of connection statuses for efficient lookup
   const connectionStatuses = useMemo(() => {
@@ -99,11 +100,28 @@ export function Mcp() {
     <>
       <div className="flex h-full bg-background">
         {/* Left Sidebar */}
-        <div className="w-96 shrink-0 bg-card border-r-[1.5px] flex flex-col h-full">
+        <div
+          className={cn(
+            "shrink-0 bg-card border-r-[1.5px] flex flex-col h-full",
+            isSidebarCollapsed ? "w-[42px]" : "w-96",
+          )}
+        >
           {/* Header */}
-          <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between h-16">
-            <p className="text-sm font-semibold">MCP Servers</p>
-            <span className="text-xs text-muted-foreground">{mcpServers.length} total</span>
+          <div
+            className={cn(
+              "border-b-[1.5px] flex-shrink-0 flex items-center h-16",
+              isSidebarCollapsed ? "justify-center" : "justify-between p-4",
+            )}
+          >
+            {!isSidebarCollapsed && <p className="text-sm font-semibold">MCP Servers</p>}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
           </div>
           {/* Server List */}
           <MCPSidebar
@@ -119,6 +137,8 @@ export function Mcp() {
             onCloneServer={handleCloneServer}
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
+            isCollapsed={isSidebarCollapsed}
+            onExpandSidebar={() => setIsSidebarCollapsed(false)}
           />
         </div>
         {/* Main Content */}
@@ -189,7 +209,7 @@ export function Mcp() {
                         }
                         disabled={isConnecting || disableConnect}
                         title={
-                          disableConnect && (!isAuthenticated && selectedServer.requiresUserKey)
+                          disableConnect && !isAuthenticated && selectedServer.requiresUserKey
                             ? "Login required to use servers with API keys"
                             : undefined
                         }
