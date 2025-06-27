@@ -259,7 +259,7 @@ export const MCPSidebar = memo(function MCPSidebar({
             <AccordionItem value="global">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Global Servers</span>
+                  <span className="text-sm font-medium">Public Servers</span>
                   <span className="text-xs text-muted-foreground">({filteredGlobalServers.length})</span>
                 </div>
               </AccordionTrigger>
