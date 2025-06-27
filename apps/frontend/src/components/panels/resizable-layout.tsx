@@ -68,8 +68,25 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
       "h-[100dvh] w-screen overflow-hidden",
       isMobile ? "flex flex-col" : "flex"
     )}>
-      {/* SideNav - always rendered, positioned differently based on layout */}
-      <SideNav />
+      {/* Header - always rendered, positioned via CSS */}
+      <MainPanelHeader 
+        onChatPanelToggle={onChatPanelToggle} 
+        isCollapsed={isChatPanelCollapsed}
+        className={cn(
+          // Desktop: Absolute positioned over content
+          !isMobile && "absolute top-0 left-[42px] right-0 z-10",
+          // Mobile: Normal flow, appears first
+          isMobile && "relative"
+        )}
+      />
+
+      {/* SideNav - always rendered, positioned via CSS */}
+      <SideNav className={cn(
+        // Desktop: Normal position on left
+        !isMobile && "relative",
+        // Mobile: Appears second in flow
+        isMobile && "relative"
+      )} />
 
       {/* Main content area - Always same structure for all screen sizes */}
       <ResizablePanelGroup 
@@ -82,8 +99,11 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
           defaultSize={defaultLayout[0]} 
           className={cn(isMaximized && "hidden")}
         >
-          <div className="flex h-full flex-col">
-            <MainPanelHeader onChatPanelToggle={onChatPanelToggle} isCollapsed={isChatPanelCollapsed} />
+          <div className={cn(
+            "flex h-full flex-col",
+            // Add top padding for header on desktop
+            !isMobile && "pt-[42px]"
+          )}>
             <div className="flex-1 overflow-auto md:min-w-[500px]">
               {children}
             </div>

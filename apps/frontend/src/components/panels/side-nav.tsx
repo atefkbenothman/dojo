@@ -33,7 +33,11 @@ const navigationItems = [
   },
 ] as const
 
-export function SideNav() {
+interface SideNavProps {
+  className?: string
+}
+
+export function SideNav({ className }: SideNavProps = {}) {
   const pathname = usePathname()
   const { play } = useSoundEffectContext()
   const { isMobile } = useLayout()
@@ -45,13 +49,16 @@ export function SideNav() {
   }, [play])
 
   return (
-    <nav className={cn(
-      "bg-card flex-shrink-0 border-border",
-      // Desktop: Vertical sidebar
-      !isMobile && "w-[42px] h-full flex-col border-r-[1.5px] hidden md:flex",
-      // Mobile: Horizontal bar
-      isMobile && "w-full h-[42px] flex-row border-b-[1.5px] md:hidden flex items-center"
-    )}>
+    <nav
+      className={cn(
+        "bg-card flex-shrink-0 border-border",
+        // Desktop: Vertical sidebar
+        !isMobile && "w-[42px] h-full flex-col border-r-[1.5px] hidden md:flex",
+        // Mobile: Horizontal bar
+        isMobile && "w-full h-[42px] flex-row border-b-[1.5px] md:hidden flex items-center",
+        className
+      )}
+    >
       {/* Logo/Brand - Desktop only */}
       {!isMobile && (
         <div className="bg-card flex h-[42px] flex-shrink-0 items-center justify-center border-b-[1.5px]">
@@ -63,20 +70,19 @@ export function SideNav() {
 
       <TooltipProvider>
         {/* Navigation Items */}
-        <div className={cn(
-          "flex gap-4 py-2",
-          // Desktop: Vertical stack
-          !isMobile && "flex-col flex-1",
-          // Mobile: Horizontal row
-          isMobile && "flex-row flex-1 px-2"
-        )}>
+        <div
+          className={cn(
+            "flex gap-4 py-2",
+            // Desktop: Vertical stack
+            !isMobile && "flex-col flex-1",
+            // Mobile: Horizontal row
+            isMobile && "flex-row flex-1 px-2",
+          )}
+        >
           {navigationItems.map(({ href, icon: Icon, label }) => {
             const isActive = href === "/dashboard" ? pathname === href : pathname.startsWith(href)
             return (
-              <div key={href} className={cn(
-                "flex items-center justify-center",
-                !isMobile && "w-full"
-              )}>
+              <div key={href} className={cn("flex items-center justify-center", !isMobile && "w-full")}>
                 <Tooltip delayDuration={800}>
                   <TooltipTrigger asChild>
                     <Link
@@ -102,13 +108,15 @@ export function SideNav() {
         </div>
 
         {/* User Dialog */}
-        <div className={cn(
-          "flex items-center py-2",
-          // Desktop: Full width with top border
-          !isMobile && "w-full border-t-[1.5px] justify-center",
-          // Mobile: Right side with left border
-          isMobile && "border-l-[1.5px] h-full px-2"
-        )}>
+        <div
+          className={cn(
+            "flex items-center py-2",
+            // Desktop: Full width with top border
+            !isMobile && "w-full border-t-[1.5px] justify-center",
+            // Mobile: Right side with left border
+            isMobile && "border-l-[1.5px] h-full px-2",
+          )}
+        >
           <div
             onClick={() => setUserDialogOpen(true)}
             onMouseDown={handleClick}

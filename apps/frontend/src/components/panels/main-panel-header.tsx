@@ -15,9 +15,10 @@ import { useCallback } from "react"
 interface MainPanelHeaderProps {
   onChatPanelToggle: () => void
   isCollapsed: boolean
+  className?: string
 }
 
-export function MainPanelHeader({ onChatPanelToggle }: MainPanelHeaderProps) {
+export function MainPanelHeader({ onChatPanelToggle, className }: MainPanelHeaderProps) {
   const { play } = useSoundEffectContext()
   const { isMobile } = useLayout()
 
@@ -26,12 +27,12 @@ export function MainPanelHeader({ onChatPanelToggle }: MainPanelHeaderProps) {
   }, [play])
 
   return (
-    <div className="bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px] pr-2">
+    <div className={cn("bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px] pr-2", className)}>
       <div className="flex items-center flex-1 pr-4">
         {/* Logo - only show on mobile, with same styling as sidenav */}
         {isMobile && (
           <Link href="/" className="hover:cursor-pointer" onMouseDown={handleLogoClick}>
-            <div className="flex-shrink-0 border-r-[1.5px] p-4">
+            <div className="flex-shrink-0 border-r-[1.5px] w-[42px] p-4">
               <p className="text-base font-medium">⛩️</p>
             </div>
           </Link>
