@@ -6,8 +6,6 @@ interface LayoutContextType {
   isMobile: boolean
   isTablet: boolean
   isDesktop: boolean
-  isMobileChatOpen: boolean
-  setIsMobileChatOpen: (open: boolean) => void
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined)
@@ -28,9 +26,6 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
     }
     return 1024 // Default to desktop for SSR
   })
-
-  // Mobile chat state
-  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false)
 
   // Calculate breakpoint states
   const isMobile = windowWidth < MOBILE_BREAKPOINT
@@ -53,8 +48,6 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
     isMobile,
     isTablet,
     isDesktop,
-    isMobileChatOpen,
-    setIsMobileChatOpen,
   }
 
   return (
