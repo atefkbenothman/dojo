@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Play, Pencil, ChevronLeft, ChevronRight } from "lucide-react"
+import { Play, Pencil, PanelLeft, PanelRight } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo, memo, useEffect } from "react"
 
@@ -304,7 +304,7 @@ export const Workflow = memo(function Workflow() {
 
   return (
     <>
-      <div className="flex h-full bg-background">
+      <div className="flex h-full bg-background overflow-hidden">
         {/* Left Sidebar */}
         <div
           className={cn(
@@ -326,7 +326,7 @@ export const Workflow = memo(function Workflow() {
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
             >
-              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {isSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
             </Button>
           </div>
           {/* Workflow List */}
@@ -348,7 +348,7 @@ export const Workflow = memo(function Workflow() {
           />
         </div>
         {/* Main Content */}
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 overflow-x-auto">
           <Tabs
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as "build" | "run")}
@@ -357,50 +357,52 @@ export const Workflow = memo(function Workflow() {
             {selectedWorkflow ? (
               <>
                 {/* Header */}
-                <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-[42px]">
-                  {/* Left section - Name and Edit */}
-                  <div className="flex items-center gap-2 flex-1">
-                    <p className="text-sm font-semibold max-w-[160px] truncate">{selectedWorkflow?.name}</p>
-                    {/* Edit */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingWorkflow(selectedWorkflow)
-                        setIsMetadataDialogOpen(true)
-                      }}
-                      className="hover:cursor-pointer"
-                    >
-                      <Pencil className="h-1 w-1 text-muted-foreground" />
-                    </Button>
-                  </div>
+                <div className="border-b-[1.5px] flex-shrink-0 bg-card h-[42px] overflow-x-auto">
+                  <div className="p-4 flex items-center justify-between min-w-fit h-full">
+                    {/* Left section - Name and Edit */}
+                    <div className="flex items-center gap-2 flex-shrink-0 pr-4">
+                      <p className="text-sm font-semibold whitespace-nowrap">{selectedWorkflow?.name}</p>
+                      {/* Edit */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingWorkflow(selectedWorkflow)
+                          setIsMetadataDialogOpen(true)
+                        }}
+                        className="hover:cursor-pointer"
+                      >
+                        <Pencil className="h-1 w-1 text-muted-foreground" />
+                      </Button>
+                    </div>
 
-                  {/* Center section - Tabs */}
-                  <div className="flex items-center justify-center">
-                    <TabsList className="h-9 w-64">
-                      <TabsTrigger value="build" className="flex-1">
-                        Build
-                      </TabsTrigger>
-                      <TabsTrigger value="run" className="flex-1">
-                        Logs
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
+                    {/* Center section - Tabs */}
+                    <div className="flex items-center justify-center">
+                      <TabsList className="h-9 w-64">
+                        <TabsTrigger value="build" className="flex-1">
+                          Build
+                        </TabsTrigger>
+                        <TabsTrigger value="run" className="flex-1">
+                          Logs
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
 
-                  {/* Right section - Run button */}
-                  <div className="flex items-center justify-end flex-1">
-                    <Button
-                      className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-700"
-                      onClick={handleRunWorkflow}
-                      disabled={
-                        !selectedWorkflow.instructions ||
-                        selectedWorkflow.instructions.trim() === "" ||
-                        selectedWorkflow.steps.length === 0
-                      }
-                    >
-                      <Play className="h-3 w-3 mr-1" />
-                      Run
-                    </Button>
+                    {/* Right section - Run button */}
+                    <div className="flex items-center justify-end flex-shrink-0">
+                      <Button
+                        className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-700"
+                        onClick={handleRunWorkflow}
+                        disabled={
+                          !selectedWorkflow.instructions ||
+                          selectedWorkflow.instructions.trim() === "" ||
+                          selectedWorkflow.steps.length === 0
+                        }
+                      >
+                        <Play className="h-3 w-3 mr-1" />
+                        Run
+                      </Button>
+                    </div>
                   </div>
                 </div>
 

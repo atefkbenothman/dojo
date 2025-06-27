@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Pencil, Plug, Unplug, Copy, ChevronLeft, ChevronRight } from "lucide-react"
+import { Pencil, Plug, Unplug, Copy, PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Mcp() {
@@ -98,7 +98,7 @@ export function Mcp() {
 
   return (
     <>
-      <div className="flex h-full bg-background">
+      <div className="flex h-full bg-background overflow-hidden">
         {/* Left Sidebar */}
         <div
           className={cn(
@@ -120,7 +120,7 @@ export function Mcp() {
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
             >
-              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {isSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
             </Button>
           </div>
           {/* Server List */}
@@ -142,14 +142,14 @@ export function Mcp() {
           />
         </div>
         {/* Main Content */}
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 overflow-x-auto">
           {selectedServer ? (
             <>
               {/* Header */}
-              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-[42px]">
+              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between bg-card h-[42px]">
                 {/* Left section - Name and Edit */}
-                <div className="flex items-center gap-2 flex-1">
-                  <p className="text-sm font-semibold max-w-[160px] truncate">{selectedServer.name}</p>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate">{selectedServer.name}</p>
                   {/* Connection status dot */}
                   {(() => {
                     const status = connectionStatuses.get(selectedServer._id)
@@ -176,7 +176,7 @@ export function Mcp() {
                 </div>
 
                 {/* Right section - Connect/Disconnect or Clone button */}
-                <div className="flex items-center justify-end flex-1">
+                <div className="flex items-center justify-end flex-shrink-0 ml-4">
                   {(() => {
                     const status = connectionStatuses.get(selectedServer._id)
                     const isConnected = status?.status === "connected" && !status?.isStale

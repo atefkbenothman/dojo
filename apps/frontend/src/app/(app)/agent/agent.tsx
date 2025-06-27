@@ -9,7 +9,7 @@ import { useAIModels } from "@/hooks/use-ai-models"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Pencil, Play, Square, ChevronLeft, ChevronRight } from "lucide-react"
+import { Pencil, Play, Square, PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Agent() {
@@ -105,7 +105,7 @@ export function Agent() {
 
   return (
     <>
-      <div className="flex h-full bg-background">
+      <div className="flex h-full bg-background overflow-hidden">
         {/* Left Sidebar */}
         <div
           className={cn(
@@ -127,7 +127,7 @@ export function Agent() {
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
             >
-              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {isSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
             </Button>
           </div>
           {/* Agent List */}
@@ -147,14 +147,14 @@ export function Agent() {
           />
         </div>
         {/* Main Content */}
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 overflow-x-auto">
           {selectedAgent ? (
             <>
               {/* Header */}
-              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-[42px]">
+              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between bg-card h-[42px]">
                 {/* Left section - Name and Edit */}
-                <div className="flex items-center gap-2 flex-1">
-                  <p className="text-sm font-semibold max-w-[160px] truncate">{selectedAgent.name}</p>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate">{selectedAgent.name}</p>
                   {/* Execution status dot */}
                   {(() => {
                     const status = selectedExecution?.status
@@ -166,27 +166,23 @@ export function Agent() {
                     if (hasError) return <div className="h-2 w-2 bg-red-500" />
                     return null
                   })()}
-                  {/* Edit */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEditAgent(selectedAgent)}
-                    className="hover:cursor-pointer"
-                    disabled={!isAuthenticated || selectedAgent.isPublic}
-                    title={
-                      !isAuthenticated
-                        ? "Login required to edit agents"
-                        : selectedAgent.isPublic
-                          ? "Public agents cannot be edited"
-                          : "Edit agent"
-                    }
-                  >
-                    <Pencil className="h-3 w-3 text-muted-foreground" />
-                  </Button>
+                  {/* Edit - only show for non-public agents */}
+                  {!selectedAgent.isPublic && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditAgent(selectedAgent)}
+                      className="hover:cursor-pointer"
+                      disabled={!isAuthenticated}
+                      title={!isAuthenticated ? "Login required to edit agents" : "Edit agent"}
+                    >
+                      <Pencil className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  )}
                 </div>
 
                 {/* Right section - Run/Stop button */}
-                <div className="flex items-center justify-end flex-1">
+                <div className="flex items-center justify-end flex-shrink-0 ml-4">
                   {(() => {
                     const status = selectedExecution?.status
                     const isRunning = status === "running"

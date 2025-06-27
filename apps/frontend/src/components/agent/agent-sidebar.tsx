@@ -221,7 +221,7 @@ export const AgentSidebar = memo(function AgentSidebar({
             <AccordionItem value="running">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Running</span>
+                  <span className="text-sm">Running</span>
                   <span className="text-xs text-muted-foreground">({filteredRunningAgents.length})</span>
                 </div>
               </AccordionTrigger>
@@ -260,7 +260,7 @@ export const AgentSidebar = memo(function AgentSidebar({
             <AccordionItem value="public">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Public Agents</span>
+                  <span className="text-sm">Public Agents</span>
                   <span className="text-xs text-muted-foreground">({filteredPublicAgents.length})</span>
                 </div>
               </AccordionTrigger>
@@ -299,7 +299,7 @@ export const AgentSidebar = memo(function AgentSidebar({
             <AccordionItem value="user" className="">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10 border-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">My Agents</span>
+                  <span className="text-sm">My Agents</span>
                   {isAuthenticated && (
                     <span className="text-xs text-muted-foreground">({filteredUserAgents.length})</span>
                   )}
