@@ -16,17 +16,17 @@ export function ToolsPopover({ tools }: ToolsPopoverProps) {
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          variant="secondary"
+          variant="outline"
           size="icon"
-          className="bg-secondary/80 hover:bg-secondary/90 border hover:cursor-pointer"
+          className="size-8 hover:cursor-pointer"
           title={`Tools (${toolNames.length})`}
         >
-          <Wrench className="h-4 w-4" />
+          <Wrench className="h-2.5 w-2.5 text-foreground/90" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-4" align="start">
         <div className="space-y-2">
-          <h4 className="font-medium">Available Tools ({toolNames.length})</h4>
+          <h4 className="font-medium text-sm">Available Tools ({toolNames.length})</h4>
           <div className="flex max-w-[250px] flex-wrap gap-2">
             {toolNames.map((toolName) => (
               <div key={toolName} className="bg-secondary/40 text-foreground rounded-md px-2 py-1 text-xs">

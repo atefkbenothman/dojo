@@ -122,8 +122,8 @@ export function MCPServerSettings({
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-3xl">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="p-4">
-            <Card>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="min-w-md">
+            <Card className="border-0 bg-transparent shadow-none">
               <CardHeader>
                 <CardTitle className="text-base">Server Configuration</CardTitle>
                 <CardDescription>Configure your MCP server settings</CardDescription>
@@ -160,8 +160,6 @@ export function MCPServerSettings({
                             rows={3}
                           />
                         </FormControl>
-                        <FormDescription>Optional description of the server's capabilities</FormDescription>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -169,39 +167,6 @@ export function MCPServerSettings({
 
                 {/* Connection Configuration Section */}
                 <div className="space-y-4 border-t pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-sm font-medium">Connection Configuration</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {form.watch("transportType") === "stdio" ? "Local command settings" : "Remote server settings"}
-                      </p>
-                    </div>
-                    {/* Connection status indicator */}
-                    <div className="flex items-center gap-2">
-                      {isConnected ? (
-                        <>
-                          <div className="h-2 w-2 rounded-full bg-green-500" />
-                          <span className="text-sm text-green-700 dark:text-green-400">Connected</span>
-                        </>
-                      ) : connectionStatus?.status === "connecting" ? (
-                        <>
-                          <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                          <span className="text-sm text-yellow-700 dark:text-yellow-400">Connecting</span>
-                        </>
-                      ) : connectionStatus?.status === "error" || connectionStatus?.isStale ? (
-                        <>
-                          <div className="h-2 w-2 rounded-full bg-red-500" />
-                          <span className="text-sm text-red-700 dark:text-red-400">Error</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="h-2 w-2 rounded-full bg-gray-300" />
-                          <span className="text-sm text-muted-foreground">Disconnected</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
                   <FormField
                     control={form.control}
                     name="transportType"
@@ -219,9 +184,9 @@ export function MCPServerSettings({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="stdio">Local (STDIO)</SelectItem>
-                            <SelectItem value="http">Remote (HTTP)</SelectItem>
-                            <SelectItem value="sse">Remote (SSE)</SelectItem>
+                            <SelectItem value="stdio">STDIO</SelectItem>
+                            <SelectItem value="http">HTTP</SelectItem>
+                            <SelectItem value="sse">SSE</SelectItem>
                           </SelectContent>
                         </Select>
                         {isConnected && <FormDescription>Disconnect to change transport type</FormDescription>}
@@ -267,8 +232,6 @@ export function MCPServerSettings({
                                 placeholder="Comma separated, e.g: -m, server, --port, 3000"
                               />
                             </FormControl>
-                            <FormDescription>Command line arguments</FormDescription>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -297,17 +260,21 @@ export function MCPServerSettings({
                     <p className="text-sm text-muted-foreground">Variables passed to the command</p>
                     {envVarsField.fields.length === 0 ? (
                       <div className="text-center py-4">
-                        <p className="text-sm text-muted-foreground mb-2">No environment variables configured</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => envVarsField.append({ key: "", value: "" })}
-                          disabled={!isAuthenticated}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Variable
-                        </Button>
+                        {!server.isPublic && (
+                          <>
+                            <p className="text-sm text-muted-foreground mb-2">No environment variables configured</p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => envVarsField.append({ key: "", value: "" })}
+                              disabled={!isAuthenticated}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Variable
+                            </Button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <>
@@ -332,12 +299,7 @@ export function MCPServerSettings({
                                 render={({ field }) => (
                                   <FormItem className="flex-1">
                                     <FormControl>
-                                      <Input
-                                        {...field}
-                                        type="password"
-                                        placeholder="Value"
-                                        disabled={!isAuthenticated}
-                                      />
+                                      <Input {...field} type="text" placeholder="Value" disabled={!isAuthenticated} />
                                     </FormControl>
                                     <FormMessage />
                                   </FormItem>
@@ -355,16 +317,18 @@ export function MCPServerSettings({
                             </div>
                           ))}
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => envVarsField.append({ key: "", value: "" })}
-                          disabled={!isAuthenticated}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Variable
-                        </Button>
+                        {!server.isPublic && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => envVarsField.append({ key: "", value: "" })}
+                            disabled={!isAuthenticated}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Variable
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>
@@ -411,12 +375,7 @@ export function MCPServerSettings({
                                 render={({ field }) => (
                                   <FormItem className="flex-1">
                                     <FormControl>
-                                      <Input
-                                        {...field}
-                                        type="password"
-                                        placeholder="Value"
-                                        disabled={!isAuthenticated}
-                                      />
+                                      <Input {...field} type="text" placeholder="Value" disabled={!isAuthenticated} />
                                     </FormControl>
                                     <FormMessage />
                                   </FormItem>
@@ -449,53 +408,38 @@ export function MCPServerSettings({
                   </div>
                 )}
 
-                {/* Show tools count and error */}
-                {(isConnected && activeConnection) || connectionStatus?.error ? (
-                  <div className="space-y-2 border-t pt-6">
-                    {isConnected && activeConnection && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Available Tools</span>
-                        <span className="text-sm text-muted-foreground">
-                          {Object.keys(activeConnection.tools || {}).length} tools
-                        </span>
-                      </div>
-                    )}
-                    {connectionStatus?.error && (
-                      <p className="text-xs text-red-600 dark:text-red-400">{connectionStatus.error}</p>
-                    )}
-                  </div>
-                ) : null}
-
                 {/* Actions */}
-                <div className="flex items-center justify-between border-t pt-6">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={!isAuthenticated}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Server
-                  </Button>
-
-                  <div className="flex gap-2">
+                {!server.isPublic && (
+                  <div className="flex items-center justify-between border-t pt-6">
                     <Button
                       type="button"
-                      variant="outline"
-                      onClick={() => form.reset()}
-                      disabled={!isDirty || !isAuthenticated}
+                      variant="destructive"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={!isAuthenticated}
                     >
-                      Reset
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Server
                     </Button>
-                    <Button
-                      type="submit"
-                      disabled={!isDirty || !isAuthenticated || isSaving}
-                      className={cn(isDirty && "bg-green-700 hover:bg-green-800 text-white border-green-500")}
-                    >
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => form.reset()}
+                        disabled={!isDirty || !isAuthenticated}
+                      >
+                        Reset
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={!isDirty || !isAuthenticated || isSaving}
+                        className={cn(isDirty && "bg-green-700 hover:bg-green-800 text-white border-green-500")}
+                      >
+                        {isSaving ? "Saving..." : "Save Changes"}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </form>

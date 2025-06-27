@@ -104,7 +104,7 @@ export function AgentServerCard({
         <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
           {/* Title with status */}
           <div className="min-w-0 flex-1 flex items-center gap-2">
-            <p className={cn("text-xs font-medium truncate text-primary/70", isSelected && "text-primary")}>
+            <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
               {agent.name}
             </p>
             {isRunning && status === "running" && <div className="h-2 w-2 bg-green-500 shrink-0" />}
@@ -121,19 +121,11 @@ export function AgentServerCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem 
-                  onClick={handleEditClick} 
-                  className="cursor-pointer"
-                  disabled={!canEdit}
-                >
+                <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer" disabled={!canEdit}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={handleCloneClick} 
-                  className="cursor-pointer"
-                  disabled={!isAuthenticated}
-                >
+                <DropdownMenuItem onClick={handleCloneClick} className="cursor-pointer" disabled={!isAuthenticated}>
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
@@ -156,9 +148,9 @@ export function AgentServerCard({
               disabled={(!isAuthenticated && !agent.isPublic) || isRunning}
               className="size-8 hover:cursor-pointer"
               title={
-                isRunning 
-                  ? "Agent is running" 
-                  : (!isAuthenticated && !agent.isPublic)
+                isRunning
+                  ? "Agent is running"
+                  : !isAuthenticated && !agent.isPublic
                     ? "Login required to run private agents"
                     : "Run agent"
               }

@@ -1,6 +1,7 @@
 "use client"
 
 import { MCP_SERVER_ICONS } from "@/components/icons"
+import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -44,7 +45,7 @@ export function MCPServerCard({
   const isConnecting = status?.status === "connecting"
   const hasError = status?.status === "error" || status?.isStale
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  
+
   // Determine if user can edit/delete this server
   const canEdit = isAuthenticated && !server.isPublic
   const canDelete = isAuthenticated && !server.isPublic
@@ -118,7 +119,7 @@ export function MCPServerCard({
                 <Icon />
               </div>
             )}
-            <p className={cn("text-xs font-medium truncate text-primary/70", isSelected && "text-primary")}>
+            <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
               {server.name}
             </p>
             {isConnected && <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />}
@@ -127,6 +128,8 @@ export function MCPServerCard({
           </div>
           {/* Right Side */}
           <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
+            {/* Tools Popover - show when connected */}
+            {isConnected && connection?.tools && <ToolsPopover tools={connection.tools} />}
             {/* Settings */}
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
@@ -135,19 +138,11 @@ export function MCPServerCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem 
-                  onClick={handleEditClick} 
-                  className="cursor-pointer"
-                  disabled={!canEdit}
-                >
+                <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer" disabled={!canEdit}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={handleCloneClick} 
-                  className="cursor-pointer"
-                  disabled={!isAuthenticated}
-                >
+                <DropdownMenuItem onClick={handleCloneClick} className="cursor-pointer" disabled={!isAuthenticated}>
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
@@ -179,15 +174,15 @@ export function MCPServerCard({
                 size="icon"
                 onClick={handleConnectionToggle}
                 disabled={
-                  (!isAuthenticated && server.requiresUserKey) || 
-                  isConnecting || 
+                  (!isAuthenticated && server.requiresUserKey) ||
+                  isConnecting ||
                   (server.localOnly && process.env.NODE_ENV === "production")
                 }
                 className="size-8 hover:cursor-pointer"
                 title={
-                  isConnected 
-                    ? "Disconnect" 
-                    : (!isAuthenticated && server.requiresUserKey)
+                  isConnected
+                    ? "Disconnect"
+                    : !isAuthenticated && server.requiresUserKey
                       ? "Login required to use servers with API keys"
                       : "Connect"
                 }

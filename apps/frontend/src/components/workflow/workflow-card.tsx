@@ -70,7 +70,7 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
 }: WorkflowCardHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const isRunning = execution?.status === "preparing" || execution?.status === "running"
-  
+
   // Determine if user can edit/delete this workflow
   const canEdit = isAuthenticated && !workflow.isPublic
   const canDelete = isAuthenticated && !workflow.isPublic
@@ -124,7 +124,7 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
     <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
       {/* Title */}
       <div className="min-w-0 flex-1 flex items-center gap-2">
-        <p className={cn("text-xs font-medium truncate text-primary/70", isSelected && "text-primary")}>
+        <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
           {workflow.name}
         </p>
         {execution && getStatusIcon(execution)}
@@ -145,25 +145,17 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuItem 
-              onClick={handleEdit} 
-              className="cursor-pointer"
-              disabled={!canEdit}
-            >
+            <DropdownMenuItem onClick={handleEdit} className="cursor-pointer" disabled={!canEdit}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={handleClone} 
-              className="cursor-pointer"
-              disabled={!isAuthenticated}
-            >
+            <DropdownMenuItem onClick={handleClone} className="cursor-pointer" disabled={!isAuthenticated}>
               <Copy className="mr-2 h-4 w-4" />
               Clone
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={handleDelete} 
+            <DropdownMenuItem
+              onClick={handleDelete}
               className="cursor-pointer text-destructive focus:text-destructive"
               disabled={!canDelete}
             >

@@ -163,14 +163,16 @@ export function Mcp() {
                     return null
                   })()}
                   {/* Edit */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEditServer(selectedServer)}
-                    className="hover:cursor-pointer"
-                  >
-                    <Pencil className="h-3 w-3 text-muted-foreground" />
-                  </Button>
+                  {!selectedServer.isPublic && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditServer(selectedServer)}
+                      className="hover:cursor-pointer"
+                    >
+                      <Pencil className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  )}
                 </div>
 
                 {/* Right section - Connect/Disconnect or Clone button */}
