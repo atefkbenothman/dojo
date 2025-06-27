@@ -15,10 +15,9 @@ import { useCallback } from "react"
 interface MainPanelHeaderProps {
   onChatPanelToggle: () => void
   isCollapsed: boolean
-  className?: string
 }
 
-export function MainPanelHeader({ onChatPanelToggle, className }: MainPanelHeaderProps) {
+export function MainPanelHeader({ onChatPanelToggle }: MainPanelHeaderProps) {
   const { play } = useSoundEffectContext()
   const { isMobile } = useLayout()
 
@@ -27,7 +26,7 @@ export function MainPanelHeader({ onChatPanelToggle, className }: MainPanelHeade
   }, [play])
 
   return (
-    <div className={cn("bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px] pr-2", className)}>
+    <div className="bg-card flex h-[42px] flex-shrink-0 items-center border-b-[1.5px] pr-2">
       <div className="flex items-center flex-1 pr-4">
         {/* Logo - only show on mobile, with same styling as sidenav */}
         {isMobile && (

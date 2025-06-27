@@ -33,11 +33,7 @@ const navigationItems = [
   },
 ] as const
 
-interface SideNavProps {
-  className?: string
-}
-
-export function SideNav({ className }: SideNavProps = {}) {
+export function SideNav() {
   const pathname = usePathname()
   const { play } = useSoundEffectContext()
   const { isMobile } = useLayout()
@@ -55,8 +51,7 @@ export function SideNav({ className }: SideNavProps = {}) {
         // Desktop: Vertical sidebar
         !isMobile && "w-[42px] h-full flex-col border-r-[1.5px] hidden md:flex",
         // Mobile: Horizontal bar
-        isMobile && "w-full h-[42px] flex-row border-b-[1.5px] md:hidden flex items-center",
-        className
+        isMobile && "w-full h-[42px] flex-row border-b-[1.5px] md:hidden flex items-center"
       )}
     >
       {/* Logo/Brand - Desktop only */}

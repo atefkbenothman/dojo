@@ -315,7 +315,7 @@ export const Workflow = memo(function Workflow() {
           {/* Header */}
           <div
             className={cn(
-              "border-b-[1.5px] flex-shrink-0 flex items-center h-16",
+              "border-b-[1.5px] flex-shrink-0 flex items-center h-[42px]",
               isSidebarCollapsed ? "justify-center" : "justify-between p-4",
             )}
           >
@@ -357,7 +357,7 @@ export const Workflow = memo(function Workflow() {
             {selectedWorkflow ? (
               <>
                 {/* Header */}
-                <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-16">
+                <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between w-full bg-card h-[42px]">
                   {/* Left section - Name and Edit */}
                   <div className="flex items-center gap-2 flex-1">
                     <p className="text-sm font-semibold max-w-[160px] truncate">{selectedWorkflow?.name}</p>
