@@ -93,8 +93,8 @@ function ReasoningMessage({ content }: { content: string }) {
 
   return (
     <MessageAccordion variant="reasoning" icon={<Lightbulb className="h-4 w-4" />} title="Reasoning" defaultOpen={true}>
-      <div className="relative max-h-[200px] overflow-y-auto rounded-sm">
-        <pre ref={contentRef} className={cn(preClassName, "max-h-[200px] overflow-y-auto")}>
+      <div className="relative max-h-[100px] overflow-y-auto rounded-sm">
+        <pre ref={contentRef} className={cn(preClassName, "max-h-[100px] overflow-y-auto")}>
           {content.trim()}
         </pre>
       </div>
