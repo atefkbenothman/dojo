@@ -13,7 +13,7 @@ import { Pencil, Play, Square, PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Agent() {
-  const { agents, runAgent, stopAllAgents, getRunningExecutions, getAgentExecution, clone, remove } = useAgent()
+  const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove } = useAgent()
   const { isAuthenticated } = useConvexAuth()
   const { models } = useAIModels()
 
@@ -25,7 +25,6 @@ export function Agent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Get all executions for the sidebar
-  const runningExecutions = getRunningExecutions()
   const executions = useMemo(() => {
     return agents
       .map((agent) => {

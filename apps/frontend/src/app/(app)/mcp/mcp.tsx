@@ -15,7 +15,7 @@ import { useState, useCallback, useMemo } from "react"
 
 export function Mcp() {
   const { isAuthenticated } = useConvexAuth()
-  const { mcpServers, activeConnections, getConnection, connect, disconnect, create, edit, remove, clone } = useMCP()
+  const { mcpServers, activeConnections, getConnection, connect, disconnect, remove, clone } = useMCP()
 
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null)
   const [editingServer, setEditingServer] = useState<MCPServer | null>(null)

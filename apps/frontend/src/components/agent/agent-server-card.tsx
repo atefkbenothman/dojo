@@ -12,7 +12,7 @@ import {
 import { useAIModels } from "@/hooks/use-ai-models"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
-import { Settings, Play, Pencil, Trash, Cpu, Copy } from "lucide-react"
+import { Settings, Play, Pencil, Trash, Copy } from "lucide-react"
 import { useState, useMemo } from "react"
 
 interface AgentExecution {

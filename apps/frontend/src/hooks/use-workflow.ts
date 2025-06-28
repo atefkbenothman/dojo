@@ -361,7 +361,7 @@ export function useWorkflow(selectedWorkflow?: Workflow | null) {
 
       return recentExecution || null
     },
-    [workflowExecutions, preparingWorkflows, workflows, currentSession],
+    [workflowExecutions, preparingWorkflows, currentSession],
   )
 
   // Helper function to get all running executions

@@ -65,12 +65,9 @@ export function MCPServerSettings({
 
   const { isDirty } = form.formState
 
-  // Field arrays for dynamic inputs
-  const envVarsField =
-    server.transportType === "stdio" ? useFieldArray({ control: form.control, name: "envVars" as never }) : null
-
-  const headersField =
-    server.transportType !== "stdio" ? useFieldArray({ control: form.control, name: "headers" as never }) : null
+  // Field arrays for dynamic inputs - always call hooks unconditionally
+  const envVarsField = useFieldArray({ control: form.control, name: "envVars" as never })
+  const headersField = useFieldArray({ control: form.control, name: "headers" as never })
 
   // Reset form when server changes
   useEffect(() => {
@@ -443,7 +440,7 @@ export function MCPServerSettings({
               <CardHeader>
                 <CardTitle>Delete Server</CardTitle>
                 <CardDescription>
-                  Are you sure you want to delete "{server.name}"? This action cannot be undone.
+                  Are you sure you want to delete &quot;{server.name}&quot;? This action cannot be undone.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex justify-end gap-2">
@@ -474,7 +471,7 @@ function getDefaultValues(server: MCPServer): FormData {
     const envVars =
       server.config.requiresEnv?.map((key) => ({
         key,
-        value: (server.config as any).env?.[key] || "",
+        value: (server.config as { env?: Record<string, string> }).env?.[key] || "",
       })) || []
 
     return {
