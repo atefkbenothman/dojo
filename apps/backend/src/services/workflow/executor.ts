@@ -17,16 +17,24 @@ interface WorkflowExecutorOptions {
   abortSignal?: AbortSignal
 }
 
-interface CompletedStep {
+interface CompletedNode {
   instructions: string
   output?: string
-  stepIndex: number
+  nodeId: string
   agentName: string
+  success: boolean
+}
+
+interface NodeExecutionContext {
+  nodeId: string
+  tools: ToolSet
+  conversationHistory: CoreMessage[]
+  parentChain: string[]
 }
 
 interface WorkflowExecutionResult {
   success: boolean
-  completedSteps: CompletedStep[]
+  completedNodes: CompletedNode[]
   error?: string
 }
 
@@ -38,17 +46,15 @@ export class WorkflowExecutor {
     Connection: "keep-alive",
   } as const
 
-  // Instance properties
-  private completedSteps: CompletedStep[] = []
-  private conversationHistory: CoreMessage[] = []
-  private lastStepOutput?: string
-  private currentStepIndex?: number
+  // Instance properties (read-only state only)
   private hasError: boolean = false
+  private workflowNodes: Doc<"workflowNodes">[] = []
+  private nodeMap: Map<string, Doc<"workflowNodes">> = new Map()
+  private initialMessages: CoreMessage[] = []
 
   constructor(
     private workflow: Doc<"workflows">,
-    private steps: Doc<"agents">[],
-    private tools: ToolSet,
+    private nodes: Doc<"workflowNodes">[],
     private res: Response,
     private options: WorkflowExecutorOptions = {},
   ) {
@@ -56,6 +62,9 @@ export class WorkflowExecutor {
       persistExecution: false,
       ...options,
     }
+
+    this.workflowNodes = nodes
+    this.buildNodeMap()
 
     // Listen for abort signal to handle cleanup
     if (this.options.abortSignal) {
@@ -65,8 +74,63 @@ export class WorkflowExecutor {
     }
   }
 
+  private buildNodeMap(): void {
+    this.nodeMap.clear()
+    for (const node of this.workflowNodes) {
+      this.nodeMap.set(node.nodeId, node)
+    }
+  }
+
+  private getParentChain(node: Doc<"workflowNodes">): string[] {
+    const chain: string[] = []
+    let current = node.parentNodeId
+    
+    while (current) {
+      chain.unshift(current) // Add to front for correct order
+      const parentNode = this.nodeMap.get(current)
+      current = parentNode?.parentNodeId
+    }
+    
+    return chain
+  }
+
+  private buildBranchHistory(node: Doc<"workflowNodes">, completedNodes: Map<string, CompletedNode>): CoreMessage[] {
+    const history = [...this.initialMessages]
+    const ancestorChain = this.getAncestorChain(node)
+    
+    // Add ALL ancestor outputs in order (full branch history)
+    for (const ancestorId of ancestorChain) {
+      const ancestorResult = completedNodes.get(ancestorId)
+      if (ancestorResult && ancestorResult.output) {
+        history.push({
+          role: "assistant",
+          content: `[${ancestorResult.agentName}]: ${ancestorResult.output}`,
+        })
+      }
+    }
+    
+    return history
+  }
+
+  private getAncestorChain(node: Doc<"workflowNodes">): string[] {
+    const chain: string[] = []
+    let current = node.parentNodeId
+    
+    // Build the full chain from root to immediate parent
+    while (current) {
+      chain.unshift(current) // Add to front for correct order (root first)
+      const parentNode = this.nodeMap.get(current)
+      current = parentNode?.parentNodeId
+    }
+    
+    return chain
+  }
+
   async execute(initialMessages: CoreMessage[]): Promise<WorkflowExecutionResult> {
     try {
+      // Store initial messages for context building
+      this.initialMessages = initialMessages
+
       // Set streaming headers once at the start
       Object.entries(WorkflowExecutor.HEADERS).forEach(([key, value]) => {
         this.res.setHeader(key, value)
@@ -79,14 +143,7 @@ export class WorkflowExecutor {
           ? workflowPromptMessage.content
           : JSON.stringify(workflowPromptMessage?.content) || ""
 
-      this.log(`Starting workflow execution with ${this.steps.length} steps`)
-
-      // Note: MCP connections are now established per-step as needed
-      // Initialize tools from any existing connections
-      if (this.options.sessionId) {
-        this.tools = mcpConnectionManager.aggregateTools(this.options.sessionId)
-        this.log(`Starting with ${Object.keys(this.tools).length} existing tools`)
-      }
+      this.log(`Starting workflow execution with ${this.workflowNodes.length} nodes`)
 
       // Start directly in running status (no global connecting phase)
       if (this.options.executionId) {
@@ -96,48 +153,25 @@ export class WorkflowExecutor {
         })
       }
 
-      // Execute each step sequentially
-      for (let i = 0; i < this.steps.length; i++) {
-        // Check for cancellation before each step (graceful cancellation)
-        if (this.options.abortSignal?.aborted) {
-          this.log(`Workflow cancelled before step ${i + 1}`)
-
-          // Update status to cancelled
-          if (this.options.executionId) {
-            await convex.mutation(api.workflowExecutions.updateStatus, {
-              executionId: this.options.executionId,
-              status: "cancelled",
-              error: `Workflow cancelled after completing ${i} steps`,
-            })
-          }
-
-          return {
-            success: false,
-            completedSteps: this.completedSteps,
-            error: `Workflow cancelled after completing ${i} steps`,
-          }
+      // Find root nodes (nodes with no parent)
+      const rootNodes = this.workflowNodes.filter((n) => !n.parentNodeId)
+      if (rootNodes.length === 0) {
+        this.log("Workflow is empty - no nodes to execute")
+        
+        // End the response gracefully
+        if (!this.res.writableEnded) {
+          this.res.end()
         }
-
-        const step = this.steps[i]
-        if (!step) continue
-
-        this.log(`Executing step ${i + 1}: ${step.name || "Unnamed"}`)
-
-        try {
-          // console.log("MESSAGES", initialMessages)
-          await this.executeStep(step, i, workflowPrompt)
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error)
-          this.log(`Step ${i + 1} failed:`, errorMessage)
-
-          // Stop on first error
-          return {
-            success: false,
-            completedSteps: this.completedSteps,
-            error: `Step ${i + 1} failed: ${errorMessage}`,
-          }
+        
+        return {
+          success: false,
+          completedNodes: [],
+          error: "Workflow is empty. Please add your first step to begin.",
         }
       }
+
+      // Execute tree using event-driven execution starting from all root nodes
+      const completedNodes = await this.executeEventDriven(rootNodes, workflowPrompt)
 
       // All steps completed successfully
       if (!this.res.writableEnded) {
@@ -147,7 +181,7 @@ export class WorkflowExecutor {
       this.log("Workflow execution completed successfully")
       return {
         success: true,
-        completedSteps: this.completedSteps,
+        completedNodes: completedNodes,
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -161,7 +195,7 @@ export class WorkflowExecutor {
 
       return {
         success: false,
-        completedSteps: this.completedSteps,
+        completedNodes: [], // No completed nodes in error case
         error: errorMessage,
       }
     } finally {
@@ -172,59 +206,283 @@ export class WorkflowExecutor {
     }
   }
 
-  private async executeStep(step: Doc<"agents">, stepIndex: number, workflowPrompt: string): Promise<void> {
-    // Track current step
-    this.currentStepIndex = stepIndex
+  private async executeEventDriven(rootNodes: Doc<"workflowNodes">[], workflowPrompt: string): Promise<CompletedNode[]> {
+    const completedNodes = new Map<string, CompletedNode>()
+    const allCompletedNodes: CompletedNode[] = []
+    const failedBranches = new Set<string>() // Track failed branch root nodes
+    
+    // Use a simple breadth-first approach with proper async/await
+    // This is simpler and more reliable than trying to do event-driven with .then/.catch
+    const queue: Doc<"workflowNodes">[] = [...rootNodes]
+    const inProgress = new Set<string>()
+    
+    this.log(`Starting workflow execution with ${queue.length} root nodes`)
+    
+    while (queue.length > 0 || inProgress.size > 0) {
+      // Start all nodes that are ready to run
+      const readyNodes: Doc<"workflowNodes">[] = []
+      for (let i = queue.length - 1; i >= 0; i--) {
+        const node = queue[i]
+        if (!node) continue
+        
+        // Check if this node's dependencies are met
+        if (this.canNodeRun(node, completedNodes, failedBranches, inProgress)) {
+          readyNodes.push(node)
+          queue.splice(i, 1) // Remove from queue
+        }
+      }
+      
+      // Execute all ready nodes in parallel
+      if (readyNodes.length > 0) {
+        this.log(`Executing ${readyNodes.length} nodes in parallel: ${readyNodes.map(n => n.nodeId).join(', ')}`)
+        
+        const nodePromises = readyNodes.map(async (node) => {
+          if (node.type === "step") {
+            inProgress.add(node.nodeId)
+            try {
+              const result = await this.executeNodeEventDriven(node, completedNodes, failedBranches, workflowPrompt)
+              completedNodes.set(result.nodeId, result)
+              allCompletedNodes.push(result)
+              
+              if (result.success) {
+                // Add children to queue
+                const children = await this.getChildNodes(node.nodeId)
+                queue.push(...children)
+                this.log(`Node ${node.nodeId} completed, added ${children.length} children to queue`)
+              } else {
+                // Mark branch as failed
+                const branchRoot = this.getBranchRoot(node)
+                failedBranches.add(branchRoot)
+                this.log(`Node ${node.nodeId} failed, marked branch ${branchRoot} as failed`)
+              }
+            } catch (error) {
+              this.log(`Node ${node.nodeId} failed with error:`, error)
+              const branchRoot = this.getBranchRoot(node)
+              failedBranches.add(branchRoot)
+              await this.markBranchAsSkipped(node.nodeId, `Node failed: ${error instanceof Error ? error.message : String(error)}`)
+            } finally {
+              inProgress.delete(node.nodeId)
+            }
+          } else if (node.type === "parallel") {
+            // Parallel nodes just add their children immediately
+            const children = await this.getChildNodes(node.nodeId)
+            queue.push(...children)
+            this.log(`Parallel node ${node.nodeId} processed, added ${children.length} children to queue`)
+          }
+        })
+        
+        // Wait for this batch to complete
+        await Promise.all(nodePromises)
+      } else if (inProgress.size === 0) {
+        // No nodes ready and none in progress - we're done or stuck
+        if (queue.length > 0) {
+          this.log(`WARNING: ${queue.length} nodes remain in queue but cannot run:`, queue.map(n => n.nodeId))
+        }
+        break
+      } else {
+        // Nodes in progress, wait a bit
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+    }
+    
+    this.log(`Workflow execution completed. ${allCompletedNodes.length} nodes executed successfully`)
+    return allCompletedNodes
+  }
+
+  private async getChildNodes(nodeId: string): Promise<Doc<"workflowNodes">[]> {
+    return this.workflowNodes.filter((n) => n.parentNodeId === nodeId).sort((a, b) => (a.order || 0) - (b.order || 0)) // Respect order for deterministic execution
+  }
+
+  private canNodeRun(
+    node: Doc<"workflowNodes">,
+    completedNodes: Map<string, CompletedNode>,
+    failedBranches: Set<string>,
+    inProgress: Set<string>
+  ): boolean {
+    // Don't run if already in progress
+    if (inProgress.has(node.nodeId)) {
+      return false
+    }
+
+    // Check if this node's branch has failed
+    const branchRoot = this.getBranchRoot(node)
+    if (failedBranches.has(branchRoot)) {
+      return false
+    }
+
+    // If this node has no parent, it can run (root node)
+    if (!node.parentNodeId) {
+      return true
+    }
+
+    // Check if parent has completed successfully
+    const parentCompleted = completedNodes.get(node.parentNodeId)
+    return parentCompleted !== undefined && parentCompleted.success
+  }
+
+
+  private async executeNodeEventDriven(
+    node: Doc<"workflowNodes">,
+    completedNodes: Map<string, CompletedNode>,
+    failedBranches: Set<string>,
+    workflowPrompt: string
+  ): Promise<CompletedNode> {
+    // Check if this node's branch has already failed
+    const branchRoot = this.getBranchRoot(node)
+    if (failedBranches.has(branchRoot)) {
+      throw new Error(`Branch starting from ${branchRoot} has failed`)
+    }
+
+    // Get shared tools for this session
+    const tools = this.options.sessionId ? mcpConnectionManager.aggregateTools(this.options.sessionId) : {}
+    
+    // Build branch-scoped context
+    const context: NodeExecutionContext = {
+      nodeId: node.nodeId,
+      tools: tools,
+      conversationHistory: this.buildBranchHistory(node, completedNodes),
+      parentChain: this.getParentChain(node),
+    }
+
+    return await this.executeNodeWithContext(node, context, workflowPrompt)
+  }
+
+
+  private getBranchRoot(node: Doc<"workflowNodes">): string {
+    let current = node
+    while (current.parentNodeId) {
+      const parent = this.nodeMap.get(current.parentNodeId)
+      if (!parent) break
+      current = parent
+    }
+    return current.nodeId
+  }
+
+  private async markBranchAsSkipped(nodeId: string, reason: string): Promise<void> {
+    const descendants = this.getAllDescendants(nodeId)
+    
+    for (const descendant of descendants) {
+      if (this.options.executionId && descendant.agentId) {
+        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+          executionId: this.options.executionId,
+          nodeId: descendant.nodeId,
+          agentId: descendant.agentId,
+          status: "cancelled",
+          error: reason,
+        })
+      }
+    }
+  }
+
+  private getAllDescendants(nodeId: string): Doc<"workflowNodes">[] {
+    const descendants: Doc<"workflowNodes">[] = []
+    const queue = [nodeId]
+    
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      const children = this.workflowNodes.filter(n => n.parentNodeId === currentId)
+      
+      for (const child of children) {
+        descendants.push(child)
+        queue.push(child.nodeId)
+      }
+    }
+    
+    return descendants
+  }
+
+  private async executeNodeWithContext(
+    node: Doc<"workflowNodes">, 
+    context: NodeExecutionContext,
+    workflowPrompt: string
+  ): Promise<CompletedNode> {
+    this.log(`Executing step node: ${node.nodeId}`)
+
+    // Handle structural step nodes (no agent) - just pass through
+    if (!node.agentId) {
+      this.log(`Step node ${node.nodeId} has no agent - treating as structural node`)
+      return {
+        nodeId: node.nodeId,
+        agentName: `Structural Node ${node.nodeId}`,
+        instructions: "",
+        output: "",
+        success: true,
+      }
+    }
 
     try {
-      // First, establish required MCP connections for this step
-      this.tools = await this.establishStepConnections(step, stepIndex)
+      // Get the agent for this node
+      const agent = await convex.query(api.agents.get, { id: node.agentId })
+      if (!agent) {
+        throw new Error(`Agent ${node.agentId} not found`)
+      }
 
-      // Update step status to running (after connections are established)
+      // Validate agent has required model
+      if (!agent.aiModelId) {
+        throw new Error(`Agent ${agent.name || node.agentId} has no AI model configured`)
+      }
+
+      // Update execution tracking
       if (this.options.executionId) {
-        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
-          stepIndex,
-          agentId: step._id,
+          nodeId: node.nodeId,
+          agentId: node.agentId,
           status: "running",
         })
       }
-      // Get the AI model for this specific agent
-      const aiModel = await this.getAgentModel(step)
 
-      // Build messages for this step with full conversation history
-      const messages = this.buildMessagesWithHistory(workflowPrompt, step, stepIndex)
+      // Get AI model and execute
+      const aiModel = await this.getAgentModel(agent)
+      const messages = this.buildMessagesWithContext(workflowPrompt, agent, context)
 
-      // Execute based on output type
-      if (step.outputType === "text") {
-        await this.executeTextStep(step, stepIndex, messages, aiModel)
-      } else if (step.outputType === "object") {
-        await this.executeObjectStep(step, stepIndex, messages, aiModel)
+      let stepOutput: string = ""
+      if (agent.outputType === "text") {
+        stepOutput = await this.executeTextStep(agent, node, messages, aiModel, context)
       } else {
-        throw new Error("Unknown output type")
+        stepOutput = await this.executeObjectStep(agent, node, messages, aiModel, context)
       }
 
-      // Clear current step index after successful completion
-      this.currentStepIndex = undefined
+      // Mark as completed
+      if (this.options.executionId) {
+        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+          executionId: this.options.executionId,
+          nodeId: node.nodeId,
+          agentId: node.agentId,
+          status: "completed",
+          output: stepOutput,
+        })
+      }
+
+      return {
+        nodeId: node.nodeId,
+        agentName: agent.name || `Agent ${node.nodeId}`,
+        instructions: agent.systemPrompt,
+        output: stepOutput,
+        success: true,
+      }
     } catch (error) {
       // Set error flag to prevent abort handler from marking as cancelled
       this.hasError = true
 
-      // Update step status on error
+      // Mark as failed
       if (this.options.executionId) {
-        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
-          stepIndex,
-          agentId: step._id,
+          nodeId: node.nodeId,
+          agentId: node.agentId,
           status: "failed",
           error: error instanceof Error ? error.message : String(error),
         })
       }
 
-      // Clear current step index
-      this.currentStepIndex = undefined
-
-      throw error // Re-throw to maintain existing error handling
+      return {
+        nodeId: node.nodeId,
+        agentName: node.agentId ? `Agent ${node.nodeId}` : `Structural Node ${node.nodeId}`,
+        instructions: "",
+        output: "",
+        success: false,
+      }
     }
   }
 
@@ -245,68 +503,81 @@ export class WorkflowExecutor {
     return modelInstance as LanguageModel
   }
 
+  private buildMessagesWithContext(workflowPrompt: string, agent: Doc<"agents">, context: NodeExecutionContext): CoreMessage[] {
+    const messages: CoreMessage[] = []
+
+    // Add system message with workflow instructions and agent prompt
+    messages.push({
+      role: "system",
+      content: `${this.workflow.instructions}\n\n${agent.systemPrompt}`,
+    })
+
+    // Add conversation history from context (includes parent chain)
+    messages.push(...context.conversationHistory)
+
+    // Add current workflow prompt if not already in history
+    const hasUserPrompt = context.conversationHistory.some((m) => m.role === "user")
+    if (!hasUserPrompt) {
+      messages.push({
+        role: "user", 
+        content: workflowPrompt,
+      })
+    }
+
+    return messages
+  }
+
   private async executeTextStep(
-    step: Doc<"agents">,
-    stepIndex: number,
+    agent: Doc<"agents">,
+    node: Doc<"workflowNodes">,
     messages: CoreMessage[],
     aiModel: LanguageModel,
-  ): Promise<void> {
+    context: NodeExecutionContext,
+  ): Promise<string> {
     try {
       const result = await streamTextResponse({
         res: this.res,
         languageModel: aiModel,
         messages,
-        tools: this.tools,
+        tools: context.tools,
         end: false, // Don't end the response, we have more steps
         abortSignal: this.options.abortSignal,
       })
 
-      // this.log(`Step ${stepIndex + 1} text output:`, result.text)
-
       if (!this.isValidStepOutput(result.text)) {
-        this.log(`WARNING: Empty text response at step ${stepIndex + 1}`)
-      } else {
-        this.lastStepOutput = result.text
-        this.completedSteps.push({
-          instructions: step.systemPrompt,
-          output: result.text,
-          stepIndex,
-          agentName: step.name || `Agent ${stepIndex + 1}`,
-        })
-
-        // Add to conversation history for next steps
-        this.conversationHistory.push({
-          role: "assistant",
-          content: result.text,
-        })
+        this.log(`WARNING: Empty text response at node ${node.nodeId}`)
+        return ""
       }
 
       // Store metadata if available
       if (this.options.executionId && result.metadata) {
-        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
-          stepIndex,
-          agentId: step._id,
+          nodeId: node.nodeId,
+          agentId: agent._id,
           status: "completed",
-          output: this.lastStepOutput,
+          output: result.text,
           metadata: result.metadata,
         })
       }
+
+      return result.text
     } catch (error) {
-      this.log(`Error in executeTextStep for step ${stepIndex + 1}:`, {
+      this.log(`Error in executeTextStep for node ${node.nodeId}:`, {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       })
-      throw error // Re-throw to be caught by executeStep
+      throw error // Re-throw to be caught by executeNodeWithContext
     }
   }
 
   private async executeObjectStep(
-    step: Doc<"agents">,
-    stepIndex: number,
+    agent: Doc<"agents">,
+    node: Doc<"workflowNodes">,
     messages: CoreMessage[],
     aiModel: LanguageModel,
-  ): Promise<void> {
+    context: NodeExecutionContext,
+  ): Promise<string> {
     try {
       // Use streamObjectResponse with returnObject flag to get the complete object
       const result = await streamObjectResponse({
@@ -318,109 +589,36 @@ export class WorkflowExecutor {
       })
 
       const objectContent = JSON.stringify(result.object)
-      this.log(`Step ${stepIndex + 1} object output:`, objectContent)
+      this.log(`Node ${node.nodeId} object output:`, objectContent)
 
       if (!this.isValidStepOutput(objectContent)) {
-        this.log(`WARNING: Empty object response at step ${stepIndex + 1}`)
-      } else {
-        this.lastStepOutput = objectContent
-        this.completedSteps.push({
-          instructions: step.systemPrompt,
-          output: objectContent,
-          stepIndex,
-          agentName: step.name || `Agent ${stepIndex + 1}`,
-        })
-
-        // Add to conversation history for next steps
-        this.conversationHistory.push({
-          role: "assistant",
-          content: objectContent,
-        })
+        this.log(`WARNING: Empty object response at node ${node.nodeId}`)
+        return ""
       }
 
       // Store metadata if available
       if (this.options.executionId && result.metadata) {
-        await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
-          stepIndex,
-          agentId: step._id,
+          nodeId: node.nodeId,
+          agentId: agent._id,
           status: "completed",
-          output: this.lastStepOutput,
+          output: objectContent,
           metadata: result.metadata,
         })
       }
+
+      return objectContent
     } catch (error) {
-      this.log(`Error in executeObjectStep for step ${stepIndex + 1}:`, {
+      this.log(`Error in executeObjectStep for node ${node.nodeId}:`, {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       })
-      throw error // Re-throw to be caught by executeStep
+      throw error // Re-throw to be caught by executeNodeWithContext
     }
   }
 
   // Helper methods
-  private formatCompletedSteps(): string {
-    if (this.completedSteps.length === 0) {
-      return "None"
-    }
-
-    return this.completedSteps
-      .map(
-        (step) =>
-          `Step ${step.stepIndex + 1}: ${step.agentName}
-Instructions: ${step.instructions}
-Output: ${step.output || "No output"}`,
-      )
-      .join("\n\n")
-  }
-
-  private buildMessagesWithHistory(
-    workflowPrompt: string,
-    currentStep: Doc<"agents">,
-    stepIndex: number,
-  ): CoreMessage[] {
-    const messages: CoreMessage[] = []
-
-    // System message with workflow context and current agent info
-    messages.push({
-      role: "system",
-      content: `<original_user_request>
-${workflowPrompt}
-</original_user_request>
-
-<current_agent>
-You are Agent ${stepIndex + 1}: ${currentStep.name || "Unnamed"}
-
-IMPORTANT: You are ONLY responsible for the following task. Do NOT attempt to perform tasks from other steps.
-Your SPECIFIC role: ${currentStep.systemPrompt}
-
-Previous agents have already completed their parts. Focus solely on your assigned task.
-</current_agent>`,
-    })
-
-    // Add conversation history (all previous user/assistant interactions)
-    messages.push(...this.conversationHistory)
-
-    // Add current step's user message
-    const userMessage = this.buildUserMessage(currentStep, stepIndex)
-    messages.push(userMessage)
-
-    // Store this user message for the next step's history
-    this.conversationHistory.push(userMessage)
-
-    return messages
-  }
-
-  private buildUserMessage(step: Doc<"agents">, stepIndex: number): CoreMessage {
-    return {
-      role: "user",
-      content: `Execute ONLY step ${stepIndex + 1}: ${step.name || "Unnamed"}
-
-Your task: ${step.systemPrompt}
-
-Do not repeat work from previous steps. Focus only on your specific assignment above.`,
-    }
-  }
 
   private isValidStepOutput(output: string | undefined): boolean {
     return output !== undefined && output.trim() !== "" && output !== "null"
@@ -435,17 +633,17 @@ Do not repeat work from previous steps. Focus only on your specific assignment a
   }
 
   /**
-   * Analyzes which MCP servers are required for a specific step.
+   * Analyzes which MCP servers are required for a specific agent.
    */
-  private async getRequiredServersForStep(step: Doc<"agents">): Promise<Array<{ id: Id<"mcp">; name: string }>> {
+  private async getRequiredServersForAgent(agent: Doc<"agents">): Promise<Array<{ id: Id<"mcp">; name: string }>> {
     const requiredServers: Array<{ id: Id<"mcp">; name: string }> = []
 
-    if (!step.mcpServers || step.mcpServers.length === 0) {
+    if (!agent.mcpServers || agent.mcpServers.length === 0) {
       return requiredServers
     }
 
     // Get server configurations
-    const serverPromises = step.mcpServers.map(async (serverId) => {
+    const serverPromises = agent.mcpServers.map(async (serverId) => {
       try {
         const server = await convex.query(api.mcp.get, { id: serverId })
         return server ? { id: serverId, name: server.name } : null
@@ -463,57 +661,58 @@ Do not repeat work from previous steps. Focus only on your specific assignment a
    * Establishes MCP connections required by a specific step.
    * Returns the updated tools available after connections.
    */
-  private async establishStepConnections(step: Doc<"agents">, stepIndex: number): Promise<ToolSet> {
+  private async establishStepConnections(agent: Doc<"agents">, nodeId: string): Promise<ToolSet> {
     if (!this.options.sessionId || !this.options.executionId) {
-      this.log(`Skipping MCP connection setup for step ${stepIndex + 1} - no session or execution ID`)
-      return this.tools
+      this.log(`Skipping MCP connection setup for node ${nodeId} - no session or execution ID`)
+      return {}
     }
 
     try {
-      const requiredServers = await this.getRequiredServersForStep(step)
+      const requiredServers = await this.getRequiredServersForAgent(agent)
 
       if (requiredServers.length === 0) {
-        this.log(`Step ${stepIndex + 1} requires no MCP servers`)
-        return this.tools
+        this.log(`Node ${nodeId} requires no MCP servers`)
+        // Return existing tools for this session
+        return mcpConnectionManager.aggregateTools(this.options.sessionId)
       }
 
       this.log(
-        `Step ${stepIndex + 1} requires ${requiredServers.length} MCP servers: ${requiredServers.map((s) => s.name).join(", ")}`,
+        `Node ${nodeId} requires ${requiredServers.length} MCP servers: ${requiredServers.map((s) => s.name).join(", ")}`,
       )
 
-      // Update step status to connecting
-      await convex.mutation(api.workflowExecutions.updateStepProgress, {
+      // Update node status to connecting
+      await convex.mutation(api.workflowExecutions.updateNodeProgress, {
         executionId: this.options.executionId,
-        stepIndex,
-        agentId: step._id,
+        nodeId: nodeId,
+        agentId: agent._id,
         status: "connecting",
       })
 
       // Connect to each required server
       for (const server of requiredServers) {
-        await this.connectToStepServer(server.id, server.name, stepIndex)
+        await this.connectToNodeServer(server.id, server.name, nodeId)
       }
 
-      // Refresh tools after establishing new connections
-      this.tools = mcpConnectionManager.aggregateTools(this.options.sessionId)
-      this.log(`Step ${stepIndex + 1}: Updated tools after connections: ${Object.keys(this.tools).length} total tools`)
+      // Get updated tools after establishing new connections
+      const tools = mcpConnectionManager.aggregateTools(this.options.sessionId)
+      this.log(`Node ${nodeId}: Updated tools after connections: ${Object.keys(tools).length} total tools`)
 
-      return this.tools
+      return tools
     } catch (error) {
-      this.log(`MCP connection setup failed for step ${stepIndex + 1}:`, error)
+      this.log(`MCP connection setup failed for node ${nodeId}:`, error)
       throw error
     }
   }
 
   /**
-   * Connects to a single MCP server for a specific step.
+   * Connects to a single MCP server for a specific node.
    */
-  private async connectToStepServer(serverId: Id<"mcp">, serverName: string, stepIndex: number): Promise<void> {
+  private async connectToNodeServer(serverId: Id<"mcp">, serverName: string, nodeId: string): Promise<void> {
     try {
       // Check if we're already connected to this server
       const existingConnection = mcpConnectionManager.getConnection(this.options.sessionId!, serverId)
       if (existingConnection) {
-        this.log(`Step ${stepIndex + 1}: Already connected to ${serverName}, reusing connection`)
+        this.log(`Node ${nodeId}: Already connected to ${serverName}, reusing connection`)
         return
       }
 
@@ -535,19 +734,19 @@ Do not repeat work from previous steps. Focus only on your specific assignment a
       )
 
       if (result.success) {
-        this.log(`Step ${stepIndex + 1}: Successfully connected to MCP server: ${serverName}`)
+        this.log(`Node ${nodeId}: Successfully connected to MCP server: ${serverName}`)
       } else {
         throw new Error(`Failed to connect to ${serverName}: ${result.error}`)
       }
     } catch (error) {
       // Re-throw with additional context
-      this.log(`Error connecting to MCP server ${serverName} for step ${stepIndex + 1}:`, error)
+      this.log(`Error connecting to MCP server ${serverName} for node ${nodeId}:`, error)
       throw error
     }
   }
 
   private async handleAbort(): Promise<void> {
-    this.log("Workflow aborted, cleaning up running steps")
+    this.log("Workflow aborted, cleaning up running nodes")
 
     // Don't update status if we're already in an error state
     if (this.hasError) {
@@ -555,33 +754,33 @@ Do not repeat work from previous steps. Focus only on your specific assignment a
       return
     }
 
-    // If we have a current step that's running, mark it as cancelled
-    if (this.options.executionId && this.currentStepIndex !== undefined) {
-      const currentStep = this.steps[this.currentStepIndex]
-      if (currentStep) {
-        try {
-          // First check if the step has already been marked as failed
-          const execution = await convex.query(api.workflowExecutions.get, {
-            executionId: this.options.executionId,
-          })
+    // Mark any currently running nodes as cancelled
+    if (this.options.executionId) {
+      try {
+        // Check for running nodes and mark them as cancelled
+        const execution = await convex.query(api.workflowExecutions.get, {
+          executionId: this.options.executionId,
+        })
 
-          if (execution?.stepExecutions) {
-            const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === this.currentStepIndex)
-
-            // Only update to cancelled if the step hasn't already been marked as failed
-            if (stepExecution?.status !== "failed") {
-              await convex.mutation(api.workflowExecutions.updateStepProgress, {
+        if (execution && execution.currentNodes.length > 0) {
+          this.log(`Cancelling ${execution.currentNodes.length} running nodes`)
+          
+          // Mark all currently running nodes as cancelled
+          for (const nodeId of execution.currentNodes) {
+            const node = this.nodeMap.get(nodeId)
+            if (node && node.agentId) {
+              await convex.mutation(api.workflowExecutions.updateNodeProgress, {
                 executionId: this.options.executionId,
-                stepIndex: this.currentStepIndex,
-                agentId: currentStep._id,
+                nodeId: nodeId,
+                agentId: node.agentId,
                 status: "cancelled",
                 error: "Workflow cancelled",
               })
             }
           }
-        } catch (error) {
-          this.log("Error updating step status on abort:", error)
         }
+      } catch (error) {
+        this.log("Error updating node status on abort:", error)
       }
     }
 

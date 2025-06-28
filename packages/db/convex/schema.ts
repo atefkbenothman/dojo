@@ -61,13 +61,33 @@ export const agentsFields = {
   aiModelId: v.id("models"),
 }
 
+// Workflow nodes for tree-based workflows
+export const workflowNodesFields = {
+  workflowId: v.id("workflows"),
+  nodeId: v.string(), // Unique within workflow (e.g., "node_1", "node_2")
+  parentNodeId: v.optional(v.string()), // Reference to parent node
+
+  type: v.union(
+    v.literal("step"), // Agent execution step (can be root node if parentNodeId is null)
+    v.literal("parallel"), // Fork point - spawn all children
+    // Note: No "start" or "end" types needed - root nodes have parentNodeId: null, workflows terminate naturally
+  ),
+
+  // Step-specific data
+  agentId: v.optional(v.id("agents")), // Only for "step" nodes
+
+  // Display metadata
+  label: v.optional(v.string()),
+  order: v.optional(v.number()), // Child ordering for parallel branches
+}
+
 // Workflow configurations
 export const workflowsFields = {
   userId: v.optional(v.id("users")),
   name: v.string(),
   description: v.string(),
   instructions: v.string(),
-  steps: v.array(v.id("agents")),
+  rootNodeId: v.optional(v.string()), // Entry point for the workflow tree (set when first node is added)
   isPublic: v.optional(v.boolean()),
 }
 
@@ -101,53 +121,51 @@ export const workflowExecutionsFields = {
     v.literal("cancelled"),
   ),
 
-  // Progress tracking
-  currentStep: v.optional(v.number()), // 0-based index
-  totalSteps: v.number(),
-
-  // Step-level tracking
-  stepExecutions: v.optional(
-    v.array(
-      v.object({
-        stepIndex: v.number(),
-        agentId: v.id("agents"),
-        status: v.union(
-          v.literal("pending"),
-          v.literal("connecting"),
-          v.literal("running"),
-          v.literal("completed"),
-          v.literal("failed"),
-          v.literal("cancelled"),
-        ),
-        startedAt: v.optional(v.number()),
-        completedAt: v.optional(v.number()),
-        error: v.optional(v.string()),
-        output: v.optional(v.string()),
-        metadata: v.optional(
-          v.object({
-            usage: v.optional(
+  // Node-based execution tracking
+  totalSteps: v.number(), // Count of step nodes for progress calculation
+  nodeExecutions: v.array(
+    v.object({
+      nodeId: v.string(),
+      agentId: v.optional(v.id("agents")),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("connecting"),
+        v.literal("running"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("cancelled"),
+      ),
+      startedAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      error: v.optional(v.string()),
+      output: v.optional(v.string()),
+      metadata: v.optional(
+        v.object({
+          usage: v.optional(
+            v.object({
+              promptTokens: v.number(),
+              completionTokens: v.number(),
+              totalTokens: v.number(),
+            }),
+          ),
+          toolCalls: v.optional(
+            v.array(
               v.object({
-                promptTokens: v.number(),
-                completionTokens: v.number(),
-                totalTokens: v.number(),
+                toolCallId: v.string(),
+                toolName: v.string(),
+                args: v.any(),
               }),
             ),
-            toolCalls: v.optional(
-              v.array(
-                v.object({
-                  toolCallId: v.string(),
-                  toolName: v.string(),
-                  args: v.any(),
-                }),
-              ),
-            ),
-            model: v.optional(v.string()),
-            finishReason: v.optional(v.string()),
-          }),
-        ),
-      }),
-    ),
+          ),
+          model: v.optional(v.string()),
+          finishReason: v.optional(v.string()),
+        }),
+      ),
+    }),
   ),
+
+  // Current nodes for tracking parallel execution
+  currentNodes: v.array(v.string()), // Multiple nodes can be "current" in parallel
 
   // Execution context
   error: v.optional(v.string()),
@@ -228,6 +246,10 @@ export default defineSchema({
   mcp: defineTable(mcpFields).index("by_userId", ["userId"]).index("by_isPublic", ["isPublic"]),
   agents: defineTable(agentsFields).index("by_userId", ["userId"]).index("by_isPublic", ["isPublic"]),
   workflows: defineTable(workflowsFields).index("by_userId", ["userId"]).index("by_isPublic", ["isPublic"]),
+  workflowNodes: defineTable(workflowNodesFields)
+    .index("by_workflow", ["workflowId"])
+    .index("by_parent", ["workflowId", "parentNodeId"])
+    .index("by_workflow_nodeId", ["workflowId", "nodeId"]),
   apiKeys: defineTable(apiKeysFields)
     .index("by_user", ["userId"])
     .index("by_provider", ["providerId"])

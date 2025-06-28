@@ -64,23 +64,43 @@ export class WorkflowService {
         }
       }
 
-      // Fetch and validate workflow steps
-      const steps = await this.fetchWorkflowSteps(workflow)
-      if (steps.length === 0) {
+      // Fetch and validate workflow nodes
+      const nodes = await this.fetchWorkflowNodes(workflow)
+      if (nodes.length === 0) {
         return {
           success: false,
           completedSteps: 0,
-          error: "Workflow has no valid steps.",
+          error: "Workflow has no valid nodes.",
         }
       }
 
-      // Pre-validate that all agents have models
-      for (const step of steps) {
-        if (!step.aiModelId) {
-          return {
-            success: false,
-            completedSteps: 0,
-            error: `Agent "${step.name}" does not have an AI model configured.`,
+      // Validate tree structure
+      const treeValidationError = await this.validateWorkflowTree(nodes)
+      if (treeValidationError) {
+        return {
+          success: false,
+          completedSteps: 0,
+          error: treeValidationError,
+        }
+      }
+
+      // Pre-validate that all step nodes have agents with models
+      for (const node of nodes) {
+        if (node.type === "step" && node.agentId) {
+          const agent = await convex.query(api.agents.get, { id: node.agentId })
+          if (!agent) {
+            return {
+              success: false,
+              completedSteps: 0,
+              error: `Agent for node "${node.nodeId}" not found.`,
+            }
+          }
+          if (!agent.aiModelId) {
+            return {
+              success: false,
+              completedSteps: 0,
+              error: `Agent "${agent.name}" in node "${node.nodeId}" does not have an AI model configured.`,
+            }
           }
         }
       }
@@ -91,8 +111,8 @@ export class WorkflowService {
           workflowId: workflow._id,
           sessionId: session._id,
           userId: session.userId || undefined,
-          totalSteps: steps.length,
-          agentIds: steps.map((step) => step._id),
+          totalSteps: nodes.filter(n => n.type === "step").length, // Count only step nodes
+          agentIds: nodes.filter(n => n.type === "step" && n.agentId).map(n => n.agentId!),
         })
 
         // Note: MCP connections are now handled per-step during execution
@@ -108,7 +128,7 @@ export class WorkflowService {
       // Note: Tools will be dynamically aggregated after workflow connections are established
       const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
-      logWorkflow(`Starting workflow ${workflow._id} for userId: ${userIdForLogging}, steps: ${steps.length}`)
+      logWorkflow(`Starting workflow ${workflow._id} for userId: ${userIdForLogging}, nodes: ${nodes.length}`)
 
       // Check if there are any active MCP connections for logging
       if (Object.keys(combinedTools).length > 0) {
@@ -116,7 +136,7 @@ export class WorkflowService {
       }
 
       // Execute workflow with execution tracking
-      const executor = new WorkflowExecutor(workflow, steps, combinedTools, res, {
+      const executor = new WorkflowExecutor(workflow, nodes, res, {
         ...this.defaultExecutorOptions,
         executionId: executionId || undefined,
         sessionId: session?._id,
@@ -143,7 +163,7 @@ export class WorkflowService {
 
       return {
         success: result.success,
-        completedSteps: result.completedSteps.length,
+        completedSteps: result.completedNodes.length,
         error: result.error,
       }
     } catch (error) {
@@ -227,14 +247,14 @@ export class WorkflowService {
         error: "Workflow cancelled by user",
       })
 
-      // Update any running steps to cancelled
-      if (execution.currentStep !== undefined && execution.stepExecutions) {
-        const currentStepExecution = execution.stepExecutions[execution.currentStep]
-        if (currentStepExecution && currentStepExecution.status === "running") {
-          await convex.mutation(api.workflowExecutions.updateStepProgress, {
+      // Update any running nodes to cancelled
+      for (const nodeId of execution.currentNodes) {
+        const nodeExecution = execution.nodeExecutions.find(ne => ne.nodeId === nodeId)
+        if (nodeExecution && nodeExecution.status === "running" && nodeExecution.agentId) {
+          await convex.mutation(api.workflowExecutions.updateNodeProgress, {
             executionId: executionId as Id<"workflowExecutions">,
-            stepIndex: execution.currentStep,
-            agentId: currentStepExecution.agentId,
+            nodeId: nodeId,
+            agentId: nodeExecution.agentId,
             status: "cancelled",
             error: "Workflow cancelled",
           })
@@ -273,25 +293,107 @@ export class WorkflowService {
     }
   }
 
-  private async fetchWorkflowSteps(workflow: Doc<"workflows">): Promise<Doc<"agents">[]> {
+  private async fetchWorkflowNodes(workflow: Doc<"workflows">): Promise<Doc<"workflowNodes">[]> {
     try {
-      const agentDocs = await Promise.all(
-        workflow.steps.map((agentId: Id<"agents">) => convex.query(api.agents.get, { id: agentId })),
-      )
+      const nodes = await convex.query(api.workflows.getWorkflowNodes, {
+        workflowId: workflow._id,
+      })
 
-      const validSteps = agentDocs.filter((agent): agent is Doc<"agents"> => agent !== null)
-
-      if (validSteps.length !== workflow.steps.length) {
-        logWorkflow(
-          `WARNING: Some agents for workflow ${workflow._id} were not found. ` +
-            `Expected ${workflow.steps.length}, got ${validSteps.length}`,
-        )
+      if (nodes.length === 0) {
+        logWorkflow(`WARNING: No nodes found for workflow ${workflow._id}`)
+        return []
       }
 
-      return validSteps
+      return nodes
     } catch (error) {
-      logger.error("Workflow", "Error fetching workflow steps", error)
+      logger.error("Workflow", "Error fetching workflow nodes", error)
       return []
+    }
+  }
+
+  private async validateWorkflowTree(nodes: Doc<"workflowNodes">[]): Promise<string | null> {
+    // Find root nodes (nodes with no parent)
+    const rootNodes = nodes.filter(n => !n.parentNodeId)
+    if (rootNodes.length === 0) {
+      return "Workflow must have at least one root node (node with no parent)"
+    }
+
+    // Note: Multiple root nodes are allowed for parallel workflows from the start
+
+    // 1. Check for invalid parent references
+    const nodeIds = new Set(nodes.map(n => n.nodeId))
+    for (const node of nodes) {
+      if (node.parentNodeId && !nodeIds.has(node.parentNodeId)) {
+        return `Node ${node.nodeId} has invalid parent reference: ${node.parentNodeId} does not exist`
+      }
+    }
+
+    // 2. Check for multiple parents (each node should have at most one parent)
+    const parentCounts = new Map<string, number>()
+    for (const node of nodes) {
+      if (node.parentNodeId) {
+        // This is checking if the node appears as a child multiple times, which shouldn't happen
+        // due to the unique nodeId constraint, but we check anyway
+        const count = parentCounts.get(node.nodeId) || 0
+        parentCounts.set(node.nodeId, count + 1)
+      }
+    }
+    for (const [nodeId, count] of parentCounts) {
+      if (count > 1) {
+        return `Node ${nodeId} has multiple parent references`
+      }
+    }
+
+    // 3. Check for circular dependencies
+    const visited = new Set<string>()
+    const visiting = new Set<string>()
+    
+    const hasCycle = (nodeId: string): boolean => {
+      if (visiting.has(nodeId)) return true
+      if (visited.has(nodeId)) return false
+      
+      visiting.add(nodeId)
+      
+      // Find children of this node
+      const children = nodes.filter(n => n.parentNodeId === nodeId)
+      for (const child of children) {
+        if (hasCycle(child.nodeId)) return true
+      }
+      
+      visiting.delete(nodeId)
+      visited.add(nodeId)
+      return false
+    }
+    
+    for (const node of nodes) {
+      if (!visited.has(node.nodeId) && hasCycle(node.nodeId)) {
+        return `Circular dependency detected involving node ${node.nodeId}`
+      }
+    }
+
+    // 4. Check for orphaned nodes by traversing from all root nodes
+    const reachableNodes = new Set<string>()
+    for (const rootNode of rootNodes) {
+      this.markReachableNodes(nodes, rootNode.nodeId, reachableNodes)
+    }
+
+    const orphanedNodes = nodes.filter(n => !reachableNodes.has(n.nodeId))
+    if (orphanedNodes.length > 0) {
+      return `Found orphaned nodes: ${orphanedNodes.map(n => n.nodeId).join(", ")}`
+    }
+
+    return null // No errors
+  }
+
+  private markReachableNodes(nodes: Doc<"workflowNodes">[], nodeId: string, reachableNodes: Set<string>): void {
+    if (reachableNodes.has(nodeId)) return
+    
+    reachableNodes.add(nodeId)
+    
+    // Find all children of this node
+    const children = nodes.filter(n => n.parentNodeId === nodeId)
+    for (const child of children) {
+      this.markReachableNodes(nodes, child.nodeId, reachableNodes)
     }
   }
 }
