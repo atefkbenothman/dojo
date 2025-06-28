@@ -226,9 +226,12 @@ export const updateNodeProgress = mutation({
     await ctx.db.patch(args.executionId, {
       nodeExecutions,
       currentNodes,
-      status: currentNodes.length > 0 ? "running" : execution.status,
+      status:
+        currentNodes.length > 0
+          ? "running"
+          : nodeExecutions.every((ne) => ne.status === "completed")
+            ? "completed"
+            : execution.status,
     })
   },
 })
-
-// Note: Global MCP connection status tracking removed - now handled per-step

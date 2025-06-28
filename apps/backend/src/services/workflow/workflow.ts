@@ -111,8 +111,8 @@ export class WorkflowService {
           workflowId: workflow._id,
           sessionId: session._id,
           userId: session.userId || undefined,
-          totalSteps: nodes.filter(n => n.type === "step").length, // Count only step nodes
-          agentIds: nodes.filter(n => n.type === "step" && n.agentId).map(n => n.agentId!),
+          totalSteps: nodes.filter((n) => n.type === "step").length, // Count only step nodes
+          agentIds: nodes.filter((n) => n.type === "step" && n.agentId).map((n) => n.agentId!),
         })
 
         // Note: MCP connections are now handled per-step during execution
@@ -249,7 +249,7 @@ export class WorkflowService {
 
       // Update any running nodes to cancelled
       for (const nodeId of execution.currentNodes) {
-        const nodeExecution = execution.nodeExecutions.find(ne => ne.nodeId === nodeId)
+        const nodeExecution = execution.nodeExecutions.find((ne) => ne.nodeId === nodeId)
         if (nodeExecution && nodeExecution.status === "running" && nodeExecution.agentId) {
           await convex.mutation(api.workflowExecutions.updateNodeProgress, {
             executionId: executionId as Id<"workflowExecutions">,
@@ -313,7 +313,7 @@ export class WorkflowService {
 
   private async validateWorkflowTree(nodes: Doc<"workflowNodes">[]): Promise<string | null> {
     // Find root nodes (nodes with no parent)
-    const rootNodes = nodes.filter(n => !n.parentNodeId)
+    const rootNodes = nodes.filter((n) => !n.parentNodeId)
     if (rootNodes.length === 0) {
       return "Workflow must have at least one root node (node with no parent)"
     }
@@ -321,50 +321,34 @@ export class WorkflowService {
     // Note: Multiple root nodes are allowed for parallel workflows from the start
 
     // 1. Check for invalid parent references
-    const nodeIds = new Set(nodes.map(n => n.nodeId))
+    const nodeIds = new Set(nodes.map((n) => n.nodeId))
     for (const node of nodes) {
       if (node.parentNodeId && !nodeIds.has(node.parentNodeId)) {
         return `Node ${node.nodeId} has invalid parent reference: ${node.parentNodeId} does not exist`
       }
     }
 
-    // 2. Check for multiple parents (each node should have at most one parent)
-    const parentCounts = new Map<string, number>()
-    for (const node of nodes) {
-      if (node.parentNodeId) {
-        // This is checking if the node appears as a child multiple times, which shouldn't happen
-        // due to the unique nodeId constraint, but we check anyway
-        const count = parentCounts.get(node.nodeId) || 0
-        parentCounts.set(node.nodeId, count + 1)
-      }
-    }
-    for (const [nodeId, count] of parentCounts) {
-      if (count > 1) {
-        return `Node ${nodeId} has multiple parent references`
-      }
-    }
-
     // 3. Check for circular dependencies
     const visited = new Set<string>()
     const visiting = new Set<string>()
-    
+
     const hasCycle = (nodeId: string): boolean => {
       if (visiting.has(nodeId)) return true
       if (visited.has(nodeId)) return false
-      
+
       visiting.add(nodeId)
-      
+
       // Find children of this node
-      const children = nodes.filter(n => n.parentNodeId === nodeId)
+      const children = nodes.filter((n) => n.parentNodeId === nodeId)
       for (const child of children) {
         if (hasCycle(child.nodeId)) return true
       }
-      
+
       visiting.delete(nodeId)
       visited.add(nodeId)
       return false
     }
-    
+
     for (const node of nodes) {
       if (!visited.has(node.nodeId) && hasCycle(node.nodeId)) {
         return `Circular dependency detected involving node ${node.nodeId}`
@@ -377,23 +361,34 @@ export class WorkflowService {
       this.markReachableNodes(nodes, rootNode.nodeId, reachableNodes)
     }
 
-    const orphanedNodes = nodes.filter(n => !reachableNodes.has(n.nodeId))
+    const orphanedNodes = nodes.filter((n) => !reachableNodes.has(n.nodeId))
     if (orphanedNodes.length > 0) {
-      return `Found orphaned nodes: ${orphanedNodes.map(n => n.nodeId).join(", ")}`
+      return `Found orphaned nodes: ${orphanedNodes.map((n) => n.nodeId).join(", ")}`
     }
 
     return null // No errors
   }
 
   private markReachableNodes(nodes: Doc<"workflowNodes">[], nodeId: string, reachableNodes: Set<string>): void {
-    if (reachableNodes.has(nodeId)) return
-    
-    reachableNodes.add(nodeId)
-    
-    // Find all children of this node
-    const children = nodes.filter(n => n.parentNodeId === nodeId)
-    for (const child of children) {
-      this.markReachableNodes(nodes, child.nodeId, reachableNodes)
+    // Use iterative approach with a stack to avoid stack overflow
+    const nodesToVisit: string[] = [nodeId]
+
+    while (nodesToVisit.length > 0) {
+      const currentNodeId = nodesToVisit.pop()!
+
+      // Skip if already visited
+      if (reachableNodes.has(currentNodeId)) continue
+
+      // Mark as reachable
+      reachableNodes.add(currentNodeId)
+
+      // Find all children of this node and add them to the stack
+      const children = nodes.filter((n) => n.parentNodeId === currentNodeId)
+      for (const child of children) {
+        if (!reachableNodes.has(child.nodeId)) {
+          nodesToVisit.push(child.nodeId)
+        }
+      }
     }
   }
 }

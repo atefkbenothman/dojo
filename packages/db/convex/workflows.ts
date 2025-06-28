@@ -15,13 +15,13 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
-    
+
     // Always get public workflows
     const publicWorkflows = await ctx.db
       .query("workflows")
       .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
       .collect()
-    
+
     if (userId) {
       // Authenticated: also get user's private workflows
       const userWorkflows = await ctx.db
@@ -29,7 +29,7 @@ export const list = query({
         .withIndex("by_userId", (q) => q.eq("userId", userId))
         .filter((q) => q.neq(q.field("isPublic"), true))
         .collect()
-      
+
       return [...publicWorkflows, ...userWorkflows]
     } else {
       // Not authenticated: return only public workflows
@@ -76,10 +76,10 @@ export const create = mutation({
     const userId = await getCurrentUserId(ctx)
     if (args.isPublic) throw new Error("Cannot create public workflows.")
     if (!userId) throw new Error("Must be signed in to create workflows.")
-    
+
     // Create the workflow (no auto-created nodes - user will add first step)
     const workflowId = await ctx.db.insert("workflows", { ...args, userId })
-    
+
     return workflowId
   },
 })
@@ -107,18 +107,24 @@ export const clone = mutation({
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx)
     if (!userId) throw new Error("Must be signed in to clone workflows.")
-    
+
     const originalWorkflow = await ctx.db.get(args.id)
     if (!originalWorkflow) throw new Error("Workflow not found")
-    
+
     // Check if user can access this workflow (either public or owned by user)
     if (!originalWorkflow.isPublic && originalWorkflow.userId !== userId) {
       throw new Error("Unauthorized")
     }
-    
+
     // Create a clone with isPublic: false and new userId
-    const { _id, _creationTime, userId: _originalUserId, isPublic: _originalIsPublic, ...workflowData } = originalWorkflow
-    
+    const {
+      _id,
+      _creationTime,
+      userId: _originalUserId,
+      isPublic: _originalIsPublic,
+      ...workflowData
+    } = originalWorkflow
+
     return await ctx.db.insert("workflows", {
       ...workflowData,
       name: `${originalWorkflow.name} (Copy)`,
@@ -147,6 +153,18 @@ export const addNode = mutation({
     if (workflow.isPublic) throw new Error("Cannot edit public workflows")
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
 
+    // Validate parentNodeId if provided
+    if (args.parentNodeId) {
+      const parentNode = await ctx.db
+        .query("workflowNodes")
+        .withIndex("by_workflow_nodeId", (q) => q.eq("workflowId", args.workflowId).eq("nodeId", args.parentNodeId!))
+        .first()
+
+      if (!parentNode) {
+        throw new Error(`Parent node ${args.parentNodeId} not found in workflow`)
+      }
+    }
+
     return await ctx.db.insert("workflowNodes", args)
   },
 })
@@ -166,22 +184,25 @@ export const removeNode = mutation({
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
 
     // Helper function to recursively collect all descendants
+    // Iteratively collect all descendants
     const collectDescendants = async (nodeId: string): Promise<Id<"workflowNodes">[]> => {
       const descendants: Id<"workflowNodes">[] = []
-      
-      // Find direct children
-      const children = await ctx.db
-        .query("workflowNodes")
-        .withIndex("by_parent", (q) => q.eq("workflowId", args.workflowId).eq("parentNodeId", nodeId))
-        .collect()
-      
-      // Add children and their descendants
-      for (const child of children) {
-        descendants.push(child._id)
-        const childDescendants = await collectDescendants(child.nodeId)
-        descendants.push(...childDescendants)
+      const queue = [nodeId]
+
+      while (queue.length > 0) {
+        const currentNodeId = queue.shift()!
+
+        const children = await ctx.db
+          .query("workflowNodes")
+          .withIndex("by_parent", (q) => q.eq("workflowId", args.workflowId).eq("parentNodeId", currentNodeId))
+          .collect()
+
+        for (const child of children) {
+          descendants.push(child._id)
+          queue.push(child.nodeId)
+        }
       }
-      
+
       return descendants
     }
 
@@ -237,7 +258,10 @@ export const updateNode = mutation({
     if (!node) throw new Error("Node not found")
 
     // Update the node
-    const updateData: any = {}
+    const updateData: Partial<{
+      agentId: Id<"agents">
+      label: string
+    }> = {}
     if (args.agentId !== undefined) updateData.agentId = args.agentId
     if (args.label !== undefined) updateData.label = args.label
 
@@ -249,6 +273,16 @@ export const updateNode = mutation({
 export const getWorkflowNodes = query({
   args: { workflowId: v.id("workflows") },
   handler: async (ctx, args) => {
+    // Authorization guard
+    const userId = await getCurrentUserId(ctx)
+    const workflow = await ctx.db.get(args.workflowId)
+
+    if (!workflow) throw new Error("Workflow not found")
+    // Only allow if public or owned by the caller
+    if (!workflow.isPublic && (!userId || workflow.userId !== userId)) {
+      throw new Error("Unauthorized")
+    }
+
     return await ctx.db
       .query("workflowNodes")
       .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
