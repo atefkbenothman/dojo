@@ -7,14 +7,12 @@ import { SoundToggle } from "@/components/sound-toggle"
 import { Button } from "@/components/ui/button"
 import { useLayout } from "@/hooks/use-layout"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { cn } from "@/lib/utils"
 import { MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { useCallback } from "react"
 
 interface MainPanelHeaderProps {
   onChatPanelToggle: () => void
-  isCollapsed: boolean
 }
 
 export function MainPanelHeader({ onChatPanelToggle }: MainPanelHeaderProps) {

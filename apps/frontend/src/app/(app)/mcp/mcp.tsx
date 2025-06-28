@@ -238,7 +238,6 @@ export function Mcp() {
                 server={selectedServer}
                 isAuthenticated={isAuthenticated}
                 connectionStatus={connectionStatuses.get(selectedServer._id)}
-                activeConnection={activeConnections.find((conn) => conn.serverId === selectedServer._id)}
               />
             </>
           ) : (

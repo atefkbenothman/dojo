@@ -73,7 +73,6 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
         <>
           <MainPanelHeader 
             onChatPanelToggle={onChatPanelToggle} 
-            isCollapsed={isChatPanelCollapsed}
           />
           <SideNav />
         </>
@@ -98,7 +97,6 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
             {!isMobile && (
               <MainPanelHeader 
                 onChatPanelToggle={onChatPanelToggle} 
-                isCollapsed={isChatPanelCollapsed}
               />
             )}
             <div className="flex-1 overflow-auto md:min-w-[500px]">

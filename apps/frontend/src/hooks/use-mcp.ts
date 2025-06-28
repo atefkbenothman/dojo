@@ -6,6 +6,7 @@ import { useMCPStore } from "@/store/use-mcp-store"
 import type { RouterOutputs } from "@dojo/backend/src/lib/types"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
+import { MCPToolsCollection } from "@dojo/db/convex/types"
 import { useMutation } from "@tanstack/react-query"
 import { useMutation as useConvexMutation, useQuery as useConvexQuery } from "convex/react"
 import { WithoutSystemFields } from "convex/server"
@@ -15,8 +16,7 @@ import { toast } from "sonner"
 export interface ActiveConnection {
   serverId: string
   name: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools: Record<any, any>
+  tools: MCPToolsCollection
 }
 
 export function useMCP() {

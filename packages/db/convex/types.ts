@@ -8,6 +8,32 @@ export type MCPServer = Doc<"mcp">
 export type Agent = Doc<"agents">
 export type Workflow = Doc<"workflows">
 export type WorkflowExecution = Doc<"workflowExecutions">
+export type WorkflowNode = Doc<"workflowNodes">
+export type MCPConnection = Doc<"mcpConnections">
+export type ApiKey = Doc<"apiKeys">
+export type Session = Doc<"sessions">
 
 export type AIModelWithProvider = FunctionReturnType<typeof api.models.modelsWithProviders>
 export type AIModelWithAvailability = FunctionReturnType<typeof api.models.modelsWithAvailability>
+
+// Derived types for better type safety
+export type NodeExecutionStatus = "pending" | "connecting" | "running" | "completed" | "failed" | "cancelled"
+export type WorkflowExecutionStatus = "preparing" | "running" | "completed" | "failed" | "cancelled"
+export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
+
+// Tree structure helpers
+export interface WorkflowTreeNode extends WorkflowNode {
+  children: WorkflowTreeNode[]
+}
+
+// MCP Tool structure for better type safety
+export interface MCPTool {
+  name: string
+  description?: string
+  inputSchema?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface MCPToolsCollection {
+  [toolName: string]: MCPTool
+}

@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import type { MCPServer } from "@dojo/db/convex/types"
+import type { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
 import { Settings, Plug, Unplug, Key, Pencil, Trash, Copy } from "lucide-react"
 import { useState } from "react"
 
@@ -25,7 +25,7 @@ interface MCPServerCardProps {
   isSelected: boolean
   onConnect: () => void
   onDisconnect: () => void
-  connection?: { serverId: string; name: string; tools: Record<any, any> }
+  connection?: { serverId: string; name: string; tools: MCPToolsCollection }
   status?: { status: string; error?: string; isStale?: boolean }
 }
 

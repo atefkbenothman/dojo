@@ -15,7 +15,7 @@ import { nanoid } from "nanoid"
 import { useCallback, useMemo, useEffect, useState, useRef } from "react"
 import { toast } from "sonner"
 
-export function useWorkflow() {
+export function useWorkflow(selectedWorkflow?: Workflow | null) {
   const authToken = useAuthToken()
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
@@ -30,6 +30,14 @@ export function useWorkflow() {
   const edit = useMutation(api.workflows.edit)
   const remove = useMutation(api.workflows.remove)
   const cloneWorkflow = useMutation(api.workflows.clone)
+
+  // Query for workflow nodes (tree structure) - use selected workflow
+  const selectedWorkflowId = selectedWorkflow?._id
+
+  const nodes = useQuery(
+    api.workflows.getWorkflowNodes,
+    selectedWorkflowId ? { workflowId: selectedWorkflowId } : "skip"
+  )
 
   // Subscribe to workflow executions for real-time updates
   const workflowExecutions = useQuery(
@@ -146,11 +154,11 @@ export function useWorkflow() {
         return
       }
 
-      // Check if workflow has steps
-      if (!workflow.steps || workflow.steps.length === 0) {
-        toast.error("Workflow has no steps configured.", {
+      // Check if workflow has a root node (tree structure)
+      if (!workflow.rootNodeId) {
+        toast.error("Workflow is not properly configured.", {
           icon: null,
-          id: "workflow-no-steps",
+          id: "workflow-no-nodes",
           duration: 3000,
           position: "bottom-center",
           style: errorToastStyle,
@@ -330,10 +338,11 @@ export function useWorkflow() {
           workflowId,
           status: "preparing" as const,
           sessionId: currentSession?._id,
-          totalSteps: workflows?.find((w) => w._id === workflowId)?.steps.length || 0,
+          totalSteps: 0, // Will be calculated from workflow nodes
           startedAt: Date.now(),
           error: undefined,
-          currentStep: undefined,
+          currentNodes: [],
+          nodeExecutions: [],
         }
       }
 
@@ -361,29 +370,29 @@ export function useWorkflow() {
     return workflowExecutions.filter((exec) => exec.status === "preparing" || exec.status === "running")
   }, [workflowExecutions])
 
-  // Helper function to check if any step is currently connecting
-  const hasConnectingSteps = useCallback(
+  // Helper function to check if any node is currently connecting
+  const hasConnectingNodes = useCallback(
     (workflowId: Id<"workflows">) => {
       const execution = getWorkflowExecution(workflowId)
-      if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
+      if (!execution || !("nodeExecutions" in execution) || !execution.nodeExecutions) {
         return false
       }
 
-      return execution.stepExecutions.some((step) => step.status === "connecting")
+      return execution.nodeExecutions.some((node) => node.status === "connecting")
     },
     [getWorkflowExecution],
   )
 
-  // Helper function to get step-level connection status
-  const getStepConnectionStatus = useCallback(
-    (workflowId: Id<"workflows">, stepIndex: number) => {
+  // Helper function to get node-level execution status
+  const getNodeExecutionStatus = useCallback(
+    (workflowId: Id<"workflows">, nodeId: string) => {
       const execution = getWorkflowExecution(workflowId)
-      if (!execution || !("stepExecutions" in execution) || !execution.stepExecutions) {
-        return null
+      if (!execution || !("nodeExecutions" in execution) || !execution.nodeExecutions) {
+        return "pending"
       }
 
-      const stepExecution = execution.stepExecutions[stepIndex]
-      return stepExecution?.status === "connecting" ? "connecting" : null
+      const nodeExecution = execution.nodeExecutions.find((node) => node.nodeId === nodeId)
+      return nodeExecution?.status || "pending"
     },
     [getWorkflowExecution],
   )
@@ -426,8 +435,10 @@ export function useWorkflow() {
     getWorkflowExecution,
     getRunningExecutions,
     workflowExecutions,
-    // Step-level connection helpers
-    hasConnectingSteps,
-    getStepConnectionStatus,
+    // Node-level execution helpers
+    hasConnectingNodes,
+    getNodeExecutionStatus,
+    // Tree structure data
+    workflowNodes: nodes,
   }
 }

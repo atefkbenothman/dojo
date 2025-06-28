@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { MCPServer } from "@dojo/db/convex/types"
+import { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
 import { Search, Plus, Plug, Globe, Server } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
 
@@ -15,7 +14,7 @@ interface MCPSidebarProps {
   servers: MCPServer[]
   selectedServerId: string | null
   isAuthenticated: boolean
-  activeConnections: Array<{ serverId: string; name: string; tools: Record<any, any> }>
+  activeConnections: Array<{ serverId: string; name: string; tools: MCPToolsCollection }>
   connectionStatuses: Map<string, { status: string; error?: string; isStale?: boolean }>
   onSelectServer: (server: MCPServer) => void
   onCreateServer: () => void

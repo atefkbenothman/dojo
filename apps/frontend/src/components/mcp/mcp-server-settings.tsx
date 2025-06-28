@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -17,50 +16,42 @@ import { useForm, useFieldArray } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
-// Form schemas for different transport types
-const baseSchema = z.object({
+// Unified form schema that supports all transport types
+const formSchema = z.object({
   name: z.string().min(1, "Server name is required"),
   summary: z.string().optional(),
   transportType: z.enum(["stdio", "http", "sse"]),
-})
-
-const stdioSchema = baseSchema.extend({
-  command: z.string().min(1, "Command is required"),
-  args: z.array(z.string()),
+  // Stdio fields
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
   envVars: z.array(
     z.object({
       key: z.string().min(1, "Key is required"),
       value: z.string(),
     }),
-  ),
-})
-
-const httpSchema = baseSchema.extend({
-  url: z.string().url("Please enter a valid URL"),
+  ).optional(),
+  // HTTP/SSE fields
+  url: z.string().optional(),
   headers: z.array(
     z.object({
       key: z.string().min(1, "Key is required"),
       value: z.string(),
     }),
-  ),
+  ).optional(),
 })
 
-type StdioFormData = z.infer<typeof stdioSchema>
-type HttpFormData = z.infer<typeof httpSchema>
-type FormData = StdioFormData | HttpFormData
+type FormData = z.infer<typeof formSchema>
 
 interface MCPServerSettingsProps {
   server: MCPServer
   isAuthenticated: boolean
   connectionStatus?: { status: string; error?: string; isStale?: boolean }
-  activeConnection?: { serverId: string; name: string; tools: Record<any, any> }
 }
 
 export function MCPServerSettings({
   server,
   isAuthenticated,
   connectionStatus,
-  activeConnection,
 }: MCPServerSettingsProps) {
   const { edit, remove } = useMCP()
   const [isSaving, setIsSaving] = useState(false)
@@ -68,7 +59,7 @@ export function MCPServerSettings({
 
   // Initialize form with server data
   const form = useForm<FormData>({
-    resolver: zodResolver((server.transportType === "stdio" ? stdioSchema : httpSchema) as any),
+    resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(server),
   })
 
@@ -491,7 +482,7 @@ function getDefaultValues(server: MCPServer): FormData {
       command: server.config.command || "",
       args: server.config.args || [],
       envVars,
-    } as StdioFormData
+    } as FormData
   } else if (server.config && (server.config.type === "http" || server.config.type === "sse")) {
     const headers = server.config.headers
       ? Object.entries(server.config.headers).map(([key, value]) => ({ key, value }))
@@ -501,7 +492,7 @@ function getDefaultValues(server: MCPServer): FormData {
       ...base,
       url: server.config.url || "",
       headers,
-    } as HttpFormData
+    } as FormData
   }
 
   // Fallback
@@ -510,7 +501,7 @@ function getDefaultValues(server: MCPServer): FormData {
     command: "",
     args: [],
     envVars: [],
-  } as StdioFormData
+  } as FormData
 }
 
 function transformFormDataToServer(data: FormData, originalServer: MCPServer) {
@@ -522,9 +513,9 @@ function transformFormDataToServer(data: FormData, originalServer: MCPServer) {
     localOnly: data.transportType === "stdio",
   }
 
-  if ("command" in data) {
+  if (data.transportType === "stdio" && data.command) {
     // STDIO
-    const envObj = data.envVars.reduce(
+    const envObj = (data.envVars || []).reduce(
       (acc, { key, value }) => {
         if (key) acc[key] = value
         return acc
@@ -532,15 +523,15 @@ function transformFormDataToServer(data: FormData, originalServer: MCPServer) {
       {} as Record<string, string>,
     )
 
-    const requiresEnv = data.envVars.filter((v) => v.key).map((v) => v.key)
+    const requiresEnv = (data.envVars || []).filter((v) => v.key).map((v) => v.key)
 
     return {
       ...base,
       requiresUserKey: requiresEnv.length > 0,
       config: {
         type: "stdio" as const,
-        command: data.command,
-        args: data.args,
+        command: data.command!,
+        args: data.args || [],
         ...(requiresEnv.length > 0 && {
           env: envObj,
           requiresEnv,
@@ -549,7 +540,7 @@ function transformFormDataToServer(data: FormData, originalServer: MCPServer) {
     }
   } else {
     // HTTP/SSE
-    const headersObj = data.headers.reduce(
+    const headersObj = (data.headers || []).reduce(
       (acc, { key, value }) => {
         if (key) acc[key] = value
         return acc
@@ -559,12 +550,12 @@ function transformFormDataToServer(data: FormData, originalServer: MCPServer) {
 
     return {
       ...base,
-      requiresUserKey: data.headers.some(
+      requiresUserKey: (data.headers || []).some(
         (h) => h.value.includes("{{") || h.value === "" || h.key.toLowerCase() === "authorization",
       ),
       config: {
         type: originalServer.transportType as "http" | "sse",
-        url: data.url,
+        url: data.url!,
         ...(Object.keys(headersObj).length > 0 && { headers: headersObj }),
       },
     }
