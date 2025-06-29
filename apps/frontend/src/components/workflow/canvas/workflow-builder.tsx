@@ -1,55 +1,49 @@
 "use client"
 
-import { AddStepButton } from "@/components/workflow/add-step-button"
+import { Button } from "@/components/ui/button"
+import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { CanvasZoomControls } from "@/components/workflow/canvas/canvas-zoom-controls"
 import { WorkflowInstructionsStep } from "@/components/workflow/canvas/workflow-instructions-step"
-import { WorkflowStep } from "@/components/workflow/canvas/workflow-step"
+import { WorkflowTreeNode as WorkflowTreeNodeComponent } from "@/components/workflow/canvas/workflow-tree-node"
 import { useCanvasZoom } from "@/hooks/use-canvas-zoom"
-import { useDragAndDrop } from "@/hooks/use-drag-and-drop"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
+import { Workflow, Agent, WorkflowExecution, WorkflowNode, WorkflowTreeNode } from "@dojo/db/convex/types"
+import { Plus } from "lucide-react"
 import { useCallback, useState, memo } from "react"
+import type { ReactElement } from "react"
 
 interface WorkflowBuilderProps {
   workflow: Workflow
   agents: Agent[]
+  workflowNodes: WorkflowNode[]
   isAuthenticated: boolean
   workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
   getModel: (modelId: string) => { name: string } | undefined
-  onAddFirstStep: (agent: Agent) => void
-  onAddStepAtIndex: (index: number, agent: Agent) => void
-  onRemoveStep: (index: number) => void
-  onDuplicateStep: (index: number, stepId: Id<"agents">) => void
-  onConfigureStep: (index: number) => void
-  onUpdateSteps: (newSteps: Id<"agents">[]) => void
-  onViewLogs: () => void
   onEditMetadata?: () => void
+  // Tree-specific handlers
+  onRemoveNode?: (nodeId: string) => void
+  onChangeNodeAgent?: (nodeId: string, agent: Agent) => void
+  onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
+  onAddFirstStep?: (agent: Agent) => void
 }
 
 export const WorkflowBuilder = memo(function WorkflowBuilder({
   workflow,
   agents,
+  workflowNodes,
   workflowExecutions,
   getModel,
   onAddFirstStep,
-  onAddStepAtIndex,
-  onRemoveStep,
-  onDuplicateStep,
-  onConfigureStep,
-  onUpdateSteps,
-  onViewLogs,
   onEditMetadata,
+  onRemoveNode,
+  onChangeNodeAgent,
+  onAddStepWithAgent,
 }: WorkflowBuilderProps) {
   // Local state for expand/collapse
   const [areAllStepsExpanded, setAreAllStepsExpanded] = useState(false)
 
-  // Set up drag and drop
-  const { draggedIndex, dragOverIndex, handleDragStart, handleDragEnd, handleDragOver, handleDragLeave, handleDrop } =
-    useDragAndDrop({
-      items: workflow.steps,
-      onReorder: onUpdateSteps,
-    })
+  // Drag and drop not needed for tree-based workflows
 
   // Set up canvas zoom
   const { zoom, pan, isPanning, containerRef, handleMouseDown, zoomIn, zoomOut } = useCanvasZoom({
@@ -58,19 +52,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
     zoomStep: 0.1,
   })
 
-  // Stable add step handler for end of workflow
-  const handleAddAtEnd = useCallback(
-    (agent: Agent) => {
-      if (workflow.steps.length === 0) {
-        // If no steps, add as first step
-        onAddFirstStep(agent)
-      } else {
-        // Add after the last step (index = length - 1 will insert at position length)
-        onAddStepAtIndex(workflow.steps.length - 1, agent)
-      }
-    },
-    [workflow.steps.length, onAddFirstStep, onAddStepAtIndex],
-  )
 
   // Get execution data for this workflow
   const execution = workflowExecutions.get(workflow._id)
@@ -83,49 +64,191 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
     willChange: isPanning ? "transform" : "auto",
   }
 
-  // Calculate execution state for a step
-  const getStepExecutionStatus = useCallback(
-    (index: number) => {
-      if (!execution) return undefined
 
-      if (!execution.stepExecutions) {
-        if (execution.currentStep === undefined) return "pending"
-        if (index < execution.currentStep) return "completed"
-        if (index === execution.currentStep) {
-          return execution.status === "running" ? "running" : "pending"
-        }
+  // Tree rendering functions
+  const getNodeExecutionStatus = useCallback(
+    (nodeId: string) => {
+      if (!execution || !("nodeExecutions" in execution) || !execution.nodeExecutions) {
         return "pending"
       }
-
-      const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === index)
-      return stepExecution?.status || "pending"
+      const nodeExecution = execution.nodeExecutions.find((ne) => ne.nodeId === nodeId)
+      return nodeExecution?.status || "pending"
     },
     [execution],
   )
 
-  // Calculate step duration
-  const getStepDuration = useCallback(
-    (index: number) => {
-      if (!execution?.stepExecutions) return undefined
+  // Helper function to build tree structure maintaining parent-child relationships
+  const buildTreeStructure = useCallback((nodes: WorkflowNode[]): WorkflowTreeNode[] => {
+    const nodeMap = new Map<string, WorkflowTreeNode>(
+      nodes.map((node) => [node.nodeId, { ...node, children: [] }])
+    )
+    const rootNodes: WorkflowTreeNode[] = []
 
-      const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === index)
-      if (!stepExecution?.startedAt) return undefined
+    // Build the tree structure
+    nodes.forEach((node) => {
+      const treeNode = nodeMap.get(node.nodeId)!
 
-      const endTime = stepExecution.completedAt || Date.now()
-      return endTime - stepExecution.startedAt
+      if (!node.parentNodeId) {
+        // Root node
+        rootNodes.push(treeNode)
+      } else {
+        // Child node - add to parent's children array
+        const parent = nodeMap.get(node.parentNodeId)
+        if (parent) {
+          parent.children.push(treeNode)
+        }
+      }
+    })
+
+    return rootNodes
+  }, [])
+
+  // Recursive function to render a tree node and its children
+  const renderTreeNode = useCallback(
+    (treeNode: WorkflowTreeNode, level: number = 0): ReactElement => {
+      const agent = treeNode.agentId ? agents.find((a) => a._id === treeNode.agentId) : undefined
+      const hasChildren = treeNode.children && treeNode.children.length > 0
+
+      return (
+        <div key={treeNode.nodeId} className="flex flex-col">
+          {/* The node itself - fixed width container for consistent alignment */}
+          <div className="flex justify-center mb-4">
+            <div className="w-[280px]">
+              {" "}
+              {/* Fixed width to match WorkflowTreeNode */}
+              <WorkflowTreeNodeComponent
+                node={treeNode}
+                agent={agent}
+                level={level}
+                executionStatus={getNodeExecutionStatus(treeNode.nodeId)}
+                onRemove={() => onRemoveNode?.(treeNode.nodeId)}
+                onChangeAgent={(agent) => onChangeNodeAgent?.(treeNode.nodeId, agent)}
+                onAddStepWithAgent={(agent) => onAddStepWithAgent?.(treeNode.nodeId, agent)}
+                agents={agents}
+                getModel={getModel}
+              />
+            </div>
+          </div>
+
+          {/* Children container - rendered directly below parent */}
+          {hasChildren && (
+            <div className="relative">
+              {/* Step 1: Vertical line from parent center down to children area */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[2px] h-6 bg-border" />
+
+              {/* Step 2: Connection logic based on number of children */}
+              {treeNode.children.length === 1 ? (
+                /* Single child: Direct vertical line to child center */
+                <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[2px] h-8 bg-border" />
+              ) : (
+                /* Multiple children: Horizontal connector + vertical drops */
+                <>
+                  {/* Horizontal connector line spanning all children */}
+                  <div
+                    className="absolute top-6 h-[2px] bg-border"
+                    style={{
+                      left: `calc(50% - ${(treeNode.children.length - 1) * 32}px)`, // 64px gap / 2 = 32px
+                      width: `${(treeNode.children.length - 1) * 64}px`, // 64px gap between children
+                    }}
+                  />
+                  {/* Vertical drops to each child */}
+                  {treeNode.children.map((child: WorkflowTreeNode, index: number) => {
+                    const offsetFromCenter = (index - (treeNode.children.length - 1) / 2) * 64 // 64px = gap-16
+                    return (
+                      <div
+                        key={`connector-${child.nodeId}`}
+                        className="absolute w-[2px] h-8 bg-border"
+                        style={{
+                          left: `calc(50% + ${offsetFromCenter}px - 1px)`, // -1px to center the 2px line
+                          top: "24px", // 6px + 2px line height
+                        }}
+                      />
+                    )
+                  })}
+                </>
+              )}
+
+              {/* Children arranged horizontally with consistent spacing */}
+              <div className="flex justify-center">
+                <div className="flex items-start gap-16 relative">
+                  {treeNode.children.map((child: WorkflowTreeNode) => (
+                    <div key={child.nodeId} className="relative">
+                      {/* Recursively render child node */}
+                      <div className="pt-14">
+                        {" "}
+                        {/* Increased padding for connection lines */}
+                        {renderTreeNode(child, level + 1)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )
     },
-    [execution],
+    [agents, getNodeExecutionStatus, onRemoveNode, onChangeNodeAgent, onAddStepWithAgent, getModel],
   )
 
-  // Get step error
-  const getStepError = useCallback(
-    (index: number) => {
-      if (!execution?.stepExecutions) return undefined
-      const stepExecution = execution.stepExecutions.find((se) => se.stepIndex === index)
-      return stepExecution?.error
-    },
-    [execution],
-  )
+  const renderTreeNodes = useCallback(() => {
+    // Debug logging to help identify empty state issues
+    console.log("WorkflowBuilder renderTreeNodes:", {
+      workflowNodesExists: !!workflowNodes,
+      workflowNodesLength: workflowNodes?.length,
+      workflowNodesArray: workflowNodes,
+    })
+
+    if (!workflowNodes || workflowNodes.length === 0) {
+      return (
+        <div className="relative py-16 w-full flex flex-col items-center justify-center">
+          <div className="text-center space-y-6">
+            {/* Empty state icon */}
+            <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
+              <Plus className="w-8 h-8 text-muted-foreground" />
+            </div>
+
+            {/* Empty state message */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium text-foreground">Add your first step</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Get started by adding a step with an agent to begin building your workflow.
+              </p>
+            </div>
+
+            {/* Add first step button */}
+            {agents && agents.length > 0 ? (
+              <AgentSelectorPopover
+                agents={agents}
+                onSelect={(agent) => onAddFirstStep?.(agent)}
+                getModel={getModel}
+                trigger={
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Step
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  No agents available. Create an agent first to add steps.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    const treeRoots = buildTreeStructure(workflowNodes)
+
+    return (
+      <div className="flex justify-center items-start gap-24 py-8">
+        {treeRoots.map((rootNode) => renderTreeNode(rootNode, 0))}
+      </div>
+    )
+  }, [workflowNodes, buildTreeStructure, renderTreeNode, agents, onAddFirstStep, getModel])
 
   // Render workflow steps
   const renderWorkflowSteps = () => {
@@ -138,66 +261,10 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
             isExpanded={areAllStepsExpanded}
             onEditClick={onEditMetadata}
           />
-          {/* Connecting line from instructions to first step */}
-          {workflow.steps.length > 0 && (
-            <div className="relative py-4 w-[280px] mx-auto">
-              <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 bg-border" />
-            </div>
-          )}
+          {/* Tree-based workflow visualization */}
+          <div className="relative py-4">{renderTreeNodes()}</div>
         </>
 
-        {workflow.steps.map((stepId, index) => {
-          const agent = agents.find((a) => a._id === stepId)
-          if (!agent) return null
-
-          const executionStatus = getStepExecutionStatus(index)
-          // Only show current step indicator if workflow is still running
-          const isCurrentStep = execution?.currentStep === index && execution?.status === "running"
-          const executionDuration = getStepDuration(index)
-          const executionError = getStepError(index)
-
-          return (
-            <div key={`${index}-${stepId}`} className="relative">
-              <WorkflowStep
-                step={agent}
-                stepNumber={index + 1}
-                modelName={getModel(agent.aiModelId)?.name}
-                isDragging={draggedIndex === index}
-                isDragOver={dragOverIndex === index}
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, index)}
-                onRemove={() => onRemoveStep(index)}
-                onEdit={() => onConfigureStep(index)}
-                onDuplicate={() => onDuplicateStep(index, stepId)}
-                onViewLogs={onViewLogs}
-                isExpanded={areAllStepsExpanded}
-                executionStatus={
-                  executionStatus as "pending" | "connecting" | "running" | "completed" | "failed" | undefined
-                }
-                isCurrentStep={isCurrentStep}
-                executionDuration={executionDuration}
-                executionError={executionError}
-              />
-
-              {/* Add connecting line between steps - with execution state styling */}
-              {index < workflow.steps.length - 1 && (
-                <div className="relative py-4 w-[280px] mx-auto">
-                  <div
-                    className={cn(
-                      "absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 transition-colors",
-                      executionStatus === "completed" ? "bg-green-300" : "bg-border",
-                    )}
-                  />
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        <AddStepButton agents={agents} onSelect={handleAddAtEnd} getModel={getModel} />
       </div>
     )
   }
@@ -213,24 +280,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
           onMouseDown={handleMouseDown}
           data-canvas-container
         >
-          {/* Dot pattern background */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: "radial-gradient(circle, rgb(0 0 0 / 0.08) 1px, transparent 1px)",
-              backgroundSize: "20px 20px",
-              backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
-            }}
-          />
-          <div
-            className="absolute inset-0 dark:block hidden"
-            style={{
-              backgroundImage: "radial-gradient(circle, rgb(255 255 255 / 0.08) 1px, transparent 1px)",
-              backgroundSize: "20px 20px",
-              backgroundPosition: `${pan.x % 20}px ${pan.y % 20}px`,
-            }}
-          />
-
           {/* Canvas content with zoom and pan transforms */}
           <div className="absolute inset-0" style={canvasTransformStyle}>
             <div className="flex flex-col items-center justify-center min-h-full py-16" data-canvas-content>

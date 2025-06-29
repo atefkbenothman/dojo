@@ -55,6 +55,7 @@ interface WorkflowCardHeaderProps {
   onDelete?: (workflow: Workflow) => void
   onClone?: (workflow: Workflow) => void
   execution?: WorkflowExecution
+  nodeCount?: number
 }
 
 const WorkflowCardHeader = memo(function WorkflowCardHeader({
@@ -67,6 +68,7 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
   onDelete,
   onClone,
   execution,
+  nodeCount,
 }: WorkflowCardHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const isRunning = execution?.status === "preparing" || execution?.status === "running"
@@ -131,12 +133,10 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
       </div>
       {/* Right Side */}
       <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
-        {/* Number of steps */}
-        {workflow.steps.length > 0 && (
-          <div className="flex items-center justify-center size-8 border text-[10px] font-medium shrink-0">
-            {workflow.steps.length}
-          </div>
-        )}
+        {/* Number of nodes */}
+        <div className="flex items-center justify-center size-8 border text-[10px] font-medium shrink-0">
+          {nodeCount ?? '-'}
+        </div>
         {/* Settings */}
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
@@ -169,7 +169,7 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
           variant="outline"
           size="icon"
           onClick={handleRunOrStop}
-          disabled={!isAuthenticated || workflow.steps.length === 0}
+          disabled={!isAuthenticated || !workflow.rootNodeId}
           className="size-8 hover:cursor-pointer"
         >
           {isRunning ? <Square className="h-2.5 w-2.5" /> : <Play className="h-2.5 w-2.5" />}
@@ -181,7 +181,6 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
 
 interface WorkflowExecutionStatusProps {
   execution: WorkflowExecution
-  workflow: Workflow
   agents: Agent[]
   isAuthenticated: boolean
   onRun?: (workflow: Workflow) => void
@@ -190,40 +189,46 @@ interface WorkflowExecutionStatusProps {
 // WorkflowExecutionStatus component
 const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
   execution,
-  workflow,
   agents,
 }: WorkflowExecutionStatusProps) {
   const isActiveExecution = execution.status === "preparing" || execution.status === "running"
 
   const getProgressPercentage = () => {
-    // If we have step executions, count based on those
-    if (execution.stepExecutions && execution.stepExecutions.length > 0) {
-      const completedSteps = execution.stepExecutions.filter((se) => se.status === "completed").length
-      return Math.round((completedSteps / execution.totalSteps) * 100)
+    // If we have node executions, count based on those
+    if ("nodeExecutions" in execution && execution.nodeExecutions && execution.nodeExecutions.length > 0) {
+      const completedNodes = execution.nodeExecutions.filter((ne) => ne.status === "completed").length
+      return Math.round((completedNodes / execution.totalSteps) * 100)
     }
 
-    // Fallback to currentStep logic, but add 1 if we're actively running
-    if (execution.currentStep === undefined) {
-      // If workflow is running but no currentStep yet, we're on step 1
-      return execution.status === "running" ? Math.round((1 / execution.totalSteps) * 100) : 0
+    // For legacy executions or when no nodes yet
+    if ("currentNodes" in execution && execution.currentNodes && execution.currentNodes.length > 0) {
+      // If workflow is running with current nodes, show progress
+      return execution.status === "running" ? Math.round((execution.currentNodes.length / execution.totalSteps) * 100) : 0
     }
 
-    // currentStep is 0-indexed and represents the step being executed
-    // So progress should be (currentStep + 1) / totalSteps
-    const activeStep = execution.currentStep + 1
-    return Math.round((activeStep / execution.totalSteps) * 100)
+    // Fallback for preparing/initial state
+    return execution.status === "running" ? Math.round((1 / execution.totalSteps) * 100) : 0
   }
 
-  const getCurrentStepName = () => {
-    if (execution.currentStep === undefined) return null
+  const getCurrentNodeName = () => {
+    if (!("currentNodes" in execution) || !execution.currentNodes || execution.currentNodes.length === 0) {
+      return null
+    }
 
-    // Get the agent ID for the current step
-    const currentStepAgentId = workflow.steps[execution.currentStep]
-    if (!currentStepAgentId) return null
+    // For simplicity, show the first current node name
+    const currentNodeId = execution.currentNodes[0]
+    if (!("nodeExecutions" in execution) || !execution.nodeExecutions) {
+      return `Node ${currentNodeId}`
+    }
+
+    const currentNodeExecution = execution.nodeExecutions.find(ne => ne.nodeId === currentNodeId)
+    if (!currentNodeExecution?.agentId) {
+      return `Node ${currentNodeId}`
+    }
 
     // Find the agent and return its name
-    const currentAgent = agents.find((agent) => agent._id === currentStepAgentId)
-    return currentAgent ? currentAgent.name : `Step ${execution.currentStep + 1}`
+    const currentAgent = agents.find((agent) => agent._id === currentNodeExecution.agentId)
+    return currentAgent ? currentAgent.name : `Node ${currentNodeId}`
   }
 
   const getProgressText = () => {
@@ -231,12 +236,16 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
       case "preparing":
         return "Preparing workflow..."
       case "running": {
-        const current = (execution.currentStep ?? 0) + 1
-        const stepName = getCurrentStepName()
-
-        return stepName
-          ? `Running: ${stepName} (${current}/${execution.totalSteps})`
-          : `Running step ${current} of ${execution.totalSteps}`
+        const nodeName = getCurrentNodeName()
+        const currentNodeCount = ("currentNodes" in execution && execution.currentNodes) ? execution.currentNodes.length : 1
+        
+        if (nodeName && currentNodeCount === 1) {
+          return `Running: ${nodeName}`
+        } else if (currentNodeCount > 1) {
+          return `Running ${currentNodeCount} nodes in parallel`
+        } else {
+          return "Running workflow..."
+        }
       }
       case "completed":
         return `Completed in ${formatDuration(execution.startedAt, execution.completedAt)}`
@@ -278,7 +287,7 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
         </div>
 
         {/* Progress bar only for active workflows */}
-        {isActiveExecution && execution.currentStep !== undefined && (
+        {isActiveExecution && (
           <Progress value={getProgressPercentage()} className="h-1 w-full" />
         )}
       </div>
@@ -297,6 +306,7 @@ interface WorkflowCardProps {
   onStop?: (workflow: Workflow) => void
   execution?: WorkflowExecution
   agents?: Agent[]
+  nodeCount?: number
 }
 
 export const WorkflowCard = memo(function WorkflowCard({
@@ -310,6 +320,7 @@ export const WorkflowCard = memo(function WorkflowCard({
   onStop,
   execution,
   agents = [],
+  nodeCount,
 }: WorkflowCardProps) {
   const { play } = useSoundEffectContext()
 
@@ -342,11 +353,11 @@ export const WorkflowCard = memo(function WorkflowCard({
           onDelete={onDeleteClick}
           onClone={onCloneClick}
           execution={execution}
+          nodeCount={nodeCount}
         />
         {execution && (
           <WorkflowExecutionStatus
             execution={execution}
-            workflow={workflow}
             agents={agents}
             isAuthenticated={isAuthenticated}
             onRun={onRun}

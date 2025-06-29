@@ -7,8 +7,8 @@ import { WorkflowCard } from "@/components/workflow/workflow-card"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Agent, Workflow, WorkflowExecution } from "@dojo/db/convex/types"
-import { Search, Globe, User, Plus, Play, Layers } from "lucide-react"
+import { Agent, Workflow, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
+import { Search, Globe, Plus, Play, Layers } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
 
 interface WorkflowSidebarProps {
@@ -17,6 +17,7 @@ interface WorkflowSidebarProps {
   isAuthenticated: boolean
   workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
   agents: Agent[]
+  workflowNodes: WorkflowNode[]
   onSelectWorkflow: (workflow: Workflow) => void
   onCreateWorkflow: () => void
   onEditWorkflow: (workflow: Workflow) => void
@@ -34,6 +35,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
   isAuthenticated,
   workflowExecutions,
   agents,
+  workflowNodes,
   onSelectWorkflow,
   onCreateWorkflow,
   onEditWorkflow,
@@ -44,6 +46,20 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
   isCollapsed,
   onExpandSidebar,
 }: WorkflowSidebarProps) {
+  // Helper function to get node count for any workflow
+  const getWorkflowNodeCount = useCallback(
+    (workflowId: string) => {
+      // For the selected workflow, use the passed workflowNodes
+      if (selectedWorkflowId === workflowId) {
+        const count = workflowNodes.length
+        return count
+      }
+      // For other workflows, we don't have the node data loaded
+      // Return undefined to show "-" instead of stale data
+      return undefined
+    },
+    [selectedWorkflowId, workflowNodes],
+  )
   const [searchInput, setSearchInput] = useState<string>("")
   const [openSections, setOpenSections] = useState<string[]>([])
   const { play } = useSoundEffectContext()
@@ -239,6 +255,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                           onStop={() => onStopWorkflow(workflow._id)}
                           execution={workflowExecutions.get(workflow._id)}
                           agents={agents || []}
+                          nodeCount={getWorkflowNodeCount(workflow._id)}
                         />
                       </div>
                     ))
@@ -276,6 +293,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                           onStop={() => onStopWorkflow(workflow._id)}
                           execution={workflowExecutions.get(workflow._id)}
                           agents={agents || []}
+                          nodeCount={getWorkflowNodeCount(workflow._id)}
                         />
                       </div>
                     ))
@@ -320,6 +338,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                           onStop={() => onStopWorkflow(workflow._id)}
                           execution={workflowExecutions.get(workflow._id)}
                           agents={agents || []}
+                          nodeCount={getWorkflowNodeCount(workflow._id)}
                         />
                       </div>
                     ))

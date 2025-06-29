@@ -264,9 +264,6 @@ export const Workflow = memo(function Workflow() {
   )
 
 
-  const handleViewLogs = useCallback(() => {
-    setActiveTab("run")
-  }, [])
 
   const handleRunWorkflow = useCallback(async () => {
     if (!selectedWorkflow) return

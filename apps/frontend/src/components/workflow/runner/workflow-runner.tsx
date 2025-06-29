@@ -2,7 +2,7 @@
 
 import { WorkflowExecutionView } from "@/components/workflow/runner/workflow-execution-view"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
+import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
 import { memo } from "react"
 
 interface WorkflowRunnerProps {
@@ -10,6 +10,7 @@ interface WorkflowRunnerProps {
   agents: Agent[]
   isAuthenticated: boolean
   workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
+  workflowNodes: WorkflowNode[]
   onRunWorkflow: (workflow: Workflow) => void
   onStopWorkflow: (workflowId: string) => void
 }
@@ -18,12 +19,13 @@ export const WorkflowRunner = memo(function WorkflowRunner({
   workflow,
   agents,
   workflowExecutions,
+  workflowNodes,
 }: WorkflowRunnerProps) {
   const execution = workflowExecutions.get(workflow._id)
 
   return (
     <div className="h-full bg-background">
-      <WorkflowExecutionView workflow={workflow} execution={execution} agents={agents} workflowSteps={workflow.steps} />
+      <WorkflowExecutionView workflow={workflow} execution={execution} agents={agents} workflowNodes={workflowNodes} />
     </div>
   )
 })
