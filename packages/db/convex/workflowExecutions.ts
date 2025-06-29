@@ -213,7 +213,7 @@ export const updateNodeProgress = mutation({
       completedAt: args.status === "completed" || args.status === "failed" ? Date.now() : undefined,
     }
 
-    // Update current nodes for parallel tracking
+    // Update current nodes for tracking multiple children execution
     let currentNodes = [...execution.currentNodes]
     if (args.status === "running") {
       if (!currentNodes.includes(args.nodeId)) {

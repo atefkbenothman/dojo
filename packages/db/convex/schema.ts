@@ -67,18 +67,14 @@ export const workflowNodesFields = {
   nodeId: v.string(), // Unique within workflow (e.g., "node_1", "node_2")
   parentNodeId: v.optional(v.string()), // Reference to parent node
 
-  type: v.union(
-    v.literal("step"), // Agent execution step (can be root node if parentNodeId is null)
-    v.literal("parallel"), // Fork point - spawn all children
-    // Note: No "start" or "end" types needed - root nodes have parentNodeId: null, workflows terminate naturally
-  ),
+  type: v.literal("step"), // All nodes are now agent execution steps
 
   // Step-specific data
   agentId: v.optional(v.id("agents")), // Only for "step" nodes
 
   // Display metadata
   label: v.optional(v.string()),
-  order: v.optional(v.number()), // Child ordering for parallel branches
+  order: v.optional(v.number()), // Child execution ordering for step nodes with multiple children
 }
 
 // Workflow configurations
@@ -164,8 +160,8 @@ export const workflowExecutionsFields = {
     }),
   ),
 
-  // Current nodes for tracking parallel execution
-  currentNodes: v.array(v.string()), // Multiple nodes can be "current" in parallel
+  // Current nodes for tracking execution of multiple children
+  currentNodes: v.array(v.string()), // Multiple nodes can be "current" when step nodes have multiple children
 
   // Execution context
   error: v.optional(v.string()),

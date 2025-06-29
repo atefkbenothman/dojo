@@ -232,42 +232,36 @@ export class WorkflowExecutor {
         }
       }
       
-      // Execute all ready nodes in parallel
+      // Execute all ready step nodes (children execute after parent completes)
       if (readyNodes.length > 0) {
-        this.log(`Executing ${readyNodes.length} nodes in parallel: ${readyNodes.map(n => n.nodeId).join(', ')}`)
+        this.log(`Executing ${readyNodes.length} step nodes: ${readyNodes.map(n => n.nodeId).join(', ')}`)
         
         const nodePromises = readyNodes.map(async (node) => {
-          if (node.type === "step") {
-            inProgress.add(node.nodeId)
-            try {
-              const result = await this.executeNodeEventDriven(node, completedNodes, failedBranches, workflowPrompt)
-              completedNodes.set(result.nodeId, result)
-              allCompletedNodes.push(result)
-              
-              if (result.success) {
-                // Add children to queue
-                const children = await this.getChildNodes(node.nodeId)
-                queue.push(...children)
-                this.log(`Node ${node.nodeId} completed, added ${children.length} children to queue`)
-              } else {
-                // Mark branch as failed
-                const branchRoot = this.getBranchRoot(node)
-                failedBranches.add(branchRoot)
-                this.log(`Node ${node.nodeId} failed, marked branch ${branchRoot} as failed`)
-              }
-            } catch (error) {
-              this.log(`Node ${node.nodeId} failed with error:`, error)
+          // All nodes are step nodes now
+          inProgress.add(node.nodeId)
+          try {
+            const result = await this.executeNodeEventDriven(node, completedNodes, failedBranches, workflowPrompt)
+            completedNodes.set(result.nodeId, result)
+            allCompletedNodes.push(result)
+            
+            if (result.success) {
+              // Add children to queue
+              const children = await this.getChildNodes(node.nodeId)
+              queue.push(...children)
+              this.log(`Node ${node.nodeId} completed, added ${children.length} children to queue`)
+            } else {
+              // Mark branch as failed
               const branchRoot = this.getBranchRoot(node)
               failedBranches.add(branchRoot)
-              await this.markBranchAsSkipped(node.nodeId, `Node failed: ${error instanceof Error ? error.message : String(error)}`)
-            } finally {
-              inProgress.delete(node.nodeId)
+              this.log(`Node ${node.nodeId} failed, marked branch ${branchRoot} as failed`)
             }
-          } else if (node.type === "parallel") {
-            // Parallel nodes just add their children immediately
-            const children = await this.getChildNodes(node.nodeId)
-            queue.push(...children)
-            this.log(`Parallel node ${node.nodeId} processed, added ${children.length} children to queue`)
+          } catch (error) {
+            this.log(`Node ${node.nodeId} failed with error:`, error)
+            const branchRoot = this.getBranchRoot(node)
+            failedBranches.add(branchRoot)
+            await this.markBranchAsSkipped(node.nodeId, `Node failed: ${error instanceof Error ? error.message : String(error)}`)
+          } finally {
+            inProgress.delete(node.nodeId)
           }
         })
         

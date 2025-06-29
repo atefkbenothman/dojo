@@ -84,9 +84,9 @@ export class WorkflowService {
         }
       }
 
-      // Pre-validate that all step nodes have agents with models
+      // Pre-validate that all nodes with agents have models
       for (const node of nodes) {
-        if (node.type === "step" && node.agentId) {
+        if (node.agentId) {
           const agent = await convex.query(api.agents.get, { id: node.agentId })
           if (!agent) {
             return {
@@ -111,8 +111,8 @@ export class WorkflowService {
           workflowId: workflow._id,
           sessionId: session._id,
           userId: session.userId || undefined,
-          totalSteps: nodes.filter((n) => n.type === "step").length, // Count only step nodes
-          agentIds: nodes.filter((n) => n.type === "step" && n.agentId).map((n) => n.agentId!),
+          totalSteps: nodes.length, // All nodes are step nodes now
+          agentIds: nodes.filter((n) => n.agentId).map((n) => n.agentId!),
         })
 
         // Note: MCP connections are now handled per-step during execution
@@ -318,7 +318,7 @@ export class WorkflowService {
       return "Workflow must have at least one root node (node with no parent)"
     }
 
-    // Note: Multiple root nodes are allowed for parallel workflows from the start
+    // Note: Multiple root nodes are allowed for workflows that start with multiple step nodes
 
     // 1. Check for invalid parent references
     const nodeIds = new Set(nodes.map((n) => n.nodeId))
