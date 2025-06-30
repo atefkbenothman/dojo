@@ -8,28 +8,18 @@ import { NodeExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
 import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-transform"
 import { Agent } from "@dojo/db/convex/types"
-import {
-  ChevronDown,
-  Trash,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Loader2,
-  Plus,
-  FileText,
-  Pencil,
-} from "lucide-react"
+import { ChevronDown, Trash, CheckCircle, XCircle, Clock, Loader2, Plus, FileText, Pencil } from "lucide-react"
 import { useState, memo, useCallback } from "react"
 import { Handle, Position, NodeProps } from "reactflow"
 
 interface UnifiedNodeData {
   // Common props
   variant: "instructions" | "step"
-  
+
   // Instructions variant props
   instructions?: string
   onEditClick?: () => void
-  
+
   // Step variant props
   workflowNode?: TransformNodeData["workflowNode"]
   agent?: Agent
@@ -45,49 +35,55 @@ interface UnifiedNodeData {
 
 interface UnifiedWorkflowNodeProps extends NodeProps<UnifiedNodeData> {}
 
-// Custom comparison function for memoization
-const arePropsEqual = (
-  prevProps: UnifiedWorkflowNodeProps,
-  nextProps: UnifiedWorkflowNodeProps
-) => {
-  const prevData = prevProps.data
-  const nextData = nextProps.data
-
-  // Always re-render if selection changes
-  if (prevProps.selected !== nextProps.selected) return false
-
-  // Always re-render if variant changes
-  if (prevData.variant !== nextData.variant) return false
-
-  if (prevData.variant === "instructions") {
-    return prevData.instructions === nextData.instructions
-  }
-
-  // For step variant
-  const workflowNodeEqual =
-    prevData.workflowNode?.nodeId === nextData.workflowNode?.nodeId &&
-    prevData.workflowNode?.label === nextData.workflowNode?.label &&
-    prevData.workflowNode?.agentId === nextData.workflowNode?.agentId
-
-  const agentEqual = prevData.agent?._id === nextData.agent?._id
-
-  const agentsEqual =
-    prevData.agents?.length === nextData.agents?.length &&
-    (prevData.agents?.every((agent, index) => agent._id === nextData.agents?.[index]?._id) ?? true)
-
-  return (
-    workflowNodeEqual &&
-    agentEqual &&
-    prevData.executionStatus === nextData.executionStatus &&
-    prevData.expanded === nextData.expanded &&
-    agentsEqual
-  )
+// Instructions Card Component
+interface InstructionsCardProps {
+  instructions?: string
+  onEditClick?: () => void
+  selected: boolean
 }
 
-export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
-  data,
+const InstructionsCard = memo(function InstructionsCard({
+  instructions,
+  onEditClick,
   selected,
-}: UnifiedWorkflowNodeProps) {
+}: InstructionsCardProps) {
+  return (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <h4 className="text-sm font-medium leading-none text-foreground">Workflow Instructions</h4>
+        </div>
+        {onEditClick && selected && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground border-muted-foreground/20"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditClick()
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Edit workflow metadata"
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+
+      {/* Instructions textarea */}
+      <Textarea
+        value={instructions || "Edit your workflow instructions here"}
+        readOnly
+        className="h-[120px] max-h-[300px] resize-none text-xs bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default overflow-y-auto"
+        placeholder="No instructions provided"
+      />
+    </>
+  )
+})
+
+export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({ data, selected }: UnifiedWorkflowNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
 
   const isInstructions = data.variant === "instructions"
@@ -104,7 +100,7 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
         data.onAddStepWithAgent(data.workflowNode.nodeId, agent)
       }
     },
-    [data]
+    [data],
   )
 
   const handleChangeAgent = useCallback(
@@ -113,7 +109,7 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
         data.onChangeAgent(data.workflowNode.nodeId, agent)
       }
     },
-    [data]
+    [data],
   )
 
   const handleRemove = useCallback(() => {
@@ -124,7 +120,7 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
 
   const getExecutionStatusIcon = () => {
     if (!data.executionStatus) return null
-    
+
     switch (data.executionStatus) {
       case "connecting":
         return <Clock className="h-3 w-3 text-yellow-500" />
@@ -168,10 +164,7 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
           type="target"
           position={Position.Top}
           style={{
-            background:
-              data.executionStatus === "running"
-                ? "hsl(var(--primary))"
-                : "hsl(var(--muted-foreground))",
+            background: data.executionStatus === "running" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
             width: 10,
             height: 10,
             border: "2px solid hsl(var(--background))",
@@ -187,10 +180,8 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
           getStatusBorderClass(),
           isInstructions && "bg-background/95 backdrop-blur p-0",
           !isInstructions && isHovered && "shadow-md ring-1 ring-primary/20 scale-[1.01]",
-          !isInstructions &&
-            data.executionStatus === "running" &&
-            "animate-pulse shadow-blue-200 dark:shadow-blue-800",
-          selected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+          !isInstructions && data.executionStatus === "running" && "animate-pulse shadow-blue-200 dark:shadow-blue-800",
+          selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -212,40 +203,7 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
 
           {/* Instructions variant content */}
           {isInstructions ? (
-            <>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="text-sm font-medium leading-none text-foreground">
-                    Workflow Instructions
-                  </h4>
-                </div>
-                {data.onEditClick && selected && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-foreground border-muted-foreground/20"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      data.onEditClick?.()
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    title="Edit workflow metadata"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Instructions textarea */}
-              <Textarea
-                value={data.instructions || "Edit your workflow instructions here"}
-                readOnly
-                className="h-[120px] max-h-[300px] resize-none text-xs bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default overflow-y-auto"
-                placeholder="No instructions provided"
-              />
-            </>
+            <InstructionsCard instructions={data.instructions} onEditClick={data.onEditClick} selected={selected} />
           ) : (
             <>
               {/* Step variant content */}
@@ -255,14 +213,6 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
                   <div className="flex-1 min-w-0">
                     {/* Primary: Node name/label with type icon and execution status */}
                     <div className="flex items-center gap-1.5">
-                      <div
-                        className={cn(
-                          "text-sm transition-all",
-                          data.executionStatus === "running" && "animate-spin"
-                        )}
-                      >
-                        {data.executionStatus === "running" ? "⚡" : "⚙️"}
-                      </div>
                       <h4 className="text-sm font-medium leading-none text-foreground">
                         {data.workflowNode?.label || `Step ${data.workflowNode?.nodeId}`}
                       </h4>
@@ -279,7 +229,7 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
                           <span
                             className={cn(
                               "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium",
-                              "bg-secondary/80 text-secondary-foreground"
+                              "bg-secondary/80 text-secondary-foreground",
                             )}
                           >
                             {data.agent.outputType === "object" ? "JSON" : "Text"}
@@ -287,27 +237,20 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
                           {modelName && (
                             <>
                               <span className="text-muted-foreground">•</span>
-                              <span className="text-muted-foreground truncate text-xs">
-                                {modelName}
-                              </span>
+                              <span className="text-muted-foreground truncate text-xs">{modelName}</span>
                             </>
                           )}
                         </div>
                       ) : (
-                        <div className="text-xs text-muted-foreground">
-                          No agent assigned (structural node)
-                        </div>
+                        <div className="text-xs text-muted-foreground">No agent assigned (structural node)</div>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Action buttons */}
-                <div 
-                  className={cn(
-                    "flex items-center justify-end gap-2 pt-2",
-                    (selected || data.agent) && "border-t"
-                  )}
+                <div
+                  className={cn("flex items-center justify-end gap-2 pt-2", (selected || data.agent) && "border-t")}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -376,10 +319,7 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
                       <ChevronDown
-                        className={cn(
-                          "h-3 w-3 transition-transform duration-200",
-                          isExpanded && "rotate-180"
-                        )}
+                        className={cn("h-3 w-3 transition-transform duration-200", isExpanded && "rotate-180")}
                       />
                     </Button>
                   )}
@@ -435,4 +375,4 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
       />
     </>
   )
-}, arePropsEqual)
+})

@@ -231,7 +231,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
 
       return {
         ...edge,
-        type: "smoothstep", // Ensure we're using built-in smoothstep edge
+        type: "step", // Use step edge for sharp corners
         animated: isAnimated,
         style: {
           ...edge.style,

@@ -30,7 +30,7 @@ function createWorkflowEdge(id: string, source: string, target: string): Edge {
     id,
     source,
     target,
-    type: "smoothstep",
+    type: "step",
     style: {
       stroke: "#64748b",
       strokeWidth: 2,
