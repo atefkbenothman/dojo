@@ -8,9 +8,6 @@ export interface DagreLayoutConfig {
   horizontalSpacing: number
   verticalSpacing: number
   direction: "TB" | "BT" | "LR" | "RL"
-  // Special dimensions for instructions node
-  instructionsNodeWidth?: number
-  instructionsNodeHeight?: number
 }
 
 const DEFAULT_DAGRE_CONFIG: DagreLayoutConfig = {
@@ -19,8 +16,6 @@ const DEFAULT_DAGRE_CONFIG: DagreLayoutConfig = {
   horizontalSpacing: 120,
   verticalSpacing: 80,
   direction: "TB",
-  instructionsNodeWidth: 320,
-  instructionsNodeHeight: 180,
 }
 
 /**
@@ -48,20 +43,9 @@ export function calculateDagreLayout<T>(
 
   // Add nodes to dagre graph
   nodes.forEach((node) => {
-    // Use special dimensions for instructions node
-    const isInstructionsNode = node.id === "instructions-root"
-    const width = isInstructionsNode
-      ? layoutConfig.instructionsNodeWidth || layoutConfig.nodeWidth
-      : layoutConfig.nodeWidth
-    const height = isInstructionsNode
-      ? layoutConfig.instructionsNodeHeight || layoutConfig.nodeHeight
-      : layoutConfig.nodeHeight
-
     dagreGraph.setNode(node.id, {
-      width,
-      height,
-      // Add some metadata that might be useful
-      isInstructionsNode,
+      width: node.width || layoutConfig.nodeWidth,
+      height: node.height || layoutConfig.nodeHeight,
     })
   })
 
@@ -147,8 +131,6 @@ export function calculateWorkflowLayout<T>(
     nodeHeight: 140,
     horizontalSpacing: 100, // Slightly less than before for more compact layout
     verticalSpacing: 80,
-    instructionsNodeWidth: 320,
-    instructionsNodeHeight: 180,
     ...config,
   }
 

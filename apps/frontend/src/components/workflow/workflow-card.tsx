@@ -133,10 +133,6 @@ const WorkflowCardHeader = memo(function WorkflowCardHeader({
       </div>
       {/* Right Side */}
       <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
-        {/* Number of nodes */}
-        <div className="flex items-center justify-center size-8 border text-[10px] font-medium shrink-0">
-          {nodeCount ?? '-'}
-        </div>
         {/* Settings */}
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
@@ -203,7 +199,9 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
     // For legacy executions or when no nodes yet
     if ("currentNodes" in execution && execution.currentNodes && execution.currentNodes.length > 0) {
       // If workflow is running with current nodes, show progress
-      return execution.status === "running" ? Math.round((execution.currentNodes.length / execution.totalSteps) * 100) : 0
+      return execution.status === "running"
+        ? Math.round((execution.currentNodes.length / execution.totalSteps) * 100)
+        : 0
     }
 
     // Fallback for preparing/initial state
@@ -221,7 +219,7 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
       return `Node ${currentNodeId}`
     }
 
-    const currentNodeExecution = execution.nodeExecutions.find(ne => ne.nodeId === currentNodeId)
+    const currentNodeExecution = execution.nodeExecutions.find((ne) => ne.nodeId === currentNodeId)
     if (!currentNodeExecution?.agentId) {
       return `Node ${currentNodeId}`
     }
@@ -237,8 +235,9 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
         return "Preparing workflow..."
       case "running": {
         const nodeName = getCurrentNodeName()
-        const currentNodeCount = ("currentNodes" in execution && execution.currentNodes) ? execution.currentNodes.length : 1
-        
+        const currentNodeCount =
+          "currentNodes" in execution && execution.currentNodes ? execution.currentNodes.length : 1
+
         if (nodeName && currentNodeCount === 1) {
           return `Running: ${nodeName}`
         } else if (currentNodeCount > 1) {
@@ -287,9 +286,7 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
         </div>
 
         {/* Progress bar only for active workflows */}
-        {isActiveExecution && (
-          <Progress value={getProgressPercentage()} className="h-1 w-full" />
-        )}
+        {isActiveExecution && <Progress value={getProgressPercentage()} className="h-1 w-full" />}
       </div>
     </>
   )

@@ -157,7 +157,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
             </div>
           </div>
 
-          <div className="w-full border-t-[1.5px]" />
+          <div className="w-full bg-border h-[1px]" />
 
           {/* Running */}
           <div className="flex w-full items-center justify-center">
@@ -302,7 +302,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
               </AccordionContent>
             </AccordionItem>
 
-            <div className="border-b-[1px]" />
+            <div className="bg-border h-[1px]" />
 
             {/* User Workflows Section - Always shown */}
             <AccordionItem value="user" className="">
@@ -347,7 +347,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
               </AccordionContent>
             </AccordionItem>
 
-            <div className="border-b-[1px]" />
+            <div className="bg-border h-[1px]" />
           </Accordion>
         </>
       )}

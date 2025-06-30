@@ -9,6 +9,7 @@ export interface ReactFlowNodeData {
 export interface InstructionsNodeData {
   instructions: string
   onEditClick?: () => void
+  isInstructionsNode?: boolean
 }
 
 export interface TransformToReactFlowParams {
@@ -40,9 +41,12 @@ export function transformToReactFlow({
     id: "instructions-root",
     type: "instructionsNode",
     position: { x: 0, y: 0 }, // Will be set by layout algorithm
+    width: 320,
+    height: 180,
     data: {
       instructions: instructions || "",
       onEditClick: onEditInstructions,
+      isInstructionsNode: true,
     },
   }
   nodes.push(instructionsNode)
@@ -55,6 +59,8 @@ export function transformToReactFlow({
       id: workflowNode.nodeId,
       type: "stepNode",
       position: { x: 0, y: 0 }, // Will be set by layout algorithm
+      width: 280, // Default width for step nodes
+      height: 140, // Default height for step nodes
       data: {
         workflowNode,
         agent,

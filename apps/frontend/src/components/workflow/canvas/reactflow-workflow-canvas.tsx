@@ -13,7 +13,14 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
 import { Plus } from "lucide-react"
 import { useCallback, useState, memo, useMemo, useEffect, useRef } from "react"
-import ReactFlow, { Background, ConnectionMode, Panel } from "reactflow"
+import ReactFlow, {
+  Background,
+  ConnectionMode,
+  Panel,
+  useReactFlow,
+  ReactFlowProvider,
+  useNodesInitialized,
+} from "reactflow"
 import "reactflow/dist/style.css"
 
 interface ReactFlowWorkflowCanvasProps {
@@ -40,27 +47,30 @@ const nodeTypes = {
 const fitViewOptions = {
   padding: 0.3,
   includeHiddenNodes: false,
-  duration: 800,
 }
 
 // Define default viewport
 const defaultViewport = { x: 0, y: 0, zoom: 1 }
 
-export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
+// Separate the inner component that uses React Flow hooks
+const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner({
   workflow,
   agents,
   workflowNodes,
+  isAuthenticated,
   workflowExecutions,
   getModel,
-  onAddFirstStep,
   onEditMetadata,
   onRemoveNode,
   onChangeNodeAgent,
   onAddStepWithAgent,
+  onAddFirstStep,
 }: ReactFlowWorkflowCanvasProps) {
   const [areAllStepsExpanded, setAreAllStepsExpanded] = useState(false)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
-  const reactFlowRef = useRef<any>(null)
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
+  const { fitView } = useReactFlow()
+  const nodesInitialized = useNodesInitialized()
 
   // Get execution data for this workflow
   const execution = workflowExecutions.get(workflow._id)
@@ -81,8 +91,6 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
   // Apply layout algorithm
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
     const result = calculateWorkflowLayout(transformedNodes, transformedEdges, {
-      nodeWidth: 280,
-      nodeHeight: 140,
       horizontalSpacing: 120,
       verticalSpacing: 80,
       direction: "TB",
@@ -90,6 +98,13 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
 
     return result
   }, [transformedNodes, transformedEdges])
+
+  // Fit view when workflow changes and nodes are initialized
+  useEffect(() => {
+    if (nodesInitialized && layoutedNodes.length > 0) {
+      fitView(fitViewOptions)
+    }
+  }, [workflow._id, nodesInitialized, layoutedNodes.length, fitView])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -232,10 +247,10 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
       {/* ReactFlow Canvas */}
       <div className="relative h-full">
         <ReactFlow
-          ref={reactFlowRef}
           nodes={enhancedNodes}
           edges={styledEdges}
           nodeTypes={nodeTypes}
+          onInit={setReactFlowInstance}
           onSelectionChange={handleSelectionChange}
           connectionMode={ConnectionMode.Loose}
           fitView
@@ -361,5 +376,14 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
         </ReactFlow>
       </div>
     </div>
+  )
+})
+
+// Main component that provides the ReactFlowProvider
+export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas(props: ReactFlowWorkflowCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <ReactFlowWorkflowCanvasInner {...props} />
+    </ReactFlowProvider>
   )
 })

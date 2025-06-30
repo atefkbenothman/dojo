@@ -20,8 +20,8 @@ export const ReactFlowInstructionsNode = memo(function ReactFlowInstructionsNode
 
   return (
     <div className="relative">
-      <Card 
-        className={`transition-all relative p-0 border-2 border-dashed border-muted-foreground/25 bg-background/95 backdrop-blur ${
+      <Card
+        className={`react-flow-instructions-node transition-all relative p-0 border-2 border-dashed border-muted-foreground/25 bg-background/95 backdrop-blur ${
           selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
         }`}
       >

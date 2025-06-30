@@ -78,7 +78,7 @@ export function AgentCard({ agent, isAuthenticated = false, onEditClick }: Agent
             title={
               isRunning
                 ? "Agent is running"
-                : (!isAuthenticated && !agent.isPublic)
+                : !isAuthenticated && !agent.isPublic
                   ? "Login required to run private agents"
                   : "Run agent"
             }

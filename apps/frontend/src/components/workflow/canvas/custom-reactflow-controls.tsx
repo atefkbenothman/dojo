@@ -27,17 +27,16 @@ export const CustomReactFlowControls = memo(function CustomReactFlowControls({
   const canZoomOut = zoom > minZoom
 
   const handleZoomIn = useCallback(() => {
-    zoomIn({ duration: 200 })
+    zoomIn()
   }, [zoomIn])
 
   const handleZoomOut = useCallback(() => {
-    zoomOut({ duration: 200 })
+    zoomOut()
   }, [zoomOut])
 
   const handleFitView = useCallback(() => {
     fitView({
       padding: 0.3,
-      duration: 400,
       includeHiddenNodes: false,
     })
   }, [fitView])

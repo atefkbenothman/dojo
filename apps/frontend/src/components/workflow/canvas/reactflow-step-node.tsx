@@ -141,7 +141,7 @@ export const ReactFlowStepNode = memo(function ReactFlowStepNode({ data, selecte
 
       <Card
         className={cn(
-          "w-[280px] overflow-hidden transition-all duration-200 shadow-sm hover:shadow-lg cursor-pointer",
+          "react-flow-step-node w-[280px] overflow-hidden cursor-pointer",
           getStatusBorderClass(),
           selected && "ring-2 ring-primary ring-offset-2 shadow-xl scale-[1.02]",
           isHovered && !selected && "shadow-md ring-1 ring-primary/20 scale-[1.01]",
@@ -165,12 +165,7 @@ export const ReactFlowStepNode = memo(function ReactFlowStepNode({ data, selecte
               <div className="flex-1 min-w-0">
                 {/* Primary: Node name/label with type icon and execution status */}
                 <div className="flex items-center gap-1.5">
-                  <div
-                    className={cn(
-                      "text-sm transition-all duration-200",
-                      executionStatus === "running" && "animate-spin",
-                    )}
-                  >
+                  <div className={cn("text-sm transition-all", executionStatus === "running" && "animate-spin")}>
                     {executionStatus === "running" ? "⚡" : "⚙️"}
                   </div>
                   <h4 className="text-sm font-medium leading-none text-foreground">
