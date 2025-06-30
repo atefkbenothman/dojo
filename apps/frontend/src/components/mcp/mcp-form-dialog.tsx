@@ -115,7 +115,7 @@ export function createMCPObject(data: MCPFormValues): WithoutSystemFields<Doc<"m
   }
 }
 
-export interface MCPDialogProps {
+export interface MCPFormDialogProps {
   mode: "add" | "edit"
   server?: MCPServer
   open: boolean
@@ -123,7 +123,7 @@ export interface MCPDialogProps {
   isAuthenticated?: boolean
 }
 
-export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = false }: MCPDialogProps) {
+export function MCPFormDialog({ mode, server, open, onOpenChange, isAuthenticated = false }: MCPFormDialogProps) {
   const { play } = useSoundEffectContext()
 
   const { create, edit, remove } = useMCP()
@@ -301,11 +301,7 @@ export function MCPDialog({ mode, server, open, onOpenChange, isAuthenticated = 
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Summary (optional)</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Short description of server capabilities"
-                        {...field}
-                        disabled={!canEdit}
-                      />
+                      <Input placeholder="Short description of server capabilities" {...field} disabled={!canEdit} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

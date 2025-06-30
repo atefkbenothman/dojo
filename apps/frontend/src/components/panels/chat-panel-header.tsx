@@ -7,8 +7,7 @@ import { MessageSquare, Server, Maximize, Minimize, Plus } from "lucide-react"
 import { memo } from "react"
 
 function MCPServersPopover() {
-  const { mcpServers } = useMCP()
-  const { activeConnections } = useMCP()
+  const { mcpServers, activeConnections } = useMCP()
 
   return (
     <Popover>

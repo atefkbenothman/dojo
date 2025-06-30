@@ -1,6 +1,7 @@
 "use client"
 
 import { MCP_SERVER_ICONS } from "@/components/icons"
+import { MCPStatusIndicator } from "@/components/mcp/mcp-status-indicator"
 import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -11,25 +12,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
+import { ActiveConnection, isMCPConnected, isMCPConnecting, MCPConnectionState } from "@/hooks/use-mcp"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import type { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
+import type { MCPServer } from "@dojo/db/convex/types"
 import { Settings, Plug, Unplug, Key, Pencil, Trash, Copy } from "lucide-react"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 
-interface MCPServerCardProps {
+interface MCPListItemProps {
   server: MCPServer
   isAuthenticated: boolean
   onEditClick: (server: MCPServer) => void
   onDeleteClick: (server: MCPServer) => void
   onCloneClick: (server: MCPServer) => void
-  isSelected: boolean
-  onConnect: () => void
-  onDisconnect: () => void
-  connection?: { serverId: string; name: string; tools: MCPToolsCollection }
-  status?: { status: string; error?: string; isStale?: boolean }
+  isSelected?: boolean
+  onConnect?: () => void
+  onDisconnect?: () => void
+  connection?: ActiveConnection | null
+  status?: MCPConnectionState | null
 }
 
-export function MCPServerCard({
+export function MCPListItem({
   server,
   isAuthenticated,
   onEditClick,
@@ -40,10 +44,11 @@ export function MCPServerCard({
   onDisconnect,
   connection,
   status,
-}: MCPServerCardProps) {
-  const isConnected = status?.status === "connected" && !status?.isStale
-  const isConnecting = status?.status === "connecting"
-  const hasError = status?.status === "error" || status?.isStale
+}: MCPListItemProps) {
+  const { play } = useSoundEffectContext()
+
+  const isConnected = isMCPConnected(status)
+  const isConnecting = isMCPConnecting(status)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   // Determine if user can edit/delete this server
@@ -52,12 +57,12 @@ export function MCPServerCard({
 
   const Icon = MCP_SERVER_ICONS[server.name.toLowerCase()] || null
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't trigger selection when clicking buttons or dropdown
-    if ((e.target as HTMLElement).closest('button, [role="menuitem"]')) {
-      e.stopPropagation()
-    }
-  }
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent) => {
+      play("./sounds/click.mp3", { volume: 0.5 })
+    },
+    [play],
+  )
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -80,9 +85,9 @@ export function MCPServerCard({
   const handleConnectionToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isConnected) {
-      onDisconnect()
+      onDisconnect?.()
     } else {
-      onConnect()
+      onConnect?.()
     }
   }
 
@@ -122,9 +127,7 @@ export function MCPServerCard({
             <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
               {server.name}
             </p>
-            {isConnected && <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />}
-            {isConnecting && <div className="h-2 w-2 rounded-full bg-yellow-500 shrink-0" />}
-            {hasError && <div className="h-2 w-2 rounded-full bg-red-500 shrink-0" />}
+            {isConnecting ? <LoadingAnimationInline /> : <MCPStatusIndicator status={status} />}
           </div>
           {/* Right Side */}
           <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">

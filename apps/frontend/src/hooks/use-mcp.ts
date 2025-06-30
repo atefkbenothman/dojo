@@ -13,6 +13,54 @@ import { WithoutSystemFields } from "convex/server"
 import { useMemo } from "react"
 import { toast } from "sonner"
 
+// Connection status constants
+export const MCP_CONNECTION_STATUS = {
+  CONNECTING: "connecting",
+  CONNECTED: "connected",
+  DISCONNECTING: "disconnecting",
+  DISCONNECTED: "disconnected",
+  ERROR: "error",
+} as const
+
+export type MCPConnectionStatus = (typeof MCP_CONNECTION_STATUS)[keyof typeof MCP_CONNECTION_STATUS]
+
+// Connection state interface
+export interface MCPConnectionState {
+  status: MCPConnectionStatus
+  error?: string
+  isStale?: boolean
+}
+
+// Utility functions
+export const isMCPConnected = (state?: MCPConnectionState | null): boolean => {
+  return state?.status === MCP_CONNECTION_STATUS.CONNECTED && !state?.isStale
+}
+
+export const isMCPConnecting = (state?: MCPConnectionState | null): boolean => {
+  return state?.status === MCP_CONNECTION_STATUS.CONNECTING
+}
+
+export const isMCPError = (state?: MCPConnectionState | null): boolean => {
+  return state?.status === MCP_CONNECTION_STATUS.ERROR || !!state?.isStale
+}
+
+export const canConnectMCP = (
+  server: Doc<"mcp">,
+  isAuthenticated: boolean,
+  connectionState?: MCPConnectionState | null,
+): boolean => {
+  // Can't connect if already connected or connecting
+  if (isMCPConnected(connectionState) || isMCPConnecting(connectionState)) return false
+
+  // Can't connect local servers in production
+  if (server.localOnly && process.env.NODE_ENV === "production") return false
+
+  // Can't connect servers requiring keys without authentication
+  if (!isAuthenticated && server.requiresUserKey) return false
+
+  return true
+}
+
 export interface ActiveConnection {
   serverId: string
   name: string
@@ -142,12 +190,6 @@ export function useMCP() {
     play("./sounds/disconnect.mp3", { volume: 0.5 })
   }
 
-  const disconnectAll = async () => {
-    if (activeConnections.length === 0) return
-    await Promise.all(activeConnections.map((conn) => disconnect(conn.serverId)))
-    play("./sounds/disconnect.mp3", { volume: 0.5 })
-  }
-
   const create = async (mcp: WithoutSystemFields<Doc<"mcp">>) => {
     try {
       await createMCP(mcp)
@@ -231,7 +273,6 @@ export function useMCP() {
     getConnection,
     connect,
     disconnect,
-    disconnectAll,
     create,
     edit,
     remove,

@@ -1,16 +1,17 @@
 "use client"
 
 import { MCPDeleteDialog } from "@/components/mcp/mcp-delete-dialog"
-import { MCPDialog } from "@/components/mcp/mcp-dialog"
+import { MCPFormDialog } from "@/components/mcp/mcp-form-dialog"
+import { MCPHeader } from "@/components/mcp/mcp-header"
+import { MCPList } from "@/components/mcp/mcp-list"
 import { MCPServerSettings } from "@/components/mcp/mcp-server-settings"
-import { MCPSidebar } from "@/components/mcp/mcp-sidebar"
 import { Button } from "@/components/ui/button"
-import { useMCP } from "@/hooks/use-mcp"
+import { useMCP, MCPConnectionState } from "@/hooks/use-mcp"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Pencil, Plug, Unplug, Copy, PanelLeft, PanelRight } from "lucide-react"
+import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Mcp() {
@@ -26,12 +27,12 @@ export function Mcp() {
 
   // Create a map of connection statuses for efficient lookup
   const connectionStatuses = useMemo(() => {
-    const statusMap = new Map<string, { status: string; error?: string; isStale?: boolean }>()
+    const statusMap = new Map<string, MCPConnectionState>()
     mcpServers.forEach((server) => {
       const conn = getConnection(server._id)
       if (conn) {
         statusMap.set(server._id, {
-          status: conn.status,
+          status: conn.status as MCPConnectionState["status"],
           error: conn.error,
           isStale: conn.isStale,
         })
@@ -76,15 +77,15 @@ export function Mcp() {
   )
 
   const handleConnect = useCallback(
-    async (serverId: string) => {
-      await connect([serverId as Id<"mcp">])
+    async (server: MCPServer) => {
+      await connect([server._id as Id<"mcp">])
     },
     [connect],
   )
 
   const handleDisconnect = useCallback(
-    async (serverId: string) => {
-      await disconnect(serverId)
+    async (server: MCPServer) => {
+      await disconnect(server._id)
     },
     [disconnect],
   )
@@ -124,7 +125,7 @@ export function Mcp() {
             </Button>
           </div>
           {/* Server List */}
-          <MCPSidebar
+          <MCPList
             servers={mcpServers}
             selectedServerId={selectedServer?._id || null}
             isAuthenticated={isAuthenticated}
@@ -145,94 +146,15 @@ export function Mcp() {
         <div className="flex flex-col flex-1 overflow-x-auto">
           {selectedServer ? (
             <>
-              {/* Header */}
-              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between bg-card h-[42px]">
-                {/* Left section - Name and Edit */}
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate">{selectedServer.name}</p>
-                  {/* Connection status dot */}
-                  {(() => {
-                    const status = connectionStatuses.get(selectedServer._id)
-                    const isConnected = status?.status === "connected" && !status?.isStale
-                    const isConnecting = status?.status === "connecting"
-                    const hasError = status?.status === "error" || status?.isStale
-
-                    if (isConnected) return <div className="h-2 w-2 rounded-full bg-green-500" />
-                    if (isConnecting) return <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                    if (hasError) return <div className="h-2 w-2 rounded-full bg-red-500" />
-                    return null
-                  })()}
-                  {/* Edit */}
-                  {!selectedServer.isPublic && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditServer(selectedServer)}
-                      className="hover:cursor-pointer"
-                    >
-                      <Pencil className="h-3 w-3 text-muted-foreground" />
-                    </Button>
-                  )}
-                </div>
-
-                {/* Right section - Connect/Disconnect or Clone button */}
-                <div className="flex items-center justify-end flex-shrink-0 ml-4">
-                  {(() => {
-                    const status = connectionStatuses.get(selectedServer._id)
-                    const isConnected = status?.status === "connected" && !status?.isStale
-                    const isConnecting = status?.status === "connecting"
-                    const disableConnect =
-                      (selectedServer.localOnly && process.env.NODE_ENV === "production") ||
-                      (!isAuthenticated && selectedServer.requiresUserKey)
-
-                    // Show clone button for public servers requiring keys (when authenticated and not connected)
-                    if (selectedServer.isPublic && selectedServer.requiresUserKey && isAuthenticated && !isConnected) {
-                      return (
-                        <Button
-                          className="border-[1px] hover:cursor-pointer bg-blue-700 hover:bg-blue-800 text-white border-blue-500 hover:border-blue-800"
-                          onClick={() => handleCloneServer(selectedServer)}
-                        >
-                          <Copy className="h-3 w-3 mr-1" />
-                          Clone to Configure
-                        </Button>
-                      )
-                    }
-
-                    return (
-                      <Button
-                        className={cn(
-                          "border-[1px] hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
-                          isConnected
-                            ? "bg-red-700 hover:bg-red-800 text-white border-red-500 hover:border-red-800 disabled:hover:bg-red-700"
-                            : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800 disabled:hover:bg-green-700",
-                        )}
-                        onClick={() =>
-                          isConnected ? handleDisconnect(selectedServer._id) : handleConnect(selectedServer._id)
-                        }
-                        disabled={isConnecting || disableConnect}
-                        title={
-                          disableConnect && !isAuthenticated && selectedServer.requiresUserKey
-                            ? "Login required to use servers with API keys"
-                            : undefined
-                        }
-                      >
-                        {isConnected ? (
-                          <>
-                            <Unplug className="h-3 w-3 mr-1" />
-                            Disconnect
-                          </>
-                        ) : (
-                          <>
-                            <Plug className="h-3 w-3 mr-1" />
-                            Connect
-                          </>
-                        )}
-                      </Button>
-                    )
-                  })()}
-                </div>
-              </div>
-
+              <MCPHeader
+                server={selectedServer}
+                connectionStatus={connectionStatuses.get(selectedServer._id)}
+                isAuthenticated={isAuthenticated}
+                onEdit={() => handleEditServer(selectedServer)}
+                onConnect={() => handleConnect(selectedServer)}
+                onDisconnect={() => handleDisconnect(selectedServer)}
+                onClone={() => handleCloneServer(selectedServer)}
+              />
               {/* Content area - Settings */}
               <MCPServerSettings
                 server={selectedServer}
@@ -248,7 +170,7 @@ export function Mcp() {
         </div>
       </div>
       {/* Dialog for Add/Edit */}
-      <MCPDialog
+      <MCPFormDialog
         mode={dialogMode}
         server={editingServer || undefined}
         open={isDialogOpen}

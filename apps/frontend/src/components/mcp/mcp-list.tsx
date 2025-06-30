@@ -1,33 +1,34 @@
 "use client"
 
-import { MCPServerCard } from "@/components/mcp/mcp-server-card"
+import { MCPListItem } from "@/components/mcp/mcp-list-item"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { MCPConnectionState } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
 import { Search, Plus, Plug, Globe, Server } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
 
-interface MCPSidebarProps {
+interface MCPListProps {
   servers: MCPServer[]
   selectedServerId: string | null
   isAuthenticated: boolean
   activeConnections: Array<{ serverId: string; name: string; tools: MCPToolsCollection }>
-  connectionStatuses: Map<string, { status: string; error?: string; isStale?: boolean }>
+  connectionStatuses: Map<string, MCPConnectionState>
   onSelectServer: (server: MCPServer) => void
   onCreateServer: () => void
   onEditServer: (server: MCPServer) => void
   onDeleteServer: (server: MCPServer) => void
   onCloneServer: (server: MCPServer) => void
-  onConnect: (serverId: string) => void
-  onDisconnect: (serverId: string) => void
+  onConnect: (server: MCPServer) => void
+  onDisconnect: (server: MCPServer) => void
   isCollapsed: boolean
   onExpandSidebar: () => void
 }
 
-export const MCPSidebar = memo(function MCPSidebar({
+export const MCPList = memo(function MCPList({
   servers,
   selectedServerId,
   isAuthenticated,
@@ -42,7 +43,7 @@ export const MCPSidebar = memo(function MCPSidebar({
   onDisconnect,
   isCollapsed,
   onExpandSidebar,
-}: MCPSidebarProps) {
+}: MCPListProps) {
   const [searchInput, setSearchInput] = useState<string>("")
   const [openSections, setOpenSections] = useState<string[]>([])
   const { play } = useSoundEffectContext()
@@ -233,15 +234,15 @@ export const MCPSidebar = memo(function MCPSidebar({
                       const status = connectionStatuses.get(server._id)
                       return (
                         <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
-                          <MCPServerCard
+                          <MCPListItem
                             server={server}
                             isAuthenticated={isAuthenticated}
                             onEditClick={onEditServer}
                             onDeleteClick={onDeleteServer}
                             onCloneClick={onCloneServer}
                             isSelected={selectedServerId === server._id}
-                            onConnect={() => onConnect(server._id)}
-                            onDisconnect={() => onDisconnect(server._id)}
+                            onConnect={() => onConnect(server)}
+                            onDisconnect={() => onDisconnect(server)}
                             connection={connection}
                             status={status}
                           />
@@ -274,15 +275,15 @@ export const MCPSidebar = memo(function MCPSidebar({
                       const status = connectionStatuses.get(server._id)
                       return (
                         <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
-                          <MCPServerCard
+                          <MCPListItem
                             server={server}
                             isAuthenticated={isAuthenticated}
                             onEditClick={onEditServer}
                             onDeleteClick={onDeleteServer}
                             onCloneClick={onCloneServer}
                             isSelected={selectedServerId === server._id}
-                            onConnect={() => onConnect(server._id)}
-                            onDisconnect={() => onDisconnect(server._id)}
+                            onConnect={() => onConnect(server)}
+                            onDisconnect={() => onDisconnect(server)}
                             connection={connection}
                             status={status}
                           />
@@ -320,15 +321,15 @@ export const MCPSidebar = memo(function MCPSidebar({
                       const status = connectionStatuses.get(server._id)
                       return (
                         <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
-                          <MCPServerCard
+                          <MCPListItem
                             server={server}
                             isAuthenticated={isAuthenticated}
                             onEditClick={onEditServer}
                             onDeleteClick={onDeleteServer}
                             onCloneClick={onCloneServer}
                             isSelected={selectedServerId === server._id}
-                            onConnect={() => onConnect(server._id)}
-                            onDisconnect={() => onDisconnect(server._id)}
+                            onConnect={() => onConnect(server)}
+                            onDisconnect={() => onDisconnect(server)}
                             connection={connection}
                             status={status}
                           />
