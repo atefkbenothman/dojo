@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, Maximize2 } from "lucide-react"
+import { Minus, Plus, Focus } from "lucide-react"
 import { memo, useCallback } from "react"
 import { useReactFlow, useStore } from "reactflow"
 
@@ -78,7 +78,7 @@ export const CustomReactFlowControls = memo(function CustomReactFlowControls({
         onClick={handleFitView}
         title="Fit to view"
       >
-        <Maximize2 className="h-4 w-4" />
+        <Focus className="h-4 w-4" />
       </Button>
     </div>
   )

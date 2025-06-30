@@ -56,7 +56,7 @@ export function transformToReactFlow({
   // Always add instructions node as the root
   const instructionsNode: Node<UnifiedNodeData> = {
     id: "instructions-root",
-    type: "workflowNode",
+    type: "instructionsNode",
     position: { x: 0, y: 0 }, // Will be set by layout algorithm
     width: 280, // Same width as step nodes for proper alignment
     height: 180,
@@ -74,7 +74,7 @@ export function transformToReactFlow({
 
     return {
       id: workflowNode.nodeId,
-      type: "workflowNode",
+      type: "stepNode",
       position: { x: 0, y: 0 }, // Will be set by layout algorithm
       width: 280, // Default width for step nodes
       height: 140, // Default height for step nodes

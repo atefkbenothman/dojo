@@ -3,14 +3,15 @@
 import { Button } from "@/components/ui/button"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { CustomReactFlowControls } from "@/components/workflow/canvas/custom-reactflow-controls"
-import { UnifiedWorkflowNode } from "@/components/workflow/canvas/unified-workflow-node"
+import { InstructionsNode } from "@/components/workflow/canvas/instructions-node"
+import { StepNode } from "@/components/workflow/canvas/step-node"
 import { useStableExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
 import { calculateWorkflowLayout } from "@/lib/workflow-dagre-layout"
 import { transformToReactFlow } from "@/lib/workflow-reactflow-transform"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
-import { Plus } from "lucide-react"
+import { Plus, Maximize2, Minimize2 } from "lucide-react"
 import { useCallback, useState, memo, useMemo, useEffect } from "react"
 import ReactFlow, {
   Background,
@@ -40,7 +41,8 @@ interface ReactFlowWorkflowCanvasProps {
 }
 
 const nodeTypes = {
-  workflowNode: UnifiedWorkflowNode,
+  instructionsNode: InstructionsNode,
+  stepNode: StepNode,
 }
 
 // Define stable fitView options
@@ -97,11 +99,11 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
       instructions: workflow.instructions,
       onEditInstructions: onEditMetadata,
     })
-    
+
     // Update node heights based on expanded state
     return {
       ...result,
-      nodes: result.nodes.map(node => ({
+      nodes: result.nodes.map((node) => ({
         ...node,
         height: getNodeHeight(node.id, node.data.variant === "instructions"),
       })),
@@ -125,7 +127,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
       fitView(fitViewOptions)
     }
   }, [workflow._id, nodesInitialized, layoutedNodes.length, fitView])
-
 
   // Stable callback for adding first step
   const handleAddFirstStep = useCallback(
@@ -157,20 +158,31 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     [onAddStepWithAgent],
   )
 
-  const handleToggleExpand = useCallback(
-    (nodeId: string) => {
-      setExpandedNodes((prev) => {
-        const next = new Set(prev)
-        if (next.has(nodeId)) {
-          next.delete(nodeId)
-        } else {
-          next.add(nodeId)
-        }
-        return next
-      })
-    },
-    [],
-  )
+  const handleToggleExpand = useCallback((nodeId: string) => {
+    setExpandedNodes((prev) => {
+      const next = new Set(prev)
+      if (next.has(nodeId)) {
+        next.delete(nodeId)
+      } else {
+        next.add(nodeId)
+      }
+      return next
+    })
+  }, [])
+
+  // Add expand/collapse all functionality
+  const handleExpandAll = useCallback(() => {
+    // Get all step node IDs (exclude instructions node)
+    const stepNodeIds = layoutedNodes.filter((node) => node.data.variant === "step").map((node) => node.id)
+    setExpandedNodes(new Set(stepNodeIds))
+  }, [layoutedNodes])
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedNodes(new Set())
+  }, [])
+
+  // Check if any nodes are expanded
+  const hasExpandedNodes = expandedNodes.size > 0
 
   // Apply execution status and handlers to nodes
   const enhancedNodes = useMemo(() => {
@@ -292,10 +304,8 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           onNodeClick={(event, node) => {
             if (event.shiftKey) {
               // Multi-select with shift key
-              setSelectedNodes(prev => 
-                prev.includes(node.id) 
-                  ? prev.filter(id => id !== node.id)
-                  : [...prev, node.id]
+              setSelectedNodes((prev) =>
+                prev.includes(node.id) ? prev.filter((id) => id !== node.id) : [...prev, node.id],
               )
             } else {
               // Single select
@@ -309,8 +319,19 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
         >
           <Background color="hsl(var(--muted-foreground))" gap={24} size={1} style={{ opacity: 0.08 }} />
           <Panel position="bottom-left">
-            <div className="flex items-center gap-4">
-              <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95 border" />
+            <div className="flex items-center gap-2">
+              <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95" />
+              {hasWorkflowNodes && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={hasExpandedNodes ? handleCollapseAll : handleExpandAll}
+                  className="h-12 w-12 bg-transparent dark:bg-transparent hover:bg-transparent dark:hover:bg-transparent hover:cursor-pointer border-[1.5px]"
+                  title={hasExpandedNodes ? "Collapse all nodes" : "Expand all nodes"}
+                >
+                  {hasExpandedNodes ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+              )}
             </div>
           </Panel>
           <Panel position="top-left">
