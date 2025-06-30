@@ -44,17 +44,13 @@ const areStepNodePropsEqual = (prevProps: ReactFlowStepNodeProps, nextProps: Rea
     (prevData.agents?.every((agent, index) => agent._id === nextData.agents?.[index]?._id) ?? true)
 
   return (
-    workflowNodeEqual &&
-    agentEqual &&
-    prevData.executionStatus === nextData.executionStatus &&
-    agentsEqual &&
-    prevProps.selected === nextProps.selected
+    workflowNodeEqual && agentEqual && prevData.executionStatus === nextData.executionStatus && agentsEqual
     // Note: We don't compare callback functions as they may have different references
     // but the same functionality. The stable callbacks should prevent unnecessary re-renders.
   )
 }
 
-export const ReactFlowStepNode = memo(function ReactFlowStepNode({ data, selected }: ReactFlowStepNodeProps) {
+export const ReactFlowStepNode = memo(function ReactFlowStepNode({ data }: ReactFlowStepNodeProps) {
   const {
     workflowNode,
     agent,
@@ -141,10 +137,9 @@ export const ReactFlowStepNode = memo(function ReactFlowStepNode({ data, selecte
 
       <Card
         className={cn(
-          "react-flow-step-node w-[280px] overflow-hidden cursor-pointer",
+          "react-flow-step-node w-[280px] overflow-hidden",
           getStatusBorderClass(),
-          selected && "ring-2 ring-primary ring-offset-2 shadow-xl scale-[1.02]",
-          isHovered && !selected && "shadow-md ring-1 ring-primary/20 scale-[1.01]",
+          isHovered && "shadow-md ring-1 ring-primary/20 scale-[1.01]",
           executionStatus === "running" && "animate-pulse shadow-blue-200 dark:shadow-blue-800",
         )}
         onMouseEnter={() => setIsHovered(true)}

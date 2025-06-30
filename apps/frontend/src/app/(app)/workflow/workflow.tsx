@@ -358,10 +358,10 @@ export const Workflow = memo(function Workflow() {
               <>
                 {/* Header */}
                 <div className="border-b-[1.5px] flex-shrink-0 bg-card h-[42px] overflow-x-auto">
-                  <div className="p-4 flex items-center justify-between min-w-fit h-full">
+                  <div className="px-4 grid grid-cols-3 items-center h-full min-w-fit">
                     {/* Left section - Name and Edit */}
-                    <div className="flex items-center gap-2 flex-shrink-0 pr-4">
-                      <p className="text-sm font-semibold whitespace-nowrap">{selectedWorkflow?.name}</p>
+                    <div className="flex items-center gap-2 justify-start">
+                      <p className="text-sm font-semibold whitespace-nowrap truncate">{selectedWorkflow?.name}</p>
                       {/* Edit */}
                       <Button
                         variant="ghost"
@@ -370,28 +370,29 @@ export const Workflow = memo(function Workflow() {
                           setEditingWorkflow(selectedWorkflow)
                           setIsMetadataDialogOpen(true)
                         }}
-                        className="hover:cursor-pointer"
+                        className="hover:cursor-pointer flex-shrink-0 h-8 w-8"
                       >
-                        <Pencil className="h-1 w-1 text-muted-foreground" />
+                        <Pencil className="h-3 w-3 text-muted-foreground" />
                       </Button>
                     </div>
 
                     {/* Center section - Tabs */}
                     <div className="flex items-center justify-center">
-                      <TabsList className="h-9 w-64">
-                        <TabsTrigger value="build" className="flex-1">
+                      <TabsList className="h-8 w-40">
+                        <TabsTrigger value="build" className="text-xs">
                           Build
                         </TabsTrigger>
-                        <TabsTrigger value="run" className="flex-1">
+                        <TabsTrigger value="run" className="text-xs">
                           Logs
                         </TabsTrigger>
                       </TabsList>
                     </div>
 
                     {/* Right section - Run button */}
-                    <div className="flex items-center justify-end flex-shrink-0">
+                    <div className="flex items-center justify-end">
                       <Button
-                        className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-700"
+                        size="sm"
+                        className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-700 h-8"
                         onClick={handleRunWorkflow}
                         disabled={
                           !selectedWorkflow.instructions ||

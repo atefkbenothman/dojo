@@ -14,17 +14,12 @@ interface InstructionsNodeData {
 
 export const ReactFlowInstructionsNode = memo(function ReactFlowInstructionsNode({
   data,
-  selected,
 }: NodeProps<InstructionsNodeData>) {
   const { instructions, onEditClick } = data
 
   return (
     <div className="relative">
-      <Card
-        className={`react-flow-instructions-node transition-all relative p-0 border-2 border-dashed border-muted-foreground/25 bg-background/95 backdrop-blur ${
-          selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-        }`}
-      >
+      <Card className="react-flow-instructions-node transition-all relative p-0 border-2 border-dashed border-muted-foreground/25 bg-background/95 backdrop-blur">
         {/* Instructions badge - similar style to step number badge */}
         <div className="absolute left-0 -translate-x-full -ml-2.5 top-2 z-10 flex items-center justify-center h-6 w-6 border bg-background rounded-full">
           <FileText className="h-3 w-3 text-muted-foreground" />

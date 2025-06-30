@@ -12,7 +12,7 @@ import { transformToReactFlow } from "@/lib/workflow-reactflow-transform"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
 import { Plus } from "lucide-react"
-import { useCallback, useState, memo, useMemo, useEffect, useRef } from "react"
+import { useCallback, useState, memo, useMemo, useEffect } from "react"
 import ReactFlow, {
   Background,
   ConnectionMode,
@@ -66,9 +66,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   onAddStepWithAgent,
   onAddFirstStep,
 }: ReactFlowWorkflowCanvasProps) {
-  const [areAllStepsExpanded, setAreAllStepsExpanded] = useState(false)
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const { fitView } = useReactFlow()
   const nodesInitialized = useNodesInitialized()
 
@@ -106,29 +103,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     }
   }, [workflow._id, nodesInitialized, layoutedNodes.length, fitView])
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Delete selected nodes
-      if (event.key === "Delete" || event.key === "Backspace") {
-        if (selectedNodeIds.length > 0) {
-          selectedNodeIds.forEach((nodeId) => {
-            onRemoveNode?.(nodeId)
-          })
-          setSelectedNodeIds([])
-        }
-      }
-
-      // Escape to deselect
-      if (event.key === "Escape") {
-        setSelectedNodeIds([])
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [selectedNodeIds, onRemoveNode])
-
   // Stable callback for adding first step
   const handleAddFirstStep = useCallback(
     (agent: Agent) => {
@@ -159,15 +133,10 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     [onAddStepWithAgent],
   )
 
-  const handleSelectionChange = useCallback((params: { nodes: any[]; edges: any[] }) => {
-    setSelectedNodeIds(params.nodes.map((node) => node.id))
-  }, [])
-
   // Apply execution status and handlers to nodes
   const enhancedNodes = useMemo(() => {
     return layoutedNodes.map((node) => {
       const executionStatus = getNodeExecutionStatus(node.id)
-      const isSelected = selectedNodeIds.includes(node.id)
 
       return {
         ...node,
@@ -180,12 +149,10 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           agents,
           getModel,
         },
-        selected: isSelected,
       }
     })
   }, [
     layoutedNodes,
-    selectedNodeIds,
     stableOnRemove,
     stableOnChangeAgent,
     stableOnAddStepWithAgent,
@@ -250,20 +217,15 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           nodes={enhancedNodes}
           edges={styledEdges}
           nodeTypes={nodeTypes}
-          onInit={setReactFlowInstance}
-          onSelectionChange={handleSelectionChange}
           connectionMode={ConnectionMode.Loose}
-          fitView
           fitViewOptions={fitViewOptions}
           minZoom={0.25}
           maxZoom={2}
           defaultViewport={defaultViewport}
           nodesDraggable={false} // Keep disabled for structured layout
           nodesConnectable={false} // Disable connection creation for now
-          elementsSelectable={true}
-          multiSelectionKeyCode="Meta" // Cmd/Ctrl for multi-select
+          elementsSelectable={false} // Disable selection
           panOnScroll={true}
-          panOnScrollSpeed={0.5}
           zoomOnScroll={true}
           zoomOnPinch={true}
           panOnDrag={true}
@@ -271,15 +233,14 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           className="bg-background"
           // v12 Performance optimizations
           onlyRenderVisibleElements={true} // Only render nodes/edges in viewport
-          elevateEdgesOnSelect={false} // Prevent z-index changes on selection
           nodeDragThreshold={2} // Prevent accidental drags
           disableKeyboardA11y={false} // Keep accessibility features
           autoPanOnNodeDrag={true} // Auto-pan when dragging nodes near edges
           // Additional optimizations
           connectOnClick={false} // Prevent accidental connections
           snapToGrid={false} // Could enable with snapGrid={[15, 15]} for grid snapping
-          deleteKeyCode={["Delete", "Backspace"]} // Support both delete keys
-          selectionKeyCode={["Meta", "Control"]} // Support both Cmd and Ctrl for multi-select
+          deleteKeyCode={null} // Disable delete key handling
+          selectionKeyCode={null} // Disable selection
           panActivationKeyCode="Space" // Hold space to pan
           // Hide ReactFlow attribution
           proOptions={{ hideAttribution: true }}
@@ -288,16 +249,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           <Panel position="bottom-left">
             <div className="flex items-center gap-4">
               <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95 border" />
-              {hasWorkflowNodes && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setAreAllStepsExpanded(!areAllStepsExpanded)}
-                  className="bg-background/95 border h-12 hover:cursor-pointer"
-                >
-                  {areAllStepsExpanded ? "Collapse All" : "Expand All"}
-                </Button>
-              )}
             </div>
           </Panel>
           <Panel position="top-left">
