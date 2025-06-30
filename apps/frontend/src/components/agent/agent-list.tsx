@@ -1,50 +1,49 @@
 "use client"
 
-import { AgentServerCard } from "@/components/agent/agent-server-card"
+import { AgentListItem } from "@/components/agent/agent-list-item"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { type AgentExecution, isAgentRunning } from "@/hooks/use-agent"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Agent } from "@dojo/db/convex/types"
 import { Search, Plus, Play, Bot, Globe } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
 
-interface AgentExecution {
-  agentId: string
-  status: "preparing" | "running" | "completed" | "failed"
-  error?: string
-}
-
-interface AgentSidebarProps {
+interface AgentListProps {
   agents: Agent[]
   selectedAgentId: string | null
   isAuthenticated: boolean
   executions: AgentExecution[]
+  preparingAgents: Set<string>
   onSelectAgent: (agent: Agent) => void
   onCreateAgent: () => void
   onEditAgent: (agent: Agent) => void
   onDeleteAgent: (agent: Agent) => void
   onCloneAgent: (agent: Agent) => void
-  onRunAgent: (agentId: string) => void
+  onRunAgent: (agent: Agent) => void
+  onStopAllAgents: () => void
   isCollapsed: boolean
   onExpandSidebar: () => void
 }
 
-export const AgentSidebar = memo(function AgentSidebar({
+export const AgentList = memo(function AgentList({
   agents,
   selectedAgentId,
   isAuthenticated,
   executions,
+  preparingAgents,
   onSelectAgent,
   onCreateAgent,
   onEditAgent,
   onDeleteAgent,
   onCloneAgent,
   onRunAgent,
+  onStopAllAgents,
   isCollapsed,
   onExpandSidebar,
-}: AgentSidebarProps) {
+}: AgentListProps) {
   const [searchInput, setSearchInput] = useState<string>("")
   const [openSections, setOpenSections] = useState<string[]>([])
   const { play } = useSoundEffectContext()
@@ -82,7 +81,7 @@ export const AgentSidebar = memo(function AgentSidebar({
     agents.forEach((agent) => {
       // Check if agent is running
       const execution = executions.find((exec) => exec.agentId === agent._id)
-      const isRunning = execution?.status === "preparing" || execution?.status === "running"
+      const isRunning = isAgentRunning(execution?.status)
 
       if (isRunning) {
         running.push(agent)
@@ -235,14 +234,16 @@ export const AgentSidebar = memo(function AgentSidebar({
                       const execution = executions.find((exec) => exec.agentId === agent._id)
                       return (
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>
-                          <AgentServerCard
+                          <AgentListItem
                             agent={agent}
                             isAuthenticated={isAuthenticated}
                             onEditClick={onEditAgent}
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
                             isSelected={selectedAgentId === agent._id}
-                            onRun={() => onRunAgent(agent._id)}
+                            isLoading={preparingAgents.has(agent._id)}
+                            onRun={() => onRunAgent(agent)}
+                            onStop={onStopAllAgents}
                             execution={execution}
                           />
                         </div>
@@ -274,14 +275,16 @@ export const AgentSidebar = memo(function AgentSidebar({
                       const execution = executions.find((exec) => exec.agentId === agent._id)
                       return (
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>
-                          <AgentServerCard
+                          <AgentListItem
                             agent={agent}
                             isAuthenticated={isAuthenticated}
                             onEditClick={onEditAgent}
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
                             isSelected={selectedAgentId === agent._id}
-                            onRun={() => onRunAgent(agent._id)}
+                            isLoading={preparingAgents.has(agent._id)}
+                            onRun={() => onRunAgent(agent)}
+                            onStop={onStopAllAgents}
                             execution={execution}
                           />
                         </div>
@@ -317,14 +320,16 @@ export const AgentSidebar = memo(function AgentSidebar({
                       const execution = executions.find((exec) => exec.agentId === agent._id)
                       return (
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>
-                          <AgentServerCard
+                          <AgentListItem
                             agent={agent}
                             isAuthenticated={isAuthenticated}
                             onEditClick={onEditAgent}
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
                             isSelected={selectedAgentId === agent._id}
-                            onRun={() => onRunAgent(agent._id)}
+                            isLoading={preparingAgents.has(agent._id)}
+                            onRun={() => onRunAgent(agent)}
+                            onStop={onStopAllAgents}
                             execution={execution}
                           />
                         </div>

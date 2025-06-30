@@ -1,5 +1,6 @@
 "use client"
 
+import { AgentStatusIndicator } from "@/components/agent/agent-status-indicator"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -9,39 +10,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
+import { type AgentExecution, isAgentRunning, isAgentError, AGENT_STATUS } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
-import { Settings, Play, Pencil, Trash, Copy } from "lucide-react"
-import { useState, useMemo } from "react"
+import { Settings, Play, Pencil, Trash, Copy, Square } from "lucide-react"
+import { useState, useMemo, useCallback } from "react"
 
-interface AgentExecution {
-  agentId: string
-  status: "preparing" | "running" | "completed" | "failed"
-  error?: string
-}
-
-interface AgentServerCardProps {
+interface AgentListItemProps {
   agent: Agent
   isAuthenticated: boolean
   onEditClick: (agent: Agent) => void
   onDeleteClick: (agent: Agent) => void
   onCloneClick: (agent: Agent) => void
   isSelected: boolean
+  isLoading?: boolean
   onRun: () => void
+  onStop: () => void
   execution?: AgentExecution
 }
 
-export function AgentServerCard({
+export function AgentListItem({
   agent,
   isAuthenticated,
   onEditClick,
   onDeleteClick,
   onCloneClick,
   isSelected,
+  isLoading,
   onRun,
+  onStop,
   execution,
-}: AgentServerCardProps) {
+}: AgentListItemProps) {
+  const { play } = useSoundEffectContext()
   const { models } = useAIModels()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
@@ -52,16 +55,16 @@ export function AgentServerCard({
   }, [models, agent.aiModelId])
 
   // Derive state from execution
-  const status = execution?.status || "idle"
-  const isRunning = status === "preparing" || status === "running"
-  const hasError = status === "failed"
+  const status = execution?.status
+  const isRunning = isAgentRunning(status)
+  const hasError = isAgentError(status)
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't trigger selection when clicking buttons or dropdown
-    if ((e.target as HTMLElement).closest('button, [role="menuitem"]')) {
-      e.stopPropagation()
-    }
-  }
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent) => {
+      play("./sounds/click.mp3", { volume: 0.5 })
+    },
+    [play],
+  )
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -90,6 +93,11 @@ export function AgentServerCard({
     onRun()
   }
 
+  const handleStopClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onStop()
+  }
+
   return (
     <Card
       className={cn(
@@ -107,9 +115,7 @@ export function AgentServerCard({
             <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
               {agent.name}
             </p>
-            {isRunning && status === "running" && <div className="h-2 w-2 bg-green-500 shrink-0" />}
-            {isRunning && status === "preparing" && <div className="h-2 w-2 bg-yellow-500 shrink-0" />}
-            {hasError && <div className="h-2 w-2 bg-red-500 shrink-0" />}
+            <AgentStatusIndicator status={status} />
           </div>
           {/* Right Side */}
           <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
@@ -127,7 +133,7 @@ export function AgentServerCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleCloneClick} className="cursor-pointer" disabled={!isAuthenticated}>
                   <Copy className="mr-2 h-4 w-4" />
-                  Clone
+                  Create copy
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -140,22 +146,30 @@ export function AgentServerCard({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* Run button */}
+            {/* Run/Stop button */}
             <Button
               variant="outline"
               size="icon"
-              onClick={handleRunClick}
-              disabled={(!isAuthenticated && !agent.isPublic) || isRunning}
+              onClick={isRunning ? handleStopClick : handleRunClick}
+              disabled={(!isAuthenticated && !agent.isPublic) || isLoading}
               className="size-8 hover:cursor-pointer"
               title={
-                isRunning
-                  ? "Agent is running"
-                  : !isAuthenticated && !agent.isPublic
-                    ? "Login required to run private agents"
-                    : "Run agent"
+                isLoading
+                  ? "Agent is preparing"
+                  : isRunning
+                    ? "Stop agent"
+                    : !isAuthenticated && !agent.isPublic
+                      ? "Login required to run private agents"
+                      : "Run agent"
               }
             >
-              <Play className="h-2.5 w-2.5" />
+              {isLoading ? (
+                <LoadingAnimationInline className="text-xs" />
+              ) : isRunning ? (
+                <Square className="h-2.5 w-2.5" />
+              ) : (
+                <Play className="h-2.5 w-2.5" />
+              )}
             </Button>
           </div>
         </div>

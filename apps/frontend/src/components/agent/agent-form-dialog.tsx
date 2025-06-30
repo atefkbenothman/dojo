@@ -52,7 +52,7 @@ export function createAgentObject(data: AgentFormValues): WithoutSystemFields<Do
   }
 }
 
-export interface AgentDialogProps {
+export interface AgentFormDialogProps {
   mode: "add" | "edit"
   agent?: Agent
   open: boolean
@@ -60,12 +60,12 @@ export interface AgentDialogProps {
   isAuthenticated?: boolean
 }
 
-export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated = false }: AgentDialogProps) {
+export function AgentFormDialog({ mode, agent, open, onOpenChange, isAuthenticated = false }: AgentFormDialogProps) {
   const { play } = useSoundEffectContext()
   const { mcpServers } = useMCP()
   const { models } = useAIModels()
   const { create, edit, remove } = useAgent()
-  
+
   // Check if this is a public agent that shouldn't be editable
   const isPublicAgent = agent?.isPublic || false
   const canEdit = isAuthenticated && !isPublicAgent
@@ -230,11 +230,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                   <FormItem>
                     <FormLabel className="text-primary/80 text-xs">Output Type</FormLabel>
                     <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={!canEdit || mode === "edit"}
-                      >
+                      <Select value={field.value} onValueChange={field.onChange} disabled={!canEdit || mode === "edit"}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select output type...">
                             {field.value === "text" ? "Text" : "Object"}
@@ -295,9 +291,7 @@ export function AgentDialog({ mode, agent, open, onOpenChange, isAuthenticated =
                                           htmlFor={`service-${server._id}`}
                                           className="hover:cursor-pointer font-normal"
                                           onMouseDown={
-                                            canEdit
-                                              ? () => play("./sounds/click.mp3", { volume: 0.5 })
-                                              : undefined
+                                            canEdit ? () => play("./sounds/click.mp3", { volume: 0.5 }) : undefined
                                           }
                                         >
                                           {server.name}

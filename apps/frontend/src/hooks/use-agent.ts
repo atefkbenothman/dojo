@@ -16,6 +16,44 @@ import { nanoid } from "nanoid"
 import { useCallback, useMemo, useState, useEffect } from "react"
 import { toast } from "sonner"
 
+// ============= Agent Types & Constants =============
+export const AGENT_STATUS = {
+  PREPARING: "preparing",
+  RUNNING: "running",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+} as const
+
+export type AgentStatus = (typeof AGENT_STATUS)[keyof typeof AGENT_STATUS]
+
+export const AGENT_OUTPUT_TYPE = {
+  TEXT: "text",
+  OBJECT: "object",
+} as const
+
+export type AgentOutputType = (typeof AGENT_OUTPUT_TYPE)[keyof typeof AGENT_OUTPUT_TYPE]
+
+export interface AgentExecution {
+  agentId: string
+  status: AgentStatus
+  error?: string
+}
+
+export const isAgentRunning = (status?: AgentStatus): boolean => {
+  return status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.RUNNING
+}
+
+export const isAgentError = (status?: AgentStatus): boolean => {
+  return status === AGENT_STATUS.FAILED
+}
+
+export const canRunAgent = (agent: Agent, isAuthenticated: boolean, currentStatus?: AgentStatus): boolean => {
+  if (isAgentRunning(currentStatus)) return false
+  if (!agent.isPublic && !isAuthenticated) return false
+  return true
+}
+
 export function useAgent() {
   const authToken = useAuthToken()
   const { connect } = useMCP()
@@ -48,9 +86,7 @@ export function useAgent() {
 
     // Check each preparing agent to see if it now has a real execution
     preparingAgents.forEach((agentId) => {
-      const hasRealExecution = agentExecutions.some(
-        (exec) => exec.agentId === agentId && (exec.status === "preparing" || exec.status === "running"),
-      )
+      const hasRealExecution = agentExecutions.some((exec) => exec.agentId === agentId && isAgentRunning(exec.status))
 
       if (hasRealExecution) {
         setPreparingAgents((prev) => {
@@ -92,15 +128,6 @@ export function useAgent() {
 
       // Set optimistic preparing state
       setPreparingAgents((prev) => new Set(prev).add(agent._id))
-
-      // setMessages((prev) => [
-      //   ...prev,
-      //   {
-      //     id: nanoid(),
-      //     role: "assistant",
-      //     content: `Starting agent ${agent.name}`,
-      //   },
-      // ])
 
       // Handle MCP server connections if needed
       if (agent.mcpServers.length > 0) {
@@ -185,50 +212,11 @@ export function useAgent() {
     [append, connect, play, setMessages, currentSession],
   )
 
-  const stopAgent = async (agentId: string) => {
-    if (!currentSession) return
-
-    const execution = getAgentExecution(agentId as Id<"agents">)
-    if (!execution || execution._id === "preparing") return
-
-    try {
-      // Call the stop endpoint
-      const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/agent/execution/${execution._id}/stop`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-          ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to stop agent: ${response.statusText}`)
-      }
-
-      // Clear optimistic state if any
-      setPreparingAgents((prev) => {
-        const next = new Set(prev)
-        next.delete(agentId)
-        return next
-      })
-
-      play("./sounds/disconnect.mp3", { volume: 0.5 })
-    } catch (error) {
-      console.error("Failed to stop agent:", error)
-      toast.error("Failed to stop agent", {
-        icon: null,
-        duration: 3000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-    }
-  }
-
   const stopAllAgents = async () => {
     if (!currentSession) return
 
-    const runningExecutions = getRunningExecutions()
+    const runningExecutions = agentExecutions?.filter((exec) => isAgentRunning(exec.status)) || []
+
     if (runningExecutions.length === 0) return
 
     try {
@@ -273,16 +261,14 @@ export function useAgent() {
     (agentId: Id<"agents">) => {
       // First check if we have a real execution from Convex
       const realExecution =
-        agentExecutions?.find(
-          (exec) => exec.agentId === agentId && (exec.status === "preparing" || exec.status === "running"),
-        ) || null
+        agentExecutions?.find((exec) => exec.agentId === agentId && isAgentRunning(exec.status)) || null
 
       // Only use optimistic state if there's no real execution yet
       if (!realExecution && preparingAgents.has(agentId)) {
         return {
           _id: "preparing",
           agentId,
-          status: "preparing" as const,
+          status: AGENT_STATUS.PREPARING,
           sessionId: currentSession?._id,
           startedAt: Date.now(),
           aiModelId: agents?.find((a) => a._id === agentId)?.aiModelId,
@@ -295,12 +281,6 @@ export function useAgent() {
     },
     [agentExecutions, preparingAgents, currentSession, agents],
   )
-
-  // Helper function to get all running executions
-  const getRunningExecutions = useCallback(() => {
-    if (!agentExecutions) return []
-    return agentExecutions.filter((exec) => exec.status === "preparing" || exec.status === "running")
-  }, [agentExecutions])
 
   const clone = async (id: string) => {
     try {
@@ -334,11 +314,10 @@ export function useAgent() {
     remove,
     clone,
     // Agent control functions
-    stopAgent,
     stopAllAgents,
-    // New direct Convex helpers
+    // Direct Convex helpers
     getAgentExecution,
-    getRunningExecutions,
-    agentExecutions,
+    // Loading state
+    preparingAgents,
   }
 }

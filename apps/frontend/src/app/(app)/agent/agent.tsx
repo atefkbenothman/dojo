@@ -1,19 +1,21 @@
 "use client"
 
+import { AgentContentArea } from "@/components/agent/agent-content-area"
 import { AgentDeleteDialog } from "@/components/agent/agent-delete-dialog"
-import { AgentDialog } from "@/components/agent/agent-dialog"
-import { AgentSidebar } from "@/components/agent/agent-sidebar"
+import { AgentFormDialog } from "@/components/agent/agent-form-dialog"
+import { AgentHeader } from "@/components/agent/agent-header"
+import { AgentList } from "@/components/agent/agent-list"
 import { Button } from "@/components/ui/button"
-import { useAgent } from "@/hooks/use-agent"
+import { useAgent, type AgentExecution } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { Pencil, Play, Square, PanelLeft, PanelRight } from "lucide-react"
+import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Agent() {
-  const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove } = useAgent()
+  const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove, preparingAgents } = useAgent()
   const { isAuthenticated } = useConvexAuth()
   const { models } = useAIModels()
 
@@ -36,11 +38,7 @@ export function Agent() {
           error: execution.error,
         }
       })
-      .filter(Boolean) as Array<{
-      agentId: string
-      status: "preparing" | "running" | "completed" | "failed"
-      error?: string
-    }>
+      .filter(Boolean) as AgentExecution[]
   }, [agents, getAgentExecution])
 
   // Get selected agent's execution and model info
@@ -86,13 +84,10 @@ export function Agent() {
   )
 
   const handleRunAgent = useCallback(
-    (agentId: string) => {
-      const agent = agents.find((a) => a._id === agentId)
-      if (agent) {
-        runAgent(agent)
-      }
+    (agent: Agent) => {
+      runAgent(agent)
     },
-    [agents, runAgent],
+    [runAgent],
   )
 
   const handleCloneAgent = useCallback(
@@ -130,17 +125,19 @@ export function Agent() {
             </Button>
           </div>
           {/* Agent List */}
-          <AgentSidebar
+          <AgentList
             agents={agents}
             selectedAgentId={selectedAgent?._id || null}
             isAuthenticated={isAuthenticated}
             executions={executions}
+            preparingAgents={preparingAgents}
             onSelectAgent={handleSelectAgent}
             onCreateAgent={handleCreateAgent}
             onEditAgent={handleEditAgent}
             onDeleteAgent={handleDeleteAgent}
             onCloneAgent={handleCloneAgent}
             onRunAgent={handleRunAgent}
+            onStopAllAgents={stopAllAgents}
             isCollapsed={isSidebarCollapsed}
             onExpandSidebar={() => setIsSidebarCollapsed(false)}
           />
@@ -149,121 +146,16 @@ export function Agent() {
         <div className="flex flex-col flex-1 overflow-x-auto">
           {selectedAgent ? (
             <>
-              {/* Header */}
-              <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between bg-card h-[42px]">
-                {/* Left section - Name and Edit */}
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate">{selectedAgent.name}</p>
-                  {/* Execution status dot */}
-                  {(() => {
-                    const status = selectedExecution?.status
-                    const isRunning = status === "preparing" || status === "running"
-                    const hasError = status === "failed"
-
-                    if (isRunning && status === "running") return <div className="h-2 w-2 bg-green-500" />
-                    if (isRunning && status === "preparing") return <div className="h-2 w-2 bg-yellow-500" />
-                    if (hasError) return <div className="h-2 w-2 bg-red-500" />
-                    return null
-                  })()}
-                  {/* Edit - only show for non-public agents */}
-                  {!selectedAgent.isPublic && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditAgent(selectedAgent)}
-                      className="hover:cursor-pointer"
-                      disabled={!isAuthenticated}
-                      title={!isAuthenticated ? "Login required to edit agents" : "Edit agent"}
-                    >
-                      <Pencil className="h-3 w-3 text-muted-foreground" />
-                    </Button>
-                  )}
-                </div>
-
-                {/* Right section - Run/Stop button */}
-                <div className="flex items-center justify-end flex-shrink-0 ml-4">
-                  {(() => {
-                    const status = selectedExecution?.status
-                    const isRunning = status === "running"
-                    const isPreparing = status === "preparing"
-
-                    return (
-                      <Button
-                        className={cn(
-                          "border-[1px] hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
-                          isRunning
-                            ? "bg-red-700 hover:bg-red-800 text-white border-red-500 hover:border-red-800"
-                            : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800",
-                        )}
-                        onClick={() => (isRunning ? stopAllAgents() : handleRunAgent(selectedAgent._id))}
-                        disabled={(!isAuthenticated && !selectedAgent.isPublic) || isPreparing}
-                        title={
-                          isPreparing
-                            ? "Agent is preparing"
-                            : isRunning
-                              ? "Stop agent"
-                              : !isAuthenticated && !selectedAgent.isPublic
-                                ? "Login required to run private agents"
-                                : "Run agent"
-                        }
-                      >
-                        {isRunning ? (
-                          <>
-                            <Square className="h-3 w-3 mr-1" />
-                            Stop
-                          </>
-                        ) : (
-                          <>
-                            <Play className="h-3 w-3 mr-1" />
-                            Run
-                          </>
-                        )}
-                      </Button>
-                    )
-                  })()}
-                </div>
-              </div>
-
-              {/* Content area - Agent Details (placeholder for now) */}
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="max-w-3xl">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">System Prompt</h3>
-                      <p className="text-sm text-muted-foreground bg-muted/40 p-4 rounded-md">
-                        {selectedAgent.systemPrompt}
-                      </p>
-                    </div>
-                    <div className="flex gap-4">
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Model</h3>
-                        <p className="text-sm text-muted-foreground">{selectedModel?.name || "Unknown"}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Output Type</h3>
-                        <p className="text-sm text-muted-foreground">{selectedAgent.outputType}</p>
-                      </div>
-                      {selectedAgent.mcpServers && selectedAgent.mcpServers.length > 0 && (
-                        <div>
-                          <h3 className="text-sm font-medium mb-2">MCP Servers</h3>
-                          <p className="text-sm text-muted-foreground">{selectedAgent.mcpServers.length} connected</p>
-                        </div>
-                      )}
-                    </div>
-                    {selectedExecution && (
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Execution Status</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Status: {selectedExecution.status}
-                          {selectedExecution.error && (
-                            <span className="text-destructive block mt-1">{selectedExecution.error}</span>
-                          )}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <AgentHeader
+                agent={selectedAgent}
+                execution={selectedExecution}
+                isAuthenticated={isAuthenticated}
+                isLoading={preparingAgents.has(selectedAgent._id)}
+                onEdit={() => handleEditAgent(selectedAgent)}
+                onRun={() => handleRunAgent(selectedAgent)}
+                onStop={stopAllAgents}
+              />
+              <AgentContentArea agent={selectedAgent} model={selectedModel} execution={selectedExecution} />
             </>
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -273,7 +165,7 @@ export function Agent() {
         </div>
       </div>
       {/* Dialog for Add/Edit */}
-      <AgentDialog
+      <AgentFormDialog
         mode={dialogMode}
         agent={editingAgent || undefined}
         open={isDialogOpen}
