@@ -43,13 +43,11 @@ export const CustomReactFlowControls = memo(function CustomReactFlowControls({
   }, [fitView])
 
   return (
-    <div
-      className={`flex items-center gap-1 bg-background/95 backdrop-blur-sm border-[1.5px] rounded-md shadow-sm ${className}`}
-    >
+    <div className={`flex items-center gap-1 bg-background/95 border-[1.5px] h-12 ${className}`}>
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 p-1 hover:cursor-pointer"
+        className="h-8 w-8 p-1 hover:cursor-pointer hover:bg-transparent dark:hover:bg-transparent"
         onClick={handleZoomOut}
         disabled={!canZoomOut}
         title="Zoom out"
@@ -64,7 +62,7 @@ export const CustomReactFlowControls = memo(function CustomReactFlowControls({
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 p-1 hover:cursor-pointer"
+        className="h-8 w-8 p-1 hover:cursor-pointer hover:bg-transparent dark:hover:bg-transparent"
         onClick={handleZoomIn}
         disabled={!canZoomIn}
         title="Zoom in"
@@ -72,12 +70,12 @@ export const CustomReactFlowControls = memo(function CustomReactFlowControls({
         <Plus className="h-4 w-4" />
       </Button>
 
-      <div className="w-px h-8 bg-border" />
+      <div className="w-px h-12 bg-border" />
 
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 p-1 hover:cursor-pointer"
+        className="h-8 w-8 hover:cursor-pointer hover:bg-transparent dark:hover:bg-transparent"
         onClick={handleFitView}
         title="Fit to view"
       >

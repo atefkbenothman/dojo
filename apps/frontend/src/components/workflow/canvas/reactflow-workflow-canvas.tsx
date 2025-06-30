@@ -13,7 +13,7 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
 import { Plus } from "lucide-react"
 import { useCallback, useState, memo, useMemo, useEffect, useRef } from "react"
-import ReactFlow, { Background, MiniMap, ConnectionMode, Panel } from "reactflow"
+import ReactFlow, { Background, ConnectionMode, Panel } from "reactflow"
 import "reactflow/dist/style.css"
 
 interface ReactFlowWorkflowCanvasProps {
@@ -266,45 +266,28 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
           deleteKeyCode={["Delete", "Backspace"]} // Support both delete keys
           selectionKeyCode={["Meta", "Control"]} // Support both Cmd and Ctrl for multi-select
           panActivationKeyCode="Space" // Hold space to pan
+          // Hide ReactFlow attribution
+          proOptions={{ hideAttribution: true }}
         >
           <Background color="hsl(var(--muted-foreground))" gap={24} size={1} style={{ opacity: 0.08 }} />
-          <Panel position="bottom-left" className="m-4">
-            <CustomReactFlowControls
-              minZoom={0.25}
-              maxZoom={2}
-              className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm"
-            />
-          </Panel>
-          <MiniMap
-            nodeColor={(node) => {
-              const status = node.data?.executionStatus || "pending"
-              switch (status) {
-                case "running":
-                  return "hsl(var(--blue-500))"
-                case "completed":
-                  return "hsl(var(--green-500))"
-                case "failed":
-                  return "hsl(var(--red-500))"
-                default:
-                  return "hsl(var(--muted-foreground))"
-              }
-            }}
-            nodeStrokeWidth={2}
-            nodeStrokeColor="hsl(var(--background))"
-            className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm"
-            style={{ backgroundColor: "hsl(var(--background) / 0.95)" }}
-          />
-
-          {/* Bottom right info panel */}
-          <Panel position="bottom-right" className="m-4">
-            <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm p-2 text-xs text-muted-foreground">
-              {(workflowNodes || []).length} {(workflowNodes || []).length === 1 ? "step" : "steps"}
-              {selectedNodeIds.length > 0 && (
-                <>
-                  {" • "}
-                  {selectedNodeIds.length} selected
-                </>
+          <Panel position="bottom-left">
+            <div className="flex items-center gap-4">
+              <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95 border" />
+              {hasWorkflowNodes && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAreAllStepsExpanded(!areAllStepsExpanded)}
+                  className="bg-background/95 border h-12 hover:cursor-pointer"
+                >
+                  {areAllStepsExpanded ? "Collapse All" : "Expand All"}
+                </Button>
               )}
+            </div>
+          </Panel>
+          <Panel position="top-left">
+            <div className="bg-background/95 backdrop-blur border text-sm text-muted-foreground flex items-center h-12 px-4">
+              {(workflowNodes || []).length} {(workflowNodes || []).length === 1 ? "step" : "steps"}
             </div>
           </Panel>
 
@@ -351,17 +334,6 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
 
           {/* Control panels */}
           <Panel position="top-right" className="m-4 space-y-2">
-            {hasWorkflowNodes && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAreAllStepsExpanded(!areAllStepsExpanded)}
-                className="bg-background/95 backdrop-blur border-border shadow-sm hover:shadow-md transition-all duration-200"
-              >
-                {areAllStepsExpanded ? "Collapse All" : "Expand All"}
-              </Button>
-            )}
-
             {/* Workflow status indicator */}
             {execution && (
               <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm p-2 text-xs">
@@ -378,7 +350,7 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
                   <span className="capitalize text-foreground">{execution.status}</span>
                 </div>
                 {execution.status === "running" && execution.nodeExecutions && (
-                  <div className="mt-1 text-muted-foreground">
+                  <div className="text-muted-foreground bg-red-300">
                     {execution.nodeExecutions.filter((ne) => ne.status === "completed").length} /{" "}
                     {execution.nodeExecutions.length} steps
                   </div>
