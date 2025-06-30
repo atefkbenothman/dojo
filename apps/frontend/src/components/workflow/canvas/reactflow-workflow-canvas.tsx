@@ -3,8 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { CustomReactFlowControls } from "@/components/workflow/canvas/custom-reactflow-controls"
-import { ReactFlowInstructionsNode } from "@/components/workflow/canvas/reactflow-instructions-node"
-import { ReactFlowStepNode } from "@/components/workflow/canvas/reactflow-step-node"
+import { UnifiedWorkflowNode } from "@/components/workflow/canvas/unified-workflow-node"
 import { useStableExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
 import { calculateWorkflowLayout } from "@/lib/workflow-dagre-layout"
@@ -39,8 +38,7 @@ interface ReactFlowWorkflowCanvasProps {
 }
 
 const nodeTypes = {
-  stepNode: ReactFlowStepNode,
-  instructionsNode: ReactFlowInstructionsNode,
+  workflowNode: UnifiedWorkflowNode,
 }
 
 // Define stable fitView options

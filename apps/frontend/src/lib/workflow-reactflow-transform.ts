@@ -1,15 +1,12 @@
 import { WorkflowNode, Agent } from "@dojo/db/convex/types"
 import { Node, Edge, MarkerType } from "reactflow"
 
-export interface ReactFlowNodeData {
-  workflowNode: WorkflowNode
-  agent?: Agent
-}
-
-export interface InstructionsNodeData {
-  instructions: string
+export interface UnifiedNodeData {
+  variant: "instructions" | "step"
+  instructions?: string
   onEditClick?: () => void
-  isInstructionsNode?: boolean
+  workflowNode?: WorkflowNode
+  agent?: Agent
 }
 
 export interface TransformToReactFlowParams {
@@ -20,48 +17,69 @@ export interface TransformToReactFlowParams {
 }
 
 export interface ReactFlowTransformResult {
-  nodes: Node<ReactFlowNodeData | InstructionsNodeData>[]
+  nodes: Node<UnifiedNodeData>[]
   edges: Edge[]
 }
 
 /**
  * Transform workflow nodes to ReactFlow format (without execution status)
  */
+// Helper function to create consistent edges
+function createWorkflowEdge(id: string, source: string, target: string): Edge {
+  return {
+    id,
+    source,
+    target,
+    type: "smoothstep",
+    style: {
+      stroke: "#64748b",
+      strokeWidth: 2,
+      fill: "none",
+      strokeDasharray: "none",
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: "#64748b",
+    },
+  }
+}
+
 export function transformToReactFlow({
   workflowNodes,
   agents,
   instructions,
   onEditInstructions,
 }: TransformToReactFlowParams): ReactFlowTransformResult {
-  const nodes: Node<ReactFlowNodeData | InstructionsNodeData>[] = []
+  const nodes: Node<UnifiedNodeData>[] = []
   const edges: Edge[] = []
 
   // Always add instructions node as the root
-  const instructionsNode: Node<InstructionsNodeData> = {
+  const instructionsNode: Node<UnifiedNodeData> = {
     id: "instructions-root",
-    type: "instructionsNode",
+    type: "workflowNode",
     position: { x: 0, y: 0 }, // Will be set by layout algorithm
     width: 280, // Same width as step nodes for proper alignment
     height: 180,
     data: {
+      variant: "instructions",
       instructions: instructions || "",
       onEditClick: onEditInstructions,
-      isInstructionsNode: true,
     },
   }
   nodes.push(instructionsNode)
 
   // Transform workflow nodes
-  const stepNodes: Node<ReactFlowNodeData>[] = workflowNodes.map((workflowNode) => {
+  const stepNodes: Node<UnifiedNodeData>[] = workflowNodes.map((workflowNode) => {
     const agent = workflowNode.agentId ? agents.find((a) => a._id === workflowNode.agentId) : undefined
 
     return {
       id: workflowNode.nodeId,
-      type: "stepNode",
+      type: "workflowNode",
       position: { x: 0, y: 0 }, // Will be set by layout algorithm
       width: 280, // Default width for step nodes
       height: 140, // Default height for step nodes
       data: {
+        variant: "step",
         workflowNode,
         agent,
       },
@@ -73,45 +91,15 @@ export function transformToReactFlow({
   // Create edges from instructions to root workflow nodes
   const rootWorkflowNodes = workflowNodes.filter((node) => !node.parentNodeId)
   rootWorkflowNodes.forEach((rootNode) => {
-    edges.push({
-      id: `instructions-root-${rootNode.nodeId}`,
-      source: "instructions-root",
-      target: rootNode.nodeId,
-      type: "smoothstep",
-      style: {
-        stroke: "#64748b",
-        strokeWidth: 2,
-        fill: "none",
-        strokeDasharray: "none",
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: "#64748b",
-      },
-    })
+    edges.push(createWorkflowEdge(`instructions-root-${rootNode.nodeId}`, "instructions-root", rootNode.nodeId))
   })
 
   // Create edges between workflow nodes (parent-child relationships)
-  const workflowEdges: Edge[] = workflowNodes
+  workflowNodes
     .filter((node) => node.parentNodeId)
-    .map((node) => ({
-      id: `${node.parentNodeId}-${node.nodeId}`,
-      source: node.parentNodeId!,
-      target: node.nodeId,
-      type: "smoothstep",
-      style: {
-        stroke: "#64748b",
-        strokeWidth: 2,
-        fill: "none",
-        strokeDasharray: "none",
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: "#64748b",
-      },
-    }))
-
-  edges.push(...workflowEdges)
+    .forEach((node) => {
+      edges.push(createWorkflowEdge(`${node.parentNodeId}-${node.nodeId}`, node.parentNodeId!, node.nodeId))
+    })
 
   return { nodes, edges }
 }
