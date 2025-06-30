@@ -34,6 +34,8 @@ interface UnifiedNodeData {
   workflowNode?: TransformNodeData["workflowNode"]
   agent?: Agent
   executionStatus?: NodeExecutionStatus
+  expanded?: boolean
+  onToggleExpand?: () => void
   onRemove?: (nodeId: string) => void
   onChangeAgent?: (nodeId: string, agent: Agent) => void
   onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
@@ -50,6 +52,9 @@ const arePropsEqual = (
 ) => {
   const prevData = prevProps.data
   const nextData = nextProps.data
+
+  // Always re-render if selection changes
+  if (prevProps.selected !== nextProps.selected) return false
 
   // Always re-render if variant changes
   if (prevData.variant !== nextData.variant) return false
@@ -74,22 +79,24 @@ const arePropsEqual = (
     workflowNodeEqual &&
     agentEqual &&
     prevData.executionStatus === nextData.executionStatus &&
+    prevData.expanded === nextData.expanded &&
     agentsEqual
   )
 }
 
 export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
   data,
+  selected,
 }: UnifiedWorkflowNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
 
   const isInstructions = data.variant === "instructions"
+  const isExpanded = data.expanded || false
 
   // Step node specific handlers
   const handleToggleExpand = useCallback(() => {
-    setIsExpanded(!isExpanded)
-  }, [isExpanded])
+    data.onToggleExpand?.()
+  }, [data.onToggleExpand])
 
   const handleAddStep = useCallback(
     (agent: Agent) => {
@@ -182,7 +189,8 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
           !isInstructions && isHovered && "shadow-md ring-1 ring-primary/20 scale-[1.01]",
           !isInstructions &&
             data.executionStatus === "running" &&
-            "animate-pulse shadow-blue-200 dark:shadow-blue-800"
+            "animate-pulse shadow-blue-200 dark:shadow-blue-800",
+          selected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -213,12 +221,16 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
                     Workflow Instructions
                   </h4>
                 </div>
-                {data.onEditClick && (
+                {data.onEditClick && selected && (
                   <Button
                     variant="outline"
                     size="icon"
                     className="h-6 w-6 text-muted-foreground hover:text-foreground border-muted-foreground/20"
-                    onClick={data.onEditClick}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      data.onEditClick?.()
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
                     title="Edit workflow metadata"
                   >
                     <Pencil className="h-3 w-3" />
@@ -291,58 +303,70 @@ export const UnifiedWorkflowNode = memo(function UnifiedWorkflowNode({
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex items-center justify-end gap-2 pt-2 border-t">
-                  {/* Add step button */}
-                  {data.onAddStepWithAgent && data.agents ? (
-                    <AgentSelectorPopover
-                      agents={data.agents}
-                      onSelect={handleAddStep}
-                      getModel={data.getModel}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 gap-1 px-2 text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs"
-                          title="Add step with agent"
-                        >
-                          <Plus className="h-3 w-3" />
-                          Add step
-                        </Button>
-                      }
-                    />
-                  ) : null}
+                <div 
+                  className={cn(
+                    "flex items-center justify-end gap-2 pt-2",
+                    (selected || data.agent) && "border-t"
+                  )}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Show action buttons only when selected */}
+                  {selected && (
+                    <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                      {/* Add step button */}
+                      {data.onAddStepWithAgent && data.agents ? (
+                        <AgentSelectorPopover
+                          agents={data.agents}
+                          onSelect={handleAddStep}
+                          getModel={data.getModel}
+                          trigger={
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 gap-1 px-2 text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs"
+                              title="Add step with agent"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Add step
+                            </Button>
+                          }
+                        />
+                      ) : null}
 
-                  {/* Change agent button */}
-                  {data.agents && data.onChangeAgent && (
-                    <AgentSelectorPopover
-                      agents={data.agents}
-                      onSelect={handleChangeAgent}
-                      getModel={data.getModel}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 gap-1 px-2 text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs"
-                          title="Change agent"
-                        >
-                          Change
-                        </Button>
-                      }
-                    />
+                      {/* Change agent button */}
+                      {data.agents && data.onChangeAgent && (
+                        <AgentSelectorPopover
+                          agents={data.agents}
+                          onSelect={handleChangeAgent}
+                          getModel={data.getModel}
+                          trigger={
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 gap-1 px-2 text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs"
+                              title="Change agent"
+                            >
+                              Change
+                            </Button>
+                          }
+                        />
+                      )}
+
+                      {/* Remove button */}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive hover:border-destructive/50 border-muted-foreground/20"
+                        onClick={handleRemove}
+                        title="Remove node"
+                      >
+                        <Trash className="h-3 w-3" />
+                      </Button>
+                    </div>
                   )}
 
-                  {/* Remove button */}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:border-destructive/50 border-muted-foreground/20"
-                    onClick={handleRemove}
-                    title="Remove node"
-                  >
-                    <Trash className="h-3 w-3" />
-                  </Button>
-
-                  {/* Expand button (if has agent details to show) */}
+                  {/* Expand button (always visible if has agent details to show) */}
                   {data.agent && (
                     <Button
                       variant="outline"

@@ -19,6 +19,8 @@ import ReactFlow, {
   useReactFlow,
   ReactFlowProvider,
   useNodesInitialized,
+  Node,
+  Edge,
 } from "reactflow"
 import "reactflow/dist/style.css"
 
@@ -66,6 +68,8 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
 }: ReactFlowWorkflowCanvasProps) {
   const { fitView } = useReactFlow()
   const nodesInitialized = useNodesInitialized()
+  const [selectedNodes, setSelectedNodes] = useState<string[]>([])
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
 
   // Get execution data for this workflow
   const execution = workflowExecutions.get(workflow._id)
@@ -73,15 +77,36 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   // Use stable execution status hook
   const { getNodeExecutionStatus } = useStableExecutionStatus(execution)
 
+  // Calculate node heights based on expanded state
+  const getNodeHeight = useCallback(
+    (nodeId: string, isInstructionsNode: boolean = false) => {
+      if (isInstructionsNode) {
+        return 180 // Instructions node fixed height
+      }
+      // Base height + expanded content height
+      return expandedNodes.has(nodeId) ? 240 : 140
+    },
+    [expandedNodes],
+  )
+
   // Transform workflow data to ReactFlow format (without execution status)
   const { nodes: transformedNodes, edges: transformedEdges } = useMemo(() => {
-    return transformToReactFlow({
+    const result = transformToReactFlow({
       workflowNodes: workflowNodes || [],
       agents,
       instructions: workflow.instructions,
       onEditInstructions: onEditMetadata,
     })
-  }, [workflowNodes, agents, workflow.instructions, onEditMetadata])
+    
+    // Update node heights based on expanded state
+    return {
+      ...result,
+      nodes: result.nodes.map(node => ({
+        ...node,
+        height: getNodeHeight(node.id, node.data.variant === "instructions"),
+      })),
+    }
+  }, [workflowNodes, agents, workflow.instructions, onEditMetadata, getNodeHeight])
 
   // Apply layout algorithm
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
@@ -100,6 +125,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
       fitView(fitViewOptions)
     }
   }, [workflow._id, nodesInitialized, layoutedNodes.length, fitView])
+
 
   // Stable callback for adding first step
   const handleAddFirstStep = useCallback(
@@ -131,6 +157,21 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     [onAddStepWithAgent],
   )
 
+  const handleToggleExpand = useCallback(
+    (nodeId: string) => {
+      setExpandedNodes((prev) => {
+        const next = new Set(prev)
+        if (next.has(nodeId)) {
+          next.delete(nodeId)
+        } else {
+          next.add(nodeId)
+        }
+        return next
+      })
+    },
+    [],
+  )
+
   // Apply execution status and handlers to nodes
   const enhancedNodes = useMemo(() => {
     return layoutedNodes.map((node) => {
@@ -138,9 +179,12 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
 
       return {
         ...node,
+        selected: selectedNodes.includes(node.id),
         data: {
           ...node.data,
           executionStatus,
+          expanded: expandedNodes.has(node.id),
+          onToggleExpand: () => handleToggleExpand(node.id),
           onRemove: stableOnRemove,
           onChangeAgent: stableOnChangeAgent,
           onAddStepWithAgent: stableOnAddStepWithAgent,
@@ -157,6 +201,9 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     agents,
     getModel,
     getNodeExecutionStatus,
+    selectedNodes,
+    expandedNodes,
+    handleToggleExpand,
   ])
 
   // Apply execution status styling to edges
@@ -222,12 +269,13 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           defaultViewport={defaultViewport}
           nodesDraggable={false} // Keep disabled for structured layout
           nodesConnectable={false} // Disable connection creation for now
-          elementsSelectable={false} // Disable selection
+          elementsSelectable={true} // Enable selection
           panOnScroll={true}
           zoomOnScroll={true}
           zoomOnPinch={true}
           panOnDrag={true}
           selectNodesOnDrag={false}
+          selectionOnDrag={true}
           className="bg-background"
           // v12 Performance optimizations
           onlyRenderVisibleElements={true} // Only render nodes/edges in viewport
@@ -238,10 +286,26 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           connectOnClick={false} // Prevent accidental connections
           snapToGrid={false} // Could enable with snapGrid={[15, 15]} for grid snapping
           deleteKeyCode={null} // Disable delete key handling
-          selectionKeyCode={null} // Disable selection
           panActivationKeyCode="Space" // Hold space to pan
           // Hide ReactFlow attribution
           proOptions={{ hideAttribution: true }}
+          onNodeClick={(event, node) => {
+            if (event.shiftKey) {
+              // Multi-select with shift key
+              setSelectedNodes(prev => 
+                prev.includes(node.id) 
+                  ? prev.filter(id => id !== node.id)
+                  : [...prev, node.id]
+              )
+            } else {
+              // Single select
+              setSelectedNodes([node.id])
+            }
+          }}
+          onPaneClick={() => {
+            // Deselect all when clicking on background
+            setSelectedNodes([])
+          }}
         >
           <Background color="hsl(var(--muted-foreground))" gap={24} size={1} style={{ opacity: 0.08 }} />
           <Panel position="bottom-left">
