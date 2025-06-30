@@ -41,7 +41,7 @@ export function transformToReactFlow({
     id: "instructions-root",
     type: "instructionsNode",
     position: { x: 0, y: 0 }, // Will be set by layout algorithm
-    width: 320,
+    width: 280, // Same width as step nodes for proper alignment
     height: 180,
     data: {
       instructions: instructions || "",

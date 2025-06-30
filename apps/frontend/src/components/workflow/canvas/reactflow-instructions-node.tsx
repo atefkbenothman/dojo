@@ -26,7 +26,7 @@ export const ReactFlowInstructionsNode = memo(function ReactFlowInstructionsNode
         </div>
 
         {/* Main content wrapper */}
-        <div className="p-4 w-[320px]">
+        <div className="p-4 w-[280px]">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
