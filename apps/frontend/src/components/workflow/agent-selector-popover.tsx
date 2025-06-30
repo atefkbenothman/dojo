@@ -53,7 +53,7 @@ export const AgentSelectorPopover = memo(function AgentSelectorPopover({
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-[520px] p-0" align="center" side="right" sideOffset={8}>
+      <PopoverContent className="w-[520px] p-0" align="center" side="bottom" sideOffset={16}>
         <div className="p-3 border-b">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

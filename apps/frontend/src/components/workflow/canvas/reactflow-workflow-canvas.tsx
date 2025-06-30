@@ -11,7 +11,7 @@ import { calculateWorkflowLayout } from "@/lib/workflow-dagre-layout"
 import { transformToReactFlow } from "@/lib/workflow-reactflow-transform"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
-import { Plus, Maximize2, Minimize2 } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useCallback, useState, memo, useMemo, useEffect } from "react"
 import ReactFlow, {
   Background,
@@ -71,7 +71,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   const { fitView } = useReactFlow()
   const nodesInitialized = useNodesInitialized()
   const [selectedNodes, setSelectedNodes] = useState<string[]>([])
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
+  const [lastWorkflowId, setLastWorkflowId] = useState<string | null>(null)
 
   // Get execution data for this workflow
   const execution = workflowExecutions.get(workflow._id)
@@ -79,17 +79,14 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   // Use stable execution status hook
   const { getNodeExecutionStatus } = useStableExecutionStatus(execution)
 
-  // Calculate node heights based on expanded state
-  const getNodeHeight = useCallback(
-    (nodeId: string, isInstructionsNode: boolean = false) => {
-      if (isInstructionsNode) {
-        return 180 // Instructions node fixed height
-      }
-      // Base height + expanded content height
-      return expandedNodes.has(nodeId) ? 240 : 140
-    },
-    [expandedNodes],
-  )
+  // Calculate node heights
+  const getNodeHeight = useCallback((nodeId: string, isInstructionsNode: boolean = false) => {
+    if (isInstructionsNode) {
+      return 180 // Instructions node fixed height
+    }
+    // Always use expanded height since we removed the collapse functionality
+    return 240
+  }, [])
 
   // Transform workflow data to ReactFlow format (without execution status)
   const { nodes: transformedNodes, edges: transformedEdges } = useMemo(() => {
@@ -121,12 +118,21 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     return result
   }, [transformedNodes, transformedEdges])
 
-  // Fit view when workflow changes and nodes are initialized
+  // Fit view when workflow changes or on initial load
   useEffect(() => {
-    if (nodesInitialized && layoutedNodes.length > 0) {
-      fitView(fitViewOptions)
+    // Check if this is a new workflow (different from the last one we fitted)
+    const isNewWorkflow = workflow._id !== lastWorkflowId
+
+    if (layoutedNodes.length > 0 && isNewWorkflow) {
+      // Use a small timeout to ensure ReactFlow has rendered the new nodes
+      const timeoutId = setTimeout(() => {
+        fitView(fitViewOptions)
+        setLastWorkflowId(workflow._id)
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
     }
-  }, [workflow._id, nodesInitialized, layoutedNodes.length, fitView])
+  }, [workflow._id, layoutedNodes.length, lastWorkflowId, fitView])
 
   // Stable callback for adding first step
   const handleAddFirstStep = useCallback(
@@ -158,32 +164,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     [onAddStepWithAgent],
   )
 
-  const handleToggleExpand = useCallback((nodeId: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) {
-        next.delete(nodeId)
-      } else {
-        next.add(nodeId)
-      }
-      return next
-    })
-  }, [])
-
-  // Add expand/collapse all functionality
-  const handleExpandAll = useCallback(() => {
-    // Get all step node IDs (exclude instructions node)
-    const stepNodeIds = layoutedNodes.filter((node) => node.data.variant === "step").map((node) => node.id)
-    setExpandedNodes(new Set(stepNodeIds))
-  }, [layoutedNodes])
-
-  const handleCollapseAll = useCallback(() => {
-    setExpandedNodes(new Set())
-  }, [])
-
-  // Check if any nodes are expanded
-  const hasExpandedNodes = expandedNodes.size > 0
-
   // Apply execution status and handlers to nodes
   const enhancedNodes = useMemo(() => {
     return layoutedNodes.map((node) => {
@@ -195,8 +175,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
         data: {
           ...node.data,
           executionStatus,
-          expanded: expandedNodes.has(node.id),
-          onToggleExpand: () => handleToggleExpand(node.id),
           onRemove: stableOnRemove,
           onChangeAgent: stableOnChangeAgent,
           onAddStepWithAgent: stableOnAddStepWithAgent,
@@ -214,8 +192,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     getModel,
     getNodeExecutionStatus,
     selectedNodes,
-    expandedNodes,
-    handleToggleExpand,
   ])
 
   // Apply execution status styling to edges
@@ -319,20 +295,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
         >
           <Background color="hsl(var(--muted-foreground))" gap={24} size={1} style={{ opacity: 0.08 }} />
           <Panel position="bottom-left">
-            <div className="flex items-center gap-2">
-              <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95" />
-              {hasWorkflowNodes && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={hasExpandedNodes ? handleCollapseAll : handleExpandAll}
-                  className="h-12 w-12 bg-transparent dark:bg-transparent hover:bg-transparent dark:hover:bg-transparent hover:cursor-pointer border-[1.5px]"
-                  title={hasExpandedNodes ? "Collapse all nodes" : "Expand all nodes"}
-                >
-                  {hasExpandedNodes ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                </Button>
-              )}
-            </div>
+            <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95" />
           </Panel>
           <Panel position="top-left">
             <div className="bg-background/95 backdrop-blur border text-sm text-muted-foreground flex items-center h-12 px-4">

@@ -7,7 +7,7 @@ import { NodeExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
 import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-transform"
 import { Agent } from "@dojo/db/convex/types"
-import { ChevronDown, Trash, CheckCircle, XCircle, Clock, Loader2, Plus } from "lucide-react"
+import { Trash, CheckCircle, XCircle, Clock, Loader2, Plus, SquarePen } from "lucide-react"
 import { useState, memo, useCallback } from "react"
 import { Handle, Position, NodeProps } from "reactflow"
 
@@ -16,8 +16,6 @@ interface StepNodeData {
   workflowNode?: TransformNodeData["workflowNode"]
   agent?: Agent
   executionStatus?: NodeExecutionStatus
-  expanded?: boolean
-  onToggleExpand?: () => void
   onRemove?: (nodeId: string) => void
   onChangeAgent?: (nodeId: string, agent: Agent) => void
   onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
@@ -30,12 +28,7 @@ interface StepNodeProps extends NodeProps<StepNodeData> {}
 export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
 
-  const isExpanded = data.expanded || false
-
   // Step node specific handlers
-  const handleToggleExpand = useCallback(() => {
-    data.onToggleExpand?.()
-  }, [data.onToggleExpand])
 
   const handleAddStep = useCallback(
     (agent: Agent) => {
@@ -89,7 +82,7 @@ export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps
       case "failed":
         return "border-red-200 dark:border-red-800"
       default:
-        return "border-border"
+        return "border"
     }
   }
 
@@ -113,16 +106,51 @@ export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps
 
       <Card
         className={cn(
-          "w-[280px] overflow-hidden",
+          "w-[280px] overflow-hidden p-4 relative",
           getStatusBorderClass(),
-          isHovered && "shadow-md ring-1 ring-primary/20 scale-[1.01]",
           data.executionStatus === "running" && "animate-pulse shadow-blue-200 dark:shadow-blue-800",
-          selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+          selected && "ring-2 ring-primary/80",
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="p-3">
+        {/* Action buttons in top right corner */}
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+          {/* Change agent button */}
+          {data.agents && data.onChangeAgent && (
+            <AgentSelectorPopover
+              agents={data.agents}
+              onSelect={handleChangeAgent}
+              getModel={data.getModel}
+              trigger={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  title="Change agent"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <SquarePen className="h-3 w-3" />
+                </Button>
+              }
+            />
+          )}
+
+          {/* Remove button */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:border-destructive/50"
+            onClick={handleRemove}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Remove node"
+          >
+            <Trash className="h-3 w-3" />
+          </Button>
+        </div>
+
+        <div className="">
           {/* Progress bar for running nodes */}
           {data.executionStatus === "running" && (
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-blue-100 dark:bg-blue-900/50 overflow-hidden">
@@ -147,9 +175,9 @@ export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps
                 <div className="mt-1">
                   {data.agent ? (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-muted-foreground">Agent:</span>
+                      {/* <span className="text-muted-foreground">Agent:</span>
                       <span className="font-medium">{data.agent.name}</span>
-                      <span className="text-muted-foreground">•</span>
+                      <span className="text-muted-foreground">•</span> */}
                       <span
                         className={cn(
                           "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium",
@@ -171,87 +199,10 @@ export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps
                 </div>
               </div>
             </div>
-
-            {/* Action buttons */}
-            <div
-              className={cn("flex items-center justify-end gap-2 pt-2", (selected || data.agent) && "border-t")}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Show action buttons only when selected */}
-              {selected && (
-                <div className="flex items-center gap-2 animate-in fade-in duration-200">
-                  {/* Add step button */}
-                  {data.onAddStepWithAgent && data.agents ? (
-                    <AgentSelectorPopover
-                      agents={data.agents}
-                      onSelect={handleAddStep}
-                      getModel={data.getModel}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 gap-1 px-2 text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs"
-                          title="Add step with agent"
-                        >
-                          <Plus className="h-3 w-3" />
-                          Add step
-                        </Button>
-                      }
-                    />
-                  ) : null}
-
-                  {/* Change agent button */}
-                  {data.agents && data.onChangeAgent && (
-                    <AgentSelectorPopover
-                      agents={data.agents}
-                      onSelect={handleChangeAgent}
-                      getModel={data.getModel}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 gap-1 px-2 text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs"
-                          title="Change agent"
-                        >
-                          Change
-                        </Button>
-                      }
-                    />
-                  )}
-
-                  {/* Remove button */}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:border-destructive/50 border-muted-foreground/20"
-                    onClick={handleRemove}
-                    title="Remove node"
-                  >
-                    <Trash className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-
-              {/* Expand button (always visible if has agent details to show) */}
-              {data.agent && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground border-muted-foreground/20"
-                  onClick={handleToggleExpand}
-                  title={isExpanded ? "Collapse" : "Expand"}
-                >
-                  <ChevronDown
-                    className={cn("h-3 w-3 transition-transform duration-200", isExpanded && "rotate-180")}
-                  />
-                </Button>
-              )}
-            </div>
           </div>
 
-          {/* Expanded view - show agent details */}
-          {isExpanded && data.agent && (
+          {/* Agent details - always visible */}
+          {data.agent && (
             <div className="border-t mt-2 pt-2">
               <div className="space-y-1.5">
                 {/* System Prompt */}
@@ -263,20 +214,33 @@ export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps
                     {data.agent.systemPrompt || "No system prompt"}
                   </div>
                 </div>
-
-                {/* Output Type */}
-                <div className="space-y-0.5">
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Output Type
-                  </label>
-                  <div className="text-xs text-foreground/90">
-                    {data.agent.outputType === "object" ? "Structured JSON" : "Text"}
-                  </div>
-                </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* Add step button at the bottom */}
+        {data.onAddStepWithAgent && data.agents && (
+          <div className="h-8">
+            <AgentSelectorPopover
+              agents={data.agents}
+              onSelect={handleAddStep}
+              getModel={data.getModel}
+              trigger={
+                <Button
+                  variant="outline"
+                  className="w-full text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs font-medium hover:cursor-pointer"
+                  title="Add step with agent"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add step
+                </Button>
+              }
+            />
+          </div>
+        )}
       </Card>
 
       {/* Output handle */}
