@@ -21,11 +21,6 @@ export type NodeExecutionStatus = "pending" | "connecting" | "running" | "comple
 export type WorkflowExecutionStatus = "preparing" | "running" | "completed" | "failed" | "cancelled"
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error"
 
-// Tree structure helpers
-export interface WorkflowTreeNode extends WorkflowNode {
-  children: WorkflowTreeNode[]
-}
-
 // MCP Tool structure for better type safety
 export interface MCPTool {
   name: string

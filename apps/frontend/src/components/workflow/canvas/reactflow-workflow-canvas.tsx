@@ -2,26 +2,18 @@
 
 import { Button } from "@/components/ui/button"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
-import { ReactFlowStepNode } from "@/components/workflow/canvas/reactflow-step-node"
+import { CustomReactFlowControls } from "@/components/workflow/canvas/custom-reactflow-controls"
 import { ReactFlowInstructionsNode } from "@/components/workflow/canvas/reactflow-instructions-node"
+import { ReactFlowStepNode } from "@/components/workflow/canvas/reactflow-step-node"
 import { useStableExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
-import { calculateHierarchicalLayout } from "@/lib/workflow-layout"
+import { calculateWorkflowLayout } from "@/lib/workflow-dagre-layout"
 import { transformToReactFlow } from "@/lib/workflow-reactflow-transform"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
 import { Plus } from "lucide-react"
 import { useCallback, useState, memo, useMemo, useEffect, useRef } from "react"
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  ConnectionMode,
-  Panel,
-  getSmoothStepPath,
-  BaseEdge,
-  EdgeProps,
-} from "reactflow"
+import ReactFlow, { Background, MiniMap, ConnectionMode, Panel } from "reactflow"
 import "reactflow/dist/style.css"
 
 interface ReactFlowWorkflowCanvasProps {
@@ -39,25 +31,10 @@ interface ReactFlowWorkflowCanvasProps {
   onAddFirstStep?: (agent: Agent) => void
 }
 
-// Custom edge component to ensure proper rendering
-const CustomEdge = ({ sourceX, sourceY, targetX, targetY, style, markerEnd }: EdgeProps) => {
-  const [edgePath] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    sourcePosition: "bottom" as any,
-    targetX,
-    targetY,
-    targetPosition: "top" as any,
-  })
-
-  return <BaseEdge path={edgePath} style={style} markerEnd={markerEnd} />
-}
-
 const nodeTypes = {
   stepNode: ReactFlowStepNode,
   instructionsNode: ReactFlowInstructionsNode,
 }
-
 
 // Define stable fitView options
 const fitViewOptions = {
@@ -103,7 +80,7 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
 
   // Apply layout algorithm
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
-    const result = calculateHierarchicalLayout(transformedNodes, transformedEdges, workflowNodes || [], {
+    const result = calculateWorkflowLayout(transformedNodes, transformedEdges, {
       nodeWidth: 280,
       nodeHeight: 140,
       horizontalSpacing: 120,
@@ -112,7 +89,7 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
     })
 
     return result
-  }, [transformedNodes, transformedEdges, workflowNodes])
+  }, [transformedNodes, transformedEdges])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -227,6 +204,7 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
 
       return {
         ...edge,
+        type: "smoothstep", // Ensure we're using built-in smoothstep edge
         animated: isAnimated,
         style: {
           ...edge.style,
@@ -246,7 +224,6 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
       }
     })
   }, [layoutedEdges, getNodeExecutionStatus])
-
 
   const hasWorkflowNodes = workflowNodes && workflowNodes.length > 0
 
@@ -277,14 +254,27 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
           panOnDrag={true}
           selectNodesOnDrag={false}
           className="bg-background"
+          // v12 Performance optimizations
+          onlyRenderVisibleElements={true} // Only render nodes/edges in viewport
+          elevateEdgesOnSelect={false} // Prevent z-index changes on selection
+          nodeDragThreshold={2} // Prevent accidental drags
+          disableKeyboardA11y={false} // Keep accessibility features
+          autoPanOnNodeDrag={true} // Auto-pan when dragging nodes near edges
+          // Additional optimizations
+          connectOnClick={false} // Prevent accidental connections
+          snapToGrid={false} // Could enable with snapGrid={[15, 15]} for grid snapping
+          deleteKeyCode={["Delete", "Backspace"]} // Support both delete keys
+          selectionKeyCode={["Meta", "Control"]} // Support both Cmd and Ctrl for multi-select
+          panActivationKeyCode="Space" // Hold space to pan
         >
           <Background color="hsl(var(--muted-foreground))" gap={24} size={1} style={{ opacity: 0.08 }} />
-          <Controls
-            showZoom={true}
-            showFitView={true}
-            showInteractive={false}
-            className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm"
-          />
+          <Panel position="bottom-left" className="m-4">
+            <CustomReactFlowControls
+              minZoom={0.25}
+              maxZoom={2}
+              className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm"
+            />
+          </Panel>
           <MiniMap
             nodeColor={(node) => {
               const status = node.data?.executionStatus || "pending"
@@ -305,8 +295,8 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
             style={{ backgroundColor: "hsl(var(--background) / 0.95)" }}
           />
 
-          {/* Bottom left info panel */}
-          <Panel position="bottom-left" className="m-4">
+          {/* Bottom right info panel */}
+          <Panel position="bottom-right" className="m-4">
             <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm p-2 text-xs text-muted-foreground">
               {(workflowNodes || []).length} {(workflowNodes || []).length === 1 ? "step" : "steps"}
               {selectedNodeIds.length > 0 && (
@@ -344,10 +334,7 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
                     onSelect={handleAddFirstStep}
                     getModel={getModel}
                     trigger={
-                      <Button
-                        size="sm"
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
-                      >
+                      <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
                         <Plus className="w-4 h-4" />
                         Add Step
                       </Button>
@@ -355,9 +342,7 @@ export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
                   />
                 ) : (
                   <div className="text-center space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      No agents available. Create an agent first.
-                    </p>
+                    <p className="text-xs text-muted-foreground">No agents available. Create an agent first.</p>
                   </div>
                 )}
               </div>
