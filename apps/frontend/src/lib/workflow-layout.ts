@@ -2,6 +2,11 @@ import { Node, Edge, Position } from 'reactflow'
 import { WorkflowNode } from '@dojo/db/convex/types'
 import { buildTreeForLayout, TreeNode } from './workflow-reactflow-transform'
 
+// Extended TreeNode that can represent instructions node
+interface ExtendedTreeNode extends TreeNode {
+  isInstructionsNode?: boolean
+}
+
 export interface LayoutConfig {
   nodeWidth: number
   nodeHeight: number
@@ -31,6 +36,30 @@ interface NodePosition {
  * Positions nodes in a tree structure from top to bottom
  */
 
+/**
+ * Create a virtual tree node for instructions that contains all root workflow nodes as children
+ */
+function createInstructionsTreeNode(workflowNodes: WorkflowNode[], config: LayoutConfig): ExtendedTreeNode {
+  const { rootNodes } = buildTreeForLayout(workflowNodes)
+  
+  // Create virtual instructions node - doesn't need to match WorkflowNode exactly since it's virtual
+  const instructionsNode: ExtendedTreeNode = {
+    _id: 'instructions-root' as any,
+    _creationTime: 0,
+    workflowId: '' as any,
+    nodeId: 'instructions-root',
+    type: 'step' as const,
+    agentId: undefined,
+    parentNodeId: undefined,
+    label: undefined,
+    order: undefined,
+    isInstructionsNode: true,
+    children: rootNodes // All root workflow nodes become children of instructions
+  }
+  
+  return instructionsNode
+}
+
 export function calculateHierarchicalLayout<T>(
   nodes: Node<T>[],
   edges: Edge[],
@@ -38,19 +67,30 @@ export function calculateHierarchicalLayout<T>(
   config: Partial<LayoutConfig> = {}
 ): { nodes: Node<T>[], edges: Edge[] } {
   const layoutConfig = { ...DEFAULT_LAYOUT_CONFIG, ...config }
-  const { nodeMap, rootNodes } = buildTreeForLayout(workflowNodes)
-  
   const positions = new Map<string, NodePosition>()
-  let globalOffset = 0
-
-  // Calculate positions for each tree
-  rootNodes.forEach(rootNode => {
-    const treeLayout = layoutTreeWithBounds(rootNode, layoutConfig, globalOffset)
-    treeLayout.positions.forEach((pos, nodeId) => positions.set(nodeId, pos))
+  
+  // Check if we have an instructions node
+  const hasInstructionsNode = nodes.some(node => node.id === 'instructions-root')
+  
+  if (hasInstructionsNode) {
+    // Create a virtual tree with instructions as the root
+    const instructionsTreeNode = createInstructionsTreeNode(workflowNodes, layoutConfig)
+    const treeLayout = layoutTreeWithBounds(instructionsTreeNode, layoutConfig, 0)
     
-    // Update global offset for next tree
-    globalOffset = treeLayout.bounds.maxX + layoutConfig.horizontalSpacing * 2
-  })
+    // Apply all positions from the unified tree layout
+    treeLayout.positions.forEach((pos, nodeId) => positions.set(nodeId, pos))
+  } else {
+    // No instructions node, use standard layout
+    const { rootNodes } = buildTreeForLayout(workflowNodes)
+    let globalOffset = 0
+
+    rootNodes.forEach(rootNode => {
+      const treeLayout = layoutTreeWithBounds(rootNode, layoutConfig, globalOffset)
+      treeLayout.positions.forEach((pos, nodeId) => positions.set(nodeId, pos))
+      
+      globalOffset = treeLayout.bounds.maxX + layoutConfig.horizontalSpacing * 2
+    })
+  }
 
   // Apply positions to nodes
   const layoutedNodes = nodes.map(node => ({
@@ -71,32 +111,22 @@ interface SubtreeLayout {
   bounds: { minX: number, maxX: number, width: number }
 }
 
-/**
- * Layout a single tree recursively with improved algorithm
- */
-function layoutTree(
-  node: TreeNode,
-  config: LayoutConfig,
-  offsetX: number = 0,
-  level: number = 0
-): Map<string, NodePosition> {
-  const result = layoutTreeWithBounds(node, config, offsetX, level)
-  return result.positions
-}
 
 /**
  * Layout tree and return both positions and bounds
  */
 function layoutTreeWithBounds(
-  node: TreeNode,
+  node: ExtendedTreeNode,
   config: LayoutConfig,
   offsetX: number = 0,
   level: number = 0
 ): SubtreeLayout {
   const positions = new Map<string, NodePosition>()
-  const nodeWidth = config.nodeWidth
-  const nodeHeight = config.nodeHeight
-  const nodeY = level * (nodeHeight + config.verticalSpacing)
+  
+  // Use different dimensions for instructions node
+  const nodeWidth = node.isInstructionsNode ? 320 : config.nodeWidth
+  const nodeHeight = node.isInstructionsNode ? 180 : config.nodeHeight
+  const nodeY = level * (config.nodeHeight + config.verticalSpacing)
   
   if (node.children.length === 0) {
     // Leaf node - simple case
@@ -124,7 +154,7 @@ function layoutTreeWithBounds(
   let currentX = offsetX
   
   node.children.forEach(child => {
-    const childLayout = layoutTreeWithBounds(child, config, currentX, level + 1)
+    const childLayout = layoutTreeWithBounds(child as ExtendedTreeNode, config, currentX, level + 1)
     childLayouts.push(childLayout)
     
     // Add child positions to our map

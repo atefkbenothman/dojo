@@ -6,13 +6,20 @@ export interface ReactFlowNodeData {
   agent?: Agent
 }
 
+export interface InstructionsNodeData {
+  instructions: string
+  onEditClick?: () => void
+}
+
 export interface TransformToReactFlowParams {
   workflowNodes: WorkflowNode[]
   agents: Agent[]
+  instructions?: string
+  onEditInstructions?: () => void
 }
 
 export interface ReactFlowTransformResult {
-  nodes: Node<ReactFlowNodeData>[]
+  nodes: Node<ReactFlowNodeData | InstructionsNodeData>[]
   edges: Edge[]
 }
 
@@ -22,9 +29,26 @@ export interface ReactFlowTransformResult {
 export function transformToReactFlow({
   workflowNodes,
   agents,
+  instructions,
+  onEditInstructions,
 }: TransformToReactFlowParams): ReactFlowTransformResult {
-  // Transform nodes
-  const nodes: Node<ReactFlowNodeData>[] = workflowNodes.map(workflowNode => {
+  const nodes: Node<ReactFlowNodeData | InstructionsNodeData>[] = []
+  const edges: Edge[] = []
+
+  // Always add instructions node as the root
+  const instructionsNode: Node<InstructionsNodeData> = {
+    id: 'instructions-root',
+    type: 'instructionsNode',
+    position: { x: 0, y: 0 }, // Will be set by layout algorithm
+    data: {
+      instructions: instructions || '',
+      onEditClick: onEditInstructions,
+    }
+  }
+  nodes.push(instructionsNode)
+
+  // Transform workflow nodes
+  const stepNodes: Node<ReactFlowNodeData>[] = workflowNodes.map(workflowNode => {
     const agent = workflowNode.agentId 
       ? agents.find(a => a._id === workflowNode.agentId)
       : undefined
@@ -40,8 +64,31 @@ export function transformToReactFlow({
     }
   })
 
-  // Create basic edges from parent-child relationships (styling applied later)
-  const edges: Edge[] = workflowNodes
+  nodes.push(...stepNodes)
+
+  // Create edges from instructions to root workflow nodes
+  const rootWorkflowNodes = workflowNodes.filter(node => !node.parentNodeId)
+  rootWorkflowNodes.forEach(rootNode => {
+    edges.push({
+      id: `instructions-root-${rootNode.nodeId}`,
+      source: 'instructions-root',
+      target: rootNode.nodeId,
+      type: 'smoothstep',
+      style: {
+        stroke: '#64748b',
+        strokeWidth: 2,
+        fill: 'none',
+        strokeDasharray: 'none'
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: '#64748b'
+      }
+    })
+  })
+
+  // Create edges between workflow nodes (parent-child relationships)
+  const workflowEdges: Edge[] = workflowNodes
     .filter(node => node.parentNodeId)
     .map(node => ({
       id: `${node.parentNodeId}-${node.nodeId}`,
@@ -59,6 +106,8 @@ export function transformToReactFlow({
         color: '#64748b'
       }
     }))
+
+  edges.push(...workflowEdges)
 
   return { nodes, edges }
 }
