@@ -26,7 +26,6 @@ interface AgentListItemProps {
   onDeleteClick: (agent: Agent) => void
   onCloneClick: (agent: Agent) => void
   isSelected: boolean
-  isLoading?: boolean
   onRun: () => void
   onStop: () => void
   execution?: AgentExecution
@@ -39,7 +38,6 @@ export function AgentListItem({
   onDeleteClick,
   onCloneClick,
   isSelected,
-  isLoading,
   onRun,
   onStop,
   execution,
@@ -58,6 +56,7 @@ export function AgentListItem({
   const status = execution?.status
   const isRunning = isAgentRunning(status)
   const hasError = isAgentError(status)
+  const isLoading = status === AGENT_STATUS.PREPARING
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent) => {

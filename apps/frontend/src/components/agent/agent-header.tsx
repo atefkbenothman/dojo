@@ -15,16 +15,15 @@ interface AgentHeaderProps {
     error?: string
   } | null
   isAuthenticated: boolean
-  isLoading?: boolean
   onEdit: () => void
   onRun: () => void
   onStop: () => void
 }
 
-export function AgentHeader({ agent, execution, isAuthenticated, isLoading, onEdit, onRun, onStop }: AgentHeaderProps) {
+export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, onStop }: AgentHeaderProps) {
   const status = execution?.status
   const isRunning = status === AGENT_STATUS.RUNNING
-  const isPreparing = status === AGENT_STATUS.PREPARING || isLoading
+  const isPreparing = status === AGENT_STATUS.PREPARING
 
   return (
     <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between bg-card h-[42px]">

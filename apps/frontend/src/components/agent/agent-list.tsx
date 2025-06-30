@@ -16,7 +16,6 @@ interface AgentListProps {
   selectedAgentId: string | null
   isAuthenticated: boolean
   executions: AgentExecution[]
-  preparingAgents: Set<string>
   onSelectAgent: (agent: Agent) => void
   onCreateAgent: () => void
   onEditAgent: (agent: Agent) => void
@@ -33,7 +32,6 @@ export const AgentList = memo(function AgentList({
   selectedAgentId,
   isAuthenticated,
   executions,
-  preparingAgents,
   onSelectAgent,
   onCreateAgent,
   onEditAgent,
@@ -241,7 +239,6 @@ export const AgentList = memo(function AgentList({
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
                             isSelected={selectedAgentId === agent._id}
-                            isLoading={preparingAgents.has(agent._id)}
                             onRun={() => onRunAgent(agent)}
                             onStop={onStopAllAgents}
                             execution={execution}
@@ -282,7 +279,6 @@ export const AgentList = memo(function AgentList({
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
                             isSelected={selectedAgentId === agent._id}
-                            isLoading={preparingAgents.has(agent._id)}
                             onRun={() => onRunAgent(agent)}
                             onStop={onStopAllAgents}
                             execution={execution}
@@ -327,7 +323,6 @@ export const AgentList = memo(function AgentList({
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
                             isSelected={selectedAgentId === agent._id}
-                            isLoading={preparingAgents.has(agent._id)}
                             onRun={() => onRunAgent(agent)}
                             onStop={onStopAllAgents}
                             execution={execution}

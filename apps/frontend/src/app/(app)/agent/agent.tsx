@@ -15,7 +15,7 @@ import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 
 export function Agent() {
-  const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove, preparingAgents } = useAgent()
+  const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove } = useAgent()
   const { isAuthenticated } = useConvexAuth()
   const { models } = useAIModels()
 
@@ -130,7 +130,6 @@ export function Agent() {
             selectedAgentId={selectedAgent?._id || null}
             isAuthenticated={isAuthenticated}
             executions={executions}
-            preparingAgents={preparingAgents}
             onSelectAgent={handleSelectAgent}
             onCreateAgent={handleCreateAgent}
             onEditAgent={handleEditAgent}
@@ -150,7 +149,6 @@ export function Agent() {
                 agent={selectedAgent}
                 execution={selectedExecution}
                 isAuthenticated={isAuthenticated}
-                isLoading={preparingAgents.has(selectedAgent._id)}
                 onEdit={() => handleEditAgent(selectedAgent)}
                 onRun={() => handleRunAgent(selectedAgent)}
                 onStop={stopAllAgents}
