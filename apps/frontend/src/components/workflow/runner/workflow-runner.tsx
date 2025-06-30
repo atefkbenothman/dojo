@@ -12,7 +12,7 @@ interface WorkflowRunnerProps {
   workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
   workflowNodes: WorkflowNode[]
   onRunWorkflow: (workflow: Workflow) => void
-  onStopWorkflow: (workflowId: string) => void
+  onStopWorkflow: (workflowId: Id<"workflows">) => void
 }
 
 export const WorkflowRunner = memo(function WorkflowRunner({

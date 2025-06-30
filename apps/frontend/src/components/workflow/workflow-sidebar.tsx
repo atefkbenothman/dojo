@@ -24,7 +24,7 @@ interface WorkflowSidebarProps {
   onDeleteWorkflow: (workflow: Workflow) => void
   onCloneWorkflow: (workflow: Workflow) => void
   onRunWorkflow: (workflow: Workflow) => void
-  onStopWorkflow: (workflowId: string) => void
+  onStopWorkflow: (workflowId: Id<"workflows">) => void
   isCollapsed: boolean
   onExpandSidebar: () => void
 }

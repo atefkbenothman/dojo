@@ -36,7 +36,7 @@ export function useWorkflow(selectedWorkflow?: Workflow | null) {
 
   const nodes = useQuery(
     api.workflows.getWorkflowNodes,
-    selectedWorkflowId ? { workflowId: selectedWorkflowId } : "skip"
+    selectedWorkflowId ? { workflowId: selectedWorkflowId } : "skip",
   )
 
   // Subscribe to workflow executions for real-time updates
@@ -46,7 +46,7 @@ export function useWorkflow(selectedWorkflow?: Workflow | null) {
   )
 
   // Local state for optimistic updates during workflow preparation
-  const [preparingWorkflows, setPreparingWorkflows] = useState<Set<string>>(new Set())
+  const [preparingWorkflows, setPreparingWorkflows] = useState<Set<Id<"workflows">>>(new Set())
 
   // Clear optimistic state when real execution appears
   useEffect(() => {
@@ -231,10 +231,10 @@ export function useWorkflow(selectedWorkflow?: Workflow | null) {
     [append, play, setMessages, currentSession],
   )
 
-  const stopWorkflow = async (workflowId: string) => {
+  const stopWorkflow = async (workflowId: Id<"workflows">) => {
     if (!currentSession) return
 
-    const execution = getWorkflowExecution(workflowId as Id<"workflows">)
+    const execution = getWorkflowExecution(workflowId)
     if (!execution || !("_id" in execution)) return
 
     try {
@@ -318,50 +318,93 @@ export function useWorkflow(selectedWorkflow?: Workflow | null) {
 
   const stableWorkflows = useMemo(() => workflows || [], [workflows])
 
-  // Helper function to get the most recent execution for a workflow (for persistence)
-  const getWorkflowExecution = useCallback(
-    (workflowId: Id<"workflows">) => {
-      // First check if we have an active execution from Convex
-      const activeExecution =
-        workflowExecutions?.find(
-          (exec) => exec.workflowId === workflowId && (exec.status === "preparing" || exec.status === "running"),
-        ) || null
+  // Create a stable execution map to prevent infinite re-renders
+  const executionMap = useMemo(() => {
+    const map = new Map<Id<"workflows">, any>()
 
-      // If we have an active execution, return it
-      if (activeExecution) {
-        return activeExecution
-      }
+    if (workflowExecutions) {
+      // Group executions by workflow
+      const executionsByWorkflow = workflowExecutions.reduce(
+        (acc, exec) => {
+          if (!acc[exec.workflowId]) {
+            acc[exec.workflowId] = []
+          }
+          acc[exec.workflowId]!.push(exec)
+          return acc
+        },
+        {} as Record<string, typeof workflowExecutions>,
+      )
 
-      // Only use optimistic state if there's no real execution yet
-      if (preparingWorkflows.has(workflowId)) {
-        return {
+      // For each workflow, determine the current execution
+      Object.entries(executionsByWorkflow).forEach(([workflowId, executions]) => {
+        const id = workflowId as Id<"workflows">
+
+        // First check for active executions
+        const activeExecution = executions.find((exec) => exec.status === "preparing" || exec.status === "running")
+
+        if (activeExecution) {
+          map.set(id, activeExecution)
+          return
+        }
+
+        // Check for optimistic state
+        if (preparingWorkflows.has(id) && currentSession?._id) {
+          map.set(id, {
+            workflowId: id,
+            status: "preparing" as const,
+            sessionId: currentSession._id,
+            totalSteps: 0,
+            startedAt: Date.now(),
+            error: undefined,
+            currentNodes: [],
+            nodeExecutions: [],
+          })
+          return
+        }
+
+        // For persistence: get most recent completed/failed execution within 12 hours
+        const sortedExecutions = executions.sort(
+          (a, b) => (b.completedAt || b.startedAt) - (a.completedAt || a.startedAt),
+        )
+        const recentExecution = sortedExecutions[0]
+
+        if (recentExecution && recentExecution.completedAt) {
+          const twelveHoursAgo = Date.now() - 12 * 60 * 60 * 1000
+          if (recentExecution.completedAt >= twelveHoursAgo) {
+            map.set(id, recentExecution)
+            return
+          }
+        }
+
+        map.set(id, recentExecution || null)
+      })
+    }
+
+    // Add optimistic states for preparing workflows not in the map
+    preparingWorkflows.forEach((_, workflowId) => {
+      if (!map.has(workflowId) && currentSession?._id) {
+        map.set(workflowId, {
           workflowId,
           status: "preparing" as const,
-          sessionId: currentSession?._id,
-          totalSteps: 0, // Will be calculated from workflow nodes
+          sessionId: currentSession._id,
+          totalSteps: 0,
           startedAt: Date.now(),
           error: undefined,
           currentNodes: [],
           nodeExecutions: [],
-        }
+        })
       }
+    })
 
-      // For persistence: return the most recent completed/failed execution within 12 hours
-      const recentExecution = workflowExecutions
-        ?.filter((exec) => exec.workflowId === workflowId)
-        ?.sort((a, b) => (b.completedAt || b.startedAt) - (a.completedAt || a.startedAt))[0]
+    return map
+  }, [workflowExecutions, preparingWorkflows, currentSession?._id])
 
-      // Only return if completed within last 12 hours
-      if (recentExecution && recentExecution.completedAt) {
-        const twelveHoursAgo = Date.now() - 12 * 60 * 60 * 1000
-        if (recentExecution.completedAt < twelveHoursAgo) {
-          return null
-        }
-      }
-
-      return recentExecution || null
+  // Helper function to get the most recent execution for a workflow (for persistence)
+  const getWorkflowExecution = useCallback(
+    (workflowId: Id<"workflows">) => {
+      return executionMap.get(workflowId) || null
     },
-    [workflowExecutions, preparingWorkflows, currentSession],
+    [executionMap],
   )
 
   // Helper function to get all running executions
@@ -373,28 +416,28 @@ export function useWorkflow(selectedWorkflow?: Workflow | null) {
   // Helper function to check if any node is currently connecting
   const hasConnectingNodes = useCallback(
     (workflowId: Id<"workflows">) => {
-      const execution = getWorkflowExecution(workflowId)
+      const execution = executionMap.get(workflowId)
       if (!execution || !("nodeExecutions" in execution) || !execution.nodeExecutions) {
         return false
       }
 
-      return execution.nodeExecutions.some((node) => node.status === "connecting")
+      return execution.nodeExecutions.some((node: any) => node.status === "connecting")
     },
-    [getWorkflowExecution],
+    [executionMap],
   )
 
   // Helper function to get node-level execution status
   const getNodeExecutionStatus = useCallback(
     (workflowId: Id<"workflows">, nodeId: string) => {
-      const execution = getWorkflowExecution(workflowId)
+      const execution = executionMap.get(workflowId)
       if (!execution || !("nodeExecutions" in execution) || !execution.nodeExecutions) {
         return "pending"
       }
 
-      const nodeExecution = execution.nodeExecutions.find((node) => node.nodeId === nodeId)
+      const nodeExecution = execution.nodeExecutions.find((node: any) => node.nodeId === nodeId)
       return nodeExecution?.status || "pending"
     },
-    [getWorkflowExecution],
+    [executionMap],
   )
 
   const clone = async (id: string) => {

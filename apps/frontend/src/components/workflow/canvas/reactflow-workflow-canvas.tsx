@@ -1,0 +1,433 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
+import { ReactFlowStepNode } from "@/components/workflow/canvas/reactflow-step-node"
+import { WorkflowInstructionsStep } from "@/components/workflow/canvas/workflow-instructions-step"
+import { useStableExecutionStatus } from "@/hooks/use-stable-execution-status"
+import { cn } from "@/lib/utils"
+import { calculateHierarchicalLayout } from "@/lib/workflow-layout"
+import { transformToReactFlow } from "@/lib/workflow-reactflow-transform"
+import { Id } from "@dojo/db/convex/_generated/dataModel"
+import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
+import { Plus } from "lucide-react"
+import { useCallback, useState, memo, useMemo, useEffect, useRef } from "react"
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  ConnectionMode,
+  Panel,
+  getSmoothStepPath,
+  BaseEdge,
+  EdgeProps,
+} from "reactflow"
+import "reactflow/dist/style.css"
+
+interface ReactFlowWorkflowCanvasProps {
+  workflow: Workflow
+  agents: Agent[]
+  workflowNodes: WorkflowNode[]
+  isAuthenticated: boolean
+  workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
+  getModel: (modelId: string) => { name: string } | undefined
+  onEditMetadata?: () => void
+  // Node handlers
+  onRemoveNode?: (nodeId: string) => void
+  onChangeNodeAgent?: (nodeId: string, agent: Agent) => void
+  onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
+  onAddFirstStep?: (agent: Agent) => void
+}
+
+// Custom edge component to ensure proper rendering
+const CustomEdge = ({ sourceX, sourceY, targetX, targetY, style, markerEnd }: EdgeProps) => {
+  const [edgePath] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition: "bottom" as any,
+    targetX,
+    targetY,
+    targetPosition: "top" as any,
+  })
+
+  return <BaseEdge path={edgePath} style={style} markerEnd={markerEnd} />
+}
+
+const nodeTypes = {
+  stepNode: ReactFlowStepNode,
+}
+
+// Define edgeTypes outside the component as well
+const edgeTypes = {
+  default: CustomEdge,
+}
+
+// Define stable fitView options
+const fitViewOptions = {
+  padding: 0.3,
+  includeHiddenNodes: false,
+  duration: 800,
+}
+
+// Define default viewport
+const defaultViewport = { x: 0, y: 0, zoom: 1 }
+
+export const ReactFlowWorkflowCanvas = memo(function ReactFlowWorkflowCanvas({
+  workflow,
+  agents,
+  workflowNodes,
+  workflowExecutions,
+  getModel,
+  onAddFirstStep,
+  onEditMetadata,
+  onRemoveNode,
+  onChangeNodeAgent,
+  onAddStepWithAgent,
+}: ReactFlowWorkflowCanvasProps) {
+  const [areAllStepsExpanded, setAreAllStepsExpanded] = useState(false)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
+  const reactFlowRef = useRef<any>(null)
+
+  // Get execution data for this workflow
+  const execution = workflowExecutions.get(workflow._id)
+
+  // Use stable execution status hook
+  const { getNodeExecutionStatus } = useStableExecutionStatus(execution)
+
+  // Transform workflow data to ReactFlow format (without execution status)
+  const { nodes: transformedNodes, edges: transformedEdges } = useMemo(() => {
+    if (!workflowNodes || workflowNodes.length === 0) {
+      return { nodes: [], edges: [] }
+    }
+
+    return transformToReactFlow({
+      workflowNodes,
+      agents,
+    })
+  }, [workflowNodes, agents])
+
+  // Apply layout algorithm
+  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
+    if (transformedNodes.length === 0) {
+      return { nodes: [], edges: [] }
+    }
+
+    const result = calculateHierarchicalLayout(transformedNodes, transformedEdges, workflowNodes, {
+      nodeWidth: 280,
+      nodeHeight: 140,
+      horizontalSpacing: 120,
+      verticalSpacing: 80,
+      direction: "TB",
+    })
+
+    return result
+  }, [transformedNodes, transformedEdges, workflowNodes])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Delete selected nodes
+      if (event.key === "Delete" || event.key === "Backspace") {
+        if (selectedNodeIds.length > 0) {
+          selectedNodeIds.forEach((nodeId) => {
+            onRemoveNode?.(nodeId)
+          })
+          setSelectedNodeIds([])
+        }
+      }
+
+      // Escape to deselect
+      if (event.key === "Escape") {
+        setSelectedNodeIds([])
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [selectedNodeIds, onRemoveNode])
+
+  // Stable callback for adding first step
+  const handleAddFirstStep = useCallback(
+    (agent: Agent) => {
+      onAddFirstStep?.(agent)
+    },
+    [onAddFirstStep],
+  )
+
+  // Create stable references for the callbacks to prevent re-renders
+  const stableOnRemove = useCallback(
+    (nodeId: string) => {
+      onRemoveNode?.(nodeId)
+    },
+    [onRemoveNode],
+  )
+
+  const stableOnChangeAgent = useCallback(
+    (nodeId: string, agent: Agent) => {
+      onChangeNodeAgent?.(nodeId, agent)
+    },
+    [onChangeNodeAgent],
+  )
+
+  const stableOnAddStepWithAgent = useCallback(
+    (parentNodeId: string, agent: Agent) => {
+      onAddStepWithAgent?.(parentNodeId, agent)
+    },
+    [onAddStepWithAgent],
+  )
+
+  const handleSelectionChange = useCallback((params: { nodes: any[]; edges: any[] }) => {
+    setSelectedNodeIds(params.nodes.map((node) => node.id))
+  }, [])
+
+  // Apply execution status and handlers to nodes
+  const enhancedNodes = useMemo(() => {
+    return layoutedNodes.map((node) => {
+      const executionStatus = getNodeExecutionStatus(node.id)
+      const isSelected = selectedNodeIds.includes(node.id)
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          executionStatus,
+          onRemove: stableOnRemove,
+          onChangeAgent: stableOnChangeAgent,
+          onAddStepWithAgent: stableOnAddStepWithAgent,
+          agents,
+          getModel,
+        },
+        selected: isSelected,
+      }
+    })
+  }, [
+    layoutedNodes,
+    selectedNodeIds,
+    stableOnRemove,
+    stableOnChangeAgent,
+    stableOnAddStepWithAgent,
+    agents,
+    getModel,
+    getNodeExecutionStatus,
+  ])
+
+  // Apply execution status styling to edges
+  const styledEdges = useMemo(() => {
+    return layoutedEdges.map((edge) => {
+      const parentStatus = getNodeExecutionStatus(edge.source)
+      const childStatus = getNodeExecutionStatus(edge.target)
+
+      // Dynamic styling based on execution state
+      let strokeColor = "#64748b" // default slate-500
+      let strokeWidth = 2
+      let isAnimated = false
+
+      if (parentStatus === "completed" && childStatus === "running") {
+        strokeColor = "#3b82f6" // blue-500 for active flow
+        strokeWidth = 3
+        isAnimated = true
+      } else if (parentStatus === "completed") {
+        strokeColor = "#10b981" // green-500 for completed
+        strokeWidth = 2
+      } else if (parentStatus === "failed") {
+        strokeColor = "#ef4444" // red-500 for failed
+        strokeWidth = 2
+      }
+
+      return {
+        ...edge,
+        animated: isAnimated,
+        style: {
+          ...edge.style,
+          stroke: strokeColor,
+          strokeWidth,
+        },
+        markerEnd:
+          edge.markerEnd && typeof edge.markerEnd === "object"
+            ? {
+                ...edge.markerEnd,
+                color: strokeColor,
+              }
+            : {
+                type: "arrowclosed" as any,
+                color: strokeColor,
+              },
+      }
+    })
+  }, [layoutedEdges, getNodeExecutionStatus])
+
+  const renderEmptyState = () => (
+    <div className="relative h-full w-full flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted/20">
+      <div className="text-center space-y-8 p-8 max-w-md">
+        {/* Empty state illustration */}
+        <div className="relative">
+          <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center border-2 border-dashed border-primary/20">
+            <Plus className="w-12 h-12 text-primary/60" />
+          </div>
+          {/* Decorative elements */}
+          <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary/10 rounded-full"></div>
+          <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-primary/10 rounded-full"></div>
+        </div>
+
+        {/* Empty state message */}
+        <div className="space-y-3">
+          <h3 className="text-xl font-semibold text-foreground">Build Your First Workflow</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Create intelligent workflows by connecting AI agents. Each step can process data, make decisions, and pass
+            results to the next step.
+          </p>
+        </div>
+
+        {/* Add first step button */}
+        {agents && agents.length > 0 ? (
+          <AgentSelectorPopover
+            agents={agents}
+            onSelect={handleAddFirstStep}
+            getModel={getModel}
+            trigger={
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                <Plus className="w-5 h-5" />
+                Add Your First Step
+              </Button>
+            }
+          />
+        ) : (
+          <div className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              No agents available. Create an agent first to add workflow steps.
+            </p>
+            <Button variant="outline" size="sm" disabled>
+              Create Agent First
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const hasNodes = workflowNodes && workflowNodes.length > 0
+
+  return (
+    <div className="h-full">
+      {/* Instructions section */}
+      <div className="relative bg-background border-b">
+        <WorkflowInstructionsStep
+          instructions={workflow.instructions}
+          isExpanded={areAllStepsExpanded}
+          onEditClick={onEditMetadata}
+        />
+      </div>
+
+      {/* ReactFlow Canvas */}
+      <div className="relative h-full">
+        {hasNodes ? (
+          <ReactFlow
+            ref={reactFlowRef}
+            nodes={enhancedNodes}
+            edges={styledEdges}
+            nodeTypes={nodeTypes}
+            onSelectionChange={handleSelectionChange}
+            connectionMode={ConnectionMode.Loose}
+            fitView
+            fitViewOptions={fitViewOptions}
+            minZoom={0.25}
+            maxZoom={2}
+            defaultViewport={defaultViewport}
+            nodesDraggable={false} // Keep disabled for structured layout
+            nodesConnectable={false} // Disable connection creation for now
+            elementsSelectable={true}
+            multiSelectionKeyCode="Meta" // Cmd/Ctrl for multi-select
+            panOnScroll={true}
+            panOnScrollSpeed={0.5}
+            zoomOnScroll={true}
+            zoomOnPinch={true}
+            panOnDrag={true}
+            selectNodesOnDrag={false}
+            className="bg-background"
+          >
+            <Background color="hsl(var(--muted-foreground))" gap={24} size={1} style={{ opacity: 0.08 }} />
+            <Controls
+              showZoom={true}
+              showFitView={true}
+              showInteractive={false}
+              className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm"
+            />
+            <MiniMap
+              nodeColor={(node) => {
+                const status = node.data?.executionStatus || "pending"
+                switch (status) {
+                  case "running":
+                    return "hsl(var(--blue-500))"
+                  case "completed":
+                    return "hsl(var(--green-500))"
+                  case "failed":
+                    return "hsl(var(--red-500))"
+                  default:
+                    return "hsl(var(--muted-foreground))"
+                }
+              }}
+              nodeStrokeWidth={2}
+              nodeStrokeColor="hsl(var(--background))"
+              className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm"
+              style={{ backgroundColor: "hsl(var(--background) / 0.95)" }}
+            />
+
+            {/* Bottom left info panel */}
+            <Panel position="bottom-left" className="m-4">
+              <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm p-2 text-xs text-muted-foreground">
+                {workflowNodes.length} {workflowNodes.length === 1 ? "step" : "steps"}
+                {selectedNodeIds.length > 0 && (
+                  <>
+                    {" • "}
+                    {selectedNodeIds.length} selected
+                  </>
+                )}
+              </div>
+            </Panel>
+
+            {/* Control panels */}
+            <Panel position="top-right" className="m-4 space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAreAllStepsExpanded(!areAllStepsExpanded)}
+                className="bg-background/95 backdrop-blur border-border shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                {areAllStepsExpanded ? "Collapse All" : "Expand All"}
+              </Button>
+
+              {/* Workflow status indicator */}
+              {execution && (
+                <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm p-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        execution.status === "running" && "bg-blue-500 animate-pulse",
+                        execution.status === "completed" && "bg-green-500",
+                        execution.status === "failed" && "bg-red-500",
+                        execution.status === "preparing" && "bg-yellow-500",
+                      )}
+                    />
+                    <span className="capitalize text-foreground">{execution.status}</span>
+                  </div>
+                  {execution.status === "running" && execution.nodeExecutions && (
+                    <div className="mt-1 text-muted-foreground">
+                      {execution.nodeExecutions.filter((ne) => ne.status === "completed").length} /{" "}
+                      {execution.nodeExecutions.length} steps
+                    </div>
+                  )}
+                </div>
+              )}
+            </Panel>
+          </ReactFlow>
+        ) : (
+          renderEmptyState()
+        )}
+      </div>
+    </div>
+  )
+})

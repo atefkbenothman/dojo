@@ -52,7 +52,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
     zoomStep: 0.1,
   })
 
-
   // Get execution data for this workflow
   const execution = workflowExecutions.get(workflow._id)
 
@@ -63,7 +62,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
     transition: isPanning ? "none" : "transform 0.05s ease-out",
     willChange: isPanning ? "transform" : "auto",
   }
-
 
   // Tree rendering functions
   const getNodeExecutionStatus = useCallback(
@@ -79,9 +77,7 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
 
   // Helper function to build tree structure maintaining parent-child relationships
   const buildTreeStructure = useCallback((nodes: WorkflowNode[]): WorkflowTreeNode[] => {
-    const nodeMap = new Map<string, WorkflowTreeNode>(
-      nodes.map((node) => [node.nodeId, { ...node, children: [] }])
-    )
+    const nodeMap = new Map<string, WorkflowTreeNode>(nodes.map((node) => [node.nodeId, { ...node, children: [] }]))
     const rootNodes: WorkflowTreeNode[] = []
 
     // Build the tree structure
@@ -192,13 +188,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
   )
 
   const renderTreeNodes = useCallback(() => {
-    // Debug logging to help identify empty state issues
-    console.log("WorkflowBuilder renderTreeNodes:", {
-      workflowNodesExists: !!workflowNodes,
-      workflowNodesLength: workflowNodes?.length,
-      workflowNodesArray: workflowNodes,
-    })
-
     if (!workflowNodes || workflowNodes.length === 0) {
       return (
         <div className="relative py-16 w-full flex flex-col items-center justify-center">
@@ -264,7 +253,6 @@ export const WorkflowBuilder = memo(function WorkflowBuilder({
           {/* Tree-based workflow visualization */}
           <div className="relative py-4">{renderTreeNodes()}</div>
         </>
-
       </div>
     )
   }

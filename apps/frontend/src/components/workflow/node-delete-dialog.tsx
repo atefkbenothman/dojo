@@ -17,7 +17,7 @@ import { memo } from "react"
 interface NodeDeleteDialogProps {
   node: {
     nodeId: string
-    type: "step" | "parallel"
+    type: "step"
     label?: string
   } | null
   agent?: Agent
@@ -36,13 +36,10 @@ export const NodeDeleteDialog = memo(function NodeDeleteDialog({
   const getNodeDisplayName = () => {
     if (agent?.name) return agent.name
     if (node?.label) return node.label
-    return `${node?.type === "parallel" ? "Parallel" : "Step"} ${node?.nodeId}`
+    return `Step ${node?.nodeId}`
   }
 
   const getWarningMessage = () => {
-    if (node?.type === "parallel") {
-      return "This will also permanently delete all child nodes and their configurations."
-    }
     return "This will also permanently delete any child nodes and their configurations."
   }
 

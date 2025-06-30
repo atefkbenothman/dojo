@@ -2,20 +2,20 @@
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { WorkflowBuilder } from "@/components/workflow/canvas/workflow-builder"
+import { ReactFlowWorkflowCanvas } from "@/components/workflow/canvas/reactflow-workflow-canvas"
+import { NodeDeleteDialog } from "@/components/workflow/node-delete-dialog"
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
 import { WorkflowDeleteDialog } from "@/components/workflow/workflow-delete-dialog"
-import { NodeDeleteDialog } from "@/components/workflow/node-delete-dialog"
 import { WorkflowMetadataDialog } from "@/components/workflow/workflow-metadata-dialog"
 import { WorkflowSidebar } from "@/components/workflow/workflow-sidebar"
 import { useAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { cn } from "@/lib/utils"
+import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
 import { useConvexAuth, useMutation } from "convex/react"
-import { api } from "@dojo/db/convex/_generated/api"
 import { Play, Pencil, PanelLeft, PanelRight } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo, memo, useEffect } from "react"
@@ -25,10 +25,11 @@ export const Workflow = memo(function Workflow() {
 
   const { isAuthenticated } = useConvexAuth()
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType | null>(null)
-  const { workflows, create, edit, remove, runWorkflow, stopWorkflow, getWorkflowExecution, clone, workflowNodes } = useWorkflow(selectedWorkflow)
+  const { workflows, create, edit, remove, runWorkflow, stopWorkflow, getWorkflowExecution, clone, workflowNodes } =
+    useWorkflow(selectedWorkflow)
   const { agents } = useAgent()
   const { getModel } = useAIModels()
-  
+
   // Tree operation mutations
   const addNodeMutation = useMutation(api.workflows.addNode)
   const removeNodeMutation = useMutation(api.workflows.removeNode)
@@ -40,7 +41,7 @@ export const Workflow = memo(function Workflow() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [nodeToDelete, setNodeToDelete] = useState<{
     nodeId: string
-    type: "step" | "parallel"
+    type: "step"
     label?: string
     agentId?: string
   } | null>(null)
@@ -140,13 +141,12 @@ export const Workflow = memo(function Workflow() {
     [selectedWorkflow, updateUrlWithWorkflow],
   )
 
-
   const handleRemoveNode = useCallback(
     (nodeId: string) => {
       if (!workflowNodes) return
-      
+
       // Find the node to get its details for the confirmation dialog
-      const node = workflowNodes.find(n => n.nodeId === nodeId)
+      const node = workflowNodes.find((n) => n.nodeId === nodeId)
       if (node) {
         setNodeToDelete({
           nodeId: node.nodeId,
@@ -159,24 +159,19 @@ export const Workflow = memo(function Workflow() {
     [workflowNodes],
   )
 
-  const confirmDeleteNode = useCallback(
-    async () => {
-      if (!nodeToDelete || !selectedWorkflow || !isAuthenticated) return
+  const confirmDeleteNode = useCallback(async () => {
+    if (!nodeToDelete || !selectedWorkflow || !isAuthenticated) return
 
-      try {
-        await removeNodeMutation({
-          workflowId: selectedWorkflow._id,
-          nodeId: nodeToDelete.nodeId,
-        })
-        
-        console.log('Node removed successfully:', nodeToDelete.nodeId)
-        setNodeToDelete(null)
-      } catch (error) {
-        console.error('Failed to remove node:', error)
-      }
-    },
-    [nodeToDelete, selectedWorkflow, isAuthenticated, removeNodeMutation],
-  )
+    try {
+      await removeNodeMutation({
+        workflowId: selectedWorkflow._id,
+        nodeId: nodeToDelete.nodeId,
+      })
+      setNodeToDelete(null)
+    } catch (error) {
+      console.error("Failed to remove node:", error)
+    }
+  }, [nodeToDelete, selectedWorkflow, isAuthenticated, removeNodeMutation])
 
   const handleChangeNodeAgent = useCallback(
     async (nodeId: string, agent: Agent) => {
@@ -189,10 +184,8 @@ export const Workflow = memo(function Workflow() {
           agentId: agent._id,
           label: agent.name, // Update label to agent name
         })
-        
-        console.log('Agent assigned successfully:', agent.name, 'to node:', nodeId)
       } catch (error) {
-        console.error('Failed to assign agent:', error)
+        console.error("Failed to assign agent:", error)
       }
     },
     [selectedWorkflow, isAuthenticated, updateNodeMutation],
@@ -205,7 +198,7 @@ export const Workflow = memo(function Workflow() {
       try {
         // Generate a unique node ID
         const nodeId = `node_${Date.now()}`
-        
+
         // Create the node with agent assigned in one operation
         await addNodeMutation({
           workflowId: selectedWorkflow._id,
@@ -216,10 +209,8 @@ export const Workflow = memo(function Workflow() {
           label: agent.name,
           order: 0,
         })
-        
-        console.log('Step added with agent:', agent.name, 'under parent:', parentNodeId)
       } catch (error) {
-        console.error('Failed to add step with agent:', error)
+        console.error("Failed to add step with agent:", error)
       }
     },
     [selectedWorkflow, isAuthenticated, addNodeMutation],
@@ -232,7 +223,7 @@ export const Workflow = memo(function Workflow() {
       try {
         // Generate a unique node ID for the first step
         const nodeId = `node_${Date.now()}`
-        
+
         // Create the first node as root node
         await addNodeMutation({
           workflowId: selectedWorkflow._id,
@@ -243,7 +234,7 @@ export const Workflow = memo(function Workflow() {
           label: agent.name,
           order: 0,
         })
-        
+
         // Update the workflow's rootNodeId to point to this first node
         await edit({
           id: selectedWorkflow._id,
@@ -254,16 +245,12 @@ export const Workflow = memo(function Workflow() {
           isPublic: selectedWorkflow.isPublic,
           userId: selectedWorkflow.userId,
         })
-        
-        console.log('First step added:', agent.name, 'as root node:', nodeId)
       } catch (error) {
-        console.error('Failed to add first step:', error)
+        console.error("Failed to add first step:", error)
       }
     },
     [selectedWorkflow, isAuthenticated, addNodeMutation, edit],
   )
-
-
 
   const handleRunWorkflow = useCallback(async () => {
     if (!selectedWorkflow) return
@@ -279,6 +266,8 @@ export const Workflow = memo(function Workflow() {
     [getModel],
   )
 
+  // Memoize the agents array to prevent unnecessary re-renders
+  const stableAgents = useMemo(() => agents || [], [agents])
 
   const handleSaveWorkflowMetadata = useCallback(
     async (updates: { name: string; description: string; instructions: string }) => {
@@ -345,7 +334,7 @@ export const Workflow = memo(function Workflow() {
             selectedWorkflowId={selectedWorkflow?._id || null}
             isAuthenticated={isAuthenticated}
             workflowExecutions={workflowExecutions}
-            agents={agents || []}
+            agents={stableAgents}
             workflowNodes={workflowNodes || []}
             onSelectWorkflow={handleSelectWorkflow}
             onCreateWorkflow={handleCreateWorkflow}
@@ -419,9 +408,9 @@ export const Workflow = memo(function Workflow() {
 
                 {/* Tab Content */}
                 <TabsContent value="build" className="flex-1 overflow-hidden">
-                  <WorkflowBuilder
+                  <ReactFlowWorkflowCanvas
                     workflow={selectedWorkflow}
-                    agents={agents || []}
+                    agents={stableAgents}
                     workflowNodes={workflowNodes || []}
                     isAuthenticated={isAuthenticated}
                     workflowExecutions={workflowExecutions}
@@ -439,7 +428,7 @@ export const Workflow = memo(function Workflow() {
                 <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
                   <WorkflowRunner
                     workflow={selectedWorkflow}
-                    agents={agents || []}
+                    agents={stableAgents}
                     isAuthenticated={isAuthenticated}
                     workflowExecutions={workflowExecutions}
                     workflowNodes={workflowNodes || []}
@@ -480,7 +469,7 @@ export const Workflow = memo(function Workflow() {
       {/* Node Delete Confirmation Dialog */}
       <NodeDeleteDialog
         node={nodeToDelete}
-        agent={nodeToDelete?.agentId ? agents?.find(a => a._id === nodeToDelete.agentId) : undefined}
+        agent={nodeToDelete?.agentId ? agents?.find((a) => a._id === nodeToDelete.agentId) : undefined}
         open={!!nodeToDelete}
         onOpenChange={(open) => !open && setNodeToDelete(null)}
         onConfirm={confirmDeleteNode}

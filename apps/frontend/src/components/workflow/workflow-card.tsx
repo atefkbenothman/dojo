@@ -242,7 +242,7 @@ const WorkflowExecutionStatus = memo(function WorkflowExecutionStatus({
         if (nodeName && currentNodeCount === 1) {
           return `Running: ${nodeName}`
         } else if (currentNodeCount > 1) {
-          return `Running ${currentNodeCount} nodes in parallel`
+          return `Running ${currentNodeCount} nodes`
         } else {
           return "Running workflow..."
         }
