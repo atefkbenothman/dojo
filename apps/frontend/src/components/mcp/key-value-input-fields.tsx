@@ -1,9 +1,9 @@
 "use client"
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
-import { FormItem, FormLabel } from "@/components/ui/form"
+import { FormItem } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Plus, Trash2 } from "lucide-react"
 
 export interface KeyValuePair {
   key: string
@@ -55,67 +55,59 @@ export function KeyValueInputFields({
     onUpdatePairs(updated)
   }
 
-  if (pairs.length === 0 && mode === "edit") return null
-
   return (
-    <FormItem>
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value={fieldName}>
-          <AccordionTrigger className="hover:cursor-pointer">
-            <FormLabel className="text-primary/80 text-xs">{fieldLabel}</FormLabel>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="grid gap-2">
-              {pairs.map((pair, index) => (
-                <div key={index} className="flex gap-2 items-center">
-                  <Input
-                    value={pair.key}
-                    onChange={(e) => handleKeyChange(index, e.target.value)}
-                    className={`w-1/2 text-xs focus-visible:ring-0 focus-visible:border-inherit ${
-                      mode === "edit" || disabled
-                        ? "bg-muted/70 text-primary/70 cursor-not-allowed"
-                        : "bg-muted/70 text-primary/90"
-                    }`}
-                    placeholder={placeholder.key}
-                    disabled={mode === "edit" || disabled}
-                  />
-                  <Input
-                    value={pair.value}
-                    onChange={(e) => handleValueChange(index, e.target.value)}
-                    className="w-1/2 bg-muted/50 focus-visible:ring-0 focus-visible:border-inherit"
-                    placeholder={placeholder.value}
-                    disabled={disabled}
-                  />
-                  {mode === "add" && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="ml-1 text-destructive hover:cursor-pointer"
-                      onClick={() => handleRemovePair(index)}
-                      aria-label={`Remove ${pair.key}`}
-                      disabled={disabled}
-                    >
-                      ×
-                    </Button>
-                  )}
-                </div>
-              ))}
-              {mode === "add" && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full mt-2 hover:cursor-pointer"
-                  onClick={handleAddPair}
-                  disabled={disabled}
-                >
-                  + Add {fieldName === "headers" ? "Header" : "Key"}
-                </Button>
-              )}
+    <FormItem className="space-y-2">
+      <p className="text-base font-medium text-muted-foreground">{fieldLabel}</p>
+      <div className="border rounded-lg p-3 bg-muted/20">
+        <div className="grid gap-2">
+          {pairs.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              No {fieldName === "headers" ? "headers" : "environment variables"} configured
+            </p>
+          )}
+          {pairs.map((pair, index) => (
+            <div key={index} className="flex gap-2 items-center">
+              <Input
+                value={pair.key}
+                onChange={(e) => handleKeyChange(index, e.target.value)}
+                className={`w-1/2 text-xs ${
+                  disabled ? "bg-background text-primary/70 cursor-not-allowed" : "bg-background text-primary/90"
+                }`}
+                placeholder={placeholder.key}
+                disabled={disabled}
+              />
+              <Input
+                value={pair.value}
+                onChange={(e) => handleValueChange(index, e.target.value)}
+                className="w-1/2 bg-background"
+                placeholder={placeholder.value}
+                disabled={disabled}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:cursor-pointer"
+                onClick={() => handleRemovePair(index)}
+                aria-label={`Remove ${pair.key}`}
+                disabled={disabled}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full mt-2 hover:cursor-pointer"
+            onClick={handleAddPair}
+            disabled={disabled}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add {fieldName === "headers" ? "Header" : "Environment Variable"}
+          </Button>
+        </div>
+      </div>
     </FormItem>
   )
 }

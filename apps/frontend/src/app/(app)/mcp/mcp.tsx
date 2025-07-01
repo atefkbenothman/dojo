@@ -1,10 +1,10 @@
 "use client"
 
+import { MCPContentArea } from "@/components/mcp/mcp-content-area"
 import { MCPDeleteDialog } from "@/components/mcp/mcp-delete-dialog"
 import { MCPFormDialog } from "@/components/mcp/mcp-form-dialog"
 import { MCPHeader } from "@/components/mcp/mcp-header"
 import { MCPList } from "@/components/mcp/mcp-list"
-import { MCPServerSettings } from "@/components/mcp/mcp-server-settings"
 import { Button } from "@/components/ui/button"
 import { useMCP, MCPConnectionState } from "@/hooks/use-mcp"
 import { cn } from "@/lib/utils"
@@ -18,12 +18,24 @@ export function Mcp() {
   const { isAuthenticated } = useConvexAuth()
   const { mcpServers, activeConnections, getConnection, connect, disconnect, remove, clone } = useMCP()
 
-  const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null)
-  const [editingServer, setEditingServer] = useState<MCPServer | null>(null)
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
+  const [editingServerId, setEditingServerId] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [serverToDelete, setServerToDelete] = useState<MCPServer | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // Derive selected server from mcpServers array to ensure it's always up to date
+  const selectedServer = useMemo(() => {
+    if (!selectedServerId) return null
+    return mcpServers.find((server) => server._id === selectedServerId) || null
+  }, [mcpServers, selectedServerId])
+
+  // Derive editing server from mcpServers array to ensure it's always up to date
+  const editingServer = useMemo(() => {
+    if (!editingServerId) return null
+    return mcpServers.find((server) => server._id === editingServerId) || null
+  }, [mcpServers, editingServerId])
 
   // Create a map of connection statuses for efficient lookup
   const connectionStatuses = useMemo(() => {
@@ -42,7 +54,7 @@ export function Mcp() {
   }, [mcpServers, getConnection])
 
   const handleEditServer = useCallback((server: MCPServer) => {
-    setEditingServer(server)
+    setEditingServerId(server._id)
     setDialogMode("edit")
     setIsDialogOpen(true)
   }, [])
@@ -55,15 +67,15 @@ export function Mcp() {
     if (serverToDelete) {
       await remove(serverToDelete._id)
       // If the deleted server was selected, clear the selection
-      if (selectedServer?._id === serverToDelete._id) {
-        setSelectedServer(null)
+      if (selectedServerId === serverToDelete._id) {
+        setSelectedServerId(null)
       }
       setServerToDelete(null)
     }
-  }, [remove, selectedServer, serverToDelete])
+  }, [remove, selectedServerId, serverToDelete])
 
   const handleCreateServer = useCallback(() => {
-    setEditingServer(null)
+    setEditingServerId(null)
     setDialogMode("add")
     setIsDialogOpen(true)
   }, [])
@@ -71,9 +83,9 @@ export function Mcp() {
   const handleSelectServer = useCallback(
     (server: MCPServer) => {
       // Toggle selection - if clicking the same server, unselect it
-      setSelectedServer(selectedServer?._id === server._id ? null : server)
+      setSelectedServerId(selectedServerId === server._id ? null : server._id)
     },
-    [selectedServer],
+    [selectedServerId],
   )
 
   const handleConnect = useCallback(
@@ -143,7 +155,7 @@ export function Mcp() {
           />
         </div>
         {/* Main Content */}
-        <div className="flex flex-col flex-1 overflow-x-auto">
+        <div className="flex flex-col flex-1 overflow-x-hidden">
           {selectedServer ? (
             <>
               <MCPHeader
@@ -155,11 +167,10 @@ export function Mcp() {
                 onDisconnect={() => handleDisconnect(selectedServer)}
                 onClone={() => handleCloneServer(selectedServer)}
               />
-              {/* Content area - Settings */}
-              <MCPServerSettings
+              <MCPContentArea
                 server={selectedServer}
-                isAuthenticated={isAuthenticated}
                 connectionStatus={connectionStatuses.get(selectedServer._id)}
+                isAuthenticated={isAuthenticated}
               />
             </>
           ) : (
@@ -177,7 +188,7 @@ export function Mcp() {
         onOpenChange={(open) => {
           setIsDialogOpen(open)
           if (!open) {
-            setEditingServer(null)
+            setEditingServerId(null)
           }
         }}
         isAuthenticated={isAuthenticated}
