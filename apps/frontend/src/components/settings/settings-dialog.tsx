@@ -19,17 +19,17 @@ export function SettingsDialog({ isOpen, setIsOpen }: UserDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl h-[40rem] flex flex-col border-2 overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
+      <DialogContent className="sm:max-w-2xl h-[40rem] flex flex-col border-2 overflow-hidden p-0 m-0 gap-0">
+        <DialogHeader className="p-0 gap-0 m-0 h-12 flex justify-center p-4 border-b-[2px] bg-card">
+          <DialogTitle className="text-base font-semibold">Settings</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="user" className="w-full flex-1 flex flex-col h-full">
+        <Tabs defaultValue="user" className="w-full flex-1 flex flex-col h-full p-4 gap-0">
           <TabsList className="grid w-full grid-cols-3 h-12">
             <TabsTrigger value="user">User</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
             <TabsTrigger value="other">Other</TabsTrigger>
           </TabsList>
-          <TabsContent value="user" className="flex-1 py-2 px-1">
+          <TabsContent value="user" className="flex-1">
             <UserManager user={user} />
           </TabsContent>
           <TabsContent value="api-keys" className="flex-1 overflow-y-auto py-4 px-1 min-h-0">
