@@ -69,12 +69,12 @@ export const CustomReactFlowControls = memo(function CustomReactFlowControls({
         <Plus className="h-4 w-4" />
       </Button>
 
-      <div className="w-px h-12 bg-border" />
+      {/* <div className="w-px h-12 bg-border" /> */}
 
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 hover:cursor-pointer hover:bg-transparent dark:hover:bg-transparent"
+        className="hover:cursor-pointer hover:bg-transparent dark:hover:bg-transparent w-8 gap-0 h-full border-l-[1.5px]"
         onClick={handleFitView}
         title="Fit to view"
       >

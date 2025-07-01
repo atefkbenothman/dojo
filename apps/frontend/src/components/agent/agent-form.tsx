@@ -233,20 +233,20 @@ function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServers
   const selectedCount = selectedServerIds.length
 
   return (
-    <div className="space-y-2">
-      <p className="text-base font-medium text-muted-foreground">
+    <div className="flex flex-col h-full sm:h-auto space-y-2">
+      <p className="text-base font-medium text-muted-foreground flex-shrink-0">
         MCP Servers {selectedCount > 0 && <span className="text-sm font-normal">({selectedCount} selected)</span>}
       </p>
       <FormField
         control={form.control}
         name="mcpServers"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="flex-1 sm:flex-initial min-h-0 sm:min-h-fit flex flex-col">
             <FormControl>
-              <div className="h-[200px] sm:h-[280px] overflow-y-auto border rounded-lg p-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent bg-muted/20">
+              <div className="flex-1 sm:flex-initial min-h-[200px] sm:h-[280px] overflow-y-auto border rounded-lg p-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent bg-muted/20">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {mcpServers.length === 0 ? (
-                    <div className="col-span-1 sm:col-span-2 flex flex-col items-center justify-center h-[184px] sm:h-[264px] border-2 border-dashed rounded-lg">
+                    <div className="col-span-1 sm:col-span-2 flex flex-col items-center justify-center min-h-[184px] sm:min-h-[264px] border-2 border-dashed rounded-lg">
                       <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center mb-2">
                         <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                       </div>
@@ -308,7 +308,7 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
   const { mcpServers } = useMCP()
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
-  const { create, edit, remove } = useAgent()
+  const { create, edit, remove, clone } = useAgent()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Check if user can edit
@@ -427,15 +427,32 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
     }
   }
 
+  const handleClone = useCallback(async () => {
+    if (!agent) return
+    try {
+      await clone(agent._id)
+      onClose?.()
+    } catch (error) {
+      // Error handling is already done in the clone function
+    }
+  }, [agent, clone, onClose])
+
   const formContent = (
-    <>
+    <div className="flex flex-col h-full sm:h-auto sm:block space-y-8">
       <ReadOnlyNoticeSection canEdit={canEdit} isPublic={isPublicAgent} />
       <AgentNameSection form={form} canEdit={canEdit} mode={mode} />
       <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
       <ModelSection form={form} canEdit={canEdit} />
       <OutputTypeSection form={form} canEdit={canEdit} />
-      <MCPServersSection form={form} canEdit={canEdit} mcpServers={mcpServers} outputType={form.watch("outputType")} />
-    </>
+      <div className="flex-1 sm:flex-initial min-h-0 sm:min-h-fit flex flex-col">
+        <MCPServersSection
+          form={form}
+          canEdit={canEdit}
+          mcpServers={mcpServers}
+          outputType={form.watch("outputType")}
+        />
+      </div>
+    </div>
   )
 
   const formFooter = (
@@ -448,6 +465,11 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
           className="w-full sm:w-auto hover:cursor-pointer border-destructive"
         >
           Delete
+        </Button>
+      )}
+      {mode === "edit" && isPublicAgent && isAuthenticated && (
+        <Button type="button" variant="outline" onClick={handleClone} className="w-full sm:w-auto hover:cursor-pointer">
+          Clone
         </Button>
       )}
       <Button
@@ -503,7 +525,7 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
             <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0 sticky top-0 z-10 bg-card sm:static">
               <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 bg-background space-y-8 flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible">
+            <CardContent className="p-4 bg-background flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible flex flex-col">
               {formContent}
             </CardContent>
             <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0 sticky bottom-0 z-10 bg-card sm:static">
