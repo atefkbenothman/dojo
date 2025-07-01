@@ -32,7 +32,7 @@ export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, 
         <p className="text-sm font-semibold truncate">{agent.name}</p>
         <AgentStatusIndicator status={status} />
         {/* Edit - only show for non-public agents */}
-        {!agent.isPublic && (
+        {/* {!agent.isPublic && (
           <Button
             variant="ghost"
             size="sm"
@@ -43,7 +43,7 @@ export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, 
           >
             <Pencil className="h-3 w-3 text-muted-foreground" />
           </Button>
-        )}
+        )} */}
       </div>
 
       {/* Right section - Run/Stop button */}

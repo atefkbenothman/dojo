@@ -153,7 +153,12 @@ export function Agent() {
                 onRun={() => handleRunAgent(selectedAgent)}
                 onStop={stopAllAgents}
               />
-              <AgentContentArea agent={selectedAgent} model={selectedModel} execution={selectedExecution} />
+              <AgentContentArea
+                agent={selectedAgent}
+                model={selectedModel}
+                execution={selectedExecution}
+                isAuthenticated={isAuthenticated}
+              />
             </>
           ) : (
             <div className="flex items-center justify-center h-full">
