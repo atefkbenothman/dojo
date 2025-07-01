@@ -1,7 +1,7 @@
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 import type { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import type { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Cpu, Wrench, AlertCircle, CheckCircle2, Loader2, Copy } from "lucide-react"
+import { Wrench, AlertCircle, CheckCircle2, Loader2, Copy } from "lucide-react"
 import { useMemo, useEffect, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
@@ -175,113 +175,119 @@ function ModelSection({ form, canEdit }: ModelSectionProps) {
   )
 }
 
-// Component for configuration section
-interface ConfigurationSectionProps {
+// Component for output type selection
+interface OutputTypeSectionProps {
   form: UseFormReturn<AgentFormValues>
   canEdit: boolean
-  models: Doc<"models">[]
+}
+
+function OutputTypeSection({ form, canEdit }: OutputTypeSectionProps) {
+  return (
+    <div className="space-y-2">
+      <p className="text-base font-medium text-muted-foreground">Output Type</p>
+      <FormField
+        control={form.control}
+        name="outputType"
+        render={({ field }) => (
+          <FormItem>
+            <FormControl>
+              <Select value={field.value} onValueChange={field.onChange} disabled={!canEdit}>
+                <SelectTrigger className="w-full bg-muted/20">
+                  <SelectValue placeholder="Select output type...">
+                    {field.value === "text" ? "Text" : "Object"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="object">Object</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  )
+}
+
+// Component for MCP servers selection
+interface MCPServersSectionProps {
+  form: UseFormReturn<AgentFormValues>
+  canEdit: boolean
   mcpServers: Doc<"mcp">[]
   outputType: string
 }
 
-function ConfigurationSection({ form, canEdit, models, mcpServers, outputType }: ConfigurationSectionProps) {
+function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServersSectionProps) {
+  if (outputType !== "text") return null
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Cpu className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-        <h2 className="text-base sm:text-lg font-semibold">Configuration</h2>
-      </div>
-      <Card className="p-3 sm:p-4 space-y-4">
-        {/* Output Type */}
-        <FormField
-          control={form.control}
-          name="outputType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Output Type</FormLabel>
-              <FormControl>
-                <Select value={field.value} onValueChange={field.onChange} disabled>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select output type...">
-                      {field.value === "text" ? "Text with tools" : "Structured JSON"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text with tools</SelectItem>
-                    <SelectItem value="object">Structured JSON</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* MCP Servers */}
-        {outputType === "text" && (
-          <FormField
-            control={form.control}
-            name="mcpServers"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>MCP Servers</FormLabel>
-                <div className="h-[200px] sm:h-[280px] overflow-y-auto border rounded-lg p-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {mcpServers.length === 0 ? (
-                      <div className="col-span-1 sm:col-span-2 flex flex-col items-center justify-center h-[184px] sm:h-[264px] border-2 border-dashed rounded-lg">
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center mb-2">
-                          <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-                        </div>
-                        <p className="text-sm font-medium text-foreground">No MCP servers available</p>
-                        <p className="text-xs text-muted-foreground mt-1">Add MCP servers to enable tools</p>
+    <div className="space-y-2">
+      <p className="text-base font-medium text-muted-foreground">MCP Servers</p>
+      <FormField
+        control={form.control}
+        name="mcpServers"
+        render={({ field }) => (
+          <FormItem>
+            <FormControl>
+              <div className="h-[200px] sm:h-[280px] overflow-y-auto border rounded-lg p-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent bg-muted/20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {mcpServers.length === 0 ? (
+                    <div className="col-span-1 sm:col-span-2 flex flex-col items-center justify-center h-[184px] sm:h-[264px] border-2 border-dashed rounded-lg">
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center mb-2">
+                        <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                       </div>
-                    ) : (
-                      mcpServers.map((server) => {
-                        const isChecked = field.value?.includes(server._id)
+                      <p className="text-sm font-medium text-foreground">No MCP servers available</p>
+                      <p className="text-xs text-muted-foreground mt-1">Add MCP servers to enable tools</p>
+                    </div>
+                  ) : (
+                    mcpServers.map((server) => {
+                      const isChecked = field.value?.includes(server._id)
 
-                        return (
-                          <Card
-                            key={server._id}
-                            className={cn(
-                              "p-3 cursor-pointer transition-all border-2 h-[80px] sm:h-[90px] flex flex-col justify-between",
-                              isChecked
-                                ? "bg-primary/5 border-primary/30 hover:border-primary/50"
-                                : "hover:bg-muted/50 hover:border-muted-foreground/30",
-                            )}
-                            onClick={() => {
-                              if (!canEdit) return
-                              if (isChecked) {
-                                field.onChange((field.value || []).filter((s: string) => s !== server._id))
-                              } else {
-                                field.onChange([...(field.value || []), server._id])
-                              }
-                            }}
-                          >
-                            <div className="flex flex-col gap-1 overflow-hidden">
-                              {/* Server name */}
-                              <div className="font-medium text-xs sm:text-sm text-foreground line-clamp-1">
-                                {server.name}
-                              </div>
-
-                              {/* Description if available */}
-                              {server.summary && (
-                                <div className="text-[10px] sm:text-[11px] text-muted-foreground line-clamp-2">
-                                  {server.summary}
-                                </div>
-                              )}
+                      return (
+                        <Card
+                          key={server._id}
+                          className={cn(
+                            "p-3 cursor-pointer transition-all border-2 h-[80px] sm:h-[90px] flex flex-col justify-between",
+                            isChecked
+                              ? "bg-primary/5 border-primary/30 hover:border-primary/50"
+                              : "hover:bg-muted/50 hover:border-muted-foreground/30",
+                            !canEdit && "cursor-not-allowed opacity-60",
+                          )}
+                          onClick={() => {
+                            if (!canEdit) return
+                            if (isChecked) {
+                              field.onChange((field.value || []).filter((s: string) => s !== server._id))
+                            } else {
+                              field.onChange([...(field.value || []), server._id])
+                            }
+                          }}
+                        >
+                          <div className="flex flex-col gap-1 overflow-hidden">
+                            {/* Server name */}
+                            <div className="font-medium text-xs sm:text-sm text-foreground line-clamp-1">
+                              {server.name}
                             </div>
-                          </Card>
-                        )
-                      })
-                    )}
-                  </div>
+
+                            {/* Description if available */}
+                            {server.summary && (
+                              <div className="text-[10px] sm:text-[11px] text-muted-foreground line-clamp-2">
+                                {server.summary}
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      )
+                    })
+                  )}
                 </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )}
-      </Card>
+      />
     </div>
   )
 }
@@ -434,54 +440,56 @@ export function AgentContentArea({ agent, model, execution, isAuthenticated = fa
   }
 
   return (
-    <div className="flex-1 overflow-y-auto relative">
-      <div className="max-w-4xl mx-auto my-8">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSave)}>
-            <Card className="p-0 border-[1.5px] gap-0">
-              <CardHeader className="p-4 gap-0 border-b-[1.5px]">
-                <CardTitle>{agent.name} Config</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 bg-background space-y-8">
-                <ReadOnlyNotice canEdit={canEdit} isPublic={agent.isPublic} />
-                <AgentNameSection form={form} canEdit={canEdit} />
-                <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
-                <ModelSection form={form} canEdit={canEdit} />
-                <ConfigurationSection
-                  form={form}
-                  canEdit={canEdit}
-                  models={models}
-                  mcpServers={mcpServers}
-                  outputType={agent.outputType}
-                />
-              </CardContent>
-              <CardFooter className="p-4 gap-0 border-t-[1.5px]">
-                {canEdit && (
-                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end w-full">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCancel}
-                      disabled={!form.formState.isDirty || form.formState.isSubmitting}
-                      className="w-full sm:w-auto"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={!form.formState.isDirty || form.formState.isSubmitting}
-                      className="w-full sm:w-auto"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                )}
-              </CardFooter>
-            </Card>
-          </form>
-        </Form>
-        {/* Status Section */}
-        <StatusSection statusInfo={statusInfo} />
+    <div className="flex-1 relative flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto flex items-center justify-center">
+        <div className="max-w-4xl w-full px-4 py-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSave)}>
+              <Card className="p-0 border-[1.5px] gap-0">
+                <CardHeader className="p-4 gap-0 border-b-[1.5px]">
+                  <CardTitle>{agent.name} Config</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 bg-background space-y-8">
+                  <ReadOnlyNotice canEdit={canEdit} isPublic={agent.isPublic} />
+                  <AgentNameSection form={form} canEdit={canEdit} />
+                  <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
+                  <ModelSection form={form} canEdit={canEdit} />
+                  <OutputTypeSection form={form} canEdit={canEdit} />
+                  <MCPServersSection
+                    form={form}
+                    canEdit={canEdit}
+                    mcpServers={mcpServers}
+                    outputType={agent.outputType}
+                  />
+                </CardContent>
+                <CardFooter className="p-4 gap-0 border-t-[1.5px]">
+                  {canEdit && (
+                    <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end w-full">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancel}
+                        disabled={!form.formState.isDirty || form.formState.isSubmitting}
+                        className="w-full sm:w-auto hover:cursor-pointer"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={!form.formState.isDirty || form.formState.isSubmitting}
+                        className="w-full sm:w-auto hover:cursor-pointer"
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  )}
+                </CardFooter>
+              </Card>
+            </form>
+          </Form>
+          {/* Status Section */}
+          <StatusSection statusInfo={statusInfo} />
+        </div>
       </div>
     </div>
   )
