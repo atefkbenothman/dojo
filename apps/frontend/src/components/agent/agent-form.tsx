@@ -1,3 +1,4 @@
+import { AgentDeleteDialog } from "@/components/agent/agent-delete-dialog"
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +16,7 @@ import type { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import type { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Wrench, AlertCircle, Copy } from "lucide-react"
-import { useMemo, useEffect, useCallback } from "react"
+import { useMemo, useEffect, useCallback, useState } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
@@ -228,9 +229,14 @@ interface MCPServersSectionProps {
 function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServersSectionProps) {
   if (outputType !== "text") return null
 
+  const selectedServerIds = form.watch("mcpServers") || []
+  const selectedCount = selectedServerIds.length
+
   return (
     <div className="space-y-2">
-      <p className="text-base font-medium text-muted-foreground">MCP Servers</p>
+      <p className="text-base font-medium text-muted-foreground">
+        MCP Servers {selectedCount > 0 && <span className="text-sm font-normal">({selectedCount} selected)</span>}
+      </p>
       <FormField
         control={form.control}
         name="mcpServers"
@@ -303,6 +309,7 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
   const { create, edit, remove } = useAgent()
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Check if user can edit
   const isPublicAgent = agent?.isPublic || false
@@ -437,7 +444,7 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
         <Button
           type="button"
           variant="destructive"
-          onClick={handleDelete}
+          onClick={() => setShowDeleteDialog(true)}
           className="w-full sm:w-auto hover:cursor-pointer border-destructive"
         >
           Delete
@@ -465,6 +472,31 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
 
   if (variant === "dialog") {
     return (
+      <>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)}>
+            <Card className="p-0 border-[1.5px] gap-0">
+              <CardHeader className="p-4 gap-0 border-b-[1.5px]">
+                <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
+              <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
+            </Card>
+          </form>
+        </Form>
+        <AgentDeleteDialog
+          agent={agent || null}
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          onConfirm={handleDelete}
+        />
+      </>
+    )
+  }
+
+  // Page variant
+  return (
+    <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSave)}>
           <Card className="p-0 border-[1.5px] gap-0">
@@ -476,21 +508,12 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
           </Card>
         </form>
       </Form>
-    )
-  }
-
-  // Page variant
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSave)}>
-        <Card className="p-0 border-[1.5px] gap-0">
-          <CardHeader className="p-4 gap-0 border-b-[1.5px]">
-            <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
-          <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
-        </Card>
-      </form>
-    </Form>
+      <AgentDeleteDialog
+        agent={agent || null}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDelete}
+      />
+    </>
   )
 }

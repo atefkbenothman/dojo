@@ -19,12 +19,18 @@ export function Agent() {
   const { isAuthenticated } = useConvexAuth()
   const { models } = useAIModels()
 
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // Derive selected agent from agents array to ensure it's always up to date
+  const selectedAgent = useMemo(() => {
+    if (!selectedAgentId) return null
+    return agents.find((agent) => agent._id === selectedAgentId) || null
+  }, [agents, selectedAgentId])
 
   // Get all executions for the sidebar
   const executions = useMemo(() => {
@@ -62,12 +68,12 @@ export function Agent() {
     if (agentToDelete) {
       await remove({ id: agentToDelete._id })
       // If the deleted agent was selected, clear the selection
-      if (selectedAgent?._id === agentToDelete._id) {
-        setSelectedAgent(null)
+      if (selectedAgentId === agentToDelete._id) {
+        setSelectedAgentId(null)
       }
       setAgentToDelete(null)
     }
-  }, [agentToDelete, selectedAgent, remove])
+  }, [agentToDelete, selectedAgentId, remove])
 
   const handleCreateAgent = useCallback(() => {
     setEditingAgent(null)
@@ -78,9 +84,9 @@ export function Agent() {
   const handleSelectAgent = useCallback(
     (agent: Agent) => {
       // Toggle selection - if clicking the same agent, unselect it
-      setSelectedAgent(selectedAgent?._id === agent._id ? null : agent)
+      setSelectedAgentId(selectedAgentId === agent._id ? null : agent._id)
     },
-    [selectedAgent],
+    [selectedAgentId],
   )
 
   const handleRunAgent = useCallback(
@@ -127,7 +133,7 @@ export function Agent() {
           {/* Agent List */}
           <AgentList
             agents={agents}
-            selectedAgentId={selectedAgent?._id || null}
+            selectedAgentId={selectedAgentId}
             isAuthenticated={isAuthenticated}
             executions={executions}
             onSelectAgent={handleSelectAgent}
