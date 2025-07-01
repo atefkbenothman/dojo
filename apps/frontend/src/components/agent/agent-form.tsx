@@ -243,7 +243,7 @@ function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServers
         render={({ field }) => (
           <FormItem className="flex-1 sm:flex-initial min-h-0 sm:min-h-fit flex flex-col">
             <FormControl>
-              <div className="flex-1 sm:flex-initial min-h-[200px] sm:h-[280px] overflow-y-auto border rounded-lg p-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent bg-muted/20">
+              <div className="flex-1 sm:flex-initial min-h-[200px] max-h-[300px] sm:max-h-none sm:h-[280px] overflow-y-auto border rounded-lg p-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent bg-muted/20">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {mcpServers.length === 0 ? (
                     <div className="col-span-1 sm:col-span-2 flex flex-col items-center justify-center min-h-[184px] sm:min-h-[264px] border-2 border-dashed rounded-lg">
