@@ -83,7 +83,7 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
           <div className="flex h-full flex-col">
             {/* Desktop: Header inside panel (original working structure) */}
             {!isMobile && <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />}
-            <div className="flex-1 overflow-auto min-w-[1000px]">{children}</div>
+            <div className="flex-1 overflow-auto">{children}</div>
           </div>
         </ResizablePanel>
 
