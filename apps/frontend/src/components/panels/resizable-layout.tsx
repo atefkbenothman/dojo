@@ -64,16 +64,11 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
   }, [desktopHandleChatPanelToggle])
 
   return (
-    <div className={cn(
-      "h-[100dvh] w-screen overflow-hidden",
-      isMobile ? "flex flex-col" : "flex"
-    )}>
+    <div className={cn("h-[100dvh] w-screen overflow-hidden", isMobile ? "flex flex-col" : "flex")}>
       {/* Mobile: Header and nav at top level for correct ordering */}
       {isMobile && (
         <>
-          <MainPanelHeader 
-            onChatPanelToggle={onChatPanelToggle} 
-          />
+          <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />
           <SideNav />
         </>
       )}
@@ -82,26 +77,13 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
       {!isMobile && <SideNav />}
 
       {/* Main content area - Always same structure for all screen sizes */}
-      <ResizablePanelGroup 
-        direction="horizontal" 
-        onLayout={onLayout}
-        className="flex-1 overflow-hidden"
-      >
+      <ResizablePanelGroup direction="horizontal" onLayout={onLayout} className="flex-1 overflow-hidden">
         {/* Main Panel - Always rendered */}
-        <ResizablePanel 
-          defaultSize={defaultLayout[0]} 
-          className={cn(isMaximized && "hidden")}
-        >
+        <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
           <div className="flex h-full flex-col">
             {/* Desktop: Header inside panel (original working structure) */}
-            {!isMobile && (
-              <MainPanelHeader 
-                onChatPanelToggle={onChatPanelToggle} 
-              />
-            )}
-            <div className="flex-1 overflow-auto md:min-w-[500px]">
-              {children}
-            </div>
+            {!isMobile && <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />}
+            <div className="flex-1 overflow-auto min-w-[1000px]">{children}</div>
           </div>
         </ResizablePanel>
 
@@ -111,7 +93,7 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
           className={cn((isMaximized || isChatPanelCollapsed) && "hidden")}
           hitAreaMargins={{ coarse: 10, fine: 5 }}
         />
-        
+
         {/* Chat Panel - Same behavior for all screen sizes */}
         <ResizablePanel
           id="chat-panel"

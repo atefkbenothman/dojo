@@ -85,13 +85,15 @@ export function AgentContentArea({ agent, model, execution, isAuthenticated = fa
 
   return (
     <div className="flex-1 relative flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-auto flex flex-col sm:items-center sm:justify-center h-full">
-        <div className="max-w-4xl w-full min-w-[320px] sm:min-w-0 px-0 sm:px-4 py-0 sm:py-8 h-full sm:h-auto flex flex-col">
-          <div className="h-full sm:h-auto">
-            <AgentForm agent={agent} mode="edit" variant="page" isAuthenticated={isAuthenticated} />
+      <div className="flex-1 overflow-auto">
+        <div className="min-h-full flex flex-col">
+          <div className="max-w-4xl w-full min-w-[320px] sm:min-w-0 px-0 sm:px-4 py-0 sm:py-8 h-full sm:h-auto flex flex-col sm:mx-auto sm:my-auto">
+            <div className="h-full sm:h-auto">
+              <AgentForm agent={agent} mode="edit" variant="page" isAuthenticated={isAuthenticated} />
+            </div>
+            {/* Status Section */}
+            <StatusSection statusInfo={statusInfo} />
           </div>
-          {/* Status Section */}
-          <StatusSection statusInfo={statusInfo} />
         </div>
       </div>
     </div>

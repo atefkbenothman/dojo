@@ -148,7 +148,7 @@ export function Agent() {
           />
         </div>
         {/* Main Content */}
-        <div className="flex flex-col flex-1 overflow-x-auto">
+        <div className="flex flex-col flex-1 overflow-hidden">
           {selectedAgent ? (
             <>
               <AgentHeader
