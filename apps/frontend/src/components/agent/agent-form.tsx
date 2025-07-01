@@ -498,13 +498,17 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSave)}>
-          <Card className="p-0 border-[1.5px] gap-0">
-            <CardHeader className="p-4 gap-0 border-b-[1.5px]">
+        <form onSubmit={form.handleSubmit(handleSave)} className="h-full sm:h-auto flex flex-col">
+          <Card className="p-0 border-0 sm:border-[1.5px] gap-0 rounded-none sm:rounded-lg h-full sm:h-auto flex flex-col">
+            <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0 sticky top-0 z-10 bg-card sm:static">
               <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
-            <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
+            <CardContent className="p-4 bg-background space-y-8 flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible">
+              {formContent}
+            </CardContent>
+            <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0 sticky bottom-0 z-10 bg-card sm:static">
+              {formFooter}
+            </CardFooter>
           </Card>
         </form>
       </Form>

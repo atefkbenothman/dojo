@@ -20,12 +20,14 @@ function StatusSection({ statusInfo }: StatusSectionProps) {
   if (!statusInfo) return null
 
   return (
-    <div className="space-y-3 mt-6">
-      <div className="flex items-center gap-2">
+    <div className="space-y-3 mt-6 px-0 sm:px-0">
+      <div className="flex items-center gap-2 px-4 sm:px-0">
         <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
         <h2 className="text-base sm:text-lg font-semibold">Status</h2>
       </div>
-      <Card className={cn("p-3 sm:p-4", statusInfo.className)}>
+      <Card
+        className={cn("p-3 sm:p-4 mx-0 sm:mx-0 rounded-none sm:rounded-lg border-0 sm:border", statusInfo.className)}
+      >
         <div className="flex items-center gap-2">
           {statusInfo.icon}
           <span className="text-sm font-medium">{statusInfo.text}</span>
@@ -83,9 +85,11 @@ export function AgentContentArea({ agent, model, execution, isAuthenticated = fa
 
   return (
     <div className="flex-1 relative flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto flex items-center justify-center">
-        <div className="max-w-4xl w-full px-4 py-8">
-          <AgentForm agent={agent} mode="edit" variant="page" isAuthenticated={isAuthenticated} />
+      <div className="flex-1 overflow-auto flex flex-col sm:items-center sm:justify-center h-full">
+        <div className="max-w-4xl w-full min-w-[320px] sm:min-w-0 px-0 sm:px-4 py-0 sm:py-8 h-full sm:h-auto flex flex-col">
+          <div className="h-full sm:h-auto">
+            <AgentForm agent={agent} mode="edit" variant="page" isAuthenticated={isAuthenticated} />
+          </div>
           {/* Status Section */}
           <StatusSection statusInfo={statusInfo} />
         </div>
