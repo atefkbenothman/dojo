@@ -135,6 +135,8 @@ export const getBySession = query({
       .collect()
 
     // Filter out stale connections (no heartbeat in last 90 seconds)
+    // IMPORTANT: This threshold must be greater than the heartbeat interval
+    // in the backend service (currently 30 seconds) to avoid false positives
     const now = Date.now()
     const STALE_THRESHOLD = 90 * 1000 // 90 seconds
 
@@ -160,6 +162,8 @@ export const getConnection = query({
     if (!connection) return null
 
     // Check if connection is stale
+    // IMPORTANT: This threshold must be greater than the heartbeat interval
+    // in the backend service (currently 30 seconds) to avoid false positives
     const now = Date.now()
     const STALE_THRESHOLD = 90 * 1000 // 90 seconds
     const isStale = connection.status === "connected" && now - connection.lastHeartbeat > STALE_THRESHOLD

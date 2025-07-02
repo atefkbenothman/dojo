@@ -505,11 +505,25 @@ export class WorkflowExecutor {
   private buildMessagesWithContext(workflowPrompt: string, agent: Doc<"agents">, context: NodeExecutionContext): CoreMessage[] {
     const messages: CoreMessage[] = []
 
-    // Add system message with workflow instructions and agent prompt
-    messages.push({
-      role: "system",
-      content: `${this.workflow.instructions}\n\n${agent.systemPrompt}`,
-    })
+    // Check if workflow instructions are already in the conversation history as a system message
+    const hasWorkflowInstructions = context.conversationHistory.some(
+      (m) => m.role === "system" && m.content.includes(this.workflow.instructions)
+    )
+
+    // Only add agent's system prompt, avoiding duplicate workflow instructions
+    if (hasWorkflowInstructions) {
+      // Just add the agent's prompt
+      messages.push({
+        role: "system",
+        content: agent.systemPrompt,
+      })
+    } else {
+      // Add combined workflow instructions and agent prompt
+      messages.push({
+        role: "system",
+        content: `${this.workflow.instructions}\n\n${agent.systemPrompt}`,
+      })
+    }
 
     // Add conversation history from context (includes parent chain)
     messages.push(...context.conversationHistory)
@@ -520,6 +534,16 @@ export class WorkflowExecutor {
       messages.push({
         role: "user", 
         content: workflowPrompt,
+      })
+    }
+
+    // Ensure the last message is always a user or tool message for API compatibility
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage && lastMessage.role === "assistant") {
+      // Add a continuation prompt to ensure compatibility with APIs like Perplexity
+      messages.push({
+        role: "user",
+        content: "Continue processing based on the above context.",
       })
     }
 

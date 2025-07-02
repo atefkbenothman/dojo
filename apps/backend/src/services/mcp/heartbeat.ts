@@ -7,11 +7,15 @@ let backendInstanceId: string
 
 /**
  * Start the heartbeat service that periodically updates connection heartbeats
+ * 
+ * IMPORTANT: The heartbeat interval must be less than the STALE_THRESHOLD in
+ * mcpConnections.ts (currently 90 seconds) to prevent connections from being
+ * incorrectly marked as stale.
  */
 export function startHeartbeat(instanceId: string) {
   backendInstanceId = instanceId
 
-  // Update heartbeats every hour
+  // Update heartbeats every 30 seconds (well below the 90 second stale threshold)
   heartbeatInterval = setInterval(
     () => {
       void (async () => {
@@ -25,7 +29,7 @@ export function startHeartbeat(instanceId: string) {
         }
       })()
     },
-    60 * 60 * 1000, // 1 hour
+    30 * 1000, // 30 seconds
   )
 
   logger.info("Heartbeat", "Service started")
