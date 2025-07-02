@@ -71,7 +71,6 @@ export const connectionRouter = router({
         const connection = await mcpConnectionManager.establishConnection(
           session._id,
           server,
-          session.userId || undefined,
           { connectionType: "user" }, // User-initiated connections
         )
         if (!connection?.success) {

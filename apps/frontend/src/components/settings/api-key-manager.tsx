@@ -90,7 +90,7 @@ export function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerPro
     try {
       if (!state.value && state.stored) {
         // Remove key if empty and there was a stored value
-        const result = await removeApiKey(user._id, providerId)
+        const result = await removeApiKey(providerId)
         if (result) {
           toast.error("API key removed", {
             icon: null,
@@ -106,7 +106,7 @@ export function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerPro
         }
       } else if (state.value) {
         // Save new key
-        await saveApiKey(user._id, providerId, state.value)
+        await saveApiKey(providerId, state.value)
         toast.success("API key saved", {
           icon: null,
           id: "api-key-saved",

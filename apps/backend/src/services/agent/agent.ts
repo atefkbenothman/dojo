@@ -89,7 +89,6 @@ export class AgentService {
         executionId = await client.mutation(api.agentExecutions.create, {
           agentId: agent._id,
           sessionId: session._id,
-          userId: session.userId || undefined,
           aiModelId: agent.aiModelId, // Use agent's model
           mcpServerIds,
         })

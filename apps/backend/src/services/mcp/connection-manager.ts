@@ -21,7 +21,6 @@ export class MCPConnectionManager {
   async establishConnection(
     sessionId: Id<"sessions">,
     server: MCPServer,
-    userId?: Id<"users">,
     options?: {
       workflowExecutionId?: Id<"workflowExecutions">
       connectionType?: "user" | "workflow"
@@ -33,7 +32,6 @@ export class MCPConnectionManager {
       connectionId = await convex.mutation(api.mcpConnections.upsert, {
         mcpServerId: server._id,
         sessionId,
-        userId,
         backendInstanceId: BACKEND_INSTANCE_ID,
         status: "connecting",
         workflowExecutionId: options?.workflowExecutionId,
@@ -57,8 +55,7 @@ export class MCPConnectionManager {
           .mutation(api.mcpConnections.upsert, {
             mcpServerId: server._id,
             sessionId,
-            userId,
-            backendInstanceId: BACKEND_INSTANCE_ID,
+                backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
             error: errorMessage,
             workflowExecutionId: options?.workflowExecutionId,
@@ -84,8 +81,7 @@ export class MCPConnectionManager {
           .mutation(api.mcpConnections.upsert, {
             mcpServerId: server._id,
             sessionId,
-            userId,
-            backendInstanceId: BACKEND_INSTANCE_ID,
+                backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
             error: errMessage,
             workflowExecutionId: options?.workflowExecutionId,
@@ -112,8 +108,7 @@ export class MCPConnectionManager {
         .mutation(api.mcpConnections.upsert, {
           mcpServerId: server._id,
           sessionId,
-          userId,
-          backendInstanceId: BACKEND_INSTANCE_ID,
+            backendInstanceId: BACKEND_INSTANCE_ID,
           status: "connected",
           workflowExecutionId: options?.workflowExecutionId,
           connectionType: options?.connectionType || "user",

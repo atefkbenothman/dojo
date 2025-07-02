@@ -114,7 +114,6 @@ export class WorkflowService {
         executionId = await client.mutation(api.workflowExecutions.create, {
           workflowId: workflow._id,
           sessionId: session._id,
-          userId: session.userId || undefined,
           totalSteps: nodes.length, // All nodes are step nodes now
           agentIds: nodes.map((n) => n.agentId),
         })
@@ -144,7 +143,6 @@ export class WorkflowService {
         ...this.defaultExecutorOptions,
         executionId: executionId || undefined,
         sessionId: session?._id,
-        userId: session?.userId || undefined,
         abortSignal: abortController.signal,
         authorization,
       })

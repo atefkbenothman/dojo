@@ -6,15 +6,20 @@ export const create = mutation({
   args: {
     agentId: v.id("agents"),
     sessionId: v.id("sessions"),
-    userId: v.optional(v.id("users")),
     aiModelId: v.id("models"),
     mcpServerIds: v.array(v.id("mcp")),
   },
   handler: async (ctx, args) => {
+    // Get userId from session
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) {
+      throw new Error("Session not found")
+    }
+
     const executionId = await ctx.db.insert("agentExecutions", {
       agentId: args.agentId,
       sessionId: args.sessionId,
-      userId: args.userId,
+      userId: session.userId || undefined,
       aiModelId: args.aiModelId,
       mcpServerIds: args.mcpServerIds,
       status: "preparing",

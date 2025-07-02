@@ -6,7 +6,6 @@ export const upsert = mutation({
   args: {
     mcpServerId: v.id("mcp"),
     sessionId: v.id("sessions"),
-    userId: v.optional(v.id("users")),
     backendInstanceId: v.string(),
     status: v.union(
       v.literal("connecting"),
@@ -20,6 +19,12 @@ export const upsert = mutation({
     connectionType: v.union(v.literal("user"), v.literal("workflow")),
   },
   handler: async (ctx, args) => {
+    // Get userId from session
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) {
+      throw new Error("Session not found")
+    }
+
     // Check if connection already exists
     const existing = await ctx.db
       .query("mcpConnections")
@@ -45,7 +50,7 @@ export const upsert = mutation({
       const connectionId = await ctx.db.insert("mcpConnections", {
         mcpServerId: args.mcpServerId,
         sessionId: args.sessionId,
-        userId: args.userId,
+        userId: session.userId || undefined,
         backendInstanceId: args.backendInstanceId,
         status: args.status,
         error: args.error,

@@ -14,7 +14,6 @@ interface WorkflowExecutorOptions {
   persistExecution?: boolean
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
-  userId?: Id<"users">
   abortSignal?: AbortSignal
   authorization?: string
 }
@@ -716,7 +715,6 @@ export class WorkflowExecutor {
       const result = await mcpConnectionManager.establishConnection(
         this.options.sessionId!,
         server,
-        this.options.userId,
         {
           workflowExecutionId: this.options.executionId,
           connectionType: "workflow",

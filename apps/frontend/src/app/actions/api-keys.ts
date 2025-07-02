@@ -1,5 +1,6 @@
 "use server"
 
+import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { env } from "@dojo/env/frontend"
@@ -8,29 +9,35 @@ import { fetchMutation } from "convex/nextjs"
 
 /**
  * Server action to save an API key (encrypts it server-side)
+ * Note: userId is extracted from auth context in the mutation
  */
-export async function saveApiKey(userId: Id<"users">, providerId: Id<"providers">, apiKey: string) {
+export async function saveApiKey(providerId: Id<"providers">, apiKey: string) {
+  // Get the auth token for the current user
+  const token = await convexAuthNextjsToken()
+  
   // Encrypt the API key on the server side using the server-only secret
   const encryptedApiKey = await encryptApiKey(apiKey, env.ENCRYPTION_SECRET)
 
-  // Save to database
+  // Save to database with auth token
   const result = await fetchMutation(api.apiKeys.upsertApiKey, {
     apiKey: encryptedApiKey,
-    userId,
     providerId,
-  })
+  }, { token })
 
   return result
 }
 
 /**
  * Server action to remove an API key
+ * Note: userId is extracted from auth context in the mutation
  */
-export async function removeApiKey(userId: Id<"users">, providerId: Id<"providers">) {
+export async function removeApiKey(providerId: Id<"providers">) {
+  // Get the auth token for the current user
+  const token = await convexAuthNextjsToken()
+  
   const result = await fetchMutation(api.apiKeys.removeApiKey, {
-    userId,
     providerId,
-  })
+  }, { token })
 
   return result
 }

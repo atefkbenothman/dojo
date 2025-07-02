@@ -1,12 +1,35 @@
-import { mutation, query } from "./_generated/server"
+import { mutation, query, QueryCtx } from "./_generated/server"
 import { v } from "convex/values"
+import { Id } from "./_generated/dataModel"
 
+// Helper to get current userId (or null if not authenticated)
+async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity) return null
+  return identity.subject.split("|")[0] as Id<"users">
+}
+
+// For backend use where userId is known
 export const getApiKeysForUser = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("apiKeys")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect()
+  },
+})
+
+// For frontend use - extracts userId from auth
+export const getMyApiKeys = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return []
+    
+    return await ctx.db
+      .query("apiKeys")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect()
   },
 })
@@ -41,28 +64,38 @@ export const getApiKeyForUserAndProvider = query({
 })
 
 export const upsertApiKey = mutation({
-  args: { userId: v.id("users"), providerId: v.id("providers"), apiKey: v.string() },
+  args: { providerId: v.id("providers"), apiKey: v.string() },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) {
+      throw new Error("Must be authenticated to manage API keys")
+    }
+
     const existing = await ctx.db
       .query("apiKeys")
-      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("providerId", args.providerId))
+      .withIndex("by_user_provider", (q) => q.eq("userId", userId).eq("providerId", args.providerId))
       .unique()
 
     if (existing) {
       await ctx.db.patch(existing._id, { apiKey: args.apiKey })
       return existing._id
     } else {
-      return await ctx.db.insert("apiKeys", { userId: args.userId, providerId: args.providerId, apiKey: args.apiKey })
+      return await ctx.db.insert("apiKeys", { userId, providerId: args.providerId, apiKey: args.apiKey })
     }
   },
 })
 
 export const removeApiKey = mutation({
-  args: { userId: v.id("users"), providerId: v.id("providers") },
+  args: { providerId: v.id("providers") },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) {
+      throw new Error("Must be authenticated to manage API keys")
+    }
+
     const existing = await ctx.db
       .query("apiKeys")
-      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("providerId", args.providerId))
+      .withIndex("by_user_provider", (q) => q.eq("userId", userId).eq("providerId", args.providerId))
       .unique()
 
     if (existing) {

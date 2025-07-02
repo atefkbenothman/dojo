@@ -6,15 +6,20 @@ export const create = mutation({
   args: {
     workflowId: v.id("workflows"),
     sessionId: v.id("sessions"),
-    userId: v.optional(v.id("users")),
     totalSteps: v.number(),
     agentIds: v.array(v.id("agents")),
   },
   handler: async (ctx, args) => {
+    // Get userId from session
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) {
+      throw new Error("Session not found")
+    }
+
     const executionId = await ctx.db.insert("workflowExecutions", {
       workflowId: args.workflowId,
       sessionId: args.sessionId,
-      userId: args.userId,
+      userId: session.userId || undefined,
       totalSteps: args.totalSteps,
       status: "preparing",
       nodeExecutions: [], // Will be populated as nodes execute

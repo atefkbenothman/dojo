@@ -15,7 +15,7 @@ export function useUser() {
 
   // User data
   const user = useQuery(api.user.currentUser)
-  const userApiKeys = useQuery(api.apiKeys.getApiKeysForUser, user && user._id ? { userId: user._id } : "skip") || []
+  const userApiKeys = useQuery(api.apiKeys.getMyApiKeys, {}) || []
 
   // Session state
   const [isInitializing, setIsInitializing] = useState(false)
