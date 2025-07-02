@@ -48,6 +48,7 @@ export const mcpFields = {
   localOnly: v.optional(v.boolean()),
   requiresUserKey: v.boolean(),
   isPublic: v.optional(v.boolean()),
+  isTemplate: v.optional(v.boolean()),
 }
 
 // Agent configurations
