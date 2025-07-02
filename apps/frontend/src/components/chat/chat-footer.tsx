@@ -3,6 +3,7 @@
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useImage } from "@/hooks/use-image"
@@ -12,9 +13,10 @@ import { memo, useCallback, useEffect, useRef, useState } from "react"
 
 interface ChatControlsProps {
   onSend: () => void
+  isLoading: boolean
 }
 
-const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
+const ChatControls = memo(function ChatControls({ onSend, isLoading }: ChatControlsProps) {
   const setSelectedModelId = useModelStore((state) => state.setSelectedModelId)
   const { selectedModel } = useAIModels()
 
@@ -23,8 +25,8 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
       {/* Model Select */}
       <ModelSelect className="text-sm w-fit" value={selectedModel?.modelId} onValueChange={setSelectedModelId} />
       {/* Send Button */}
-      <Button className="ml-auto hover:cursor-pointer" variant="outline" onClick={onSend}>
-        <ArrowUp className="h-4 w-4" strokeWidth={3} />
+      <Button className="ml-auto hover:cursor-pointer" variant="outline" onClick={onSend} disabled={isLoading}>
+        {isLoading ? <LoadingAnimationInline className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" strokeWidth={3} />}
       </Button>
     </div>
   )
@@ -32,7 +34,7 @@ const ChatControls = memo(function ChatControls({ onSend }: ChatControlsProps) {
 
 export const ChatFooter = memo(function ChatFooter() {
   const { selectedModel } = useAIModels()
-  const { handleChat } = useChatProvider()
+  const { handleChat, status } = useChatProvider()
   const { handleImageGeneration } = useImage()
 
   const [input, setInput] = useState<string>("")
@@ -78,7 +80,7 @@ export const ChatFooter = memo(function ChatFooter() {
           onKeyDown={handleKeyDown}
           className="ring-none max-h-[280px] min-h-[120px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
         />
-        <ChatControls onSend={handleSend} />
+        <ChatControls onSend={handleSend} isLoading={status === "submitted" || status === "streaming"} />
       </div>
     </div>
   )

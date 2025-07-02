@@ -225,7 +225,7 @@ export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | 
 
   const allItems = useMemo<VirtualMessage[]>(() => {
     const items: VirtualMessage[] = messages.map((msg) => ({ type: "message", msg }))
-    if (status === "submitted" || isImageGenerating) {
+    if (status === "submitted" || status === "streaming" || isImageGenerating) {
       items.push({ type: "loading" })
     }
     if (chatError && status !== "submitted") {
