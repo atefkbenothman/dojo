@@ -1,5 +1,13 @@
-import { internalMutation, mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query, QueryCtx } from "./_generated/server"
 import { v } from "convex/values"
+import { Id } from "./_generated/dataModel"
+
+// Helper to get current userId from auth context
+async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity) return null
+  return identity.subject.split("|")[0] as Id<"users">
+}
 
 const STALE_THRESHOLD = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
 
@@ -11,16 +19,20 @@ export const get = query({
   },
 })
 
-// Retrieves a session by userId
-export const getByUserId = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
+// Retrieves the current authenticated user's session
+export const getCurrentUserSession = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return null
+    
     return await ctx.db
       .query("sessions")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique()
   },
 })
+
 
 // Retrieves a session by clientSessionId
 export const getByClientSessionId = query({
@@ -33,14 +45,17 @@ export const getByClientSessionId = query({
   },
 })
 
-// The primary function for getting or creating a session.
-// Handles authenticated users and guest users separately - no merging.
+// Get or create session for authenticated users or guests
+// For authenticated users: automatically uses auth context
+// For guests: requires clientSessionId
 export const getOrCreate = mutation({
   args: {
-    userId: v.optional(v.id("users")),
-    clientSessionId: v.optional(v.string()), // Frontend-generated UUID for guests
+    clientSessionId: v.optional(v.string()), // Required for guests only
   },
-  handler: async (ctx, { userId, clientSessionId }) => {
+  handler: async (ctx, { clientSessionId }) => {
+    // Check if user is authenticated
+    const userId = await getCurrentUserId(ctx)
+    
     // Authenticated User Flow
     if (userId) {
       // Find existing session for this user
@@ -85,7 +100,7 @@ export const getOrCreate = mutation({
       return await ctx.db.get(newSessionId)
     }
 
-    throw new Error("Either userId or clientSessionId must be provided")
+    throw new Error("Guest users must provide clientSessionId")
   },
 })
 

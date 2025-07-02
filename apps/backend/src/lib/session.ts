@@ -1,4 +1,3 @@
-import { getConvexUser } from "./auth"
 import { createRequestClient, createClientFromAuth } from "./convex-request-client"
 import { throwError } from "./errors"
 import { logger } from "./logger"
@@ -37,19 +36,14 @@ export async function lookupSession(params: SessionLookupParams): Promise<Sessio
   try {
     const { authorization, guestSessionId } = params
 
-    // First, try to get authenticated user
-    const user = await getConvexUser(authorization || undefined)
-
     // Create a client for this request (with auth if available)
     const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
 
     let session: Doc<"sessions"> | null = null
 
-    if (user) {
-      // Authenticated user: lookup by userId
-      session = await client.query(api.sessions.getByUserId, {
-        userId: user._id,
-      })
+    if (authorization) {
+      // Authenticated user: lookup using auth context
+      session = await client.query(api.sessions.getCurrentUserSession, {})
     } else if (guestSessionId) {
       // Guest user: lookup by clientSessionId
       session = await client.query(api.sessions.getByClientSessionId, {

@@ -1,9 +1,10 @@
 "use client"
 
 import { useLocalStorage } from "./use-local-storage"
-import { useAuthActions } from "@convex-dev/auth/react"
 import { GUEST_SESSION_KEY } from "@/lib/constants"
+import { useAuthActions } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
+import { Doc } from "@dojo/db/convex/_generated/dataModel"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { useCallback, useEffect, useState, useMemo, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
@@ -35,14 +36,17 @@ export function useUser() {
   }, [isAuthenticated, user, readStorage])
 
   // Query current session
-  const session = useQuery(api.sessions.getByUserId, isAuthenticated && user ? { userId: user._id } : "skip")
-  const guestSession = useQuery(
-    api.sessions.getByClientSessionId,
-    !isAuthenticated && currentSessionId ? { clientSessionId: currentSessionId } : "skip",
-  )
+  let currentSession: Doc<"sessions"> | null | undefined = null
 
-  const currentSession = isAuthenticated ? session : guestSession
-  
+  if (isAuthenticated) {
+    currentSession = useQuery(api.sessions.getCurrentUserSession, {})
+  } else {
+    currentSession = useQuery(
+      api.sessions.getByClientSessionId,
+      currentSessionId ? { clientSessionId: currentSessionId } : "skip",
+    )
+  }
+
   // Session is ready when it exists in database and not initializing
   const isSessionReady = useMemo(() => {
     return !!currentSession && !isInitializing
@@ -59,8 +63,8 @@ export function useUser() {
 
     try {
       if (isAuthenticated && user) {
-        // Authenticated user: create/get session by userId
-        await createOrGetSession({ userId: user._id })
+        // Authenticated user: create/get session (uses auth context)
+        await createOrGetSession({})
       } else if (!isAuthenticated) {
         // Guest user: use clientSessionId
         let clientSessionId = readStorage<string>(GUEST_SESSION_KEY)
