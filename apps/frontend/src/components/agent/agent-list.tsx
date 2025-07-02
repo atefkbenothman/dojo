@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input"
 import { type AgentExecution, isAgentRunning } from "@/hooks/use-agent"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
-import { Agent } from "@dojo/db/convex/types"
-import { Search, Plus, Play, Bot, Globe } from "lucide-react"
+import type { Agent } from "@dojo/db/convex/types"
+import { Search, Plus, Play, Bot, Globe, Sparkles } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
 
 interface AgentListProps {
@@ -23,6 +23,7 @@ interface AgentListProps {
   onCloneAgent: (agent: Agent) => void
   onRunAgent: (agent: Agent) => void
   onStopAllAgents: () => void
+  onGenerateAgent?: () => void
   isCollapsed: boolean
   onExpandSidebar: () => void
 }
@@ -39,6 +40,7 @@ export const AgentList = memo(function AgentList({
   onCloneAgent,
   onRunAgent,
   onStopAllAgents,
+  onGenerateAgent,
   isCollapsed,
   onExpandSidebar,
 }: AgentListProps) {
@@ -51,24 +53,32 @@ export const AgentList = memo(function AgentList({
   }, [play])
 
   // Handlers for collapsed state
-  const handleSearchClick = () => {
+  const handleSearchClick = useCallback(() => {
     onExpandSidebar()
     // Focus search input immediately
     requestAnimationFrame(() => {
       const searchInput = document.querySelector('input[placeholder="Search agents"]') as HTMLInputElement
       searchInput?.focus()
     })
-  }
+  }, [onExpandSidebar])
 
-  const handleSectionClick = (section: string) => {
-    onExpandSidebar()
-    setOpenSections([section])
-  }
+  const handleSectionClick = useCallback(
+    (section: string) => {
+      onExpandSidebar()
+      setOpenSections([section])
+    },
+    [onExpandSidebar],
+  )
 
-  const handleAddClick = () => {
+  const handleAddClick = useCallback(() => {
     onExpandSidebar()
     onCreateAgent()
-  }
+  }, [onExpandSidebar, onCreateAgent])
+
+  const handleGenerateClick = useCallback(() => {
+    onExpandSidebar()
+    onGenerateAgent?.()
+  }, [onExpandSidebar, onGenerateAgent])
 
   // Separate agents into running, public and user agents
   const { runningAgents, publicAgents, userAgents } = useMemo(() => {
@@ -96,14 +106,17 @@ export const AgentList = memo(function AgentList({
   }, [agents, executions])
 
   // Filter agents based on search
-  const filterAgents = (agentList: Agent[]) => {
-    if (searchInput === "") return agentList
-    return agentList.filter(
-      (agent) =>
-        agent.name.toLowerCase().includes(searchInput.toLowerCase()) ||
-        agent.systemPrompt?.toLowerCase().includes(searchInput.toLowerCase()),
-    )
-  }
+  const filterAgents = useCallback(
+    (agentList: Agent[]) => {
+      if (searchInput === "") return agentList
+      return agentList.filter(
+        (agent) =>
+          agent.name.toLowerCase().includes(searchInput.toLowerCase()) ||
+          agent.systemPrompt?.toLowerCase().includes(searchInput.toLowerCase()),
+      )
+    },
+    [searchInput],
+  )
 
   const filteredRunningAgents = filterAgents(runningAgents)
   const filteredPublicAgents = filterAgents(publicAgents)
@@ -139,6 +152,22 @@ export const AgentList = memo(function AgentList({
             >
               <div className="text-primary/70 group-hover:text-primary">
                 <Plus className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Generate with AI */}
+          <div className="flex w-full items-center justify-center">
+            <div
+              onClick={!isAuthenticated || !onGenerateAgent ? undefined : handleGenerateClick}
+              onMouseDown={!isAuthenticated || !onGenerateAgent ? undefined : handleClick}
+              className={cn(
+                "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
+                (!isAuthenticated || !onGenerateAgent) && "opacity-50 cursor-not-allowed pointer-events-none",
+              )}
+            >
+              <div className="text-primary/70 group-hover:text-primary">
+                <Sparkles className="h-5 w-5" />
               </div>
             </div>
           </div>
@@ -209,6 +238,18 @@ export const AgentList = memo(function AgentList({
               >
                 {isAuthenticated ? "Add Agent" : "Sign in to add agents"}
               </Button>
+              {onGenerateAgent && (
+                <Button
+                  variant="default"
+                  className="w-full h-10 hover:cursor-pointer mt-2"
+                  onClick={onGenerateAgent}
+                  disabled={!isAuthenticated}
+                  title={!isAuthenticated ? "Authentication required to generate agents" : undefined}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {isAuthenticated ? "Generate with AI" : "Sign in to generate"}
+                </Button>
+              )}
             </div>
           </div>
           {/* Agent List with Accordion Sections */}

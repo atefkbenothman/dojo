@@ -301,6 +301,13 @@ export const Workflow = memo(function Workflow() {
     [clone],
   )
 
+  const handleGenerateWorkflow = useCallback(() => {
+    // TODO: Implement AI workflow generation
+    console.log("Generate workflow with AI clicked")
+    // This would open a dialog or navigate to a generation flow
+    // For now, just log to console
+  }, [])
+
   return (
     <>
       <div className="flex h-full bg-background overflow-hidden">
@@ -343,6 +350,7 @@ export const Workflow = memo(function Workflow() {
             onCloneWorkflow={handleCloneWorkflow}
             onRunWorkflow={runWorkflow}
             onStopWorkflow={stopWorkflow}
+            onGenerateWorkflow={handleGenerateWorkflow}
             isCollapsed={isSidebarCollapsed}
             onExpandSidebar={() => setIsSidebarCollapsed(false)}
           />

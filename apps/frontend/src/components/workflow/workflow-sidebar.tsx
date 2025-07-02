@@ -8,7 +8,7 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent, Workflow, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
-import { Search, Globe, Plus, Play, Layers } from "lucide-react"
+import { Search, Globe, Plus, Play, Layers, Sparkles } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
 
 interface WorkflowSidebarProps {
@@ -25,6 +25,7 @@ interface WorkflowSidebarProps {
   onCloneWorkflow: (workflow: Workflow) => void
   onRunWorkflow: (workflow: Workflow) => void
   onStopWorkflow: (workflowId: Id<"workflows">) => void
+  onGenerateWorkflow?: () => void
   isCollapsed: boolean
   onExpandSidebar: () => void
 }
@@ -43,6 +44,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
   onCloneWorkflow,
   onRunWorkflow,
   onStopWorkflow,
+  onGenerateWorkflow,
   isCollapsed,
   onExpandSidebar,
 }: WorkflowSidebarProps) {
@@ -69,24 +71,32 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
   }, [play])
 
   // Handlers for collapsed state
-  const handleSearchClick = () => {
+  const handleSearchClick = useCallback(() => {
     onExpandSidebar()
     // Focus search input immediately
     requestAnimationFrame(() => {
       const searchInput = document.querySelector('input[placeholder="Search workflows"]') as HTMLInputElement
       searchInput?.focus()
     })
-  }
+  }, [onExpandSidebar])
 
-  const handleSectionClick = (section: string) => {
-    onExpandSidebar()
-    setOpenSections([section])
-  }
+  const handleSectionClick = useCallback(
+    (section: string) => {
+      onExpandSidebar()
+      setOpenSections([section])
+    },
+    [onExpandSidebar],
+  )
 
-  const handleAddClick = () => {
+  const handleAddClick = useCallback(() => {
     onExpandSidebar()
     onCreateWorkflow()
-  }
+  }, [onExpandSidebar, onCreateWorkflow])
+
+  const handleGenerateClick = useCallback(() => {
+    onExpandSidebar()
+    onGenerateWorkflow?.()
+  }, [onExpandSidebar, onGenerateWorkflow])
 
   // Separate workflows into running, global (public) and user workflows
   const { runningWorkflows, globalWorkflows, userWorkflows } = useMemo(() => {
@@ -114,10 +124,13 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
   }, [workflows, workflowExecutions])
 
   // Filter workflows based on search
-  const filterWorkflows = (workflowList: Workflow[]) => {
-    if (searchInput === "") return workflowList
-    return workflowList.filter((workflow) => workflow.name.toLowerCase().includes(searchInput.toLowerCase()))
-  }
+  const filterWorkflows = useCallback(
+    (workflowList: Workflow[]) => {
+      if (searchInput === "") return workflowList
+      return workflowList.filter((workflow) => workflow.name.toLowerCase().includes(searchInput.toLowerCase()))
+    },
+    [searchInput],
+  )
 
   const filteredRunningWorkflows = filterWorkflows(runningWorkflows)
   const filteredGlobalWorkflows = filterWorkflows(globalWorkflows)
@@ -153,6 +166,22 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
             >
               <div className="text-primary/70 group-hover:text-primary">
                 <Plus className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Generate with AI */}
+          <div className="flex w-full items-center justify-center">
+            <div
+              onClick={!isAuthenticated || !onGenerateWorkflow ? undefined : handleGenerateClick}
+              onMouseDown={!isAuthenticated || !onGenerateWorkflow ? undefined : handleClick}
+              className={cn(
+                "group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border",
+                (!isAuthenticated || !onGenerateWorkflow) && "opacity-50 cursor-not-allowed pointer-events-none",
+              )}
+            >
+              <div className="text-primary/70 group-hover:text-primary">
+                <Sparkles className="h-5 w-5" />
               </div>
             </div>
           </div>
@@ -223,6 +252,18 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
               >
                 {isAuthenticated ? "Create Workflow" : "Sign in to create workflows"}
               </Button>
+              {onGenerateWorkflow && (
+                <Button
+                  variant="default"
+                  className="w-full h-10 hover:cursor-pointer mt-2"
+                  onClick={onGenerateWorkflow}
+                  disabled={!isAuthenticated}
+                  title={!isAuthenticated ? "Authentication required to generate workflows" : undefined}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {isAuthenticated ? "Generate with AI" : "Sign in to generate"}
+                </Button>
+              )}
             </div>
           </div>
           {/* Workflow List with Accordion Sections */}

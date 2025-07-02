@@ -103,6 +103,13 @@ export function Agent() {
     [clone],
   )
 
+  const handleGenerateAgent = useCallback(() => {
+    // TODO: Implement AI agent generation
+    console.log("Generate agent with AI clicked")
+    // This would open a dialog or navigate to a generation flow
+    // For now, just log to console
+  }, [])
+
   return (
     <>
       <div className="flex h-full bg-background overflow-hidden">
@@ -143,6 +150,7 @@ export function Agent() {
             onCloneAgent={handleCloneAgent}
             onRunAgent={handleRunAgent}
             onStopAllAgents={stopAllAgents}
+            onGenerateAgent={handleGenerateAgent}
             isCollapsed={isSidebarCollapsed}
             onExpandSidebar={() => setIsSidebarCollapsed(false)}
           />
