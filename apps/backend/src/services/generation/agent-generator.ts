@@ -1,7 +1,7 @@
 import { convex } from "../../lib/convex-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
-import { createUserScopedTools, generationContext } from "./tools"
+import { getMcpServers, createAgent } from "./tools"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { generateText, type LanguageModel } from "ai"
@@ -66,14 +66,8 @@ Guidelines for system prompts:
 
 Always create agents as private (isPublic: false) unless the user explicitly requests a public agent.`
 
-    // Clear the generation context before starting
-    generationContext.clear()
-    
     // Set the auth token on the convex client
     convex.setAuth(authToken)
-    
-    // Create user-scoped tools (auth context will be used from the token)
-    const tools = createUserScopedTools()
 
     const result = await generateText({
       model,
@@ -82,8 +76,8 @@ Always create agents as private (isPublic: false) unless the user explicitly req
         { role: "user", content: prompt },
       ],
       tools: {
-        getMcpServers: tools.getMcpServers,
-        createAgent: tools.createAgent,
+        getMcpServers,
+        createAgent,
       },
       toolChoice: "required",
       maxSteps: 5, // Allow multiple tool calls
@@ -97,14 +91,19 @@ Always create agents as private (isPublic: false) unless the user explicitly req
       }
     }
 
-    // Check if an agent was created by looking in our context
-    const createdAgentId = generationContext.get("createdAgentId")
+    // Find the createAgent tool result
+    const createAgentResult = result.toolResults?.find(
+      tr => tr.toolName === 'createAgent'
+    )
 
-    if (createdAgentId) {
-      logger.info("Agent generation", `Successfully created agent: ${createdAgentId}`)
+    // Type guard to check if result has success and agentId
+    const agentResult = createAgentResult?.result
+    if (agentResult && typeof agentResult === 'object' && 'success' in agentResult && 
+        agentResult.success && 'agentId' in agentResult && agentResult.agentId) {
+      logger.info("Agent generation", `Successfully created agent: ${agentResult.agentId}`)
       return {
         success: true,
-        agentId: createdAgentId as string,
+        agentId: agentResult.agentId as string,
       }
     }
 

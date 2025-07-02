@@ -1,50 +1,21 @@
 import { convex } from "../../lib/convex-client"
 import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
-import { Id } from "@dojo/db/convex/_generated/dataModel"
+import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { tool } from "ai"
 import { z } from "zod"
 
 // Tool definitions for AI generation service
-// These tools allow the AI to query and create entities in the database
+// The auth token must be set on the convex client before calling these tools
 
-// Type definitions for expected responses
-interface MCPServer {
-  _id: string
-  name: string
-  summary?: string
-  transportType: string
-  localOnly?: boolean
-  requiresUserKey: boolean
-}
-
-interface Agent {
-  _id: string
-  name: string
-  systemPrompt: string
-  outputType: string
-  mcpServers: string[]
-}
-
-interface Model {
-  _id: string
-  requiresApiKey?: boolean
-}
-
-// Shared context for tracking generated IDs across tool calls
-export const generationContext = new Map<string, string>()
-
-// Factory function to create user-scoped tools
-// The auth token must be set on the convex client before calling this function
-export function createUserScopedTools() {
-  const getMcpServers = tool({
+export const getMcpServers = tool({
     description: "Get available MCP servers",
     parameters: z.object({}), // No userId parameter needed
     execute: async () => {
       try {
         const mcpServers = await convex.query(api.generation.getMcpServersForUser, {})
 
-        return mcpServers.map((server: MCPServer) => ({
+        return mcpServers.map((server: Doc<"mcp">) => ({
           id: server._id,
           name: server.name,
           description: server.summary,
@@ -57,9 +28,9 @@ export function createUserScopedTools() {
         return []
       }
     },
-  })
+})
 
-  const createAgent = tool({
+export const createAgent = tool({
     description: "Create a new agent in the database",
     parameters: z.object({
       name: z.string().describe("The name of the agent"),
@@ -80,7 +51,7 @@ export function createUserScopedTools() {
         }
 
         // Use a free model as default (could be improved to let AI choose based on requirements)
-        const defaultModel = models.find((m: Model) => !m.requiresApiKey) || models[0]
+        const defaultModel = models.find((m: Doc<"models">) => !m.requiresApiKey) || models[0]
 
         if (!defaultModel) {
           throw new Error("No default model found")
@@ -96,9 +67,6 @@ export function createUserScopedTools() {
           isPublic: params.isPublic || false,
         })
 
-        // Store the created agent ID in context for retrieval
-        generationContext.set("createdAgentId", result.agentId)
-
         return {
           success: true,
           agentId: result.agentId,
@@ -111,16 +79,16 @@ export function createUserScopedTools() {
         }
       }
     },
-  })
+})
 
-  const getAgents = tool({
+export const getAgents = tool({
     description: "Get available agents (both public and user's private agents)",
     parameters: z.object({}), // No userId parameter needed
     execute: async () => {
       try {
         const agents = await convex.query(api.generation.getAgentsForUser, {})
 
-        return agents.map((agent: Agent) => ({
+        return agents.map((agent: Doc<"agents">) => ({
           id: agent._id,
           name: agent.name,
           systemPrompt: agent.systemPrompt,
@@ -132,9 +100,9 @@ export function createUserScopedTools() {
         return []
       }
     },
-  })
+})
 
-  const createWorkflow = tool({
+export const createWorkflow = tool({
     description: "Create a new workflow in the database",
     parameters: z.object({
       name: z.string().describe("The name of the workflow"),
@@ -170,9 +138,6 @@ export function createUserScopedTools() {
           isPublic: params.isPublic || false,
         })
 
-        // Store the created workflow ID in context for retrieval
-        generationContext.set("createdWorkflowId", result.workflowId)
-
         return {
           success: true,
           workflowId: result.workflowId,
@@ -185,12 +150,4 @@ export function createUserScopedTools() {
         }
       }
     },
-  })
-
-  return {
-    getMcpServers,
-    createAgent,
-    getAgents,
-    createWorkflow,
-  }
-}
+})

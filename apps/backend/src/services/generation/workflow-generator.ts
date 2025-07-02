@@ -1,6 +1,6 @@
 import { generateText, type LanguageModel } from "ai"
 import { modelManager } from "../ai/model-manager"
-import { createUserScopedTools, generationContext } from "./tools"
+import { getAgents, createWorkflow } from "./tools"
 import { convex } from "../../lib/convex-client"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -72,14 +72,8 @@ Example workflow structure:
 
 Always create workflows as private (isPublic: false) unless the user explicitly requests a public workflow.`
 
-    // Clear the generation context before starting
-    generationContext.clear()
-    
     // Set the auth token on the convex client
     convex.setAuth(authToken)
-    
-    // Create user-scoped tools (auth context will be used from the token)
-    const tools = createUserScopedTools()
     
     const result = await generateText({
       model,
@@ -88,8 +82,8 @@ Always create workflows as private (isPublic: false) unless the user explicitly 
         { role: "user", content: prompt },
       ],
       tools: {
-        getAgents: tools.getAgents,
-        createWorkflow: tools.createWorkflow,
+        getAgents,
+        createWorkflow,
       },
       toolChoice: "required",
       maxSteps: 5, // Allow multiple tool calls
@@ -103,14 +97,19 @@ Always create workflows as private (isPublic: false) unless the user explicitly 
       }
     }
     
-    // Check if a workflow was created by looking in our context
-    const createdWorkflowId = generationContext.get('createdWorkflowId')
+    // Find the createWorkflow tool result
+    const createWorkflowResult = result.toolResults?.find(
+      tr => tr.toolName === 'createWorkflow'
+    )
     
-    if (createdWorkflowId) {
-      logger.info("Workflow generation", `Successfully created workflow: ${createdWorkflowId}`)
+    // Type guard to check if result has success and workflowId
+    const workflowResult = createWorkflowResult?.result
+    if (workflowResult && typeof workflowResult === 'object' && 'success' in workflowResult && 
+        workflowResult.success && 'workflowId' in workflowResult && workflowResult.workflowId) {
+      logger.info("Workflow generation", `Successfully created workflow: ${workflowResult.workflowId}`)
       return {
         success: true,
-        workflowId: createdWorkflowId as string,
+        workflowId: workflowResult.workflowId as string,
       }
     }
     
