@@ -187,19 +187,6 @@ export const AgentList = memo(function AgentList({
             </div>
           </div>
 
-          {/* Public */}
-          <div className="flex w-full items-center justify-center">
-            <div
-              onClick={() => handleSectionClick("public")}
-              onMouseDown={handleClick}
-              className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
-            >
-              <div className="text-primary/70 group-hover:text-primary">
-                <Globe className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-
           {/* My Agents */}
           <div className="flex w-full items-center justify-center">
             <div
@@ -209,6 +196,19 @@ export const AgentList = memo(function AgentList({
             >
               <div className="text-primary/70 group-hover:text-primary">
                 <Bot className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Public */}
+          <div className="flex w-full items-center justify-center">
+            <div
+              onClick={() => handleSectionClick("public")}
+              onMouseDown={handleClick}
+              className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
+            >
+              <div className="text-primary/70 group-hover:text-primary">
+                <Globe className="h-5 w-5" />
               </div>
             </div>
           </div>
@@ -294,22 +294,26 @@ export const AgentList = memo(function AgentList({
 
             <div className="border-b-[1px]" />
 
-            {/* Public Agents Section */}
-            <AccordionItem value="public">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
+            {/* User Agents Section */}
+            <AccordionItem value="user" className="">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10 border-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">Public Agents</span>
-                  <span className="text-xs text-muted-foreground">({filteredPublicAgents.length})</span>
+                  <span className="text-sm">My Agents</span>
+                  {isAuthenticated && (
+                    <span className="text-xs text-muted-foreground">({filteredUserAgents.length})</span>
+                  )}
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4 py-4">
                 <div className="flex flex-col gap-4">
-                  {filteredPublicAgents.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-2">
-                      {searchInput ? "No public agents match your search" : "No public agents available"}
+                  {!isAuthenticated ? (
+                    <p className="text-xs text-muted-foreground py-2">Sign in to create your own agents</p>
+                  ) : filteredUserAgents.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      {searchInput ? "No personal agents match your search" : "You haven't created any agents yet"}
                     </p>
                   ) : (
-                    filteredPublicAgents.map((agent) => {
+                    filteredUserAgents.map((agent) => {
                       const execution = executions.find((exec) => exec.agentId === agent._id)
                       return (
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>
@@ -334,26 +338,22 @@ export const AgentList = memo(function AgentList({
 
             <div className="border-b-[1px]" />
 
-            {/* User Agents Section - Always shown */}
-            <AccordionItem value="user" className="">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10 border-0">
+            {/* Public Agents Section */}
+            <AccordionItem value="public">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">My Agents</span>
-                  {isAuthenticated && (
-                    <span className="text-xs text-muted-foreground">({filteredUserAgents.length})</span>
-                  )}
+                  <span className="text-sm">Public</span>
+                  <span className="text-xs text-muted-foreground">({filteredPublicAgents.length})</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4 py-4">
                 <div className="flex flex-col gap-4">
-                  {!isAuthenticated ? (
-                    <p className="text-xs text-muted-foreground py-2">Sign in to create your own agents</p>
-                  ) : filteredUserAgents.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-2">
-                      {searchInput ? "No personal agents match your search" : "You haven't created any agents yet"}
+                  {filteredPublicAgents.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2">
+                      {searchInput ? "No public agents match your search" : "No public agents available"}
                     </p>
                   ) : (
-                    filteredUserAgents.map((agent) => {
+                    filteredPublicAgents.map((agent) => {
                       const execution = executions.find((exec) => exec.agentId === agent._id)
                       return (
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>

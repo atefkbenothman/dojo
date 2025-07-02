@@ -693,25 +693,35 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
           Clone
         </Button>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleCancel}
-        disabled={!form.formState.isDirty || form.formState.isSubmitting}
-        className="w-full sm:w-auto hover:cursor-pointer"
-      >
-        Cancel
-      </Button>
-      <Button
-        type="submit"
-        disabled={!form.formState.isDirty || form.formState.isSubmitting || !canEdit}
-        className="w-full sm:w-auto hover:cursor-pointer"
-        variant={variant === "dialog" ? "secondary" : "default"}
-      >
-        {mode === "add" ? "Create Server" : "Save"}
-      </Button>
+      {!isPublicServer && (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={!form.formState.isDirty || form.formState.isSubmitting}
+            className="w-full sm:w-auto hover:cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={!form.formState.isDirty || form.formState.isSubmitting || !canEdit}
+            className="w-full sm:w-auto hover:cursor-pointer"
+            variant={variant === "dialog" ? "secondary" : "default"}
+          >
+            {mode === "add" ? "Create Server" : "Save"}
+          </Button>
+        </>
+      )}
     </div>
   )
+
+  // Check if we should show the footer
+  const shouldShowFooter =
+    (mode === "edit" && canEdit) || // Delete button
+    (mode === "edit" && isPublicServer && isAuthenticated) || // Clone button
+    !isPublicServer // Cancel and Save buttons
 
   if (variant === "dialog") {
     return (
@@ -725,7 +735,7 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
-              <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
+              {shouldShowFooter && <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>}
             </Card>
           </form>
         </Form>
@@ -753,9 +763,11 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
             <CardContent className="p-4 bg-background flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible flex flex-col">
               {formContent}
             </CardContent>
-            <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0 sticky bottom-0 z-10 bg-card sm:static">
-              {formFooter}
-            </CardFooter>
+            {shouldShowFooter && (
+              <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0 sticky bottom-0 z-10 bg-card sm:static">
+                {formFooter}
+              </CardFooter>
+            )}
           </Card>
         </form>
       </Form>

@@ -8,7 +8,7 @@ import { MCPConnectionState } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
-import { Search, Plus, Plug, Globe, Server } from "lucide-react"
+import { Search, Plus, Plug, Globe, Server, ReceiptText } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
 
 interface MCPListProps {
@@ -53,9 +53,10 @@ export const MCPList = memo(function MCPList({
   }, [play])
 
   // Separate servers into connected, global (public) and user servers
-  const { connectedServers, globalServers, userServers } = useMemo(() => {
+  const { connectedServers, globalServers, templateServers, userServers } = useMemo(() => {
     const connected: MCPServer[] = []
     const global: MCPServer[] = []
+    const template: MCPServer[] = []
     const user: MCPServer[] = []
 
     servers.forEach((server) => {
@@ -67,13 +68,20 @@ export const MCPList = memo(function MCPList({
       }
 
       if (server.isPublic) {
-        global.push(server)
+        // Public servers are either templates or global
+        if (server.isTemplate === true) {
+          template.push(server)
+        } else {
+          // isTemplate is null, undefined, or false
+          global.push(server)
+        }
       } else {
+        // Private servers go to user servers
         user.push(server)
       }
     })
 
-    return { connectedServers: connected, globalServers: global, userServers: user }
+    return { connectedServers: connected, globalServers: global, templateServers: template, userServers: user }
   }, [servers, activeConnections])
 
   // Filter servers based on search
@@ -88,6 +96,7 @@ export const MCPList = memo(function MCPList({
 
   const filteredConnectedServers = filterServers(connectedServers)
   const filteredGlobalServers = filterServers(globalServers)
+  const filteredTemplateServers = filterServers(templateServers)
   const filteredUserServers = filterServers(userServers)
 
   // Handlers for collapsed state
@@ -159,6 +168,19 @@ export const MCPList = memo(function MCPList({
             </div>
           </div>
 
+          {/* My Servers */}
+          <div className="flex w-full items-center justify-center">
+            <div
+              onClick={() => handleSectionClick("user")}
+              onMouseDown={handleClick}
+              className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
+            >
+              <div className="text-primary/70 group-hover:text-primary">
+                <Server className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
           {/* Global */}
           <div className="flex w-full items-center justify-center">
             <div
@@ -172,15 +194,15 @@ export const MCPList = memo(function MCPList({
             </div>
           </div>
 
-          {/* My Servers */}
+          {/* Templates */}
           <div className="flex w-full items-center justify-center">
             <div
-              onClick={() => handleSectionClick("user")}
+              onClick={() => handleSectionClick("templates")}
               onMouseDown={handleClick}
               className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
             >
               <div className="text-primary/70 group-hover:text-primary">
-                <Server className="h-5 w-5" />
+                <ReceiptText className="h-5 w-5" />
               </div>
             </div>
           </div>
@@ -256,10 +278,56 @@ export const MCPList = memo(function MCPList({
 
             <div className="border-b-[1px]" />
 
+            {/* User Servers Section */}
+            <AccordionItem value="user" className="">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10 border-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">My Servers</span>
+                  {isAuthenticated && (
+                    <span className="text-xs text-muted-foreground">({filteredUserServers.length})</span>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4 py-4">
+                <div className="flex flex-col gap-4">
+                  {!isAuthenticated ? (
+                    <p className="text-xs text-muted-foreground py-2">Sign in to create your own servers</p>
+                  ) : filteredUserServers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      {searchInput ? "No personal servers match your search" : "You haven't created any servers yet"}
+                    </p>
+                  ) : (
+                    filteredUserServers.map((server) => {
+                      const connection = activeConnections.find((conn) => conn.serverId === server._id)
+                      const status = connectionStatuses.get(server._id)
+                      return (
+                        <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
+                          <MCPListItem
+                            server={server}
+                            isAuthenticated={isAuthenticated}
+                            onEditClick={onEditServer}
+                            onDeleteClick={onDeleteServer}
+                            onCloneClick={onCloneServer}
+                            isSelected={selectedServerId === server._id}
+                            onConnect={() => onConnect(server)}
+                            onDisconnect={() => onDisconnect(server)}
+                            connection={connection}
+                            status={status}
+                          />
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <div className="border-b-[1px]" />
+
             <AccordionItem value="global">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">Public Servers</span>
+                  <span className="text-sm">Public</span>
                   <span className="text-xs text-muted-foreground">({filteredGlobalServers.length})</span>
                 </div>
               </AccordionTrigger>
@@ -297,26 +365,22 @@ export const MCPList = memo(function MCPList({
 
             <div className="border-b-[1px]" />
 
-            {/* User Servers Section - Always shown */}
-            <AccordionItem value="user" className="">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10 border-0">
+            {/* Templates Section */}
+            <AccordionItem value="templates">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">My Servers</span>
-                  {isAuthenticated && (
-                    <span className="text-xs text-muted-foreground">({filteredUserServers.length})</span>
-                  )}
+                  <span className="text-sm">Templates</span>
+                  <span className="text-xs text-muted-foreground">({filteredTemplateServers.length})</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4 py-4">
                 <div className="flex flex-col gap-4">
-                  {!isAuthenticated ? (
-                    <p className="text-xs text-muted-foreground py-2">Sign in to create your own servers</p>
-                  ) : filteredUserServers.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-2">
-                      {searchInput ? "No personal servers match your search" : "You haven't created any servers yet"}
+                  {filteredTemplateServers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2">
+                      {searchInput ? "No templates match your search" : "No templates available"}
                     </p>
                   ) : (
-                    filteredUserServers.map((server) => {
+                    filteredTemplateServers.map((server) => {
                       const connection = activeConnections.find((conn) => conn.serverId === server._id)
                       const status = connectionStatuses.get(server._id)
                       return (
