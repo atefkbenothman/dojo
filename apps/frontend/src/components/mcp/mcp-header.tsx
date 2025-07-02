@@ -65,7 +65,7 @@ export const MCPHeader = memo(function MCPHeader({
                 : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800 disabled:hover:bg-green-700",
             )}
             onClick={isConnected ? onDisconnect : onConnect}
-            disabled={isConnecting || !canConnect}
+            disabled={isConnected ? false : (isConnecting || !canConnect)}
             title={
               !canConnect && !isAuthenticated && server.requiresUserKey
                 ? "Login required to use servers with API keys"

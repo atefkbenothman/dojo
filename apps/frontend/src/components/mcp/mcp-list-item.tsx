@@ -177,9 +177,11 @@ export function MCPListItem({
                 size="icon"
                 onClick={handleConnectionToggle}
                 disabled={
-                  (!isAuthenticated && server.requiresUserKey) ||
-                  isConnecting ||
-                  (server.localOnly && process.env.NODE_ENV === "production")
+                  isConnected
+                    ? false
+                    : (!isAuthenticated && server.requiresUserKey) ||
+                      isConnecting ||
+                      (server.localOnly && process.env.NODE_ENV === "production")
                 }
                 className="size-8 hover:cursor-pointer"
                 title={

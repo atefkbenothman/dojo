@@ -359,7 +359,7 @@ export const Workflow = memo(function Workflow() {
           <Tabs
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as "build" | "run")}
-            className="h-full flex flex-col"
+            className="h-full flex flex-col gap-0"
           >
             {selectedWorkflow ? (
               <>
@@ -415,7 +415,7 @@ export const Workflow = memo(function Workflow() {
                 </div>
 
                 {/* Tab Content */}
-                <TabsContent value="build" className="flex-1 overflow-hidden">
+                <TabsContent value="build" className="flex-1 overflow-hidden gap-0">
                   <ReactFlowWorkflowCanvas
                     workflow={selectedWorkflow}
                     agents={stableAgents}

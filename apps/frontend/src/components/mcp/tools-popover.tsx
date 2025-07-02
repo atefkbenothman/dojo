@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Wrench } from "lucide-react"
+import { useCallback } from "react"
 
 interface ToolsPopoverProps {
   tools: Record<string, unknown>
@@ -12,6 +13,10 @@ export function ToolsPopover({ tools }: ToolsPopoverProps) {
   const toolNames = Object.keys(tools)
   if (toolNames.length === 0) return null
 
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -20,6 +25,7 @@ export function ToolsPopover({ tools }: ToolsPopoverProps) {
           size="icon"
           className="size-8 hover:cursor-pointer"
           title={`Tools (${toolNames.length})`}
+          onClick={handleClick}
         >
           <Wrench className="h-2.5 w-2.5 text-foreground/90" />
         </Button>

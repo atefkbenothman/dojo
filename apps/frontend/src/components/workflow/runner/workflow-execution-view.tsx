@@ -257,146 +257,84 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                                       </div>
                                     </AccordionTrigger>
 
-                                    <AccordionContent className="px-3 pb-3">
-                                      {/* Agent instructions */}
-                                      <div className="space-y-2">
-                                        <p className="text-base font-medium text-muted-foreground">Instructions</p>
-                                        <div className="text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg font-mono">
-                                          {agent.systemPrompt}
+                                    <AccordionContent className="p-0">
+                                      <div className="px-4 py-4 space-y-4 bg-background/50 border-t border-border/50">
+                                        {/* Agent instructions */}
+                                        <div className="space-y-2">
+                                          <p className="text-sm font-medium text-muted-foreground">Instructions</p>
+                                          <Card className="p-3 bg-muted/10 border-muted/20">
+                                            <p className="text-sm text-muted-foreground font-mono leading-relaxed max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                                              {agent.systemPrompt}
+                                            </p>
+                                          </Card>
                                         </div>
-                                      </div>
 
-                                      {/* Metadata section */}
-                                      {nodeExecution?.metadata && (
-                                        <div className="space-y-2 mt-4">
-                                          <p className="text-base font-medium text-muted-foreground">Metadata</p>
-                                          <Card className="p-3 bg-muted/20 border-0">
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                              {nodeExecution.metadata.model && (
-                                                <div className="space-y-1">
-                                                  <div className="text-xs text-muted-foreground">Model</div>
-                                                  <div className="text-sm font-medium">
-                                                    {nodeExecution.metadata.model}
-                                                  </div>
-                                                </div>
-                                              )}
-                                              {nodeExecution.metadata.usage && (
-                                                <>
-                                                  <div className="space-y-1">
-                                                    <div className="text-xs text-muted-foreground">Total Tokens</div>
-                                                    <div className="text-sm font-medium">
-                                                      {nodeExecution.metadata.usage.totalTokens}
-                                                    </div>
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                    <div className="text-xs text-muted-foreground">Prompt</div>
-                                                    <div className="text-sm font-medium">
-                                                      {nodeExecution.metadata.usage.promptTokens}
-                                                    </div>
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                    <div className="text-xs text-muted-foreground">Completion</div>
-                                                    <div className="text-sm font-medium">
-                                                      {nodeExecution.metadata.usage.completionTokens}
-                                                    </div>
-                                                  </div>
-                                                </>
-                                              )}
-                                              {nodeExecution.metadata.toolCalls &&
-                                                nodeExecution.metadata.toolCalls.length > 0 && (
-                                                  <div className="col-span-2 space-y-1">
-                                                    <div className="text-xs text-muted-foreground">
-                                                      Tools ({nodeExecution.metadata.toolCalls.length})
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-1">
-                                                      {nodeExecution.metadata.toolCalls.map((toolCall, idx) => (
-                                                        <span
-                                                          key={idx}
-                                                          className="font-medium text-xs bg-muted px-2 py-1 rounded"
-                                                        >
-                                                          {toolCall.toolName}
-                                                        </span>
-                                                      ))}
+                                        {/* Metadata section */}
+                                        {nodeExecution?.metadata && (
+                                          <div className="space-y-2">
+                                            <p className="text-sm font-medium text-muted-foreground">Metadata</p>
+                                            <Card className="p-3 bg-muted/10 border-muted/20">
+                                              <div className="flex flex-wrap gap-3">
+                                                {nodeExecution.metadata.model && (
+                                                  <div className="flex-1 min-w-[120px] space-y-1 p-2 rounded-md bg-background/50">
+                                                    <div className="text-xs text-muted-foreground">Model</div>
+                                                    <div className="text-sm font-medium text-foreground">
+                                                      {nodeExecution.metadata.model}
                                                     </div>
                                                   </div>
                                                 )}
-                                            </div>
-                                          </Card>
-                                        </div>
-                                      )}
+                                                {nodeExecution.metadata.usage && (
+                                                  <>
+                                                    <div className="flex-1 min-w-[100px] space-y-1 p-2 rounded-md bg-background/50">
+                                                      <div className="text-xs text-muted-foreground">Total</div>
+                                                      <div className="text-sm font-medium text-foreground">
+                                                        {nodeExecution.metadata.usage.totalTokens.toLocaleString()}
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex-1 min-w-[100px] space-y-1 p-2 rounded-md bg-background/50">
+                                                      <div className="text-xs text-muted-foreground">Prompt</div>
+                                                      <div className="text-sm font-medium text-foreground">
+                                                        {nodeExecution.metadata.usage.promptTokens.toLocaleString()}
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex-1 min-w-[100px] space-y-1 p-2 rounded-md bg-background/50">
+                                                      <div className="text-xs text-muted-foreground">Completion</div>
+                                                      <div className="text-sm font-medium text-foreground">
+                                                        {nodeExecution.metadata.usage.completionTokens.toLocaleString()}
+                                                      </div>
+                                                    </div>
+                                                  </>
+                                                )}
+                                                {nodeExecution.metadata.toolCalls &&
+                                                  nodeExecution.metadata.toolCalls.length > 0 && (
+                                                    <div className="w-full space-y-1 p-2 rounded-md bg-background/50 mt-3">
+                                                      <div className="text-xs text-muted-foreground">
+                                                        Tools Used ({nodeExecution.metadata.toolCalls.length})
+                                                      </div>
+                                                      <div className="flex flex-wrap gap-1.5">
+                                                        {nodeExecution.metadata.toolCalls.map((toolCall, idx) => (
+                                                          <span
+                                                            key={idx}
+                                                            className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-md font-medium"
+                                                          >
+                                                            {toolCall.toolName}
+                                                          </span>
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                              </div>
+                                            </Card>
+                                          </div>
+                                        )}
 
-                                      {/* Node output */}
-                                      <div className="mt-4 space-y-2">
-                                        {status === "running" ? (
-                                          nodeExecution?.output ? (
-                                            <div>
-                                              <div className="flex items-center justify-between mb-2">
-                                                <p className="text-base font-medium text-muted-foreground">Output</p>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  onClick={() => copyToClipboard(nodeExecution.output || "")}
-                                                  className="h-7 w-7 sm:h-8 sm:w-8"
-                                                  title="Copy output"
-                                                >
-                                                  <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                                </Button>
-                                              </div>
-                                              <div className="bg-muted/20 border rounded-lg p-3 font-mono text-sm whitespace-pre-wrap overflow-x-auto max-h-64">
-                                                {nodeExecution.output}
-                                                <span className="inline-block w-1.5 h-3 bg-blue-500 ml-0.5 animate-pulse" />
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <Card className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/30">
-                                              <div className="flex items-center justify-center gap-2">
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                <span className="text-sm font-medium">Executing node...</span>
-                                              </div>
-                                            </Card>
-                                          )
-                                        ) : status === "pending" ? (
-                                          <Card className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-950/30">
-                                            <div className="flex items-center justify-center gap-2">
-                                              <Circle className="h-4 w-4" />
-                                              <span className="text-sm font-medium">Waiting to execute</span>
-                                            </div>
-                                          </Card>
-                                        ) : status === "completed" ? (
-                                          nodeExecution?.output ? (
-                                            <div>
-                                              <div className="flex items-center justify-between mb-2">
-                                                <p className="text-base font-medium text-muted-foreground">Output</p>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  onClick={() => copyToClipboard(nodeExecution.output || "")}
-                                                  className="h-7 w-7 sm:h-8 sm:w-8"
-                                                  title="Copy output"
-                                                >
-                                                  <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                                </Button>
-                                              </div>
-                                              <div className="bg-muted/20 border rounded-lg p-3 font-mono text-sm whitespace-pre-wrap overflow-x-auto max-h-64">
-                                                {nodeExecution.output}
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <Card className="p-3 sm:p-4 bg-green-50 dark:bg-green-950/30">
-                                              <div className="flex items-center justify-center gap-2">
-                                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                                <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                                                  Node completed successfully
-                                                </span>
-                                              </div>
-                                            </Card>
-                                          )
-                                        ) : status === "failed" ? (
-                                          <div className="space-y-2">
-                                            {nodeExecution?.output && (
+                                        {/* Node output */}
+                                        <div className="space-y-2">
+                                          {status === "running" ? (
+                                            nodeExecution?.output ? (
                                               <div>
                                                 <div className="flex items-center justify-between mb-2">
-                                                  <p className="text-base font-medium text-muted-foreground">Output</p>
+                                                  <p className="text-sm font-medium text-muted-foreground">Output</p>
                                                   <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -407,71 +345,147 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                                                     <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                                   </Button>
                                                 </div>
-                                                <div className="bg-muted/20 border rounded-lg p-3 font-mono text-sm whitespace-pre-wrap overflow-x-auto max-h-64">
-                                                  {nodeExecution.output}
-                                                </div>
-                                              </div>
-                                            )}
-                                            {nodeExecution?.error && (
-                                              <div>
-                                                <p className="text-base font-medium text-muted-foreground mb-2">
-                                                  Error Details
-                                                </p>
-                                                <Card className="p-3 sm:p-4 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
-                                                  <div className="flex items-start gap-2">
-                                                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                                                    <div className="flex-1">
-                                                      <div className="text-red-700 dark:text-red-300 text-sm">
-                                                        {/* Parse error for better display */}
-                                                        {(() => {
-                                                          const error = nodeExecution.error
-                                                          const lines = error.split("\n")
-                                                          const firstLine = lines[0] || "Unknown error"
-                                                          const errorType = firstLine.includes(":")
-                                                            ? firstLine.split(":")[0]
-                                                            : "Execution Error"
-                                                          const errorMessage = firstLine.includes(":")
-                                                            ? firstLine.split(":").slice(1).join(":").trim()
-                                                            : firstLine
-
-                                                          return (
-                                                            <div className="space-y-1">
-                                                              <div>
-                                                                <span className="font-medium">{errorType}:</span>{" "}
-                                                                {errorMessage}
-                                                              </div>
-                                                              {lines.length > 1 && (
-                                                                <details className="cursor-pointer">
-                                                                  <summary className="text-red-600 dark:text-red-400 hover:underline">
-                                                                    Show details ({lines.length - 1} more lines)
-                                                                  </summary>
-                                                                  <div className="mt-1 pl-3 border-l-2 border-red-300 dark:border-red-700">
-                                                                    <pre className="whitespace-pre-wrap break-all">
-                                                                      {lines.slice(1).join("\n")}
-                                                                    </pre>
-                                                                  </div>
-                                                                </details>
-                                                              )}
-                                                            </div>
-                                                          )
-                                                        })()}
-                                                      </div>
-                                                    </div>
-                                                  </div>
+                                                <Card className="p-3 bg-muted/10 border-muted/20">
+                                                  <pre className="text-sm text-muted-foreground font-mono whitespace-pre-wrap overflow-x-auto overflow-y-auto max-h-48 leading-relaxed scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                                                    {nodeExecution.output}
+                                                    <span className="inline-block w-1.5 h-3 bg-blue-500 ml-0.5 animate-pulse" />
+                                                  </pre>
                                                 </Card>
                                               </div>
-                                            )}
-                                          </div>
-                                        ) : status === "cancelled" ? (
-                                          <Card className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-800">
-                                            <div className="flex items-center justify-center gap-2">
-                                              <XCircle className="h-4 w-4 text-gray-500" />
-                                              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                                Node was cancelled
-                                              </span>
+                                            ) : (
+                                              <Card className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/50">
+                                                <div className="flex items-center justify-center gap-2">
+                                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600 dark:text-blue-400" />
+                                                  <span className="text-sm text-blue-700 dark:text-blue-300">
+                                                    Executing node...
+                                                  </span>
+                                                </div>
+                                              </Card>
+                                            )
+                                          ) : status === "pending" ? (
+                                            <Card className="p-3 bg-gray-50/50 dark:bg-gray-950/20 border-gray-200/50 dark:border-gray-800/50">
+                                              <div className="flex items-center justify-center gap-2">
+                                                <Circle className="h-3.5 w-3.5 text-gray-500" />
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                                  Waiting to execute
+                                                </span>
+                                              </div>
+                                            </Card>
+                                          ) : status === "completed" ? (
+                                            nodeExecution?.output ? (
+                                              <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                  <p className="text-sm font-medium text-muted-foreground">Output</p>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => copyToClipboard(nodeExecution.output || "")}
+                                                    className="h-7 w-7 sm:h-8 sm:w-8"
+                                                    title="Copy output"
+                                                  >
+                                                    <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                                  </Button>
+                                                </div>
+                                                <Card className="p-3 bg-muted/10 border-muted/20">
+                                                  <pre className="text-sm text-muted-foreground font-mono whitespace-pre-wrap overflow-x-auto overflow-y-auto max-h-48 leading-relaxed scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                                                    {nodeExecution.output}
+                                                  </pre>
+                                                </Card>
+                                              </div>
+                                            ) : (
+                                              <Card className="p-3 bg-green-50/50 dark:bg-green-950/20 border-green-200/50 dark:border-green-800/50">
+                                                <div className="flex items-center justify-center gap-2">
+                                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                                                  <span className="text-sm text-green-700 dark:text-green-300">
+                                                    Node completed successfully
+                                                  </span>
+                                                </div>
+                                              </Card>
+                                            )
+                                          ) : status === "failed" ? (
+                                            <div className="space-y-2">
+                                              {nodeExecution?.output && (
+                                                <div>
+                                                  <div className="flex items-center justify-between mb-2">
+                                                    <p className="text-sm font-medium text-muted-foreground">Output</p>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      onClick={() => copyToClipboard(nodeExecution.output || "")}
+                                                      className="h-7 w-7 sm:h-8 sm:w-8"
+                                                      title="Copy output"
+                                                    >
+                                                      <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                                    </Button>
+                                                  </div>
+                                                  <Card className="p-3 bg-muted/10 border-muted/20">
+                                                    <pre className="text-sm text-muted-foreground font-mono whitespace-pre-wrap overflow-x-auto overflow-y-auto max-h-48 leading-relaxed scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                                                      {nodeExecution.output}
+                                                    </pre>
+                                                  </Card>
+                                                </div>
+                                              )}
+                                              {nodeExecution?.error && (
+                                                <div>
+                                                  <p className="text-sm font-medium text-muted-foreground mb-2">
+                                                    Error Details
+                                                  </p>
+                                                  <Card className="p-3 sm:p-4 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                                                    <div className="flex items-start gap-2">
+                                                      <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                                      <div className="flex-1 overflow-hidden">
+                                                        <div className="text-red-700 dark:text-red-300 text-sm">
+                                                          {/* Parse error for better display */}
+                                                          {(() => {
+                                                            const error = nodeExecution.error
+                                                            const lines = error.split("\n")
+                                                            const firstLine = lines[0] || "Unknown error"
+                                                            const errorType = firstLine.includes(":")
+                                                              ? firstLine.split(":")[0]
+                                                              : "Execution Error"
+                                                            const errorMessage = firstLine.includes(":")
+                                                              ? firstLine.split(":").slice(1).join(":").trim()
+                                                              : firstLine
+
+                                                            return (
+                                                              <div className="space-y-1">
+                                                                <div className="break-words">
+                                                                  <span className="font-medium">{errorType}:</span>{" "}
+                                                                  {errorMessage}
+                                                                </div>
+                                                                {lines.length > 1 && (
+                                                                  <details className="cursor-pointer">
+                                                                    <summary className="text-red-600 dark:text-red-400 hover:underline">
+                                                                      Show details ({lines.length - 1} more lines)
+                                                                    </summary>
+                                                                    <div className="mt-1 pl-3 border-l-2 border-red-300 dark:border-red-700 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                                                                      <pre className="whitespace-pre-wrap break-all text-xs">
+                                                                        {lines.slice(1).join("\n")}
+                                                                      </pre>
+                                                                    </div>
+                                                                  </details>
+                                                                )}
+                                                              </div>
+                                                            )
+                                                          })()}
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  </Card>
+                                                </div>
+                                              )}
                                             </div>
-                                          </Card>
-                                        ) : null}
+                                          ) : status === "cancelled" ? (
+                                            <Card className="p-3 bg-gray-50/50 dark:bg-gray-950/20 border-gray-200/50 dark:border-gray-800/50">
+                                              <div className="flex items-center justify-center gap-2">
+                                                <XCircle className="h-3.5 w-3.5 text-gray-500" />
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                                  Node was cancelled
+                                                </span>
+                                              </div>
+                                            </Card>
+                                          ) : null}
+                                        </div>
                                       </div>
                                     </AccordionContent>
                                   </AccordionItem>
