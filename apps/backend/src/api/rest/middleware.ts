@@ -8,6 +8,7 @@ interface ParsedInputBase {
   chat?: { modelId: string }
   agent?: { modelId: string }
   workflow?: { modelId: string }
+  generation?: { modelId: string }
 }
 
 /**
@@ -46,7 +47,7 @@ export function createValidatedRequestMiddleware<T extends ParsedInputBase>(sche
       req.session = sessionResult.session
 
       // 3. Extract and validate model ID
-      const modelId = parsedInput.chat?.modelId || parsedInput.agent?.modelId || parsedInput.workflow?.modelId
+      const modelId = parsedInput.chat?.modelId || parsedInput.agent?.modelId || parsedInput.workflow?.modelId || parsedInput.generation?.modelId
       if (!modelId) {
         throwError("Missing modelId in chat, agent, or workflow object", 400)
       }

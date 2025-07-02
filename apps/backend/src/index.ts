@@ -1,5 +1,6 @@
 import { agentRouter } from "./api/rest/routes/agent"
 import { chatRouter } from "./api/rest/routes/chat"
+import { generationRouter } from "./api/rest/routes/generation"
 import { workflowRouter } from "./api/rest/routes/workflow"
 import { createTRPCContext } from "./api/trpc/context"
 import { appRouter } from "./api/trpc/router"
@@ -50,6 +51,7 @@ app.use(express.json({ limit: "10mb" }))
 app.use("/api/chat", chatRouter)
 app.use("/api/agent", agentRouter)
 app.use("/api/workflow", workflowRouter)
+app.use("/api/generate", generationRouter)
 
 app.use(
   "/trpc",

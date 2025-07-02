@@ -18,6 +18,7 @@ import type * as agents from "../agents.js";
 import type * as apiKeys from "../apiKeys.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as generation from "../generation.js";
 import type * as http from "../http.js";
 import type * as mcp from "../mcp.js";
 import type * as mcpConnections from "../mcpConnections.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   apiKeys: typeof apiKeys;
   auth: typeof auth;
   crons: typeof crons;
+  generation: typeof generation;
   http: typeof http;
   mcp: typeof mcp;
   mcpConnections: typeof mcpConnections;
