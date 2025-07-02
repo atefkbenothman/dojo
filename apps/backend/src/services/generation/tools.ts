@@ -42,7 +42,6 @@ export function createCreateAgent(client: ConvexHttpClient) {
       outputFormat: z
         .enum(["text", "object"])
         .describe("The output format - text for general responses, object for structured data"),
-      isPublic: z.boolean().describe("Whether this agent should be publicly accessible"),
     }),
     execute: async (params) => {
       try {
@@ -67,7 +66,6 @@ export function createCreateAgent(client: ConvexHttpClient) {
           mcpServers: params.mcpServerIds as Id<"mcp">[],
           outputType: params.outputFormat,
           aiModelId: defaultModel._id,
-          isPublic: false,
         })
 
         return {
@@ -114,17 +112,15 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
     parameters: z.object({
       name: z.string().describe("The name of the workflow"),
       description: z.string().describe("A description of what the workflow does"),
-      instructions: z.string().describe("General instructions for the workflow"),
+      instructions: z.string().describe("General instructions for the workflow that guide all steps"),
       steps: z
         .array(
           z.object({
             name: z.string().describe("The name of this step"),
             agentId: z.string().describe("The ID of the agent to use for this step"),
-            input: z.string().optional().describe("The input prompt or context for this step (optional - workflow instructions are used if not provided)"),
           }),
         )
         .describe("The steps that make up this workflow"),
-      isPublic: z.boolean().describe("Whether this workflow should be publicly accessible"),
     }),
     execute: async (params) => {
       try {
@@ -133,7 +129,6 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
           nodeId: `step_${index + 1}`,
           name: step.name,
           agentId: step.agentId as Id<"agents">,
-          input: step.input,
         }))
 
         // Create the workflow using the user-based mutation
@@ -142,7 +137,6 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
           description: params.description,
           instructions: params.instructions,
           steps: stepsWithNodeIds,
-          isPublic: false,
         })
 
         return {
@@ -159,9 +153,3 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
     },
   })
 }
-
-// Legacy exports for backward compatibility (will be removed)
-export const getMcpServers = createGetMcpServers
-export const createAgent = createCreateAgent
-export const getAgents = createGetAgents
-export const createWorkflow = createCreateWorkflow

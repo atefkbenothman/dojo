@@ -1,6 +1,7 @@
 import { createRequestClient } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
+import { WORKFLOW_GENERATOR_PROMPT } from "../ai/prompts"
 import { createGetAgents, createCreateWorkflow } from "./tools"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -44,39 +45,6 @@ export async function generateWorkflow({
     // Get the model using the session
     const model = (await modelManager.getModel(modelId, session)) as LanguageModel
 
-    const systemPrompt = `You are an AI assistant that generates workflow configurations for Dojo, an AI agent workflow platform.
-
-Your task:
-1. First, use the getAgents tool to see what agents are available
-2. Based on the user's request, design a workflow that:
-   - Has a clear, descriptive name
-   - Has a helpful description
-   - Consists of a logical sequence of steps
-   - Each step uses an appropriate agent
-   - Each step has clear input/instructions
-3. Use the createWorkflow tool to create the workflow in the database
-
-Guidelines for workflow design:
-- Break down complex tasks into logical steps
-- Choose agents based on their capabilities
-- Ensure data flows logically from one step to the next
-- The output of one step often becomes part of the input for the next step
-- Keep step names clear and descriptive
-
-Guidelines for step inputs:
-- The input field is optional - if not provided, the workflow's general instructions will guide the step
-- When you do provide input, be specific about what that step should do
-- Reference previous steps' outputs when needed (e.g., "Using the analysis from step 1...")
-- Include any specific requirements or constraints
-- Consider if step-specific instructions would add value beyond the workflow instructions
-
-Example workflow structure:
-- Step 1: Research (using a web search agent)
-- Step 2: Analyze findings (using an analysis agent)
-- Step 3: Generate report (using a writing agent)
-
-Always create workflows as private (isPublic: false) unless the user explicitly requests a public workflow.`
-
     // Create tools with the authenticated client
     const toolsWithClient = {
       getAgents: createGetAgents(client),
@@ -86,7 +54,7 @@ Always create workflows as private (isPublic: false) unless the user explicitly 
     const result = await generateText({
       model,
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: WORKFLOW_GENERATOR_PROMPT },
         { role: "user", content: prompt },
       ],
       tools: toolsWithClient,

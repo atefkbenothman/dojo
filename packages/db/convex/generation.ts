@@ -19,7 +19,6 @@ export const createAgentForUser = mutation({
     mcpServers: v.array(v.id("mcp")),
     outputType: v.union(v.literal("text"), v.literal("object")),
     aiModelId: v.id("models"),
-    isPublic: v.boolean(),
   },
   handler: async (ctx, args) => {
     // Get userId from auth context
@@ -35,7 +34,7 @@ export const createAgentForUser = mutation({
       mcpServers: args.mcpServers,
       outputType: args.outputType,
       aiModelId: args.aiModelId,
-      isPublic: args.isPublic,
+      isPublic: false,
       userId,
     }
 
@@ -56,10 +55,8 @@ export const createWorkflowForUser = mutation({
         nodeId: v.string(),
         name: v.string(),
         agentId: v.id("agents"),
-        input: v.optional(v.string()),
       }),
     ),
-    isPublic: v.boolean(),
   },
   handler: async (ctx, args) => {
     // Get userId from auth context
@@ -74,7 +71,7 @@ export const createWorkflowForUser = mutation({
       description: args.description,
       instructions: args.instructions,
       rootNodeId: args.steps.length > 0 ? args.steps[0]?.nodeId : undefined,
-      isPublic: args.isPublic,
+      isPublic: false,
       userId,
     }
 

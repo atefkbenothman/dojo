@@ -1,6 +1,7 @@
 import { createRequestClient } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
+import { AGENT_GENERATOR_PROMPT } from "../ai/prompts"
 import { createGetMcpServers, createCreateAgent } from "./tools"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -44,30 +45,6 @@ export async function generateAgent({
     // Get the model using the session
     const model = (await modelManager.getModel(modelId, session)) as LanguageModel
 
-    const systemPrompt = `You are an AI assistant that generates agent configurations for Dojo, an AI agent workflow platform.
-
-Your task:
-1. First, use the getMcpServers tool to see what MCP servers are available
-2. Based on the user's request, determine the appropriate agent configuration:
-   - A clear, descriptive name
-   - An appropriate system prompt that guides the agent's behavior
-   - Which MCP servers to connect (based on the required capabilities)
-   - The output format (use "text" for general tasks, "object" for structured data output)
-
-Guidelines for MCP server selection:
-- Match servers based on their names and descriptions
-- "filesystem" servers are for file operations
-- "web-search" or "brave-search" servers are for internet searches
-- "git" servers are for version control operations
-- Select multiple servers if the agent needs multiple capabilities
-
-Guidelines for system prompts:
-- Be clear and specific about the agent's role
-- Include any constraints or guidelines
-- Specify the expected output format if relevant
-
-Always create agents as private (isPublic: false) unless the user explicitly requests a public agent.`
-
     // Create tools with the authenticated client
     const toolsWithClient = {
       getMcpServers: createGetMcpServers(client),
@@ -77,7 +54,7 @@ Always create agents as private (isPublic: false) unless the user explicitly req
     const result = await generateText({
       model,
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: AGENT_GENERATOR_PROMPT },
         { role: "user", content: prompt },
       ],
       tools: toolsWithClient,
