@@ -180,15 +180,25 @@ export class WorkflowExecutor {
       // Execute tree using event-driven execution starting from all root nodes
       const completedNodes = await this.executeEventDriven(rootNodes, workflowPrompt)
 
-      // All steps completed successfully
+      // Check if any nodes failed
+      const failedNodes = completedNodes.filter(node => !node.success)
+      const success = failedNodes.length === 0
+
+      // All steps completed
       if (!this.res.writableEnded) {
         this.res.end()
       }
 
-      this.log("Workflow execution completed successfully")
+      if (success) {
+        this.log("Workflow execution completed successfully")
+      } else {
+        this.log(`Workflow execution completed with ${failedNodes.length} failed nodes`)
+      }
+      
       return {
-        success: true,
+        success: success,
         completedNodes: completedNodes,
+        error: success ? undefined : `${failedNodes.length} node(s) failed during execution`,
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)

@@ -228,15 +228,19 @@ export const updateNodeProgress = mutation({
       currentNodes = currentNodes.filter((nodeId) => nodeId !== args.nodeId)
     }
 
-    await ctx.db.patch(args.executionId, {
+    // Update node executions and current nodes
+    const updates: any = {
       nodeExecutions,
       currentNodes,
-      status:
-        currentNodes.length > 0
-          ? "running"
-          : nodeExecutions.every((ne) => ne.status === "completed")
-            ? "completed"
-            : execution.status,
-    })
+    }
+    
+    // Only update workflow status to "running" when nodes are active
+    // Don't change the status when all nodes complete - let the workflow service
+    // determine the final status based on success/failure
+    if (currentNodes.length > 0) {
+      updates.status = "running"
+    }
+    
+    await ctx.db.patch(args.executionId, updates)
   },
 })
