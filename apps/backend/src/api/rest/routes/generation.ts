@@ -29,18 +29,17 @@ generationRouter.post(
   "/agent",
   createValidatedRequestMiddleware(generateAgentSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    // Session is guaranteed to exist due to middleware
-    const session = req.session!
-    
+    const session = req.session
+
     // Check authentication
-    if (!session.userId) {
-      res.status(401).json({ 
-        success: false, 
-        error: "Authentication required to generate agents with AI" 
+    if (!session || !session.userId) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required to generate agents with AI",
       })
       return
     }
-    
+
     const parsedInput = req.parsedInput as z.infer<typeof generateAgentSchema>
     const { prompt, generation } = parsedInput
     const modelId = generation.modelId
@@ -49,8 +48,8 @@ generationRouter.post(
 
     try {
       // Extract the auth token from the authorization header
-      const authToken = req.headers.authorization?.substring(7) || ''
-      
+      const authToken = req.headers.authorization?.substring(7) || ""
+
       const result = await generateAgent({
         prompt,
         sessionId: session._id,
@@ -60,25 +59,25 @@ generationRouter.post(
 
       if (result.success) {
         logger.info("REST /generate/agent", `Successfully generated agent: ${result.agentId}`)
-        res.json({ 
-          success: true, 
-          agentId: result.agentId 
+        res.json({
+          success: true,
+          agentId: result.agentId,
         })
       } else {
         logger.error("REST /generate/agent", `Generation failed: ${result.error}`)
-        res.status(400).json({ 
-          success: false, 
-          error: result.error || "Failed to generate agent" 
+        res.status(400).json({
+          success: false,
+          error: result.error || "Failed to generate agent",
         })
       }
     } catch (error) {
       logger.error("REST /generate/agent", "Unexpected error during generation", error)
-      res.status(500).json({ 
-        success: false, 
-        error: "Internal server error during generation" 
+      res.status(500).json({
+        success: false,
+        error: "Internal server error during generation",
       })
     }
-  })
+  }),
 )
 
 // POST /api/generate/workflow
@@ -86,18 +85,17 @@ generationRouter.post(
   "/workflow",
   createValidatedRequestMiddleware(generateWorkflowSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    // Session is guaranteed to exist due to middleware
-    const session = req.session!
-    
+    const session = req.session
+
     // Check authentication
-    if (!session.userId) {
-      res.status(401).json({ 
-        success: false, 
-        error: "Authentication required to generate workflows with AI" 
+    if (!session || !session.userId) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required to generate workflows with AI",
       })
       return
     }
-    
+
     const parsedInput = req.parsedInput as z.infer<typeof generateWorkflowSchema>
     const { prompt, generation } = parsedInput
     const modelId = generation.modelId
@@ -106,8 +104,8 @@ generationRouter.post(
 
     try {
       // Extract the auth token from the authorization header
-      const authToken = req.headers.authorization?.substring(7) || ''
-      
+      const authToken = req.headers.authorization?.substring(7) || ""
+
       const result = await generateWorkflow({
         prompt,
         sessionId: session._id,
@@ -117,23 +115,23 @@ generationRouter.post(
 
       if (result.success) {
         logger.info("REST /generate/workflow", `Successfully generated workflow: ${result.workflowId}`)
-        res.json({ 
-          success: true, 
-          workflowId: result.workflowId 
+        res.json({
+          success: true,
+          workflowId: result.workflowId,
         })
       } else {
         logger.error("REST /generate/workflow", `Generation failed: ${result.error}`)
-        res.status(400).json({ 
-          success: false, 
-          error: result.error || "Failed to generate workflow" 
+        res.status(400).json({
+          success: false,
+          error: result.error || "Failed to generate workflow",
         })
       }
     } catch (error) {
       logger.error("REST /generate/workflow", "Unexpected error during generation", error)
-      res.status(500).json({ 
-        success: false, 
-        error: "Internal server error during generation" 
+      res.status(500).json({
+        success: false,
+        error: "Internal server error during generation",
       })
     }
-  })
+  }),
 )
