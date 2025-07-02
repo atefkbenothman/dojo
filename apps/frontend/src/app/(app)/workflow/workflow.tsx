@@ -472,6 +472,7 @@ export const Workflow = memo(function Workflow() {
             }
           }}
           onSave={handleSaveWorkflowMetadata}
+          isAuthenticated={isAuthenticated}
         />
       )}
       {/* Node Delete Confirmation Dialog */}
