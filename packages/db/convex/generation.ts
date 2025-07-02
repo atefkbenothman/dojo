@@ -56,7 +56,7 @@ export const createWorkflowForUser = mutation({
         nodeId: v.string(),
         name: v.string(),
         agentId: v.id("agents"),
-        input: v.string(),
+        input: v.optional(v.string()),
       }),
     ),
     isPublic: v.boolean(),
@@ -92,8 +92,7 @@ export const createWorkflowForUser = mutation({
         parentNodeId: prevStep?.nodeId,
         type: "step" as const,
         agentId: step.agentId,
-        name: step.name,
-        input: step.input,
+        label: step.name,
       }
       await ctx.db.insert("workflowNodes", nodeData)
     }

@@ -2,8 +2,8 @@ import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { tool } from "ai"
-import { z } from "zod"
 import type { ConvexHttpClient } from "convex/browser"
+import { z } from "zod"
 
 // Tool factory functions that create tools with a specific Convex client
 // This ensures proper request isolation and prevents auth state leakage
@@ -67,7 +67,7 @@ export function createCreateAgent(client: ConvexHttpClient) {
           mcpServers: params.mcpServerIds as Id<"mcp">[],
           outputType: params.outputFormat,
           aiModelId: defaultModel._id,
-          isPublic: params.isPublic || false,
+          isPublic: false,
         })
 
         return {
@@ -120,7 +120,7 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
           z.object({
             name: z.string().describe("The name of this step"),
             agentId: z.string().describe("The ID of the agent to use for this step"),
-            input: z.string().describe("The input prompt or context for this step"),
+            input: z.string().optional().describe("The input prompt or context for this step (optional - workflow instructions are used if not provided)"),
           }),
         )
         .describe("The steps that make up this workflow"),
@@ -142,7 +142,7 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
           description: params.description,
           instructions: params.instructions,
           steps: stepsWithNodeIds,
-          isPublic: params.isPublic || false,
+          isPublic: false,
         })
 
         return {

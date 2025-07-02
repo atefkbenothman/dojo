@@ -64,9 +64,11 @@ Guidelines for workflow design:
 - Keep step names clear and descriptive
 
 Guidelines for step inputs:
-- Be specific about what each step should do
+- The input field is optional - if not provided, the workflow's general instructions will guide the step
+- When you do provide input, be specific about what that step should do
 - Reference previous steps' outputs when needed (e.g., "Using the analysis from step 1...")
 - Include any specific requirements or constraints
+- Consider if step-specific instructions would add value beyond the workflow instructions
 
 Example workflow structure:
 - Step 1: Research (using a web search agent)
