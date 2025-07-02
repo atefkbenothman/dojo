@@ -228,7 +228,7 @@ export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | 
     if (status === "submitted" || status === "streaming" || isImageGenerating) {
       items.push({ type: "loading" })
     }
-    if (chatError && status !== "submitted") {
+    if (chatError && status !== "streaming") {
       items.push({ type: "error", errorMessage: chatError })
     }
     return items

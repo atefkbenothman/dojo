@@ -8,6 +8,7 @@ import { useAIModels } from "@/hooks/use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useImage } from "@/hooks/use-image"
 import { useModelStore } from "@/store/use-model-store"
+import { useImageStore } from "@/store/use-image-store"
 import { ArrowUp } from "lucide-react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
 
@@ -36,6 +37,7 @@ export const ChatFooter = memo(function ChatFooter() {
   const { selectedModel } = useAIModels()
   const { handleChat, status } = useChatProvider()
   const { handleImageGeneration } = useImage()
+  const { isImageGenerating } = useImageStore()
 
   const [input, setInput] = useState<string>("")
 
@@ -46,7 +48,8 @@ export const ChatFooter = memo(function ChatFooter() {
   }, [input])
 
   const handleSend = useCallback(() => {
-    if (inputRef.current.trim() === "") return
+    const trimmedInput = inputRef.current.trim()
+    if (trimmedInput === "") return
 
     if (selectedModel?.type === "image") {
       handleImageGeneration({
@@ -64,10 +67,7 @@ export const ChatFooter = memo(function ChatFooter() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      if (input.trim() !== "") {
-        handleSend()
-        setInput("")
-      }
+      handleSend()
     }
   }
 
@@ -80,7 +80,7 @@ export const ChatFooter = memo(function ChatFooter() {
           onKeyDown={handleKeyDown}
           className="ring-none max-h-[280px] min-h-[120px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
         />
-        <ChatControls onSend={handleSend} isLoading={status === "submitted" || status === "streaming"} />
+        <ChatControls onSend={handleSend} isLoading={status === "submitted" || status === "streaming" || isImageGenerating} />
       </div>
     </div>
   )

@@ -60,8 +60,6 @@ export function useAIChat() {
     async (message: string) => {
       if (status === "streaming") return
 
-      play("./sounds/chat.mp3", { volume: 0.5 })
-
       setChatError(null)
 
       const prompt = message.trim()
@@ -74,6 +72,8 @@ export function useAIChat() {
         play("./sounds/error.mp3", { volume: 0.5 })
         return
       }
+
+      play("./sounds/chat.mp3", { volume: 0.5 })
 
       const userMessage: Message = {
         id: nanoid(),

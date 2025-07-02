@@ -234,9 +234,16 @@ function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServers
 
   return (
     <div className="flex flex-col h-full sm:h-auto space-y-2">
-      <p className="text-base font-medium text-muted-foreground flex-shrink-0">
-        MCP Servers {selectedCount > 0 && <span className="text-sm font-normal">({selectedCount} selected)</span>}
-      </p>
+      <div className="flex-shrink-0">
+        <p className="text-base font-medium text-muted-foreground">
+          MCP Servers {selectedCount > 0 && <span className="text-sm font-normal">({selectedCount} selected)</span>}
+        </p>
+        {canEdit && mcpServers.length === 0 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Public MCP servers are only available for public agents
+          </p>
+        )}
+      </div>
       <FormField
         control={form.control}
         name="mcpServers"
@@ -314,6 +321,17 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
   // Check if user can edit
   const isPublicAgent = agent?.isPublic || false
   const canEdit = Boolean(isAuthenticated && !isPublicAgent)
+
+  // Filter MCP servers based on agent visibility
+  // For private agents (user-created), only show private MCP servers
+  const availableMcpServers = useMemo(() => {
+    if (mode === "add" || !agent?.isPublic) {
+      // Creating new agent or editing private agent - filter out public MCP servers
+      return mcpServers.filter(server => !server.isPublic)
+    }
+    // For public agents, show all MCP servers
+    return mcpServers
+  }, [mcpServers, mode, agent?.isPublic])
 
   // Get default model for new agents
   const defaultModel = useMemo(() => {
@@ -448,7 +466,7 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
         <MCPServersSection
           form={form}
           canEdit={canEdit}
-          mcpServers={mcpServers}
+          mcpServers={availableMcpServers}
           outputType={form.watch("outputType")}
         />
       </div>

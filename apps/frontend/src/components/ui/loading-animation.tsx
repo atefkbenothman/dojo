@@ -12,7 +12,7 @@ export function LoadingAnimation() {
     }, 80)
 
     return () => clearInterval(interval)
-  }, [frames.length])
+  }, [])
 
   return (
     <div className="flex items-center w-fit px-1 py-4 text-primary">
@@ -32,7 +32,7 @@ export function LoadingAnimationInline({ className = "" }: { className?: string 
     }, 80)
 
     return () => clearInterval(interval)
-  }, [frames.length])
+  }, [])
 
   return <span className={`font-mono ${className}`}>{frames[frameIndex]}</span>
 }
