@@ -1,6 +1,6 @@
 "use client"
 
-import { MCP_SERVER_ICONS } from "@/components/icons"
+// import { MCP_SERVER_ICONS } from "@/components/icons"
 import { MCPStatusIndicator } from "@/components/mcp/mcp-status-indicator"
 import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
@@ -55,7 +55,7 @@ export function MCPListItem({
   const canEdit = isAuthenticated && !server.isPublic
   const canDelete = isAuthenticated && !server.isPublic
 
-  const Icon = MCP_SERVER_ICONS[server.name.toLowerCase()] || null
+  // const Icon = MCP_SERVER_ICONS[server.name.toLowerCase()] || null
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent) => {
@@ -119,11 +119,11 @@ export function MCPListItem({
         <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
           {/* Title with status */}
           <div className="min-w-0 flex-1 flex items-center gap-2">
-            {Icon && (
+            {/* {Icon && (
               <div className="shrink-0 text-primary/70 [&>svg]:h-3.5 [&>svg]:w-3.5">
                 <Icon />
               </div>
-            )}
+            )} */}
             <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
               {server.name}
             </p>
