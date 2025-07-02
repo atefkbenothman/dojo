@@ -141,7 +141,7 @@ export const addNode = mutation({
     nodeId: v.string(),
     parentNodeId: v.optional(v.string()),
     type: v.literal("step"),
-    agentId: v.optional(v.id("agents")),
+    agentId: v.id("agents"),
     label: v.optional(v.string()),
     order: v.optional(v.number()),
   },
@@ -238,7 +238,7 @@ export const updateNode = mutation({
   args: {
     workflowId: v.id("workflows"),
     nodeId: v.string(),
-    agentId: v.optional(v.id("agents")),
+    agentId: v.id("agents"),
     label: v.optional(v.string()),
   },
   handler: async (ctx, args) => {

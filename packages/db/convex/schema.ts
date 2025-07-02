@@ -70,7 +70,7 @@ export const workflowNodesFields = {
   type: v.literal("step"), // All nodes are now agent execution steps
 
   // Step-specific data
-  agentId: v.optional(v.id("agents")), // Only for "step" nodes
+  agentId: v.id("agents"), // Required for all step nodes
 
   // Display metadata
   label: v.optional(v.string()),
