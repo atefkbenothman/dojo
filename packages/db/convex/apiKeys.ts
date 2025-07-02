@@ -1,6 +1,6 @@
+import { Id } from "./_generated/dataModel"
 import { mutation, query, QueryCtx } from "./_generated/server"
 import { v } from "convex/values"
-import { Id } from "./_generated/dataModel"
 
 // Helper to get current userId (or null if not authenticated)
 async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
@@ -9,24 +9,13 @@ async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
   return identity.subject.split("|")[0] as Id<"users">
 }
 
-// For backend use where userId is known
-export const getApiKeysForUser = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("apiKeys")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .collect()
-  },
-})
-
 // For frontend use - extracts userId from auth
 export const getMyApiKeys = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
     if (!userId) return []
-    
+
     return await ctx.db
       .query("apiKeys")
       .withIndex("by_user", (q) => q.eq("userId", userId))
