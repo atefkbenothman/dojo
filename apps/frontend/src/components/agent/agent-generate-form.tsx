@@ -7,6 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useGeneration } from "@/hooks/use-generation"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useCallback, useMemo } from "react"
@@ -136,6 +137,7 @@ function ModelSection({ form }: ModelSectionProps) {
 export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false, onClose }: AgentGenerateFormProps) {
   const { play } = useSoundEffectContext()
   const { models } = useAIModels()
+  const { generateAgent, isGeneratingAgent } = useGeneration()
 
   // Get default model for new agents
   const defaultModel = useMemo(() => {
@@ -156,16 +158,23 @@ export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false,
   const handleGenerate = useCallback(
     async (data: AgentGenerateFormValues) => {
       try {
-        // TODO: Implement AI generation logic
-        console.log("Generating agent with:", data)
         play("./sounds/click.mp3", { volume: 0.5 })
-        // For now, just close the dialog
-        onClose?.()
+        
+        const result = await generateAgent({
+          name: data.name,
+          prompt: data.prompt,
+          modelId: data.aiModelId,
+        })
+
+        if (result.success) {
+          form.reset()
+          onClose?.()
+        }
       } catch (error) {
         console.error("Failed to generate agent:", error)
       }
     },
-    [play, onClose],
+    [play, generateAgent, form, onClose],
   )
 
   const handleCancel = useCallback(() => {
@@ -188,11 +197,11 @@ export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false,
       </Button>
       <Button
         type="submit"
-        disabled={!form.formState.isDirty || form.formState.isSubmitting || !isAuthenticated}
+        disabled={!form.formState.isDirty || form.formState.isSubmitting || !isAuthenticated || isGeneratingAgent}
         className="w-full sm:w-auto hover:cursor-pointer"
         variant={variant === "dialog" ? "secondary" : "default"}
       >
-        Generate
+        {isGeneratingAgent ? "Generating..." : "Generate"}
       </Button>
     </div>
   )

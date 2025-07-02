@@ -1,10 +1,10 @@
-import { generateText, type LanguageModel } from "ai"
+import { createRequestClient } from "../../lib/convex-request-client"
+import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { createGetAgents, createCreateWorkflow } from "./tools"
-import { createClientFromAuth } from "../../lib/convex-request-client"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { logger } from "../../lib/logger"
+import { generateText, type LanguageModel } from "ai"
 
 interface GenerateWorkflowParams {
   prompt: string
@@ -27,13 +27,13 @@ export async function generateWorkflow({
 }: GenerateWorkflowParams): Promise<GenerateWorkflowResult> {
   try {
     // Create a client with auth for this request
-    const client = createClientFromAuth(authToken)
-    
+    const client = createRequestClient(authToken)
+
     // Get the session to use with model manager
-    const session = await client.query(api.sessions.get, { 
-      sessionId: sessionId as Id<"sessions"> 
+    const session = await client.query(api.sessions.get, {
+      sessionId: sessionId as Id<"sessions">,
     })
-    
+
     if (!session) {
       return {
         success: false,
@@ -42,7 +42,7 @@ export async function generateWorkflow({
     }
 
     // Get the model using the session
-    const model = await modelManager.getModel(modelId, session) as LanguageModel
+    const model = (await modelManager.getModel(modelId, session)) as LanguageModel
 
     const systemPrompt = `You are an AI assistant that generates workflow configurations for Dojo, an AI agent workflow platform.
 
@@ -80,7 +80,7 @@ Always create workflows as private (isPublic: false) unless the user explicitly 
       getAgents: createGetAgents(client),
       createWorkflow: createCreateWorkflow(client),
     }
-    
+
     const result = await generateText({
       model,
       messages: [
@@ -88,34 +88,47 @@ Always create workflows as private (isPublic: false) unless the user explicitly 
         { role: "user", content: prompt },
       ],
       tools: toolsWithClient,
-      toolChoice: "required",
-      maxSteps: 5, // Allow multiple tool calls
+      toolChoice: "auto",
+      maxSteps: 5,
     })
 
-    // Check if the generation completed successfully
-    if (!result.text) {
-      return {
-        success: false,
-        error: "No response generated",
+    // Find the createWorkflow tool result
+    // First check toolResults from the last step (for single-step operations)
+    let createWorkflowResult = result.toolResults?.find((tr) => tr.toolName === "createWorkflow")
+
+    // If not found, search through all steps for multi-step operations
+    if (!createWorkflowResult && result.steps) {
+      // Iterate through steps to find the createWorkflow tool result
+      for (const step of result.steps) {
+        // Check if this step has tool results
+        if (step.toolResults && step.toolResults.length > 0) {
+          // Find the createWorkflow tool result in this step
+          const workflowResult = step.toolResults.find((tr) => tr.toolName === "createWorkflow")
+          if (workflowResult) {
+            createWorkflowResult = workflowResult
+            break
+          }
+        }
       }
     }
-    
-    // Find the createWorkflow tool result
-    const createWorkflowResult = result.toolResults?.find(
-      tr => tr.toolName === 'createWorkflow'
-    )
-    
+
     // Type guard to check if result has success and workflowId
-    const workflowResult = createWorkflowResult?.result
-    if (workflowResult && typeof workflowResult === 'object' && 'success' in workflowResult && 
-        workflowResult.success && 'workflowId' in workflowResult && workflowResult.workflowId) {
-      logger.info("Workflow generation", `Successfully created workflow: ${workflowResult.workflowId}`)
+    if (
+      createWorkflowResult &&
+      createWorkflowResult.result &&
+      typeof createWorkflowResult.result === "object" &&
+      "success" in createWorkflowResult.result &&
+      createWorkflowResult.result.success &&
+      "workflowId" in createWorkflowResult.result &&
+      createWorkflowResult.result.workflowId
+    ) {
+      logger.info("Workflow generation", `Successfully created workflow: ${createWorkflowResult.result.workflowId}`)
       return {
         success: true,
-        workflowId: workflowResult.workflowId as string,
+        workflowId: createWorkflowResult.result.workflowId as string,
       }
     }
-    
+
     // If no workflow was created, return an error
     return {
       success: false,

@@ -1,4 +1,4 @@
-import { createClientFromAuth } from "../../lib/convex-request-client"
+import { createRequestClient } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { createGetMcpServers, createCreateAgent } from "./tools"
@@ -27,8 +27,8 @@ export async function generateAgent({
 }: GenerateAgentParams): Promise<GenerateAgentResult> {
   try {
     // Create a client with auth for this request
-    const client = createClientFromAuth(authToken)
-    
+    const client = createRequestClient(authToken)
+
     // Get the session to use with model manager
     const session = await client.query(api.sessions.get, {
       sessionId: sessionId as Id<"sessions">,
@@ -42,7 +42,7 @@ export async function generateAgent({
     }
 
     // Get the model using the session
-    const model = await modelManager.getModel(modelId, session) as LanguageModel
+    const model = (await modelManager.getModel(modelId, session)) as LanguageModel
 
     const systemPrompt = `You are an AI assistant that generates agent configurations for Dojo, an AI agent workflow platform.
 
@@ -53,7 +53,6 @@ Your task:
    - An appropriate system prompt that guides the agent's behavior
    - Which MCP servers to connect (based on the required capabilities)
    - The output format (use "text" for general tasks, "object" for structured data output)
-3. Use the createAgent tool to create the agent in the database
 
 Guidelines for MCP server selection:
 - Match servers based on their names and descriptions
@@ -82,31 +81,44 @@ Always create agents as private (isPublic: false) unless the user explicitly req
         { role: "user", content: prompt },
       ],
       tools: toolsWithClient,
-      toolChoice: "required",
-      maxSteps: 5, // Allow multiple tool calls
+      toolChoice: "auto",
+      maxSteps: 5,
     })
 
-    // Check if the generation completed successfully
-    if (!result.text) {
-      return {
-        success: false,
-        error: "No response generated",
+    // Find the createAgent tool result
+    // First check toolResults from the last step (for single-step operations)
+    let createAgentResult = result.toolResults?.find((tr) => tr.toolName === "createAgent")
+
+    // If not found, search through all steps for multi-step operations
+    if (!createAgentResult && result.steps) {
+      // Iterate through steps to find the createAgent tool result
+      for (const step of result.steps) {
+        // Check if this step has tool results
+        if (step.toolResults && step.toolResults.length > 0) {
+          // Find the createAgent tool result in this step
+          const agentResult = step.toolResults.find((tr) => tr.toolName === "createAgent")
+          if (agentResult) {
+            createAgentResult = agentResult
+            break
+          }
+        }
       }
     }
 
-    // Find the createAgent tool result
-    const createAgentResult = result.toolResults?.find(
-      tr => tr.toolName === 'createAgent'
-    )
-
     // Type guard to check if result has success and agentId
-    const agentResult = createAgentResult?.result
-    if (agentResult && typeof agentResult === 'object' && 'success' in agentResult && 
-        agentResult.success && 'agentId' in agentResult && agentResult.agentId) {
-      logger.info("Agent generation", `Successfully created agent: ${agentResult.agentId}`)
+    if (
+      createAgentResult &&
+      createAgentResult.result &&
+      typeof createAgentResult.result === "object" &&
+      "success" in createAgentResult.result &&
+      createAgentResult.result.success &&
+      "agentId" in createAgentResult.result &&
+      createAgentResult.result.agentId
+    ) {
+      logger.info("Agent generation", `Successfully created agent: ${createAgentResult.result.agentId}`)
       return {
         success: true,
-        agentId: agentResult.agentId as string,
+        agentId: createAgentResult.result.agentId as string,
       }
     }
 

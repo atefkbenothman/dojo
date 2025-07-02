@@ -7,6 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useGeneration } from "@/hooks/use-generation"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useCallback, useMemo } from "react"
@@ -140,6 +141,7 @@ export function WorkflowGenerateForm({
 }: WorkflowGenerateFormProps) {
   const { play } = useSoundEffectContext()
   const { models } = useAIModels()
+  const { generateWorkflow, isGeneratingWorkflow } = useGeneration()
 
   // Get default model for new workflows
   const defaultModel = useMemo(() => {
@@ -160,16 +162,23 @@ export function WorkflowGenerateForm({
   const handleGenerate = useCallback(
     async (data: WorkflowGenerateFormValues) => {
       try {
-        // TODO: Implement AI generation logic
-        console.log("Generating workflow with:", data)
         play("./sounds/click.mp3", { volume: 0.5 })
-        // For now, just close the dialog
-        onClose?.()
+        
+        const result = await generateWorkflow({
+          name: data.name,
+          prompt: data.prompt,
+          modelId: data.aiModelId,
+        })
+
+        if (result.success) {
+          form.reset()
+          onClose?.()
+        }
       } catch (error) {
         console.error("Failed to generate workflow:", error)
       }
     },
-    [play, onClose],
+    [play, generateWorkflow, form, onClose],
   )
 
   const handleCancel = useCallback(() => {
@@ -192,11 +201,11 @@ export function WorkflowGenerateForm({
       </Button>
       <Button
         type="submit"
-        disabled={!form.formState.isDirty || form.formState.isSubmitting || !isAuthenticated}
+        disabled={!form.formState.isDirty || form.formState.isSubmitting || !isAuthenticated || isGeneratingWorkflow}
         className="w-full sm:w-auto hover:cursor-pointer"
         variant={variant === "dialog" ? "secondary" : "default"}
       >
-        Generate
+        {isGeneratingWorkflow ? "Generating..." : "Generate"}
       </Button>
     </div>
   )
