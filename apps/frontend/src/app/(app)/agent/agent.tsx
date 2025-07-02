@@ -3,6 +3,7 @@
 import { AgentContentArea } from "@/components/agent/agent-content-area"
 import { AgentDeleteDialog } from "@/components/agent/agent-delete-dialog"
 import { AgentFormDialog } from "@/components/agent/agent-form-dialog"
+import { AgentGenerateDialog } from "@/components/agent/agent-generate-dialog"
 import { AgentHeader } from "@/components/agent/agent-header"
 import { AgentList } from "@/components/agent/agent-list"
 import { Button } from "@/components/ui/button"
@@ -25,6 +26,7 @@ export function Agent() {
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false)
 
   // Derive selected agent from agents array to ensure it's always up to date
   const selectedAgent = useMemo(() => {
@@ -104,10 +106,7 @@ export function Agent() {
   )
 
   const handleGenerateAgent = useCallback(() => {
-    // TODO: Implement AI agent generation
-    console.log("Generate agent with AI clicked")
-    // This would open a dialog or navigate to a generation flow
-    // For now, just log to console
+    setIsGenerateDialogOpen(true)
   }, [])
 
   return (
@@ -200,6 +199,12 @@ export function Agent() {
         open={!!agentToDelete}
         onOpenChange={(open) => !open && setAgentToDelete(null)}
         onConfirm={confirmDeleteAgent}
+      />
+      {/* Generate Agent Dialog */}
+      <AgentGenerateDialog
+        open={isGenerateDialogOpen}
+        onOpenChange={setIsGenerateDialogOpen}
+        isAuthenticated={isAuthenticated}
       />
     </>
   )

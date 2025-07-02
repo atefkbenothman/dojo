@@ -6,6 +6,7 @@ import { ReactFlowWorkflowCanvas } from "@/components/workflow/canvas/reactflow-
 import { NodeDeleteDialog } from "@/components/workflow/node-delete-dialog"
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
 import { WorkflowDeleteDialog } from "@/components/workflow/workflow-delete-dialog"
+import { WorkflowGenerateDialog } from "@/components/workflow/workflow-generate-dialog"
 import { WorkflowMetadataDialog } from "@/components/workflow/workflow-metadata-dialog"
 import { WorkflowSidebar } from "@/components/workflow/workflow-sidebar"
 import { useAgent } from "@/hooks/use-agent"
@@ -45,6 +46,7 @@ export const Workflow = memo(function Workflow() {
     label?: string
     agentId?: string
   } | null>(null)
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false)
 
   // Load workflow from URL on mount and when workflows change
   useEffect(() => {
@@ -302,10 +304,7 @@ export const Workflow = memo(function Workflow() {
   )
 
   const handleGenerateWorkflow = useCallback(() => {
-    // TODO: Implement AI workflow generation
-    console.log("Generate workflow with AI clicked")
-    // This would open a dialog or navigate to a generation flow
-    // For now, just log to console
+    setIsGenerateDialogOpen(true)
   }, [])
 
   return (
@@ -482,6 +481,12 @@ export const Workflow = memo(function Workflow() {
         open={!!nodeToDelete}
         onOpenChange={(open) => !open && setNodeToDelete(null)}
         onConfirm={confirmDeleteNode}
+      />
+      {/* Generate Workflow Dialog */}
+      <WorkflowGenerateDialog
+        open={isGenerateDialogOpen}
+        onOpenChange={setIsGenerateDialogOpen}
+        isAuthenticated={isAuthenticated}
       />
     </>
   )

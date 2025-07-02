@@ -172,7 +172,7 @@ function TransportTypeSection({
     <div className="space-y-2">
       <p className="text-base font-medium text-muted-foreground">Transport Type</p>
       <Tabs value={currentTransportType} onValueChange={onTransportTypeChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-muted/20">
+        <TabsList className="grid w-full grid-cols-3 bg-muted/20 h-12">
           <TabsTrigger value="stdio" disabled={!canEdit}>
             Local (stdio)
           </TabsTrigger>
