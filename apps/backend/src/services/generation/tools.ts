@@ -1,19 +1,20 @@
-import { convex } from "../../lib/convex-client"
 import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { tool } from "ai"
 import { z } from "zod"
+import type { ConvexHttpClient } from "convex/browser"
 
-// Tool definitions for AI generation service
-// The auth token must be set on the convex client before calling these tools
+// Tool factory functions that create tools with a specific Convex client
+// This ensures proper request isolation and prevents auth state leakage
 
-export const getMcpServers = tool({
+export function createGetMcpServers(client: ConvexHttpClient) {
+  return tool({
     description: "Get available MCP servers",
     parameters: z.object({}), // No userId parameter needed
     execute: async () => {
       try {
-        const mcpServers = await convex.query(api.generation.getMcpServersForUser, {})
+        const mcpServers = await client.query(api.generation.getMcpServersForUser, {})
 
         return mcpServers.map((server: Doc<"mcp">) => ({
           id: server._id,
@@ -28,9 +29,11 @@ export const getMcpServers = tool({
         return []
       }
     },
-})
+  })
+}
 
-export const createAgent = tool({
+export function createCreateAgent(client: ConvexHttpClient) {
+  return tool({
     description: "Create a new agent in the database",
     parameters: z.object({
       name: z.string().describe("The name of the agent"),
@@ -44,7 +47,7 @@ export const createAgent = tool({
     execute: async (params) => {
       try {
         // Get available models
-        const models = await convex.query(api.generation.getModels, {})
+        const models = await client.query(api.generation.getModels, {})
 
         if (models.length === 0) {
           throw new Error("No models available")
@@ -58,7 +61,7 @@ export const createAgent = tool({
         }
 
         // Create the agent using the user-based mutation
-        const result = await convex.mutation(api.generation.createAgentForUser, {
+        const result = await client.mutation(api.generation.createAgentForUser, {
           name: params.name,
           systemPrompt: params.systemPrompt,
           mcpServers: params.mcpServerIds as Id<"mcp">[],
@@ -79,14 +82,16 @@ export const createAgent = tool({
         }
       }
     },
-})
+  })
+}
 
-export const getAgents = tool({
+export function createGetAgents(client: ConvexHttpClient) {
+  return tool({
     description: "Get available agents (both public and user's private agents)",
     parameters: z.object({}), // No userId parameter needed
     execute: async () => {
       try {
-        const agents = await convex.query(api.generation.getAgentsForUser, {})
+        const agents = await client.query(api.generation.getAgentsForUser, {})
 
         return agents.map((agent: Doc<"agents">) => ({
           id: agent._id,
@@ -100,9 +105,11 @@ export const getAgents = tool({
         return []
       }
     },
-})
+  })
+}
 
-export const createWorkflow = tool({
+export function createCreateWorkflow(client: ConvexHttpClient) {
+  return tool({
     description: "Create a new workflow in the database",
     parameters: z.object({
       name: z.string().describe("The name of the workflow"),
@@ -130,7 +137,7 @@ export const createWorkflow = tool({
         }))
 
         // Create the workflow using the user-based mutation
-        const result = await convex.mutation(api.generation.createWorkflowForUser, {
+        const result = await client.mutation(api.generation.createWorkflowForUser, {
           name: params.name,
           description: params.description,
           instructions: params.instructions,
@@ -150,4 +157,11 @@ export const createWorkflow = tool({
         }
       }
     },
-})
+  })
+}
+
+// Legacy exports for backward compatibility (will be removed)
+export const getMcpServers = createGetMcpServers
+export const createAgent = createCreateAgent
+export const getAgents = createGetAgents
+export const createWorkflow = createCreateWorkflow

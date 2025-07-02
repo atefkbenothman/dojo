@@ -24,6 +24,7 @@ export const createTRPCContext = async ({ req, res }: CreateExpressContextOption
     req,
     res,
     session: session || undefined,
+    authorization: req.headers.authorization,
   }
 }
 
@@ -31,4 +32,5 @@ export type Context = {
   req: CreateExpressContextOptions["req"]
   res: CreateExpressContextOptions["res"]
   session?: Doc<"sessions">
+  authorization?: string
 }

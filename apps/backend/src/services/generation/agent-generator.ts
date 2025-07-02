@@ -1,7 +1,7 @@
-import { convex } from "../../lib/convex-client"
+import { createClientFromAuth } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
-import { getMcpServers, createAgent } from "./tools"
+import { createGetMcpServers, createCreateAgent } from "./tools"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { generateText, type LanguageModel } from "ai"
@@ -26,8 +26,11 @@ export async function generateAgent({
   authToken,
 }: GenerateAgentParams): Promise<GenerateAgentResult> {
   try {
+    // Create a client with auth for this request
+    const client = createClientFromAuth(authToken)
+    
     // Get the session to use with model manager
-    const session = await convex.query(api.sessions.get, {
+    const session = await client.query(api.sessions.get, {
       sessionId: sessionId as Id<"sessions">,
     })
 
@@ -66,8 +69,11 @@ Guidelines for system prompts:
 
 Always create agents as private (isPublic: false) unless the user explicitly requests a public agent.`
 
-    // Set the auth token on the convex client
-    convex.setAuth(authToken)
+    // Create tools with the authenticated client
+    const toolsWithClient = {
+      getMcpServers: createGetMcpServers(client),
+      createAgent: createCreateAgent(client),
+    }
 
     const result = await generateText({
       model,
@@ -75,10 +81,7 @@ Always create agents as private (isPublic: false) unless the user explicitly req
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
       ],
-      tools: {
-        getMcpServers,
-        createAgent,
-      },
+      tools: toolsWithClient,
       toolChoice: "required",
       maxSteps: 5, // Allow multiple tool calls
     })

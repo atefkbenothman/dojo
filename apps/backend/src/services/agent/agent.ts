@@ -1,4 +1,4 @@
-import { convex } from "../../lib/convex-client"
+import { createRequestClient, createClientFromAuth } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { streamObjectResponse } from "../ai/stream-object"
@@ -14,6 +14,7 @@ interface RunAgentParams {
   messages: CoreMessage[]
   session: Doc<"sessions"> | undefined
   res: Response
+  authorization?: string
 }
 
 interface RunAgentResult {
@@ -28,9 +29,12 @@ export class AgentService {
   private static executionControllers = new Map<string, AbortController>()
 
   async runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-    const { agentId, messages, session, res } = params
+    const { agentId, messages, session, res, authorization } = params
     let executionId: Id<"agentExecutions"> | null = null
     const abortController = new AbortController()
+
+    // Create a per-request client
+    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
 
     try {
       // Listen for client disconnection
@@ -44,7 +48,7 @@ export class AgentService {
       })
 
       // Fetch agent
-      const agent = await convex.query(api.agents.get, { id: agentId as Id<"agents"> })
+      const agent = await client.query(api.agents.get, { id: agentId as Id<"agents"> })
 
       if (!agent) {
         return {
@@ -82,7 +86,7 @@ export class AgentService {
         // Get MCP servers that are currently connected
         const mcpServerIds = agent.mcpServers || []
 
-        executionId = await convex.mutation(api.agentExecutions.create, {
+        executionId = await client.mutation(api.agentExecutions.create, {
           agentId: agent._id,
           sessionId: session._id,
           userId: session.userId || undefined,
@@ -91,7 +95,7 @@ export class AgentService {
         })
 
         // Update status to running
-        await convex.mutation(api.agentExecutions.updateStatus, {
+        await client.mutation(api.agentExecutions.updateStatus, {
           executionId,
           status: "running",
         })
@@ -114,7 +118,7 @@ export class AgentService {
 
       // Update execution status to completed
       if (executionId) {
-        await convex.mutation(api.agentExecutions.updateStatus, {
+        await client.mutation(api.agentExecutions.updateStatus, {
           executionId,
           status: "completed",
         })
@@ -129,7 +133,7 @@ export class AgentService {
         logger.info("Agent", `Agent ${agentId} execution was cancelled`)
 
         if (executionId) {
-          await convex.mutation(api.agentExecutions.updateStatus, {
+          await client.mutation(api.agentExecutions.updateStatus, {
             executionId,
             status: "cancelled",
           })
@@ -143,7 +147,7 @@ export class AgentService {
 
       // Update execution status to failed
       if (executionId) {
-        await convex.mutation(api.agentExecutions.updateStatus, {
+        await client.mutation(api.agentExecutions.updateStatus, {
           executionId,
           status: "failed",
           error: error instanceof Error ? error.message : "Internal server error",
@@ -165,10 +169,13 @@ export class AgentService {
   }
 
   // New method to stop an execution
-  async stopExecution(executionId: string): Promise<{ success: boolean; error?: string }> {
+  async stopExecution(executionId: string, authorization?: string): Promise<{ success: boolean; error?: string }> {
+    // Create a per-request client
+    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
+    
     try {
       // First, check if the execution exists and is running
-      const execution = await convex.query(api.agentExecutions.get, {
+      const execution = await client.query(api.agentExecutions.get, {
         executionId: executionId as Id<"agentExecutions">,
       })
 
@@ -190,12 +197,12 @@ export class AgentService {
       }
 
       // Mark cancellation in database first
-      await convex.mutation(api.agentExecutions.requestCancellation, {
+      await client.mutation(api.agentExecutions.requestCancellation, {
         executionId: executionId as Id<"agentExecutions">,
       })
 
       // Update status to cancelled
-      await convex.mutation(api.agentExecutions.updateStatus, {
+      await client.mutation(api.agentExecutions.updateStatus, {
         executionId: executionId as Id<"agentExecutions">,
         status: "cancelled",
         error: "Agent execution cancelled by user",

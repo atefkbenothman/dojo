@@ -1,4 +1,4 @@
-import { convex } from "../../lib/convex-client"
+import { systemConvexClient } from "../../lib/convex-request-client"
 import { throwError } from "../../lib/errors"
 import { apiKeyService, ApiKeyService } from "../api-key/api-key-service"
 import { createAnthropic } from "@ai-sdk/anthropic"
@@ -12,7 +12,7 @@ import { type LanguageModel, type ImageModel, wrapLanguageModel, extractReasonin
 
 export class ModelManager {
   private modelCache = new Map<string, LanguageModel | ImageModel>()
-  private modelsConfig: Awaited<ReturnType<typeof convex.query<typeof api.models.modelsWithProviders>>> | null = null
+  private modelsConfig: Awaited<ReturnType<typeof systemConvexClient.query<typeof api.models.modelsWithProviders>>> | null = null
 
   async getModel(modelId: string, session: Doc<"sessions">): Promise<LanguageModel | ImageModel> {
     // Get API key for the model
@@ -36,7 +36,7 @@ export class ModelManager {
 
     // Load models config if not already loaded
     if (!this.modelsConfig) {
-      this.modelsConfig = await convex.query(api.models.modelsWithProviders)
+      this.modelsConfig = await systemConvexClient.query(api.models.modelsWithProviders)
     }
 
     // Create new model instance

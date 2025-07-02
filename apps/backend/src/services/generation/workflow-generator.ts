@@ -1,7 +1,7 @@
 import { generateText, type LanguageModel } from "ai"
 import { modelManager } from "../ai/model-manager"
-import { getAgents, createWorkflow } from "./tools"
-import { convex } from "../../lib/convex-client"
+import { createGetAgents, createCreateWorkflow } from "./tools"
+import { createClientFromAuth } from "../../lib/convex-request-client"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { logger } from "../../lib/logger"
@@ -26,8 +26,11 @@ export async function generateWorkflow({
   authToken,
 }: GenerateWorkflowParams): Promise<GenerateWorkflowResult> {
   try {
+    // Create a client with auth for this request
+    const client = createClientFromAuth(authToken)
+    
     // Get the session to use with model manager
-    const session = await convex.query(api.sessions.get, { 
+    const session = await client.query(api.sessions.get, { 
       sessionId: sessionId as Id<"sessions"> 
     })
     
@@ -72,8 +75,11 @@ Example workflow structure:
 
 Always create workflows as private (isPublic: false) unless the user explicitly requests a public workflow.`
 
-    // Set the auth token on the convex client
-    convex.setAuth(authToken)
+    // Create tools with the authenticated client
+    const toolsWithClient = {
+      getAgents: createGetAgents(client),
+      createWorkflow: createCreateWorkflow(client),
+    }
     
     const result = await generateText({
       model,
@@ -81,10 +87,7 @@ Always create workflows as private (isPublic: false) unless the user explicitly 
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
       ],
-      tools: {
-        getAgents,
-        createWorkflow,
-      },
+      tools: toolsWithClient,
       toolChoice: "required",
       maxSteps: 5, // Allow multiple tool calls
     })

@@ -1,5 +1,5 @@
 import { BACKEND_INSTANCE_ID } from "../../index"
-import { convex } from "../../lib/convex-client"
+import { systemConvexClient as convex } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import type { ActiveMcpClient } from "../../lib/types"
 import { MCPClient } from "./client"

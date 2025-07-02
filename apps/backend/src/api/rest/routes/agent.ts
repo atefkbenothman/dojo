@@ -41,6 +41,7 @@ agentRouter.post(
       messages,
       session,
       res,
+      authorization: req.headers.authorization,
     })
 
     if (!result.success) {
@@ -69,7 +70,7 @@ agentRouter.post(
       `Stop request received for execution: ${executionId}, userId: ${session.userId || "anonymous"}`,
     )
 
-    const result = await agentService.stopExecution(executionId)
+    const result = await agentService.stopExecution(executionId, req.headers.authorization)
 
     if (!result.success) {
       if (result.error?.includes("not found")) {

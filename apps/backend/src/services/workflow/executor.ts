@@ -1,4 +1,4 @@
-import { convex } from "../../lib/convex-client"
+import { createRequestClient, createClientFromAuth } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { streamObjectResponse } from "../ai/stream-object"
@@ -8,6 +8,7 @@ import { api } from "@dojo/db/convex/_generated/api"
 import { type Doc, type Id } from "@dojo/db/convex/_generated/dataModel"
 import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import { type Response } from "express"
+import type { ConvexHttpClient } from "convex/browser"
 
 interface WorkflowExecutorOptions {
   persistExecution?: boolean
@@ -15,6 +16,7 @@ interface WorkflowExecutorOptions {
   sessionId?: Id<"sessions">
   userId?: Id<"users">
   abortSignal?: AbortSignal
+  authorization?: string
 }
 
 interface CompletedNode {
@@ -51,6 +53,7 @@ export class WorkflowExecutor {
   private workflowNodes: Doc<"workflowNodes">[] = []
   private nodeMap: Map<string, Doc<"workflowNodes">> = new Map()
   private initialMessages: CoreMessage[] = []
+  private client: ConvexHttpClient
 
   constructor(
     private workflow: Doc<"workflows">,
@@ -62,6 +65,11 @@ export class WorkflowExecutor {
       persistExecution: false,
       ...options,
     }
+
+    // Create a per-request client
+    this.client = this.options.authorization 
+      ? createClientFromAuth(this.options.authorization)
+      : createRequestClient()
 
     this.workflowNodes = nodes
     this.buildNodeMap()
@@ -147,7 +155,7 @@ export class WorkflowExecutor {
 
       // Start directly in running status (no global connecting phase)
       if (this.options.executionId) {
-        await convex.mutation(api.workflowExecutions.updateStatus, {
+        await this.client.mutation(api.workflowExecutions.updateStatus, {
           executionId: this.options.executionId,
           status: "running",
         })
@@ -356,8 +364,8 @@ export class WorkflowExecutor {
     const descendants = this.getAllDescendants(nodeId)
     
     for (const descendant of descendants) {
-      if (this.options.executionId && descendant.agentId) {
-        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+      if (this.options.executionId) {
+        await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
           nodeId: descendant.nodeId,
           agentId: descendant.agentId,
@@ -392,21 +400,9 @@ export class WorkflowExecutor {
   ): Promise<CompletedNode> {
     this.log(`Executing step node: ${node.nodeId}`)
 
-    // Handle structural step nodes (no agent) - just pass through
-    if (!node.agentId) {
-      this.log(`Step node ${node.nodeId} has no agent - treating as structural node`)
-      return {
-        nodeId: node.nodeId,
-        agentName: `Structural Node ${node.nodeId}`,
-        instructions: "",
-        output: "",
-        success: true,
-      }
-    }
-
     try {
       // Get the agent for this node
-      const agent = await convex.query(api.agents.get, { id: node.agentId })
+      const agent = await this.client.query(api.agents.get, { id: node.agentId })
       if (!agent) {
         throw new Error(`Agent ${node.agentId} not found`)
       }
@@ -418,7 +414,7 @@ export class WorkflowExecutor {
 
       // Update execution tracking
       if (this.options.executionId) {
-        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+        await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
           nodeId: node.nodeId,
           agentId: node.agentId,
@@ -439,7 +435,7 @@ export class WorkflowExecutor {
 
       // Mark as completed
       if (this.options.executionId) {
-        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+        await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
           nodeId: node.nodeId,
           agentId: node.agentId,
@@ -461,7 +457,7 @@ export class WorkflowExecutor {
 
       // Mark as failed
       if (this.options.executionId) {
-        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+        await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
           nodeId: node.nodeId,
           agentId: node.agentId,
@@ -472,7 +468,7 @@ export class WorkflowExecutor {
 
       return {
         nodeId: node.nodeId,
-        agentName: node.agentId ? `Agent ${node.nodeId}` : `Structural Node ${node.nodeId}`,
+        agentName: `Agent ${node.nodeId}`,
         instructions: "",
         output: "",
         success: false,
@@ -486,7 +482,7 @@ export class WorkflowExecutor {
       throw new Error("Session ID is required for agent model initialization")
     }
 
-    const session = await convex.query(api.sessions.get, { sessionId: this.options.sessionId })
+    const session = await this.client.query(api.sessions.get, { sessionId: this.options.sessionId })
     if (!session) {
       throw new Error(`Session ${this.options.sessionId} not found`)
     }
@@ -545,7 +541,7 @@ export class WorkflowExecutor {
 
       // Store metadata if available
       if (this.options.executionId && result.metadata) {
-        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+        await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
           nodeId: node.nodeId,
           agentId: agent._id,
@@ -592,7 +588,7 @@ export class WorkflowExecutor {
 
       // Store metadata if available
       if (this.options.executionId && result.metadata) {
-        await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+        await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
           executionId: this.options.executionId,
           nodeId: node.nodeId,
           agentId: agent._id,
@@ -639,7 +635,7 @@ export class WorkflowExecutor {
     // Get server configurations
     const serverPromises = agent.mcpServers.map(async (serverId) => {
       try {
-        const server = await convex.query(api.mcp.get, { id: serverId })
+        const server = await this.client.query(api.mcp.get, { id: serverId })
         return server ? { id: serverId, name: server.name } : null
       } catch (error) {
         this.log(`Error fetching MCP server ${serverId}:`, error)
@@ -675,7 +671,7 @@ export class WorkflowExecutor {
       )
 
       // Update node status to connecting
-      await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+      await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
         executionId: this.options.executionId,
         nodeId: nodeId,
         agentId: agent._id,
@@ -711,7 +707,7 @@ export class WorkflowExecutor {
       }
 
       // Get server configuration
-      const server = await convex.query(api.mcp.get, { id: serverId })
+      const server = await this.client.query(api.mcp.get, { id: serverId })
       if (!server) {
         throw new Error(`Server ${serverId} not found`)
       }
@@ -752,7 +748,7 @@ export class WorkflowExecutor {
     if (this.options.executionId) {
       try {
         // Check for running nodes and mark them as cancelled
-        const execution = await convex.query(api.workflowExecutions.get, {
+        const execution = await this.client.query(api.workflowExecutions.get, {
           executionId: this.options.executionId,
         })
 
@@ -762,8 +758,8 @@ export class WorkflowExecutor {
           // Mark all currently running nodes as cancelled
           for (const nodeId of execution.currentNodes) {
             const node = this.nodeMap.get(nodeId)
-            if (node && node.agentId) {
-              await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+            if (node) {
+              await this.client.mutation(api.workflowExecutions.updateNodeProgress, {
                 executionId: this.options.executionId,
                 nodeId: nodeId,
                 agentId: node.agentId,

@@ -1,4 +1,4 @@
-import { convex } from "../../lib/convex-client"
+import { createRequestClient, createClientFromAuth } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { mcpConnectionManager } from "../mcp/connection-manager"
 import { logWorkflow, WorkflowExecutor } from "./executor"
@@ -6,12 +6,14 @@ import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import type { CoreMessage } from "ai"
 import type { Response } from "express"
+import type { ConvexHttpClient } from "convex/browser"
 
 interface RunWorkflowParams {
   workflowId: string
   messages: CoreMessage[]
   session: Doc<"sessions"> | undefined
   res: Response
+  authorization?: string
 }
 
 interface RunWorkflowResult {
@@ -26,6 +28,7 @@ interface WorkflowExecutorOptions {
   sessionId?: Id<"sessions">
   userId?: Id<"users">
   abortSignal?: AbortSignal
+  authorization?: string
 }
 
 export class WorkflowService {
@@ -39,9 +42,12 @@ export class WorkflowService {
   }
 
   async runWorkflow(params: RunWorkflowParams): Promise<RunWorkflowResult> {
-    const { workflowId, messages, session, res } = params
+    const { workflowId, messages, session, res, authorization } = params
     let executionId: Id<"workflowExecutions"> | null = null
     const abortController = new AbortController()
+    
+    // Create a per-request client
+    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
 
     try {
       // Listen for client disconnection
@@ -55,7 +61,7 @@ export class WorkflowService {
       })
 
       // Fetch and validate workflow
-      const workflow = await this.fetchWorkflow(workflowId)
+      const workflow = await this.fetchWorkflow(workflowId, client)
       if (!workflow) {
         return {
           success: false,
@@ -65,7 +71,7 @@ export class WorkflowService {
       }
 
       // Fetch and validate workflow nodes
-      const nodes = await this.fetchWorkflowNodes(workflow)
+      const nodes = await this.fetchWorkflowNodes(workflow, client)
       if (nodes.length === 0) {
         return {
           success: false,
@@ -84,35 +90,33 @@ export class WorkflowService {
         }
       }
 
-      // Pre-validate that all nodes with agents have models
+      // Pre-validate that all nodes have agents with models
       for (const node of nodes) {
-        if (node.agentId) {
-          const agent = await convex.query(api.agents.get, { id: node.agentId })
-          if (!agent) {
-            return {
-              success: false,
-              completedSteps: 0,
-              error: `Agent for node "${node.nodeId}" not found.`,
-            }
+        const agent = await client.query(api.agents.get, { id: node.agentId })
+        if (!agent) {
+          return {
+            success: false,
+            completedSteps: 0,
+            error: `Agent for node "${node.nodeId}" not found.`,
           }
-          if (!agent.aiModelId) {
-            return {
-              success: false,
-              completedSteps: 0,
-              error: `Agent "${agent.name}" in node "${node.nodeId}" does not have an AI model configured.`,
-            }
+        }
+        if (!agent.aiModelId) {
+          return {
+            success: false,
+            completedSteps: 0,
+            error: `Agent "${agent.name}" in node "${node.nodeId}" does not have an AI model configured.`,
           }
         }
       }
 
       // Create execution record if we have a session
       if (session) {
-        executionId = await convex.mutation(api.workflowExecutions.create, {
+        executionId = await client.mutation(api.workflowExecutions.create, {
           workflowId: workflow._id,
           sessionId: session._id,
           userId: session.userId || undefined,
           totalSteps: nodes.length, // All nodes are step nodes now
-          agentIds: nodes.filter((n) => n.agentId).map((n) => n.agentId!),
+          agentIds: nodes.map((n) => n.agentId),
         })
 
         // Note: MCP connections are now handled per-step during execution
@@ -142,6 +146,7 @@ export class WorkflowService {
         sessionId: session?._id,
         userId: session?.userId || undefined,
         abortSignal: abortController.signal,
+        authorization,
       })
 
       const result = await executor.execute(messages)
@@ -149,11 +154,11 @@ export class WorkflowService {
       // Update final status only if not already cancelled
       if (executionId) {
         // Check if the execution was cancelled
-        const execution = await convex.query(api.workflowExecutions.get, { executionId })
+        const execution = await client.query(api.workflowExecutions.get, { executionId })
 
         // Only update status if it's not already cancelled
         if (execution && execution.status !== "cancelled") {
-          await convex.mutation(api.workflowExecutions.updateStatus, {
+          await client.mutation(api.workflowExecutions.updateStatus, {
             executionId,
             status: result.success ? "completed" : "failed",
             error: result.error,
@@ -172,7 +177,7 @@ export class WorkflowService {
         logger.info("Workflow", `Workflow ${workflowId} execution was cancelled`)
 
         if (executionId) {
-          await convex.mutation(api.workflowExecutions.updateStatus, {
+          await client.mutation(api.workflowExecutions.updateStatus, {
             executionId,
             status: "cancelled",
           })
@@ -187,7 +192,7 @@ export class WorkflowService {
 
       // Update status on error
       if (executionId) {
-        await convex.mutation(api.workflowExecutions.updateStatus, {
+        await client.mutation(api.workflowExecutions.updateStatus, {
           executionId,
           status: "failed",
           error: error instanceof Error ? error.message : "Internal server error",
@@ -210,10 +215,13 @@ export class WorkflowService {
   }
 
   // New method to stop a workflow execution
-  async stopExecution(executionId: string): Promise<{ success: boolean; error?: string }> {
+  async stopExecution(executionId: string, authorization?: string): Promise<{ success: boolean; error?: string }> {
+    // Create a per-request client
+    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
+    
     try {
       // First, check if the execution exists and is running
-      const execution = await convex.query(api.workflowExecutions.get, {
+      const execution = await client.query(api.workflowExecutions.get, {
         executionId: executionId as Id<"workflowExecutions">,
       })
 
@@ -235,13 +243,13 @@ export class WorkflowService {
       }
 
       // Mark cancellation in database first
-      await convex.mutation(api.workflowExecutions.requestCancellation, {
+      await client.mutation(api.workflowExecutions.requestCancellation, {
         executionId: executionId as Id<"workflowExecutions">,
         strategy: "graceful", // Default to graceful for workflows
       })
 
       // Update status to cancelled
-      await convex.mutation(api.workflowExecutions.updateStatus, {
+      await client.mutation(api.workflowExecutions.updateStatus, {
         executionId: executionId as Id<"workflowExecutions">,
         status: "cancelled",
         error: "Workflow cancelled by user",
@@ -250,8 +258,8 @@ export class WorkflowService {
       // Update any running nodes to cancelled
       for (const nodeId of execution.currentNodes) {
         const nodeExecution = execution.nodeExecutions.find((ne) => ne.nodeId === nodeId)
-        if (nodeExecution && nodeExecution.status === "running" && nodeExecution.agentId) {
-          await convex.mutation(api.workflowExecutions.updateNodeProgress, {
+        if (nodeExecution && nodeExecution.status === "running") {
+          await client.mutation(api.workflowExecutions.updateNodeProgress, {
             executionId: executionId as Id<"workflowExecutions">,
             nodeId: nodeId,
             agentId: nodeExecution.agentId,
@@ -281,9 +289,9 @@ export class WorkflowService {
     }
   }
 
-  private async fetchWorkflow(workflowId: string): Promise<Doc<"workflows"> | null> {
+  private async fetchWorkflow(workflowId: string, client: ConvexHttpClient): Promise<Doc<"workflows"> | null> {
     try {
-      const workflow = await convex.query(api.workflows.get, {
+      const workflow = await client.query(api.workflows.get, {
         id: workflowId as Id<"workflows">,
       })
       return workflow
@@ -293,9 +301,9 @@ export class WorkflowService {
     }
   }
 
-  private async fetchWorkflowNodes(workflow: Doc<"workflows">): Promise<Doc<"workflowNodes">[]> {
+  private async fetchWorkflowNodes(workflow: Doc<"workflows">, client: ConvexHttpClient): Promise<Doc<"workflowNodes">[]> {
     try {
-      const nodes = await convex.query(api.workflows.getWorkflowNodes, {
+      const nodes = await client.query(api.workflows.getWorkflowNodes, {
         workflowId: workflow._id,
       })
 

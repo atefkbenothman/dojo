@@ -1,5 +1,5 @@
 import { getConvexUser } from "./auth"
-import { convex } from "./convex-client"
+import { createRequestClient, createClientFromAuth } from "./convex-request-client"
 import { throwError } from "./errors"
 import { logger } from "./logger"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -40,16 +40,19 @@ export async function lookupSession(params: SessionLookupParams): Promise<Sessio
     // First, try to get authenticated user
     const user = await getConvexUser(authorization || undefined)
 
+    // Create a client for this request (with auth if available)
+    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
+
     let session: Doc<"sessions"> | null = null
 
     if (user) {
       // Authenticated user: lookup by userId
-      session = await convex.query(api.sessions.getByUserId, {
+      session = await client.query(api.sessions.getByUserId, {
         userId: user._id,
       })
     } else if (guestSessionId) {
       // Guest user: lookup by clientSessionId
-      session = await convex.query(api.sessions.getByClientSessionId, {
+      session = await client.query(api.sessions.getByClientSessionId, {
         clientSessionId: guestSessionId,
       })
     }

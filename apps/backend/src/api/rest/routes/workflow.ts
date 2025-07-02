@@ -51,6 +51,7 @@ workflowRouter.post(
       messages: messages as CoreMessage[],
       session,
       res,
+      authorization: req.headers.authorization,
     })
 
     if (!result.success) {
@@ -84,7 +85,7 @@ workflowRouter.post(
       `Stop request received for execution: ${executionId}, userId: ${session.userId || "anonymous"}`,
     )
 
-    const result = await workflowService.stopExecution(executionId)
+    const result = await workflowService.stopExecution(executionId, req.headers.authorization)
 
     if (!result.success) {
       if (result.error?.includes("not found")) {

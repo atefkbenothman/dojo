@@ -1,4 +1,4 @@
-import { convex } from "../../../lib/convex-client"
+import { createRequestClient, createClientFromAuth } from "../../../lib/convex-request-client"
 import { mcpConnectionManager } from "../../../services/mcp/connection-manager"
 import { router, publicProcedure } from "../trpc"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -36,9 +36,12 @@ export const connectionRouter = router({
       })
     }
 
+    // Create a per-request client based on the authorization
+    const client = ctx.authorization ? createClientFromAuth(ctx.authorization) : createRequestClient()
+
     const { servers } = input
     const mcpServers = await Promise.all(
-      servers.map((server) => convex.query(api.mcp.get, { id: server as Id<"mcp"> })),
+      servers.map((server) => client.query(api.mcp.get, { id: server as Id<"mcp"> })),
     )
 
     const validMcpServers = mcpServers.filter((s) => s !== null)

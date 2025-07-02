@@ -1,4 +1,4 @@
-import { convex } from "../../lib/convex-client"
+import { createRequestClient, systemConvexClient } from "../../lib/convex-request-client"
 import { throwError } from "../../lib/errors"
 import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -67,8 +67,11 @@ export class ApiKeyService {
    * Retrieves and decrypts a user's API key for a specific model
    */
   private async getUserApiKey(userId: Id<"users">, modelId: Id<"models">): Promise<string | null> {
+    // Create a per-request client for user-specific queries
+    const client = createRequestClient()
+    
     try {
-      const apiKeyObject = await convex.query(api.apiKeys.getApiKeyForUserAndModel, {
+      const apiKeyObject = await client.query(api.apiKeys.getApiKeyForUserAndModel, {
         userId,
         modelId,
       })
@@ -128,7 +131,7 @@ export const apiKeyService = new ApiKeyService()
  */
 export async function getModelRequiresApiKey(modelId: string): Promise<boolean> {
   try {
-    const modelsWithProviders = await convex.query(api.models.modelsWithProviders)
+    const modelsWithProviders = await systemConvexClient.query(api.models.modelsWithProviders)
     const model = modelsWithProviders.find((model) => model._id === modelId)
     if (!model || model.requiresApiKey === false) {
       return false
@@ -145,7 +148,7 @@ export async function getModelRequiresApiKey(modelId: string): Promise<boolean> 
  */
 export async function getModelFallbackApiKey(modelId: string): Promise<string | undefined> {
   try {
-    const modelsWithProviders = await convex.query(api.models.modelsWithProviders)
+    const modelsWithProviders = await systemConvexClient.query(api.models.modelsWithProviders)
     const model = modelsWithProviders.find((model) => model._id === modelId)
     if (model && model.requiresApiKey === false) {
       return env.GROQ_API_KEY_FALLBACK || ""
