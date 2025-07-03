@@ -1,5 +1,3 @@
-import { useRef } from "react"
-
 // Create stable storage functions that don't change on every render
 function readStorage<T>(key: string): T | null {
   if (typeof window === "undefined") return null
@@ -31,14 +29,9 @@ function removeStorage(key: string): void {
 }
 
 export function useLocalStorage() {
-  // Use refs to maintain stable function references across renders
-  const readStorageRef = useRef(readStorage)
-  const writeStorageRef = useRef(writeStorage)
-  const removeStorageRef = useRef(removeStorage)
-
   return { 
-    readStorage: readStorageRef.current, 
-    writeStorage: writeStorageRef.current, 
-    removeStorage: removeStorageRef.current 
+    readStorage, 
+    writeStorage, 
+    removeStorage 
   }
 }

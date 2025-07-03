@@ -440,29 +440,32 @@ export function useWorkflow(selectedWorkflow?: Workflow | null) {
     [executionMap],
   )
 
-  const clone = async (id: string) => {
-    try {
-      await cloneWorkflow({ id: id as Id<"workflows"> })
-      play("./sounds/connect.mp3", { volume: 0.5 })
-      toast.success("Workflow cloned successfully!", {
-        icon: null,
-        id: "clone-workflow-success",
-        duration: 3000,
-        position: "bottom-center",
-      })
-    } catch (error) {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
-      toast.error(`Failed to clone workflow: ${errorMessage}`, {
-        icon: null,
-        id: "clone-workflow-error",
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-      throw error
-    }
-  }
+  const clone = useCallback(
+    async (id: string) => {
+      try {
+        await cloneWorkflow({ id: id as Id<"workflows"> })
+        play("./sounds/connect.mp3", { volume: 0.5 })
+        toast.success("Workflow cloned successfully!", {
+          icon: null,
+          id: "clone-workflow-success",
+          duration: 3000,
+          position: "bottom-center",
+        })
+      } catch (error) {
+        play("./sounds/error.mp3", { volume: 0.5 })
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+        toast.error(`Failed to clone workflow: ${errorMessage}`, {
+          icon: null,
+          id: "clone-workflow-error",
+          duration: 5000,
+          position: "bottom-center",
+          style: errorToastStyle,
+        })
+        throw error
+      }
+    },
+    [cloneWorkflow, play],
+  )
 
   return {
     workflows: stableWorkflows,

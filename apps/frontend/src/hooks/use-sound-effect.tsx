@@ -30,6 +30,7 @@ export function SoundEffectProvider({ children }: { children: React.ReactNode })
   const loadingPromisesRef = useRef<Record<string, Promise<AudioBuffer>>>({})
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
   const [isLoading] = useState(false)
+  const handleUserInteractionRef = useRef<(() => void) | null>(null)
 
   // Initialize AudioContext on first user interaction
   useEffect(() => {
@@ -49,14 +50,19 @@ export function SoundEffectProvider({ children }: { children: React.ReactNode })
       document.removeEventListener("click", handleUserInteraction)
       document.removeEventListener("keydown", handleUserInteraction)
     }
+    
+    // Store the handler in a ref to ensure we remove the same function
+    handleUserInteractionRef.current = handleUserInteraction
 
     document.addEventListener("click", handleUserInteraction)
     document.addEventListener("keydown", handleUserInteraction)
 
     return () => {
-      document.removeEventListener("click", handleUserInteraction)
-      document.removeEventListener("keydown", handleUserInteraction)
-      if (audioContextRef.current) {
+      if (handleUserInteractionRef.current) {
+        document.removeEventListener("click", handleUserInteractionRef.current)
+        document.removeEventListener("keydown", handleUserInteractionRef.current)
+      }
+      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
         audioContextRef.current.close()
       }
     }

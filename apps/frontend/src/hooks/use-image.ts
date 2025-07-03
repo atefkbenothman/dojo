@@ -20,7 +20,7 @@ export function useImage() {
   const { setIsImageGenerating } = useImageStore()
 
   const { play } = useSoundEffectContext()
-  const { setMessages } = useChatProvider()
+  const { setMessages, setChatError } = useChatProvider()
 
   const imageGenerationMutationFn = useCallback(
     function imageGenerationMutationFn(data: ImageGenerationInput) {
@@ -31,37 +31,39 @@ export function useImage() {
 
   const mutation = useMutation<RouterOutputs["image"]["generate"], Error, ImageGenerationInput>({
     mutationFn: imageGenerationMutationFn,
-    // onSuccess: (result) => {
-    //   const imagesArr = result.images || []
-    //   if (imagesArr.length > 0) {
-    //     const imageData = {
-    //       type: "generated_image",
-    //       images: imagesArr.map((img) => {
-    //         if ("base64" in img) return { base64: img.base64 }
-    //         if ("url" in img) return { base64: img.url }
-    //         return { base64: "" }
-    //       }),
-    //     }
-    //     setMessages((prev) => [
-    //       ...prev,
-    //       {
-    //         id: nanoid(),
-    //         role: "assistant",
-    //         content: imagesArr.length > 1 ? "Generated Images:" : "Generated Image:",
-    //         images: imageData,
-    //       },
-    //     ])
-    //   }
-    //   play("./sounds/done.mp3", { volume: 0.5 })
-    //   setIsImageGenerating(false)
-    // },
-    // onError: (error: Error) => {
-    //   play("./sounds/error.mp3", { volume: 0.5 })
-    //   const message = error.message || "An unexpected error occurred during image generation."
-    //   setChatError(message)
-    //   setIsImageGenerating(false)
-    //   console.error("Image generation mutation error:", error)
-    // },
+    onSuccess: (result) => {
+      // Image generation is currently disabled in the backend
+      // When re-enabled, uncomment the following:
+      // const imagesArr = result?.images || []
+      // if (imagesArr.length > 0) {
+      //   const imageData = {
+      //     type: "generated_image" as const,
+      //     images: imagesArr.map((img: { base64?: string; url?: string }) => {
+      //       if ("base64" in img) return { base64: img.base64 }
+      //       if ("url" in img) return { base64: img.url }
+      //       return { base64: "" }
+      //     }),
+      //   }
+      //   setMessages((prev) => [
+      //     ...prev,
+      //     {
+      //       id: nanoid(),
+      //       role: "assistant" as const,
+      //       content: imagesArr.length > 1 ? "Generated Images:" : "Generated Image:",
+      //       images: imageData,
+      //     },
+      //   ])
+      // }
+      play("./sounds/done.mp3", { volume: 0.5 })
+      setIsImageGenerating(false)
+    },
+    onError: (error: Error) => {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const message = error.message || "An unexpected error occurred during image generation."
+      setChatError(message)
+      setIsImageGenerating(false)
+      console.error("Image generation mutation error:", error)
+    },
   })
 
   const handleImageGeneration = useCallback(

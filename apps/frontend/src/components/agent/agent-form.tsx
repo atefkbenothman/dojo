@@ -238,11 +238,6 @@ function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServers
         <p className="text-base font-medium text-muted-foreground">
           MCP Servers {selectedCount > 0 && <span className="text-sm font-normal">({selectedCount} selected)</span>}
         </p>
-        {canEdit && mcpServers.length === 0 && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Public MCP servers are only available for public agents
-          </p>
-        )}
       </div>
       <FormField
         control={form.control}
@@ -324,13 +319,14 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
 
   // Filter MCP servers based on agent visibility
   // For private agents (user-created), only show private MCP servers
+  // For public agents, show public MCP servers
   const availableMcpServers = useMemo(() => {
     if (mode === "add" || !agent?.isPublic) {
-      // Creating new agent or editing private agent - filter out public MCP servers
+      // Creating new agent or editing private agent - show only private MCP servers
       return mcpServers.filter(server => !server.isPublic)
     }
-    // For public agents, show all MCP servers
-    return mcpServers
+    // For public agents, show only public MCP servers
+    return mcpServers.filter(server => server.isPublic)
   }, [mcpServers, mode, agent?.isPublic])
 
   // Get default model for new agents

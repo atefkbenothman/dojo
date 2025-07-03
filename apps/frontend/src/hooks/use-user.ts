@@ -81,7 +81,7 @@ export function useUser() {
     } finally {
       setIsInitializing(false)
     }
-  }, [isAuthenticated, user, isAuthLoading, createOrGetSession, readStorage, writeStorage, isInitializing])
+  }, [isAuthenticated, user, isAuthLoading, isInitializing, createOrGetSession, readStorage, writeStorage])
 
   // Custom sign out that handles session creation
   const signOut = useCallback(async () => {
