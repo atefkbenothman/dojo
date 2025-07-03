@@ -32,3 +32,7 @@ export interface MCPTool {
 export interface MCPToolsCollection {
   [toolName: string]: MCPTool
 }
+
+// MCP Server allowed commands for stdio transport
+export const ALLOWED_STDIO_COMMANDS = ["npx", "uvx"] as const
+export type AllowedStdioCommand = typeof ALLOWED_STDIO_COMMANDS[number]

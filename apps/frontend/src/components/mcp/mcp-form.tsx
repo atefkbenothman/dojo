@@ -12,7 +12,8 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import type { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
-import type { MCPServer } from "@dojo/db/convex/types"
+import type { MCPServer, AllowedStdioCommand } from "@dojo/db/convex/types"
+import { ALLOWED_STDIO_COMMANDS } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { WithoutSystemFields } from "convex/server"
 import { AlertCircle, Wrench } from "lucide-react"
@@ -28,7 +29,9 @@ const mcpFormSchema = z.discriminatedUnion("transportType", [
     transportType: z.literal("stdio"),
     name: z.string().min(1, "Name is required"),
     summary: z.string().optional(),
-    command: z.string().min(1, "Command is required"),
+    command: z.enum(ALLOWED_STDIO_COMMANDS, {
+      errorMap: () => ({ message: "Only npx and uvx commands are allowed" }),
+    }),
     argsString: z.string(),
     envPairs: z.array(
       z.object({
@@ -193,12 +196,7 @@ function TransportTypeSection({
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="e.g., python3, node, bash"
-                      disabled={!canEdit}
-                      className="bg-muted/20"
-                    />
+                    <Input {...field} placeholder="npx or uvx" disabled={!canEdit} className="bg-muted/20" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -348,7 +346,7 @@ function createMCPObject(data: MCPFormValues): WithoutSystemFields<Doc<"mcp">> {
         requiresUserKey: data.envPairs.length > 0,
         config: {
           type: "stdio" as const,
-          command: data.command,
+          command: data.command as AllowedStdioCommand,
           args,
           ...(data.envPairs.length > 0 && {
             env,
@@ -384,7 +382,7 @@ function getDefaultFormValues(server?: MCPServer): MCPFormValues {
       transportType: "stdio" as const,
       name: "",
       summary: "",
-      command: "",
+      command: "npx" as AllowedStdioCommand,
       argsString: "",
       envPairs: [],
     }
@@ -420,14 +418,14 @@ function getDefaultFormValues(server?: MCPServer): MCPFormValues {
         key,
         value: configEnv[key] || "",
       }))
-      command = stdioConfig.command || ""
+      command = stdioConfig.command || "npx"
       argsString = (stdioConfig.args || []).join(", ")
     }
 
     return {
       ...baseValues,
       transportType: "stdio" as const,
-      command,
+      command: command as AllowedStdioCommand,
       argsString,
       envPairs,
     }
@@ -456,11 +454,11 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
   const getInitialTransportTypeValues = () => {
     const defaultValues = getDefaultFormValues(server)
     const initialValues: {
-      stdio: { command: string; argsString: string; envPairs: Array<{ key: string; value: string }> }
+      stdio: { command: AllowedStdioCommand; argsString: string; envPairs: Array<{ key: string; value: string }> }
       http: { url: string; headers: Array<{ key: string; value: string }> }
       sse: { url: string; headers: Array<{ key: string; value: string }> }
     } = {
-      stdio: { command: "", argsString: "", envPairs: [] },
+      stdio: { command: "npx", argsString: "", envPairs: [] },
       http: { url: "", headers: [] },
       sse: { url: "", headers: [] },
     }
@@ -468,7 +466,7 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
     if (server) {
       if (server.transportType === "stdio" && defaultValues.transportType === "stdio") {
         initialValues.stdio = {
-          command: defaultValues.command || "",
+          command: defaultValues.command || "npx",
           argsString: defaultValues.argsString || "",
           envPairs: defaultValues.envPairs || [],
         }
@@ -489,7 +487,7 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
 
   // Store form values for each transport type to preserve them when switching
   const [transportTypeValues, setTransportTypeValues] = useState<{
-    stdio: { command: string; argsString: string; envPairs: Array<{ key: string; value: string }> }
+    stdio: { command: AllowedStdioCommand; argsString: string; envPairs: Array<{ key: string; value: string }> }
     http: { url: string; headers: Array<{ key: string; value: string }> }
     sse: { url: string; headers: Array<{ key: string; value: string }> }
   }>(getInitialTransportTypeValues())
@@ -503,18 +501,18 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
 
       // Initialize transport type values for the current server
       const newTransportTypeValues: {
-        stdio: { command: string; argsString: string; envPairs: Array<{ key: string; value: string }> }
+        stdio: { command: AllowedStdioCommand; argsString: string; envPairs: Array<{ key: string; value: string }> }
         http: { url: string; headers: Array<{ key: string; value: string }> }
         sse: { url: string; headers: Array<{ key: string; value: string }> }
       } = {
-        stdio: { command: "", argsString: "", envPairs: [] },
+        stdio: { command: "npx", argsString: "", envPairs: [] },
         http: { url: "", headers: [] },
         sse: { url: "", headers: [] },
       }
 
       if (server.transportType === "stdio" && defaultValues.transportType === "stdio") {
         newTransportTypeValues.stdio = {
-          command: defaultValues.command || "",
+          command: defaultValues.command || "npx",
           argsString: defaultValues.argsString || "",
           envPairs: defaultValues.envPairs || [],
         }

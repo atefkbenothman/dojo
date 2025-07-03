@@ -27,7 +27,7 @@ export const mcpFields = {
     // Stdio config
     v.object({
       type: v.literal("stdio"),
-      command: v.string(),
+      command: v.union(v.literal("npx"), v.literal("uvx")),
       args: v.array(v.string()),
       requiresEnv: v.optional(v.array(v.string())),
       env: v.optional(v.record(v.string(), v.string())),

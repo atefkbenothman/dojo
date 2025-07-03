@@ -1,4 +1,5 @@
 import type { MCPServer } from "@dojo/db/convex/types"
+import { ALLOWED_STDIO_COMMANDS } from "@dojo/db/convex/types"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import type { MCPTransport } from "ai"
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio"
@@ -75,6 +76,11 @@ export class TransportFactory {
       throw new Error(`Expected stdio config but got ${server.config.type} for server ${server._id}`)
     }
 
+    // Validate command is allowed
+    if (!ALLOWED_STDIO_COMMANDS.includes(server.config.command as any)) {
+      throw new Error(`Invalid command. Only npx and uvx commands are allowed for stdio MCP servers`)
+    }
+
     const envs: Record<string, string> = {}
 
     // Copy process.env, filtering out undefined values
@@ -100,6 +106,11 @@ export class TransportFactory {
   private static createStdioTransportFromNew(
     server: Extract<MCPServerWithTransport, { transportType: "stdio" }>,
   ): StdioTransportConfig {
+    // Validate command is allowed
+    if (!ALLOWED_STDIO_COMMANDS.includes(server.config.command as any)) {
+      throw new Error(`Invalid command. Only npx and uvx commands are allowed for stdio MCP servers`)
+    }
+
     const envs: Record<string, string> = {}
 
     // Copy process.env, filtering out undefined values
