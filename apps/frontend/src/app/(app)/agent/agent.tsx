@@ -9,22 +9,27 @@ import { AgentList } from "@/components/agent/agent-list"
 import { Button } from "@/components/ui/button"
 import { useAgent, type AgentExecution } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { successToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
+import { toast } from "sonner"
 
 export function Agent() {
-  const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove } = useAgent()
+  const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove, checkAgentDependencies } = useAgent()
   const { isAuthenticated } = useConvexAuth()
   const { models } = useAIModels()
+  const { play } = useSoundEffectContext()
 
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
+  const [affectedWorkflows, setAffectedWorkflows] = useState<Array<{ id: string; name: string; nodeCount: number; isPublic?: boolean }> | undefined>()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false)
 
@@ -62,20 +67,47 @@ export function Agent() {
     setIsDialogOpen(true)
   }, [])
 
-  const handleDeleteAgent = useCallback((agent: Agent) => {
+  const handleDeleteAgent = useCallback(async (agent: Agent) => {
+    // Check dependencies before showing dialog
+    const deps = await checkAgentDependencies(agent._id)
+    setAffectedWorkflows(deps?.workflows || [])
     setAgentToDelete(agent)
-  }, [])
+  }, [checkAgentDependencies])
 
-  const confirmDeleteAgent = useCallback(async () => {
+  const confirmDeleteAgent = useCallback(async (force?: boolean) => {
     if (agentToDelete) {
-      await remove({ id: agentToDelete._id })
-      // If the deleted agent was selected, clear the selection
-      if (selectedAgentId === agentToDelete._id) {
-        setSelectedAgentId(null)
+      try {
+        await remove(agentToDelete._id, force)
+        
+        // Show success toast
+        const actionText = force ? "Force deleted" : "Deleted"
+        toast.success(`${actionText} ${agentToDelete.name} agent`, {
+          icon: null,
+          duration: 3000,
+          position: "bottom-center",
+          style: successToastStyle,
+        })
+        play("./sounds/delete.mp3", { volume: 0.5 })
+        
+        // If the deleted agent was selected, clear the selection
+        if (selectedAgentId === agentToDelete._id) {
+          setSelectedAgentId(null)
+        }
+        setAgentToDelete(null)
+        setAffectedWorkflows(undefined)
+      } catch (error) {
+        // If it's a dependency error and we haven't forced, the dialog should stay open
+        const errorMessage = error instanceof Error ? error.message : ""
+        if (!force && errorMessage.includes("Cannot delete agent")) {
+          // Dialog stays open, dependencies should already be shown
+          return
+        }
+        // For other errors, close dialog and let the error toast show
+        setAgentToDelete(null)
+        setAffectedWorkflows(undefined)
       }
-      setAgentToDelete(null)
     }
-  }, [agentToDelete, selectedAgentId, remove])
+  }, [agentToDelete, selectedAgentId, remove, play])
 
   const handleCreateAgent = useCallback(() => {
     setEditingAgent(null)
@@ -171,6 +203,7 @@ export function Agent() {
                 model={selectedModel}
                 execution={selectedExecution}
                 isAuthenticated={isAuthenticated}
+                onDeleteClick={handleDeleteAgent}
               />
             </>
           ) : (
@@ -197,8 +230,14 @@ export function Agent() {
       <AgentDeleteDialog
         agent={agentToDelete}
         open={!!agentToDelete}
-        onOpenChange={(open) => !open && setAgentToDelete(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAgentToDelete(null)
+            setAffectedWorkflows(undefined)
+          }
+        }}
         onConfirm={confirmDeleteAgent}
+        affectedWorkflows={affectedWorkflows}
       />
       {/* Generate Agent Dialog */}
       <AgentGenerateDialog

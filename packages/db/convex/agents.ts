@@ -136,6 +136,7 @@ export const create = mutation({
 export const remove = mutation({
   args: {
     id: v.id("agents"),
+    force: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx)
@@ -143,7 +144,112 @@ export const remove = mutation({
     if (!agent) throw new Error("Not found")
     if (agent.isPublic) throw new Error("Default agents cannot be deleted.")
     if (!userId || agent.userId !== userId) throw new Error("Unauthorized")
+    
+    // Check for dependencies if not forcing
+    if (!args.force) {
+      const allWorkflowNodes = await ctx.db
+        .query("workflowNodes")
+        .filter((q) => q.eq(q.field("agentId"), args.id))
+        .collect()
+      
+      // Filter to only nodes in workflows the user owns
+      const dependentNodes = []
+      const workflowNames = new Set<string>()
+      
+      for (const node of allWorkflowNodes) {
+        const workflow = await ctx.db.get(node.workflowId)
+        if (workflow && workflow.userId === userId) {
+          dependentNodes.push(node)
+          workflowNames.add(workflow.name)
+        }
+      }
+      
+      if (dependentNodes.length > 0) {
+        const workflowList = Array.from(workflowNames).join(", ")
+        throw new Error(
+          `Cannot delete agent. It is used in ${dependentNodes.length} workflow node(s) across ${workflowNames.size} workflow(s): ${workflowList}. Use force delete to remove it and delete all affected workflow nodes.`
+        )
+      }
+    } else {
+      // Force delete: Remove all workflow nodes that reference this agent
+      const allWorkflowNodes = await ctx.db
+        .query("workflowNodes")
+        .filter((q) => q.eq(q.field("agentId"), args.id))
+        .collect()
+      
+      // Track workflows that might need rootNodeId updates
+      const affectedWorkflows = new Set<string>()
+      
+      // Delete workflow nodes (only those in workflows the user owns)
+      for (const node of allWorkflowNodes) {
+        const workflow = await ctx.db.get(node.workflowId)
+        if (workflow && workflow.userId === userId) {
+          await ctx.db.delete(node._id)
+          affectedWorkflows.add(node.workflowId)
+          
+          // If this was a root node, we need to update the workflow
+          if (workflow.rootNodeId === node.nodeId) {
+            await ctx.db.patch(node.workflowId, { rootNodeId: undefined })
+          }
+        }
+      }
+    }
+    
     return await ctx.db.delete(args.id)
+  },
+})
+
+// Check dependencies: Find all workflow nodes that reference this agent
+export const checkDependencies = query({
+  args: {
+    id: v.id("agents"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    const agent = await ctx.db.get(args.id)
+    if (!agent) throw new Error("Agent not found")
+    
+    // Check authorization
+    if (!agent.isPublic && (!userId || agent.userId !== userId)) {
+      throw new Error("Unauthorized")
+    }
+    
+    // Find all workflow nodes that reference this agent
+    const allWorkflowNodes = await ctx.db
+      .query("workflowNodes")
+      .filter((q) => q.eq(q.field("agentId"), args.id))
+      .collect()
+    
+    // Group by workflow and get workflow details
+    const workflowMap = new Map<string, { id: string; name: string; nodeCount: number; isPublic?: boolean }>()
+    
+    for (const node of allWorkflowNodes) {
+      const workflow = await ctx.db.get(node.workflowId)
+      if (!workflow) continue
+      
+      // Only include workflows the user can see
+      const canSee = workflow.isPublic || (userId && workflow.userId === userId)
+      if (!canSee) continue
+      
+      const workflowKey = node.workflowId
+      if (workflowMap.has(workflowKey)) {
+        workflowMap.get(workflowKey)!.nodeCount++
+      } else {
+        workflowMap.set(workflowKey, {
+          id: node.workflowId,
+          name: workflow.name,
+          nodeCount: 1,
+          isPublic: workflow.isPublic,
+        })
+      }
+    }
+    
+    const workflows = Array.from(workflowMap.values())
+    
+    return {
+      count: workflows.length,
+      workflows: workflows
+    }
   },
 })
 

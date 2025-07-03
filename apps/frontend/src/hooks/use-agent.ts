@@ -11,7 +11,7 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
 import { Message } from "ai"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation, useQuery, useConvex } from "convex/react"
 import { nanoid } from "nanoid"
 import { useCallback, useMemo } from "react"
 import { toast } from "sonner"
@@ -56,6 +56,7 @@ export const canRunAgent = (agent: Agent, isAuthenticated: boolean, currentStatu
 
 export function useAgent() {
   const authToken = useAuthToken()
+  const convex = useConvex()
   const { connect } = useMCP()
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
@@ -220,6 +221,32 @@ export function useAgent() {
     [agentExecutions],
   )
 
+  const removeAgent = async (id: string, force?: boolean) => {
+    try {
+      await remove({ id: id as Id<"agents">, force })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      play("./sounds/error.mp3", { volume: 0.5 })
+      toast.error(`Failed to remove agent: ${errorMessage}`, {
+        icon: null,
+        id: "remove-agent-error",
+        duration: 5000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+      throw error
+    }
+  }
+
+  const checkAgentDependencies = async (id: string) => {
+    try {
+      return await convex.query(api.agents.checkDependencies, { id: id as Id<"agents"> })
+    } catch (error) {
+      console.error("Failed to check dependencies:", error)
+      return null
+    }
+  }
+
   const clone = async (id: string) => {
     try {
       await cloneAgent({ id: id as Id<"agents"> })
@@ -249,11 +276,12 @@ export function useAgent() {
     runAgent,
     create,
     edit,
-    remove,
+    remove: removeAgent,
     clone,
     // Agent control functions
     stopAllAgents,
     // Direct Convex helpers
     getAgentExecution,
+    checkAgentDependencies,
   }
 }

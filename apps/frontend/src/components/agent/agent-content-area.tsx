@@ -11,9 +11,10 @@ interface AgentContentAreaProps {
     error?: string
   } | null
   isAuthenticated?: boolean
+  onDeleteClick?: (agent: Agent) => void
 }
 
-export function AgentContentArea({ agent, model, execution, isAuthenticated = false }: AgentContentAreaProps) {
+export function AgentContentArea({ agent, model, execution, isAuthenticated = false, onDeleteClick }: AgentContentAreaProps) {
   return (
     <div className="flex-1 relative flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-auto">
@@ -26,6 +27,7 @@ export function AgentContentArea({ agent, model, execution, isAuthenticated = fa
                 variant="page"
                 isAuthenticated={isAuthenticated}
                 execution={execution}
+                onDeleteClick={onDeleteClick}
               />
             </div>
           </div>

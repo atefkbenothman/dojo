@@ -1,4 +1,3 @@
-import { AgentDeleteDialog } from "@/components/agent/agent-delete-dialog"
 import { agentFormSchema, type AgentFormValues } from "@/components/agent/form/agent-form-schema"
 import {
   filterMcpServersByVisibility,
@@ -24,7 +23,7 @@ import type { Doc } from "@dojo/db/convex/_generated/dataModel"
 import type { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Wrench, AlertCircle, Copy, CheckCircle2, Loader2 } from "lucide-react"
-import { useMemo, useEffect, useCallback, useState } from "react"
+import { useMemo, useEffect, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
@@ -39,6 +38,7 @@ interface AgentFormProps {
     error?: string
   } | null
   onClose?: () => void
+  onDeleteClick?: (agent: Agent) => void
 }
 
 // Component for read-only notice
@@ -335,12 +335,12 @@ export function AgentForm({
   isAuthenticated = false,
   execution,
   onClose,
+  onDeleteClick,
 }: AgentFormProps) {
   const { mcpServers } = useMCP()
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
-  const { create, edit, remove, clone } = useAgent()
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const { create, edit, clone } = useAgent()
 
   // Check if user can edit
   const isPublicAgent = agent?.isPublic || false
@@ -460,28 +460,9 @@ export function AgentForm({
     onClose?.()
   }
 
-  const handleDelete = async () => {
-    if (!agent) return
-    try {
-      await remove({ id: agent._id })
-      toast.error(`${agent.name} agent deleted`, {
-        icon: null,
-        duration: 3000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-      play("./sounds/delete.mp3", { volume: 0.5 })
-      onClose?.()
-    } catch (error) {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
-      toast.error(`Failed to delete agent: ${errorMessage}`, {
-        icon: null,
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-    }
+  const handleDeleteClick = () => {
+    if (!agent || !onDeleteClick) return
+    onDeleteClick(agent)
   }
 
   const handleClone = useCallback(async () => {
@@ -521,11 +502,11 @@ export function AgentForm({
 
   const formFooter = (
     <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end w-full">
-      {mode === "edit" && canEdit && (
+      {mode === "edit" && canEdit && onDeleteClick && (
         <Button
           type="button"
           variant="destructive"
-          onClick={() => setShowDeleteDialog(true)}
+          onClick={handleDeleteClick}
           className="w-full sm:w-auto hover:cursor-pointer border-destructive"
         >
           Delete
@@ -558,52 +539,36 @@ export function AgentForm({
 
   if (variant === "dialog") {
     return (
-      <>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSave)}>
-            <Card className="p-0 border-[1.5px] gap-0">
-              <CardHeader className="p-4 gap-0 border-b-[1.5px]">
-                <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
-              <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
-            </Card>
-          </form>
-        </Form>
-        <AgentDeleteDialog
-          agent={agent || null}
-          open={showDeleteDialog}
-          onOpenChange={setShowDeleteDialog}
-          onConfirm={handleDelete}
-        />
-      </>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSave)}>
+          <Card className="p-0 border-[1.5px] gap-0">
+            <CardHeader className="p-4 gap-0 border-b-[1.5px]">
+              <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
+            <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
+          </Card>
+        </form>
+      </Form>
     )
   }
 
   // Page variant
   return (
-    <>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSave)} className="h-full sm:h-auto flex flex-col">
-          <Card className="p-0 border-0 sm:border-[1.5px] gap-0 rounded-none sm:rounded-lg h-full sm:h-auto flex flex-col">
-            <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0 sticky top-0 z-10 bg-card sm:static">
-              <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 bg-background flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible flex flex-col">
-              {formContent}
-            </CardContent>
-            <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0 sticky bottom-0 z-10 bg-card sm:static">
-              {formFooter}
-            </CardFooter>
-          </Card>
-        </form>
-      </Form>
-      <AgentDeleteDialog
-        agent={agent || null}
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        onConfirm={handleDelete}
-      />
-    </>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSave)} className="h-full sm:h-auto flex flex-col">
+        <Card className="p-0 border-0 sm:border-[1.5px] gap-0 rounded-none sm:rounded-lg h-full sm:h-auto flex flex-col">
+          <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0 sticky top-0 z-10 bg-card sm:static">
+            <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 bg-background flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible flex flex-col">
+            {formContent}
+          </CardContent>
+          <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0 sticky bottom-0 z-10 bg-card sm:static">
+            {formFooter}
+          </CardFooter>
+        </Card>
+      </form>
+    </Form>
   )
 }
