@@ -1,78 +1,32 @@
-import { KeyValueInputFields } from "@/components/mcp/key-value-input-fields"
+import { KeyValueInputFields } from "@/components/mcp/form/key-value-input-fields"
+import { mcpFormSchema, type MCPFormValues } from "@/components/mcp/form/mcp-form-schema"
+import { createMCPObject, getDefaultFormValues } from "@/components/mcp/form/mcp-form-utils"
 import { MCPDeleteDialog } from "@/components/mcp/mcp-delete-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { useMCP } from "@/hooks/use-mcp"
+import { useMCP, MCPConnectionState, isMCPConnected, isMCPConnecting, isMCPError } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
-import type { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
-import type { MCPServer, AllowedStdioCommand } from "@dojo/db/convex/types"
-import { ALLOWED_STDIO_COMMANDS } from "@dojo/db/convex/types"
+import type { MCPServer } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { WithoutSystemFields } from "convex/server"
-import { AlertCircle, Wrench } from "lucide-react"
-import { useMemo, useEffect, useCallback, useState } from "react"
+import { AlertCircle, CheckCircle2, Wrench } from "lucide-react"
+import { useEffect, useCallback, useState, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
-import { z } from "zod"
-
-// Form schema for MCP server editing
-const mcpFormSchema = z.discriminatedUnion("transportType", [
-  z.object({
-    transportType: z.literal("stdio"),
-    name: z.string().min(1, "Name is required"),
-    summary: z.string().optional(),
-    command: z.enum(ALLOWED_STDIO_COMMANDS, {
-      errorMap: () => ({ message: "Only npx and uvx commands are allowed" }),
-    }),
-    argsString: z.string(),
-    envPairs: z.array(
-      z.object({
-        key: z.string(),
-        value: z.string(),
-      }),
-    ),
-  }),
-  z.object({
-    transportType: z.literal("http"),
-    name: z.string().min(1, "Name is required"),
-    summary: z.string().optional(),
-    url: z.string().url("Please enter a valid URL"),
-    headers: z.array(
-      z.object({
-        key: z.string(),
-        value: z.string(),
-      }),
-    ),
-  }),
-  z.object({
-    transportType: z.literal("sse"),
-    name: z.string().min(1, "Name is required"),
-    summary: z.string().optional(),
-    url: z.string().url("Please enter a valid URL"),
-    headers: z.array(
-      z.object({
-        key: z.string(),
-        value: z.string(),
-      }),
-    ),
-  }),
-])
-
-type MCPFormValues = z.infer<typeof mcpFormSchema>
 
 interface MCPFormProps {
   server?: MCPServer
   mode: "add" | "edit"
   variant?: "page" | "dialog"
   isAuthenticated?: boolean
+  connectionStatus?: MCPConnectionState
   onClose?: () => void
 }
 
@@ -86,7 +40,7 @@ function ReadOnlyNoticeSection({ canEdit, isPublic }: ReadOnlyNoticeSectionProps
   if (canEdit) return null
 
   return (
-    <Card className="p-3 sm:p-4 bg-muted/50 border-muted">
+    <Card className="p-3 sm:p-4 bg-muted/60 border-muted/20">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <AlertCircle className="h-4 w-4" />
         {isPublic
@@ -229,15 +183,18 @@ function TransportTypeSection({
             control={form.control}
             name="envPairs"
             render={({ field }) => (
-              <KeyValueInputFields
-                pairs={field.value || []}
-                mode={mode}
-                onUpdatePairs={field.onChange}
-                disabled={!canEdit}
-                fieldName="envPairs"
-                fieldLabel="Environment Variables"
-                placeholder={{ key: "API_KEY", value: "Value" }}
-              />
+              <FormItem>
+                <KeyValueInputFields
+                  pairs={field.value || []}
+                  mode={mode}
+                  onUpdatePairs={field.onChange}
+                  disabled={!canEdit}
+                  fieldName="envPairs"
+                  fieldLabel="Environment Variables"
+                  placeholder={{ key: "API_KEY", value: "Value" }}
+                />
+                <FormMessage />
+              </FormItem>
             )}
           />
         </TabsContent>
@@ -268,15 +225,18 @@ function TransportTypeSection({
             control={form.control}
             name="headers"
             render={({ field }) => (
-              <KeyValueInputFields
-                pairs={field.value || []}
-                mode={mode}
-                onUpdatePairs={field.onChange}
-                disabled={!canEdit}
-                fieldName="headers"
-                fieldLabel="Headers"
-                placeholder={{ key: "Authorization", value: "Bearer token" }}
-              />
+              <FormItem>
+                <KeyValueInputFields
+                  pairs={field.value || []}
+                  mode={mode}
+                  onUpdatePairs={field.onChange}
+                  disabled={!canEdit}
+                  fieldName="headers"
+                  fieldLabel="Headers"
+                  placeholder={{ key: "Authorization", value: "Bearer token" }}
+                />
+                <FormMessage />
+              </FormItem>
             )}
           />
         </TabsContent>
@@ -307,15 +267,18 @@ function TransportTypeSection({
             control={form.control}
             name="headers"
             render={({ field }) => (
-              <KeyValueInputFields
-                pairs={field.value || []}
-                mode={mode}
-                onUpdatePairs={field.onChange}
-                disabled={!canEdit}
-                fieldName="headers"
-                fieldLabel="Headers"
-                placeholder={{ key: "Authorization", value: "Bearer token" }}
-              />
+              <FormItem>
+                <KeyValueInputFields
+                  pairs={field.value || []}
+                  mode={mode}
+                  onUpdatePairs={field.onChange}
+                  disabled={!canEdit}
+                  fieldName="headers"
+                  fieldLabel="Headers"
+                  placeholder={{ key: "Authorization", value: "Bearer token" }}
+                />
+                <FormMessage />
+              </FormItem>
             )}
           />
         </TabsContent>
@@ -324,121 +287,65 @@ function TransportTypeSection({
   )
 }
 
-// Helper function to create MCP object from form data
-function createMCPObject(data: MCPFormValues): WithoutSystemFields<Doc<"mcp">> {
-  const base = {
-    name: data.name,
-    summary: data.summary,
-    transportType: data.transportType,
-    localOnly: data.transportType === "stdio",
-  }
-
-  switch (data.transportType) {
-    case "stdio": {
-      const args = data.argsString
-        .split(",")
-        .map((arg) => arg.trim())
-        .filter(Boolean)
-      const env = Object.fromEntries(data.envPairs.map((pair) => [pair.key, pair.value]))
-
-      return {
-        ...base,
-        requiresUserKey: data.envPairs.length > 0,
-        config: {
-          type: "stdio" as const,
-          command: data.command as AllowedStdioCommand,
-          args,
-          ...(data.envPairs.length > 0 && {
-            env,
-            requiresEnv: data.envPairs.map((pair) => pair.key),
-          }),
-        },
-      }
-    }
-
-    case "http":
-    case "sse": {
-      const headers = Object.fromEntries(data.headers.filter((h) => h.key && h.value).map((h) => [h.key, h.value]))
-
-      return {
-        ...base,
-        requiresUserKey: data.headers.some(
-          (h) => h.value.includes("{{") || h.value === "" || h.key.toLowerCase() === "authorization",
-        ),
-        config: {
-          type: data.transportType,
-          url: data.url,
-          ...(Object.keys(headers).length > 0 && { headers }),
-        },
-      }
-    }
-  }
+// Component for status section
+interface StatusSectionProps {
+  statusInfo: {
+    icon: React.ReactNode
+    text: string
+    className: string
+  } | null
 }
 
-// Helper function to get default form values
-function getDefaultFormValues(server?: MCPServer): MCPFormValues {
-  if (!server) {
-    return {
-      transportType: "stdio" as const,
-      name: "",
-      summary: "",
-      command: "npx" as AllowedStdioCommand,
-      argsString: "",
-      envPairs: [],
-    }
-  }
+function StatusSection({ statusInfo }: StatusSectionProps) {
+  if (!statusInfo) return null
 
-  const baseValues = {
-    name: server.name || "",
-    summary: server.summary || "",
-  }
-
-  if (server.transportType === "http" || server.transportType === "sse") {
-    const headers =
-      server.config && "headers" in server.config && server.config.headers
-        ? Object.entries(server.config.headers).map(([key, value]) => ({ key, value }))
-        : []
-
-    return {
-      ...baseValues,
-      transportType: server.transportType,
-      url: server.config && "url" in server.config ? server.config.url : "",
-      headers,
-    } as MCPFormValues
-  } else {
-    let envPairs: Array<{ key: string; value: string }> = []
-    let command = ""
-    let argsString = ""
-
-    if (server.config && server.config.type === "stdio") {
-      const stdioConfig = server.config
-      const requiredKeys = stdioConfig.requiresEnv || []
-      const configEnv = stdioConfig.env || {}
-      envPairs = requiredKeys.map((key: string) => ({
-        key,
-        value: configEnv[key] || "",
-      }))
-      command = stdioConfig.command || "npx"
-      argsString = (stdioConfig.args || []).join(", ")
-    }
-
-    return {
-      ...baseValues,
-      transportType: "stdio" as const,
-      command: command as AllowedStdioCommand,
-      argsString,
-      envPairs,
-    }
-  }
-}
-
-export function MCPForm({ server, mode, variant = "page", isAuthenticated = false, onClose }: MCPFormProps) {
-  const { play } = useSoundEffectContext()
-  const { create, edit, remove, clone } = useMCP()
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [currentTransportType, setCurrentTransportType] = useState<"stdio" | "http" | "sse">(
-    server?.transportType || "stdio",
+  return (
+    <Card className={cn("p-3 sm:p-4", statusInfo.className)}>
+      <div className="flex items-center gap-2 text-sm">
+        {statusInfo.icon}
+        <span>{statusInfo.text}</span>
+      </div>
+    </Card>
   )
+}
+
+// Component for tools section
+interface ToolsSectionProps {
+  tools?: Record<string, unknown>
+}
+
+function ToolsSection({ tools }: ToolsSectionProps) {
+  if (!tools || Object.keys(tools).length === 0) return null
+
+  const toolNames = Object.keys(tools)
+
+  return (
+    <div className="space-y-2">
+      <p className="text-base font-medium text-muted-foreground">Available Tools ({toolNames.length})</p>
+      <Card className="p-3 sm:p-4 bg-muted/20 border-muted/20">
+        <div className="flex flex-wrap gap-2">
+          {toolNames.map((toolName) => (
+            <div key={toolName} className="bg-secondary/60 text-foreground rounded-md px-2.5 py-1 text-xs font-medium">
+              {toolName}
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+export function MCPForm({
+  server,
+  mode,
+  variant = "page",
+  isAuthenticated = false,
+  connectionStatus,
+  onClose,
+}: MCPFormProps) {
+  const { play } = useSoundEffectContext()
+  const { create, edit, remove, clone, activeConnections } = useMCP()
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Check if user can edit
   const isPublicServer = server?.isPublic || false
@@ -448,99 +355,65 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
   const form = useForm<MCPFormValues>({
     resolver: zodResolver(mcpFormSchema),
     defaultValues: getDefaultFormValues(server),
+    mode: "all", // Validate all fields, not just the touched ones
   })
 
-  // Initialize transport type values based on the server data
-  const getInitialTransportTypeValues = () => {
-    const defaultValues = getDefaultFormValues(server)
-    const initialValues: {
-      stdio: { command: AllowedStdioCommand; argsString: string; envPairs: Array<{ key: string; value: string }> }
-      http: { url: string; headers: Array<{ key: string; value: string }> }
-      sse: { url: string; headers: Array<{ key: string; value: string }> }
-    } = {
-      stdio: { command: "npx", argsString: "", envPairs: [] },
-      http: { url: "", headers: [] },
-      sse: { url: "", headers: [] },
-    }
+  // Watch the transport type from form state
+  const currentTransportType = form.watch("transportType") as "stdio" | "http" | "sse"
 
-    if (server) {
-      // Always populate the values for the server's actual transport type
-      if (server.transportType === "stdio" && defaultValues.transportType === "stdio") {
-        initialValues.stdio = {
-          command: defaultValues.command || "npx",
-          argsString: defaultValues.argsString || "",
-          envPairs: defaultValues.envPairs || [],
-        }
-      } else if (server.transportType === "http" && defaultValues.transportType === "http") {
-        const httpDefaults = defaultValues as { url: string; headers: Array<{ key: string; value: string }> }
-        initialValues.http = {
-          url: httpDefaults.url || "",
-          headers: httpDefaults.headers || [],
-        }
-      } else if (server.transportType === "sse" && defaultValues.transportType === "sse") {
-        const sseDefaults = defaultValues as { url: string; headers: Array<{ key: string; value: string }> }
-        initialValues.sse = {
-          url: sseDefaults.url || "",
-          headers: sseDefaults.headers || [],
-        }
+  // Get connection status info
+  const statusInfo = useMemo(() => {
+    if (!connectionStatus) return null
+
+    const isConnected = isMCPConnected(connectionStatus)
+    const isConnecting = isMCPConnecting(connectionStatus)
+    const hasError = isMCPError(connectionStatus)
+
+    if (isConnecting) {
+      return {
+        icon: <LoadingAnimationInline className="text-yellow-600 dark:text-yellow-500" />,
+        text: "Connecting to server...",
+        className:
+          "bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/50 text-yellow-700 dark:text-yellow-400",
       }
     }
 
-    return initialValues
-  }
+    if (isConnected) {
+      return {
+        icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />,
+        text: "Connected to server",
+        className:
+          "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400",
+      }
+    }
 
-  // Store form values for each transport type to preserve them when switching
-  const [transportTypeValues, setTransportTypeValues] = useState<{
-    stdio: { command: AllowedStdioCommand; argsString: string; envPairs: Array<{ key: string; value: string }> }
-    http: { url: string; headers: Array<{ key: string; value: string }> }
-    sse: { url: string; headers: Array<{ key: string; value: string }> }
-  }>(getInitialTransportTypeValues())
+    if (hasError) {
+      return {
+        icon: <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500" />,
+        text: connectionStatus.error || "Connection failed",
+        className:
+          "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400",
+      }
+    }
 
-  // Store the original server values to preserve them
-  const [originalServerValues] = useState(() => {
-    if (!server) return null
-    return getDefaultFormValues(server)
-  })
+    return null
+  }, [connectionStatus])
+
+  // Get tools for this server
+  const tools = useMemo(() => {
+    if (!server) return undefined
+    const connection = activeConnections.find((conn) => conn.serverId === server._id)
+    return connection?.tools
+  }, [activeConnections, server])
 
   // Reset form when server changes
   useEffect(() => {
     if (server) {
       const defaultValues = getDefaultFormValues(server)
       form.reset(defaultValues)
-      setCurrentTransportType(server.transportType as "stdio" | "http" | "sse")
-
-      // Initialize transport type values for the current server
-      const newTransportTypeValues: {
-        stdio: { command: AllowedStdioCommand; argsString: string; envPairs: Array<{ key: string; value: string }> }
-        http: { url: string; headers: Array<{ key: string; value: string }> }
-        sse: { url: string; headers: Array<{ key: string; value: string }> }
-      } = {
-        stdio: { command: "npx", argsString: "", envPairs: [] },
-        http: { url: "", headers: [] },
-        sse: { url: "", headers: [] },
-      }
-
-      if (server.transportType === "stdio" && defaultValues.transportType === "stdio") {
-        newTransportTypeValues.stdio = {
-          command: defaultValues.command || "npx",
-          argsString: defaultValues.argsString || "",
-          envPairs: defaultValues.envPairs || [],
-        }
-      } else if (server.transportType === "http" && defaultValues.transportType === "http") {
-        const httpDefaults = defaultValues as { url: string; headers: Array<{ key: string; value: string }> }
-        newTransportTypeValues.http = {
-          url: httpDefaults.url || "",
-          headers: httpDefaults.headers || [],
-        }
-      } else if (server.transportType === "sse" && defaultValues.transportType === "sse") {
-        const sseDefaults = defaultValues as { url: string; headers: Array<{ key: string; value: string }> }
-        newTransportTypeValues.sse = {
-          url: sseDefaults.url || "",
-          headers: sseDefaults.headers || [],
-        }
-      }
-
-      setTransportTypeValues(newTransportTypeValues)
+    } else {
+      // No server selected, reset to empty form
+      form.reset(getDefaultFormValues())
     }
   }, [server, form])
 
@@ -550,66 +423,15 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
       // Only allow changes if user can edit
       if (!canEdit) return
 
-      const oldTransportType = currentTransportType
       const newTransportType = value as "stdio" | "http" | "sse"
 
-      // Save current values before switching
-      if (oldTransportType === "stdio") {
-        setTransportTypeValues((prev) => ({
-          ...prev,
-          stdio: {
-            command: form.getValues("command"),
-            argsString: form.getValues("argsString"),
-            envPairs: form.getValues("envPairs"),
-          },
-        }))
-      } else {
-        setTransportTypeValues((prev) => ({
-          ...prev,
-          [oldTransportType]: {
-            url: form.getValues("url"),
-            headers: form.getValues("headers"),
-          },
-        }))
-      }
-
-      setCurrentTransportType(newTransportType)
-
-      // Keep existing name and summary
-      const currentName = form.getValues("name")
-      const currentSummary = form.getValues("summary")
-
-      // When switching back to the original transport type, restore original values
-      if (server && originalServerValues && newTransportType === server.transportType) {
-        // Restore original server values
-        form.reset({
-          ...originalServerValues,
-          name: currentName, // Keep any edits to name
-          summary: currentSummary, // Keep any edits to summary
-        })
-      } else {
-        // Load saved values for the new transport type
-        if (newTransportType === "stdio") {
-          form.reset({
-            transportType: "stdio",
-            name: currentName,
-            summary: currentSummary,
-            command: transportTypeValues.stdio.command,
-            argsString: transportTypeValues.stdio.argsString,
-            envPairs: transportTypeValues.stdio.envPairs,
-          })
-        } else {
-          form.reset({
-            transportType: newTransportType,
-            name: currentName,
-            summary: currentSummary,
-            url: transportTypeValues[newTransportType].url,
-            headers: transportTypeValues[newTransportType].headers,
-          })
-        }
-      }
+      // Simply update the transport type - React Hook Form will preserve all other values
+      form.setValue("transportType", newTransportType, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
     },
-    [canEdit, form, currentTransportType, transportTypeValues, server, originalServerValues],
+    [canEdit, form],
   )
 
   const handleSave = async (data: MCPFormValues) => {
@@ -633,12 +455,17 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
         })
       }
       play("./sounds/save.mp3", { volume: 0.5 })
+      // Reset form state to clear dirty flag
+      form.reset(data)
       onClose?.()
     } catch (error) {
-      toast.error("Failed to save server", {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to save server: ${errorMessage}`, {
         icon: null,
-        duration: 3000,
+        duration: 5000,
         position: "bottom-center",
+        style: errorToastStyle,
       })
     }
   }
@@ -652,19 +479,22 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
     if (!server) return
     try {
       await remove(server._id)
-      toast.error(`${server.name} server deleted`, {
+      toast.success(`${server.name} server deleted`, {
         icon: null,
         duration: 3000,
         position: "bottom-center",
-        style: errorToastStyle,
+        style: successToastStyle,
       })
       play("./sounds/delete.mp3", { volume: 0.5 })
       onClose?.()
     } catch (error) {
-      toast.error("Failed to delete server", {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to delete server: ${errorMessage}`, {
         icon: null,
-        duration: 3000,
+        duration: 5000,
         position: "bottom-center",
+        style: errorToastStyle,
       })
     }
   }
@@ -676,21 +506,29 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
       onClose?.()
     } catch (error) {
       // Error handling is already done in the clone function
+      // But we should still prevent the dialog from closing on error
+      console.error("Clone failed:", error)
     }
   }, [server, clone, onClose])
 
   const formContent = (
-    <div className="flex flex-col h-full sm:h-auto sm:block space-y-8">
-      <ReadOnlyNoticeSection canEdit={canEdit} isPublic={isPublicServer} />
-      <ServerNameSection form={form} canEdit={canEdit} mode={mode} />
-      <ServerSummarySection form={form} canEdit={canEdit} />
-      <TransportTypeSection
-        form={form}
-        canEdit={canEdit}
-        mode={mode}
-        currentTransportType={currentTransportType}
-        onTransportTypeChange={handleTransportTypeChange}
-      />
+    <div className="flex flex-col h-full sm:h-auto sm:block space-y-4">
+      <div className="space-y-2">
+        <ReadOnlyNoticeSection canEdit={canEdit} isPublic={isPublicServer} />
+        {mode === "edit" && <StatusSection statusInfo={statusInfo} />}
+      </div>
+      <div className="space-y-8">
+        <ServerNameSection form={form} canEdit={canEdit} mode={mode} />
+        <ServerSummarySection form={form} canEdit={canEdit} />
+        <TransportTypeSection
+          form={form}
+          canEdit={canEdit}
+          mode={mode}
+          currentTransportType={currentTransportType}
+          onTransportTypeChange={handleTransportTypeChange}
+        />
+        {mode === "edit" && <ToolsSection tools={tools} />}
+      </div>
     </div>
   )
 

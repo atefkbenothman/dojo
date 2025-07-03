@@ -1,6 +1,6 @@
 "use client"
 
-import { MCPForm } from "@/components/mcp/mcp-form"
+import { MCPForm } from "@/components/mcp/form/mcp-form"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"

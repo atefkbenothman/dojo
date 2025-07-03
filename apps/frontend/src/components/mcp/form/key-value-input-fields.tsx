@@ -25,7 +25,6 @@ interface KeyValueInputFieldsProps {
 
 export function KeyValueInputFields({
   pairs,
-  mode,
   onUpdatePairs,
   disabled = false,
   fieldName,

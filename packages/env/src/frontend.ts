@@ -21,11 +21,11 @@ export const env = createEnv({
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,
   onValidationError: (error) => {
-    console.error("❌ Invalid environment variables in frontend:")
+    console.error("Invalid environment variables in frontend:")
     console.error(error)
     throw new Error("Invalid environment variables")
   },
   onInvalidAccess: (variable) => {
-    throw new Error(`❌ Attempted to access a server-side environment variable "${variable}" on the client.`)
+    throw new Error(`Attempted to access a server-side environment variable "${variable}" on the client.`)
   },
 })
