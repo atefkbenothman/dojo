@@ -29,7 +29,9 @@ export function Agent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
-  const [affectedWorkflows, setAffectedWorkflows] = useState<Array<{ id: string; name: string; nodeCount: number; isPublic?: boolean }> | undefined>()
+  const [affectedWorkflows, setAffectedWorkflows] = useState<
+    Array<{ id: string; name: string; nodeCount: number; isPublic?: boolean }> | undefined
+  >()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false)
 
@@ -67,47 +69,48 @@ export function Agent() {
     setIsDialogOpen(true)
   }, [])
 
-  const handleDeleteAgent = useCallback(async (agent: Agent) => {
-    // Check dependencies before showing dialog
-    const deps = await checkAgentDependencies(agent._id)
-    setAffectedWorkflows(deps?.workflows || [])
-    setAgentToDelete(agent)
-  }, [checkAgentDependencies])
+  const handleDeleteAgent = useCallback(
+    async (agent: Agent) => {
+      // Check dependencies before showing dialog
+      const deps = await checkAgentDependencies(agent._id)
+      setAffectedWorkflows(deps?.workflows || [])
+      setAgentToDelete(agent)
+    },
+    [checkAgentDependencies],
+  )
 
-  const confirmDeleteAgent = useCallback(async (force?: boolean) => {
-    if (agentToDelete) {
-      try {
-        await remove(agentToDelete._id, force)
-        
-        // Show success toast
-        const actionText = force ? "Force deleted" : "Deleted"
-        toast.success(`${actionText} ${agentToDelete.name} agent`, {
-          icon: null,
-          duration: 3000,
-          position: "bottom-center",
-          style: successToastStyle,
-        })
-        play("./sounds/delete.mp3", { volume: 0.5 })
-        
-        // If the deleted agent was selected, clear the selection
-        if (selectedAgentId === agentToDelete._id) {
-          setSelectedAgentId(null)
+  const confirmDeleteAgent = useCallback(
+    async (force?: boolean) => {
+      if (agentToDelete) {
+        try {
+          await remove(agentToDelete._id, force)
+
+          // Show success toast
+          const actionText = force ? "Force deleted" : "Deleted"
+          toast.success(`${actionText} ${agentToDelete.name} agent`, {
+            icon: null,
+            duration: 3000,
+            position: "bottom-center",
+            style: successToastStyle,
+          })
+          play("./sounds/delete.mp3", { volume: 0.5 })
+
+          // If the deleted agent was selected, clear the selection
+          if (selectedAgentId === agentToDelete._id) {
+            setSelectedAgentId(null)
+          }
+          setAgentToDelete(null)
+          setAffectedWorkflows(undefined)
+        } catch (error) {
+          // If it's a dependency error and we haven't forced, the dialog should stay open
+          const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+          setAgentToDelete(null)
+          setAffectedWorkflows(undefined)
         }
-        setAgentToDelete(null)
-        setAffectedWorkflows(undefined)
-      } catch (error) {
-        // If it's a dependency error and we haven't forced, the dialog should stay open
-        const errorMessage = error instanceof Error ? error.message : ""
-        if (!force && errorMessage.includes("Cannot delete agent")) {
-          // Dialog stays open, dependencies should already be shown
-          return
-        }
-        // For other errors, close dialog and let the error toast show
-        setAgentToDelete(null)
-        setAffectedWorkflows(undefined)
       }
-    }
-  }, [agentToDelete, selectedAgentId, remove, play])
+    },
+    [agentToDelete, selectedAgentId, remove, play],
+  )
 
   const handleCreateAgent = useCallback(() => {
     setEditingAgent(null)

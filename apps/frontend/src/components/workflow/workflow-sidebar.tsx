@@ -3,7 +3,9 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { WorkflowCard } from "@/components/workflow/workflow-card"
+import { useGeneration } from "@/hooks/use-generation"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -65,6 +67,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
   const [searchInput, setSearchInput] = useState<string>("")
   const [openSections, setOpenSections] = useState<string[]>([])
   const { play } = useSoundEffectContext()
+  const { isGeneratingWorkflow } = useGeneration()
 
   const handleClick = useCallback(() => {
     play("./sounds/click.mp3", { volume: 0.5 })
@@ -181,7 +184,7 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
               )}
             >
               <div className="text-primary/70 group-hover:text-primary">
-                <Sparkles className="h-5 w-5" />
+                {isGeneratingWorkflow ? <LoadingAnimationInline /> : <Sparkles className="h-5 w-5" />}
               </div>
             </div>
           </div>
@@ -260,8 +263,8 @@ export const WorkflowSidebar = memo(function WorkflowSidebar({
                   disabled={!isAuthenticated}
                   title={!isAuthenticated ? "Authentication required to generate workflows" : undefined}
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {isAuthenticated ? "Generate with AI" : "Sign in to generate"}
+                  {isGeneratingWorkflow ? <LoadingAnimationInline className="mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {isAuthenticated ? (isGeneratingWorkflow ? "Generating" : "Generate with AI") : "Sign in to generate"}
                 </Button>
               )}
             </div>

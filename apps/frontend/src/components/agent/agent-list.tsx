@@ -4,7 +4,9 @@ import { AgentListItem } from "@/components/agent/agent-list-item"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { type AgentExecution, isAgentRunning } from "@/hooks/use-agent"
+import { useGeneration } from "@/hooks/use-generation"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
@@ -47,6 +49,7 @@ export const AgentList = memo(function AgentList({
   const [searchInput, setSearchInput] = useState<string>("")
   const [openSections, setOpenSections] = useState<string[]>([])
   const { play } = useSoundEffectContext()
+  const { isGeneratingAgent } = useGeneration()
 
   const handleClick = useCallback(() => {
     play("./sounds/click.mp3", { volume: 0.5 })
@@ -167,7 +170,7 @@ export const AgentList = memo(function AgentList({
               )}
             >
               <div className="text-primary/70 group-hover:text-primary">
-                <Sparkles className="h-5 w-5" />
+                {isGeneratingAgent ? <LoadingAnimationInline /> : <Sparkles className="h-5 w-5" />}
               </div>
             </div>
           </div>
@@ -246,8 +249,8 @@ export const AgentList = memo(function AgentList({
                   disabled={!isAuthenticated}
                   title={!isAuthenticated ? "Authentication required to generate agents" : undefined}
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {isAuthenticated ? "Generate with AI" : "Sign in to generate"}
+                  {isGeneratingAgent ? <LoadingAnimationInline className="mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {isAuthenticated ? (isGeneratingAgent ? "Generating" : "Generate with AI") : "Sign in to generate"}
                 </Button>
               )}
             </div>

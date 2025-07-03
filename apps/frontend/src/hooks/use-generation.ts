@@ -4,9 +4,11 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useAuthToken } from "@convex-dev/auth/react"
+import { api } from "@dojo/db/convex/_generated/api"
+import { useQuery } from "convex/react"
 import { env } from "@dojo/env/frontend"
 import { useRouter } from "next/navigation"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
 interface GenerateAgentParams {
@@ -27,8 +29,18 @@ export function useGeneration() {
   const { currentSession } = useUser()
   const { play } = useSoundEffectContext()
 
-  const [isGeneratingAgent, setIsGeneratingAgent] = useState(false)
-  const [isGeneratingWorkflow, setIsGeneratingWorkflow] = useState(false)
+  // Subscribe to active generation executions
+  const activeAgentGeneration = useQuery(api.agentGenerationExecutions.getActiveExecution, authToken ? {} : "skip")
+  const activeWorkflowGeneration = useQuery(api.workflowGenerationExecutions.getActiveExecution, authToken ? {} : "skip")
+
+  // Derive loading states from Convex data
+  const isGeneratingAgent = useMemo(() => {
+    return activeAgentGeneration?.status === "running"
+  }, [activeAgentGeneration])
+
+  const isGeneratingWorkflow = useMemo(() => {
+    return activeWorkflowGeneration?.status === "running"
+  }, [activeWorkflowGeneration])
 
   const generateAgent = useCallback(
     async ({ name, prompt, modelId }: GenerateAgentParams) => {
@@ -55,8 +67,6 @@ export function useGeneration() {
         play("./sounds/error.mp3", { volume: 0.5 })
         return { success: false }
       }
-
-      setIsGeneratingAgent(true)
 
       try {
         const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/generate/agent`, {
@@ -106,8 +116,6 @@ export function useGeneration() {
           style: errorToastStyle,
         })
         return { success: false, error: errorMessage }
-      } finally {
-        setIsGeneratingAgent(false)
       }
     },
     [authToken, currentSession, play, router],
@@ -138,8 +146,6 @@ export function useGeneration() {
         play("./sounds/error.mp3", { volume: 0.5 })
         return { success: false }
       }
-
-      setIsGeneratingWorkflow(true)
 
       try {
         const response = await fetch(`${env.NEXT_PUBLIC_BACKEND_URL}/api/generate/workflow`, {
@@ -189,8 +195,6 @@ export function useGeneration() {
           style: errorToastStyle,
         })
         return { success: false, error: errorMessage }
-      } finally {
-        setIsGeneratingWorkflow(false)
       }
     },
     [authToken, currentSession, play, router],
@@ -201,5 +205,8 @@ export function useGeneration() {
     generateWorkflow,
     isGeneratingAgent,
     isGeneratingWorkflow,
+    // Additional data for UI
+    activeAgentGeneration,
+    activeWorkflowGeneration,
   }
 }

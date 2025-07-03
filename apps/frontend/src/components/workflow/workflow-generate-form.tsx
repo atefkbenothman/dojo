@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useGeneration } from "@/hooks/use-generation"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Sparkles } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -141,7 +144,10 @@ export function WorkflowGenerateForm({
 }: WorkflowGenerateFormProps) {
   const { play } = useSoundEffectContext()
   const { models } = useAIModels()
-  const { generateWorkflow, isGeneratingWorkflow } = useGeneration()
+  const { generateWorkflow, isGeneratingWorkflow, activeWorkflowGeneration } = useGeneration()
+
+  // Get generation status for UI
+  const generationStatus = activeWorkflowGeneration?.status
 
   // Get default model for new workflows
   const defaultModel = useMemo(() => {
@@ -163,7 +169,7 @@ export function WorkflowGenerateForm({
     async (data: WorkflowGenerateFormValues) => {
       try {
         play("./sounds/click.mp3", { volume: 0.5 })
-        
+
         const result = await generateWorkflow({
           name: data.name,
           prompt: data.prompt,
@@ -205,7 +211,10 @@ export function WorkflowGenerateForm({
         className="w-full sm:w-auto hover:cursor-pointer"
         variant={variant === "dialog" ? "secondary" : "default"}
       >
-        {isGeneratingWorkflow ? "Generating..." : "Generate"}
+        <div className="flex items-center gap-2">
+          {isGeneratingWorkflow ? <LoadingAnimationInline /> : <Sparkles className="h-3 w-3" />}
+          {isGeneratingWorkflow ? "Generating" : "Generate"}
+        </div>
       </Button>
     </div>
   )
@@ -213,11 +222,17 @@ export function WorkflowGenerateForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleGenerate)}>
-        <Card className="p-0 border-[1.5px] gap-0">
+        <Card
+          className={cn("p-0 border-[1.5px] gap-0", isGeneratingWorkflow && "border-yellow-200 dark:border-yellow-800")}
+        >
           <CardHeader className="p-4 gap-0 border-b-[1.5px]">
-            <CardTitle>Generate Workflow with AI</CardTitle>
+            <CardTitle className="flex items-center gap-2 leading-normal">Generate Workflow with AI</CardTitle>
           </CardHeader>
-          <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
+          <CardContent
+            className={cn("p-4 bg-background space-y-8", isGeneratingWorkflow && "opacity-60 pointer-events-none")}
+          >
+            {formContent}
+          </CardContent>
           <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
         </Card>
       </form>

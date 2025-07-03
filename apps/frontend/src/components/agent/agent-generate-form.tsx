@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useGeneration } from "@/hooks/use-generation"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Sparkles } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -135,9 +137,11 @@ function ModelSection({ form }: ModelSectionProps) {
 }
 
 export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false, onClose }: AgentGenerateFormProps) {
-  const { play } = useSoundEffectContext()
   const { models } = useAIModels()
-  const { generateAgent, isGeneratingAgent } = useGeneration()
+  const { generateAgent, isGeneratingAgent, activeAgentGeneration } = useGeneration()
+
+  // Get generation status for UI
+  const generationStatus = activeAgentGeneration?.status
 
   // Get default model for new agents
   const defaultModel = useMemo(() => {
@@ -158,8 +162,6 @@ export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false,
   const handleGenerate = useCallback(
     async (data: AgentGenerateFormValues) => {
       try {
-        play("./sounds/click.mp3", { volume: 0.5 })
-        
         const result = await generateAgent({
           name: data.name,
           prompt: data.prompt,
@@ -174,7 +176,7 @@ export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false,
         console.error("Failed to generate agent:", error)
       }
     },
-    [play, generateAgent, form, onClose],
+    [generateAgent, form, onClose],
   )
 
   const handleCancel = useCallback(() => {
@@ -199,9 +201,12 @@ export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false,
         type="submit"
         disabled={!form.formState.isDirty || form.formState.isSubmitting || !isAuthenticated || isGeneratingAgent}
         className="w-full sm:w-auto hover:cursor-pointer"
-        variant={variant === "dialog" ? "secondary" : "default"}
+        variant="default"
       >
-        {isGeneratingAgent ? "Generating..." : "Generate"}
+        <div className="flex items-center gap-2">
+          {isGeneratingAgent ? <LoadingAnimationInline /> : <Sparkles className="h-3 w-3" />}
+          {isGeneratingAgent ? "Generating" : "Generate"}
+        </div>
       </Button>
     </div>
   )
@@ -209,11 +214,17 @@ export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false,
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleGenerate)}>
-        <Card className="p-0 border-[1.5px] gap-0">
+        <Card
+          className={cn("p-0 border-[1.5px] gap-0", isGeneratingAgent && "border-yellow-200 dark:border-yellow-800")}
+        >
           <CardHeader className="p-4 gap-0 border-b-[1.5px]">
-            <CardTitle>Generate Agent with AI</CardTitle>
+            <CardTitle className="flex items-center gap-2 leading-normal">Generate Agent with AI</CardTitle>
           </CardHeader>
-          <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
+          <CardContent
+            className={cn("p-4 bg-background space-y-8", isGeneratingAgent && "opacity-60 pointer-events-none")}
+          >
+            {formContent}
+          </CardContent>
           <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
         </Card>
       </form>

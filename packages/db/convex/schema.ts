@@ -239,8 +239,7 @@ export const agentExecutionsFields = {
 // Agent generation execution tracking
 export const agentGenerationExecutionsFields = {
   // Core fields
-  sessionId: v.id("sessions"),
-  userId: v.optional(v.id("users")),
+  userId: v.id("users"),
   prompt: v.string(),
   modelId: v.string(),
 
@@ -263,8 +262,7 @@ export const agentGenerationExecutionsFields = {
 // Workflow generation execution tracking
 export const workflowGenerationExecutionsFields = {
   // Core fields
-  sessionId: v.id("sessions"),
-  userId: v.optional(v.id("users")),
+  userId: v.id("users"),
   prompt: v.string(),
   modelId: v.string(),
 
@@ -321,13 +319,11 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_session_status", ["sessionId", "status"]),
   agentGenerationExecutions: defineTable(agentGenerationExecutionsFields)
-    .index("by_session", ["sessionId"])
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
-    .index("by_session_status", ["sessionId", "status"]),
+    .index("by_user_status", ["userId", "status"]),
   workflowGenerationExecutions: defineTable(workflowGenerationExecutionsFields)
-    .index("by_session", ["sessionId"])
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
-    .index("by_session_status", ["sessionId", "status"]),
+    .index("by_user_status", ["userId", "status"]),
 })
