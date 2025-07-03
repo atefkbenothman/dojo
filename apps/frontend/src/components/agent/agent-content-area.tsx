@@ -1,4 +1,4 @@
-import { AgentForm } from "@/components/agent/agent-form"
+import { AgentForm } from "@/components/agent/form/agent-form"
 import { Card } from "@/components/ui/card"
 import { type AgentStatus } from "@/hooks/use-agent"
 import { cn } from "@/lib/utils"

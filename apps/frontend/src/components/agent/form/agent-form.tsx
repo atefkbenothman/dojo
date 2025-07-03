@@ -1,4 +1,12 @@
 import { AgentDeleteDialog } from "@/components/agent/agent-delete-dialog"
+import { agentFormSchema, type AgentFormValues } from "@/components/agent/form/agent-form-schema"
+import {
+  filterMcpServersByVisibility,
+  getDefaultAgentFormValues,
+  getDefaultModel,
+  getModelIdFromConvex,
+  prepareAgentData,
+} from "@/components/agent/form/agent-form-utils"
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +20,7 @@ import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
-import type { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
+import type { Doc } from "@dojo/db/convex/_generated/dataModel"
 import type { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Wrench, AlertCircle, Copy } from "lucide-react"
@@ -20,18 +28,6 @@ import { useMemo, useEffect, useCallback, useState } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
-import { z } from "zod"
-
-// Form schema for agent editing
-const agentFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  systemPrompt: z.string().min(1, "System prompt is required"),
-  outputType: z.enum(["text", "object"]),
-  mcpServers: z.array(z.string()).optional(),
-  aiModelId: z.string().min(1, "Model is required"),
-})
-
-type AgentFormValues = z.infer<typeof agentFormSchema>
 
 interface AgentFormProps {
   agent?: Agent
@@ -143,10 +139,10 @@ function ModelSection({ form, canEdit }: ModelSectionProps) {
   const { models } = useAIModels()
 
   // Convert between Convex ID and modelId
-  const selectedModelId = useMemo(() => {
-    const model = models.find((m) => m._id === form.watch("aiModelId"))
-    return model?.modelId
-  }, [models, form.watch("aiModelId")])
+  const selectedModelId = useMemo(
+    () => getModelIdFromConvex(models, form.watch("aiModelId")),
+    [models, form.watch("aiModelId")],
+  )
 
   const handleModelChange = useCallback(
     (modelId: string) => {
@@ -318,45 +314,24 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
   const canEdit = Boolean(isAuthenticated && !isPublicAgent)
 
   // Filter MCP servers based on agent visibility
-  // For private agents (user-created), only show private MCP servers
-  // For public agents, show public MCP servers
-  const availableMcpServers = useMemo(() => {
-    if (mode === "add" || !agent?.isPublic) {
-      // Creating new agent or editing private agent - show only private MCP servers
-      return mcpServers.filter(server => !server.isPublic)
-    }
-    // For public agents, show only public MCP servers
-    return mcpServers.filter(server => server.isPublic)
-  }, [mcpServers, mode, agent?.isPublic])
+  const availableMcpServers = useMemo(
+    () => filterMcpServersByVisibility(mcpServers, mode, agent?.isPublic),
+    [mcpServers, mode, agent?.isPublic],
+  )
 
   // Get default model for new agents
-  const defaultModel = useMemo(() => {
-    const freeModel = models.find((m) => !m.requiresApiKey)
-    return freeModel?._id || models[0]?._id || ""
-  }, [models])
+  const defaultModel = useMemo(() => getDefaultModel(models), [models])
 
   // Form setup
   const form = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
-    defaultValues: {
-      name: agent?.name || "",
-      systemPrompt: agent?.systemPrompt || "",
-      outputType: (agent?.outputType as "text" | "object") || "text",
-      mcpServers: agent?.mcpServers || [],
-      aiModelId: agent?.aiModelId || defaultModel,
-    },
+    defaultValues: getDefaultAgentFormValues(agent, defaultModel),
   })
 
   // Reset form when agent changes
   useEffect(() => {
     if (agent) {
-      form.reset({
-        name: agent.name,
-        systemPrompt: agent.systemPrompt,
-        outputType: agent.outputType as "text" | "object",
-        mcpServers: agent.mcpServers || [],
-        aiModelId: agent.aiModelId,
-      })
+      form.reset(getDefaultAgentFormValues(agent))
     }
   }, [agent, form])
 
@@ -372,15 +347,10 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
 
   const handleSave = async (data: AgentFormValues) => {
     try {
+      const agentData = prepareAgentData(data, false)
+
       if (mode === "add") {
-        await create({
-          name: data.name,
-          systemPrompt: data.systemPrompt,
-          outputType: data.outputType,
-          mcpServers: (data.mcpServers || []) as Id<"mcp">[],
-          aiModelId: data.aiModelId as Id<"models">,
-          isPublic: false,
-        })
+        await create(agentData)
         toast.success(`${data.name} agent added`, {
           icon: null,
           duration: 3000,
@@ -390,12 +360,7 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
       } else if (agent) {
         await edit({
           id: agent._id,
-          name: data.name,
-          systemPrompt: data.systemPrompt,
-          outputType: data.outputType,
-          mcpServers: (data.mcpServers || []) as Id<"mcp">[],
-          aiModelId: data.aiModelId as Id<"models">,
-          isPublic: false,
+          ...agentData,
         })
         toast.success("Agent saved", {
           icon: null,

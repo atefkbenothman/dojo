@@ -1,7 +1,7 @@
 "use client"
 
-import { AgentForm } from "@/components/agent/agent-form"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AgentForm } from "@/components/agent/form/agent-form"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import type { Agent } from "@dojo/db/convex/types"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
