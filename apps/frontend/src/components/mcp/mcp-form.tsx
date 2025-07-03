@@ -464,20 +464,24 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
     }
 
     if (server) {
+      // Always populate the values for the server's actual transport type
       if (server.transportType === "stdio" && defaultValues.transportType === "stdio") {
         initialValues.stdio = {
           command: defaultValues.command || "npx",
           argsString: defaultValues.argsString || "",
           envPairs: defaultValues.envPairs || [],
         }
-      } else if (
-        (server.transportType === "http" || server.transportType === "sse") &&
-        (defaultValues.transportType === "http" || defaultValues.transportType === "sse")
-      ) {
-        const httpOrSseDefaults = defaultValues as { url: string; headers: Array<{ key: string; value: string }> }
-        initialValues[server.transportType] = {
-          url: httpOrSseDefaults.url || "",
-          headers: httpOrSseDefaults.headers || [],
+      } else if (server.transportType === "http" && defaultValues.transportType === "http") {
+        const httpDefaults = defaultValues as { url: string; headers: Array<{ key: string; value: string }> }
+        initialValues.http = {
+          url: httpDefaults.url || "",
+          headers: httpDefaults.headers || [],
+        }
+      } else if (server.transportType === "sse" && defaultValues.transportType === "sse") {
+        const sseDefaults = defaultValues as { url: string; headers: Array<{ key: string; value: string }> }
+        initialValues.sse = {
+          url: sseDefaults.url || "",
+          headers: sseDefaults.headers || [],
         }
       }
     }
@@ -491,6 +495,12 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
     http: { url: string; headers: Array<{ key: string; value: string }> }
     sse: { url: string; headers: Array<{ key: string; value: string }> }
   }>(getInitialTransportTypeValues())
+
+  // Store the original server values to preserve them
+  const [originalServerValues] = useState(() => {
+    if (!server) return null
+    return getDefaultFormValues(server)
+  })
 
   // Reset form when server changes
   useEffect(() => {
@@ -569,27 +579,37 @@ export function MCPForm({ server, mode, variant = "page", isAuthenticated = fals
       const currentName = form.getValues("name")
       const currentSummary = form.getValues("summary")
 
-      // Load saved values for the new transport type
-      if (newTransportType === "stdio") {
+      // When switching back to the original transport type, restore original values
+      if (server && originalServerValues && newTransportType === server.transportType) {
+        // Restore original server values
         form.reset({
-          transportType: "stdio",
-          name: currentName,
-          summary: currentSummary,
-          command: transportTypeValues.stdio.command,
-          argsString: transportTypeValues.stdio.argsString,
-          envPairs: transportTypeValues.stdio.envPairs,
+          ...originalServerValues,
+          name: currentName, // Keep any edits to name
+          summary: currentSummary, // Keep any edits to summary
         })
       } else {
-        form.reset({
-          transportType: newTransportType,
-          name: currentName,
-          summary: currentSummary,
-          url: transportTypeValues[newTransportType].url,
-          headers: transportTypeValues[newTransportType].headers,
-        })
+        // Load saved values for the new transport type
+        if (newTransportType === "stdio") {
+          form.reset({
+            transportType: "stdio",
+            name: currentName,
+            summary: currentSummary,
+            command: transportTypeValues.stdio.command,
+            argsString: transportTypeValues.stdio.argsString,
+            envPairs: transportTypeValues.stdio.envPairs,
+          })
+        } else {
+          form.reset({
+            transportType: newTransportType,
+            name: currentName,
+            summary: currentSummary,
+            url: transportTypeValues[newTransportType].url,
+            headers: transportTypeValues[newTransportType].headers,
+          })
+        }
       }
     },
-    [canEdit, form, currentTransportType, transportTypeValues],
+    [canEdit, form, currentTransportType, transportTypeValues, server, originalServerValues],
   )
 
   const handleSave = async (data: MCPFormValues) => {

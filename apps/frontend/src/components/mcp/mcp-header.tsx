@@ -4,7 +4,7 @@ import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { isMCPConnected, isMCPConnecting, canConnectMCP, MCPConnectionState } from "@/hooks/use-mcp"
 import { cn } from "@/lib/utils"
 import type { MCPServer } from "@dojo/db/convex/types"
-import { Pencil, Plug, Unplug, Copy } from "lucide-react"
+import { Plug, Unplug, Copy } from "lucide-react"
 import { memo } from "react"
 
 interface MCPHeaderProps {
@@ -21,7 +21,6 @@ export const MCPHeader = memo(function MCPHeader({
   server,
   connectionStatus,
   isAuthenticated,
-  onEdit,
   onConnect,
   onDisconnect,
   onClone,
@@ -37,12 +36,6 @@ export const MCPHeader = memo(function MCPHeader({
         <p className="text-sm font-semibold truncate">{server.name}</p>
         {/* Connection status dot */}
         {isConnecting ? <LoadingAnimationInline /> : <MCPStatusIndicator status={connectionStatus} />}
-        {/* Edit */}
-        {!server.isPublic && (
-          <Button variant="ghost" size="sm" onClick={onEdit} className="hover:cursor-pointer">
-            <Pencil className="h-3 w-3 text-muted-foreground" />
-          </Button>
-        )}
       </div>
 
       {/* Right section - Connect/Disconnect or Clone button */}
@@ -65,7 +58,7 @@ export const MCPHeader = memo(function MCPHeader({
                 : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800 disabled:hover:bg-green-700",
             )}
             onClick={isConnected ? onDisconnect : onConnect}
-            disabled={isConnected ? false : (isConnecting || !canConnect)}
+            disabled={isConnected ? false : isConnecting || !canConnect}
             title={
               !canConnect && !isAuthenticated && server.requiresUserKey
                 ? "Login required to use servers with API keys"
