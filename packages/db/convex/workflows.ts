@@ -10,6 +10,24 @@ async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
   return identity.subject.split("|")[0] as Id<"users">
 }
 
+// Helper to validate agent usage based on workflow visibility
+async function validateAgentForWorkflow(ctx: QueryCtx, workflowIsPublic: boolean | undefined, agentId: Id<"agents">) {
+  const agent = await ctx.db.get(agentId)
+  if (!agent) throw new Error("Agent not found")
+  
+  if (workflowIsPublic) {
+    // Public workflows can only use public agents
+    if (!agent.isPublic) {
+      throw new Error("Public workflows cannot use private agents. Public workflows must only use public agents.")
+    }
+  } else {
+    // Private workflows cannot use public agents
+    if (agent.isPublic) {
+      throw new Error("Private workflows cannot use public agents. Public agents are only available for public workflows.")
+    }
+  }
+}
+
 // List: Return all public workflows and, if authenticated, also user-specific workflows
 export const list = query({
   args: {},
@@ -125,12 +143,106 @@ export const clone = mutation({
       ...workflowData
     } = originalWorkflow
 
-    return await ctx.db.insert("workflows", {
+    const newWorkflowId = await ctx.db.insert("workflows", {
       ...workflowData,
       name: `${originalWorkflow.name} (Copy)`,
       userId,
       isPublic: false, // Always make clones private
     })
+
+    // Clone all workflow nodes, cloning public agents as needed
+    const originalNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
+      .collect()
+
+    // Maps to track cloned resources to avoid duplicates
+    const clonedAgentMap = new Map<Id<"agents">, Id<"agents">>()
+    const clonedMcpMap = new Map<Id<"mcp">, Id<"mcp">>()
+
+    for (const node of originalNodes) {
+      const { _id, _creationTime, workflowId, agentId, ...nodeData } = node
+      
+      let newAgentId = agentId
+      if (agentId) {
+        // Check if we've already cloned this agent
+        if (clonedAgentMap.has(agentId)) {
+          newAgentId = clonedAgentMap.get(agentId)!
+        } else {
+          const agent = await ctx.db.get(agentId)
+          if (agent) {
+            if (agent.isPublic) {
+              // Clone the public agent (which will also clone its MCP servers)
+              // We need to manually clone the agent here since we can't call mutations from mutations
+              const { _id: _agentId, _creationTime: _agentCreationTime, userId: _agentUserId, isPublic: _agentIsPublic, ...agentData } = agent
+              
+              // Clone public MCP servers for this agent
+              let clonedMcpServers = agentData.mcpServers
+              if (agentData.mcpServers && agentData.mcpServers.length > 0) {
+                const newMcpServerIds = []
+                for (const mcpServerId of agentData.mcpServers) {
+                  const mcpServer = await ctx.db.get(mcpServerId)
+                  if (!mcpServer) continue
+
+                  if (mcpServer.isPublic) {
+                    // Check if we've already cloned this MCP server
+                    if (clonedMcpMap.has(mcpServerId)) {
+                      newMcpServerIds.push(clonedMcpMap.get(mcpServerId)!)
+                    } else {
+                      // Clone the public MCP server
+                      const { _id: _mcpId, _creationTime: _mcpCreationTime, userId: _mcpUserId, isPublic: _mcpIsPublic, isTemplate: _mcpIsTemplate, ...mcpData } = mcpServer
+                      const clonedMcpId = await ctx.db.insert("mcp", {
+                        ...mcpData,
+                        name: `${mcpServer.name} (Copy)`,
+                        userId,
+                        isPublic: false,
+                        isTemplate: false,
+                      })
+                      clonedMcpMap.set(mcpServerId, clonedMcpId)
+                      newMcpServerIds.push(clonedMcpId)
+                    }
+                  } else if (mcpServer.userId === userId) {
+                    // User already owns this MCP server
+                    newMcpServerIds.push(mcpServerId)
+                  }
+                }
+                clonedMcpServers = newMcpServerIds
+              }
+
+              const clonedAgentId = await ctx.db.insert("agents", {
+                ...agentData,
+                mcpServers: clonedMcpServers,
+                name: `${agent.name} (Copy)`,
+                userId,
+                isPublic: false,
+              })
+              clonedAgentMap.set(agentId, clonedAgentId)
+              newAgentId = clonedAgentId
+            } else if (agent.userId === userId) {
+              // User already owns this agent, just reference it
+              newAgentId = agentId
+            } else {
+              // User doesn't have access to this private agent, skip the node
+              continue
+            }
+          } else {
+            // Agent not found, skip the node
+            continue
+          }
+        }
+      }
+
+      // Only insert the node if we have a valid agent ID
+      if (newAgentId) {
+        await ctx.db.insert("workflowNodes", {
+          ...nodeData,
+          workflowId: newWorkflowId,
+          agentId: newAgentId,
+        })
+      }
+    }
+
+    return newWorkflowId
   },
 })
 
@@ -152,6 +264,9 @@ export const addNode = mutation({
     if (!workflow) throw new Error("Workflow not found")
     if (workflow.isPublic) throw new Error("Cannot edit public workflows")
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
+
+    // Validate agent usage for private workflows
+    await validateAgentForWorkflow(ctx, workflow.isPublic, args.agentId)
 
     // Validate parentNodeId if provided
     if (args.parentNodeId) {
@@ -248,6 +363,11 @@ export const updateNode = mutation({
     if (!workflow) throw new Error("Workflow not found")
     if (workflow.isPublic) throw new Error("Cannot edit public workflows")
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
+
+    // Validate agent usage for private workflows if agentId is being updated
+    if (args.agentId !== undefined) {
+      await validateAgentForWorkflow(ctx, workflow.isPublic, args.agentId)
+    }
 
     // Find the node to update
     const node = await ctx.db

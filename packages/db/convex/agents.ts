@@ -21,6 +21,27 @@ async function validatePublicAgentModel(ctx: QueryCtx, isPublic: boolean | undef
   }
 }
 
+// Helper to validate MCP server usage based on agent visibility
+async function validateMCPServersForAgent(ctx: QueryCtx, isPublic: boolean | undefined, mcpServerIds: Id<"mcp">[]) {
+  // Validate MCP server usage based on agent visibility
+  for (const mcpServerId of mcpServerIds) {
+    const mcpServer = await ctx.db.get(mcpServerId)
+    if (!mcpServer) throw new Error("MCP server not found")
+    
+    if (isPublic) {
+      // Public agents can only use public MCP servers
+      if (!mcpServer.isPublic) {
+        throw new Error("Public agents cannot use private MCP servers. Public agents must only use public MCP servers.")
+      }
+    } else {
+      // Private agents cannot use public MCP servers
+      if (mcpServer.isPublic) {
+        throw new Error("Private agents cannot use public MCP servers. Public MCP servers are only available for public agents.")
+      }
+    }
+  }
+}
+
 // List: Return all public agents and, if authenticated, also user-specific agents
 export const list = query({
   args: {},
@@ -83,6 +104,11 @@ export const edit = mutation({
     // Validate model choice for public agents
     await validatePublicAgentModel(ctx, agent.isPublic, rest.aiModelId)
 
+    // Validate MCP server usage for private agents
+    if (rest.mcpServers && rest.mcpServers.length > 0) {
+      await validateMCPServersForAgent(ctx, agent.isPublic, rest.mcpServers)
+    }
+
     return await ctx.db.replace(id, { ...agent, ...updatedData })
   },
 })
@@ -96,6 +122,11 @@ export const create = mutation({
 
     // Force isPublic to false for all user-created agents
     const agentData = { ...args, isPublic: false, userId }
+
+    // Validate MCP server usage for private agents
+    if (args.mcpServers && args.mcpServers.length > 0) {
+      await validateMCPServersForAgent(ctx, false, args.mcpServers)
+    }
 
     return await ctx.db.insert("agents", agentData)
   },
@@ -136,8 +167,37 @@ export const clone = mutation({
     // Create a clone with isPublic: false and new userId
     const { _id, _creationTime, userId: _originalUserId, isPublic: _originalIsPublic, ...agentData } = originalAgent
 
+    // Clone public MCP servers to private copies
+    let clonedMcpServers = agentData.mcpServers
+    if (agentData.mcpServers && agentData.mcpServers.length > 0) {
+      const newMcpServerIds = []
+      for (const mcpServerId of agentData.mcpServers) {
+        const mcpServer = await ctx.db.get(mcpServerId)
+        if (!mcpServer) continue
+
+        if (mcpServer.isPublic) {
+          // Clone the public MCP server to create a private copy
+          const { _id, _creationTime, userId: _mcpUserId, isPublic: _mcpIsPublic, isTemplate: _mcpIsTemplate, ...mcpData } = mcpServer
+          const clonedMcpId = await ctx.db.insert("mcp", {
+            ...mcpData,
+            name: `${mcpServer.name} (Copy)`,
+            userId,
+            isPublic: false,
+            isTemplate: false,
+          })
+          newMcpServerIds.push(clonedMcpId)
+        } else if (mcpServer.userId === userId) {
+          // User already owns this MCP server, just reference it
+          newMcpServerIds.push(mcpServerId)
+        }
+        // Skip MCP servers the user doesn't have access to
+      }
+      clonedMcpServers = newMcpServerIds
+    }
+
     return await ctx.db.insert("agents", {
       ...agentData,
+      mcpServers: clonedMcpServers,
       name: `${originalAgent.name} (Copy)`,
       userId,
       isPublic: false, // Always make clones private
