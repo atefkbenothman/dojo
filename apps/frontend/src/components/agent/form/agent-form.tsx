@@ -9,8 +9,10 @@ import {
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useAgent, type AgentStatus } from "@/hooks/use-agent"
@@ -22,7 +24,6 @@ import { cn } from "@/lib/utils"
 import type { Doc } from "@dojo/db/convex/_generated/dataModel"
 import type { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Wrench, AlertCircle, Copy, CheckCircle2 } from "lucide-react"
 import { useMemo, useEffect, useCallback } from "react"
 import { useForm } from "react-hook-form"
@@ -286,22 +287,31 @@ function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServers
                         <Card
                           key={server._id}
                           className={cn(
-                            "p-2 cursor-pointer transition-all border-2 h-[60px] sm:h-[70px] flex flex-col justify-between",
+                            "p-2 transition-all border-2 h-[60px] sm:h-[70px] flex flex-row items-center gap-3",
                             isChecked
-                              ? "bg-primary/5 border-primary/30 hover:border-primary/50"
+                              ? "bg-primary/5 border-primary/30"
                               : "hover:bg-muted/50 hover:border-muted-foreground/30",
-                            !canEdit && "cursor-not-allowed opacity-60",
+                            !canEdit && "opacity-60",
                           )}
-                          onClick={() => {
-                            if (!canEdit) return
-                            if (isChecked) {
-                              field.onChange((field.value || []).filter((s: string) => s !== server._id))
-                            } else {
-                              field.onChange([...(field.value || []), server._id])
-                            }
-                          }}
                         >
-                          <div className="flex flex-col gap-1 overflow-hidden">
+                          {/* Checkbox on left side, vertically centered */}
+                          <div className="flex items-center px-2">
+                            <Checkbox
+                              checked={isChecked}
+                              disabled={!canEdit}
+                              onCheckedChange={(checked) => {
+                                if (!canEdit) return
+                                if (checked) {
+                                  field.onChange([...(field.value || []), server._id])
+                                } else {
+                                  field.onChange((field.value || []).filter((s: string) => s !== server._id))
+                                }
+                              }}
+                              className="rounded-none hover:cursor-pointer"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1 overflow-hidden flex-1 justify-center">
                             {/* Server name */}
                             <div className="font-medium text-xs sm:text-sm text-foreground line-clamp-1">
                               {server.name}
