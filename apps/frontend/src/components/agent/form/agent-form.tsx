@@ -22,7 +22,8 @@ import { cn } from "@/lib/utils"
 import type { Doc } from "@dojo/db/convex/_generated/dataModel"
 import type { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Wrench, AlertCircle, Copy, CheckCircle2, Loader2 } from "lucide-react"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
+import { Wrench, AlertCircle, Copy, CheckCircle2 } from "lucide-react"
 import { useMemo, useEffect, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
@@ -362,14 +363,14 @@ export function AgentForm({
     switch (execution.status) {
       case "preparing":
         return {
-          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          icon: <LoadingAnimationInline className="h-4 w-4" />,
           text: "Preparing...",
           className:
             "bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/50 text-yellow-700 dark:text-yellow-400",
         }
       case "running":
         return {
-          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          icon: <LoadingAnimationInline className="h-4 w-4" />,
           text: "Running...",
           className:
             "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400",

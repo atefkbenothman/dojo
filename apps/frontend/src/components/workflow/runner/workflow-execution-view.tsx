@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Agent, WorkflowExecution, Workflow } from "@dojo/db/convex/types"
-import { CheckCircle, XCircle, Circle, Loader2, Copy, AlertTriangle, AlertCircle } from "lucide-react"
+import { CheckCircle, XCircle, Circle, Copy, AlertTriangle, AlertCircle } from "lucide-react"
 import { memo, useCallback, useRef } from "react"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 
 interface WorkflowExecutionViewProps {
   workflow: Workflow
@@ -94,9 +95,9 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
       case "cancelled":
         return <XCircle className={cn(iconClass, "text-gray-500")} />
       case "running":
-        return <Loader2 className={cn(iconClass, "text-blue-500 animate-spin")} />
+        return <LoadingAnimationInline className={cn(iconClass, "text-blue-500")} />
       case "connecting":
-        return <Loader2 className={cn(iconClass, "text-orange-500 animate-spin")} />
+        return <LoadingAnimationInline className={cn(iconClass, "text-orange-500")} />
       case "pending":
         return <Circle className={cn(iconClass, "text-gray-400")} />
     }
@@ -355,7 +356,7 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                                             ) : (
                                               <Card className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/50">
                                                 <div className="flex items-center justify-center gap-2">
-                                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600 dark:text-blue-400" />
+                                                  <LoadingAnimationInline className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                                                   <span className="text-sm text-blue-700 dark:text-blue-300">
                                                     Executing node...
                                                   </span>

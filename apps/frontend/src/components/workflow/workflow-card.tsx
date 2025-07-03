@@ -13,8 +13,9 @@ import { Progress } from "@/components/ui/progress"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Workflow, Agent, WorkflowExecution } from "@dojo/db/convex/types"
-import { Play, Pencil, Trash, CheckCircle, XCircle, Clock, Loader2, Square, Settings, Copy } from "lucide-react"
+import { Play, Pencil, Trash, CheckCircle, XCircle, Clock, Square, Settings, Copy } from "lucide-react"
 import { useCallback, memo, useState } from "react"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 
 // Helper functions
 const getStatusIcon = (execution?: WorkflowExecution) => {
@@ -23,7 +24,7 @@ const getStatusIcon = (execution?: WorkflowExecution) => {
     case "preparing":
       return <Clock className="h-3 w-3 text-yellow-500" />
     case "running":
-      return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+      return <LoadingAnimationInline className="h-3 w-3 text-blue-500" />
     case "completed":
       return <CheckCircle className="h-3 w-3 text-green-500" />
     case "failed":

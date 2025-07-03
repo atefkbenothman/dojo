@@ -7,8 +7,9 @@ import { NodeExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
 import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-transform"
 import { Agent } from "@dojo/db/convex/types"
-import { Trash, CheckCircle, XCircle, Clock, Loader2, Plus, SquarePen } from "lucide-react"
+import { Trash, CheckCircle, XCircle, Clock, Plus, SquarePen } from "lucide-react"
 import { useState, memo, useCallback } from "react"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Handle, Position, NodeProps } from "reactflow"
 
 // Step Node Data - no more variant or instructions props
@@ -61,7 +62,7 @@ export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps
       case "connecting":
         return <Clock className="h-3 w-3 text-yellow-500" />
       case "running":
-        return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+        return <LoadingAnimationInline className="h-3 w-3 text-blue-500" />
       case "completed":
         return <CheckCircle className="h-3 w-3 text-green-500" />
       case "failed":
