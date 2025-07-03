@@ -65,7 +65,7 @@ export const mcpFormSchema = z.intersection(
         )
         .superRefine(validateKeyValuePairs("header")),
       // Make stdio fields optional when in http mode
-      command: z.string().optional(),
+      command: z.enum(ALLOWED_STDIO_COMMANDS).optional(),
       argsString: z.string().optional(),
       envPairs: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
     }),
@@ -81,7 +81,7 @@ export const mcpFormSchema = z.intersection(
         )
         .superRefine(validateKeyValuePairs("header")),
       // Make stdio fields optional when in sse mode
-      command: z.string().optional(),
+      command: z.enum(ALLOWED_STDIO_COMMANDS).optional(),
       argsString: z.string().optional(),
       envPairs: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
     }),

@@ -6,9 +6,10 @@ interface MCPContentAreaProps {
   server: MCPServer
   connectionStatus?: MCPConnectionState
   isAuthenticated?: boolean
+  onDeleteClick?: (server: MCPServer) => void
 }
 
-export function MCPContentArea({ server, connectionStatus, isAuthenticated = false }: MCPContentAreaProps) {
+export function MCPContentArea({ server, connectionStatus, isAuthenticated = false, onDeleteClick }: MCPContentAreaProps) {
   return (
     <div className="flex-1 relative flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-auto">
@@ -21,6 +22,7 @@ export function MCPContentArea({ server, connectionStatus, isAuthenticated = fal
                 variant="page"
                 isAuthenticated={isAuthenticated}
                 connectionStatus={connectionStatus}
+                onDeleteClick={onDeleteClick}
               />
             </div>
           </div>

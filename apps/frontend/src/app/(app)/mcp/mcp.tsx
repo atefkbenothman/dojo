@@ -7,22 +7,27 @@ import { MCPHeader } from "@/components/mcp/mcp-header"
 import { MCPList } from "@/components/mcp/mcp-list"
 import { Button } from "@/components/ui/button"
 import { useMCP, MCPConnectionState } from "@/hooks/use-mcp"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { successToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
+import { toast } from "sonner"
 
 export function Mcp() {
   const { isAuthenticated } = useConvexAuth()
-  const { mcpServers, activeConnections, getConnection, connect, disconnect, remove, clone } = useMCP()
+  const { mcpServers, activeConnections, getConnection, connect, disconnect, remove, clone, checkServerDependencies } = useMCP()
+  const { play } = useSoundEffectContext()
 
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
   const [editingServerId, setEditingServerId] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [serverToDelete, setServerToDelete] = useState<MCPServer | null>(null)
+  const [affectedAgents, setAffectedAgents] = useState<Array<{ id: string; name: string; isPublic?: boolean }> | undefined>()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Derive selected server from mcpServers array to ensure it's always up to date
@@ -59,20 +64,48 @@ export function Mcp() {
     setIsDialogOpen(true)
   }, [])
 
-  const handleDeleteServer = useCallback((server: MCPServer) => {
+  const handleDeleteServer = useCallback(async (server: MCPServer) => {
+    // Always check dependencies before showing dialog
+    const deps = await checkServerDependencies(server._id)
+    setAffectedAgents(deps?.agents || [])
     setServerToDelete(server)
-  }, [])
+  }, [checkServerDependencies])
 
-  const confirmDeleteServer = useCallback(async () => {
+  const confirmDeleteServer = useCallback(async (force?: boolean) => {
     if (serverToDelete) {
-      await remove(serverToDelete._id)
-      // If the deleted server was selected, clear the selection
-      if (selectedServerId === serverToDelete._id) {
-        setSelectedServerId(null)
+      try {
+        await remove(serverToDelete._id, force)
+        
+        // Show success toast
+        const actionText = force ? "Force deleted" : "Deleted"
+        toast.success(`${actionText} ${serverToDelete.name} server`, {
+          icon: null,
+          duration: 3000,
+          position: "bottom-center",
+          style: successToastStyle,
+        })
+        play("./sounds/delete.mp3", { volume: 0.5 })
+        
+        // If the deleted server was selected, clear the selection
+        if (selectedServerId === serverToDelete._id) {
+          setSelectedServerId(null)
+        }
+        setServerToDelete(null)
+        setAffectedAgents(undefined)
+      } catch (error) {
+        // If it's a dependency error and we haven't forced, the dialog should stay open
+        // The checkDependencies should have already populated affectedAgents
+        const errorMessage = error instanceof Error ? error.message : ""
+        if (!force && errorMessage.includes("Cannot delete MCP server")) {
+          // Dialog stays open, dependencies should already be shown
+          return
+        }
+        // For other errors, close dialog and let the error toast show
+        setServerToDelete(null)
+        setAffectedAgents(undefined)
       }
-      setServerToDelete(null)
     }
-  }, [remove, selectedServerId, serverToDelete])
+  }, [remove, selectedServerId, serverToDelete, play])
 
   const handleCreateServer = useCallback(() => {
     setEditingServerId(null)
@@ -171,6 +204,7 @@ export function Mcp() {
                 server={selectedServer}
                 connectionStatus={connectionStatuses.get(selectedServer._id)}
                 isAuthenticated={isAuthenticated}
+                onDeleteClick={handleDeleteServer}
               />
             </>
           ) : (
@@ -197,8 +231,14 @@ export function Mcp() {
       <MCPDeleteDialog
         server={serverToDelete}
         open={!!serverToDelete}
-        onOpenChange={(open) => !open && setServerToDelete(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setServerToDelete(null)
+            setAffectedAgents(undefined)
+          }
+        }}
         onConfirm={confirmDeleteServer}
+        affectedAgents={affectedAgents}
       />
     </>
   )

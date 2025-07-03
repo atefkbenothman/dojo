@@ -331,9 +331,9 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
   // Reset form when agent changes
   useEffect(() => {
     if (agent) {
-      form.reset(getDefaultAgentFormValues(agent))
+      form.reset(getDefaultAgentFormValues(agent, defaultModel))
     }
-  }, [agent, form])
+  }, [agent, form, defaultModel])
 
   const handleCopyPrompt = useCallback(() => {
     const currentPrompt = form.getValues("systemPrompt")
@@ -372,10 +372,13 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
       play("./sounds/save.mp3", { volume: 0.5 })
       onClose?.()
     } catch (error) {
-      toast.error("Failed to save agent", {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to save agent: ${errorMessage}`, {
         icon: null,
-        duration: 3000,
+        duration: 5000,
         position: "bottom-center",
+        style: errorToastStyle,
       })
     }
   }
@@ -398,10 +401,13 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
       play("./sounds/delete.mp3", { volume: 0.5 })
       onClose?.()
     } catch (error) {
-      toast.error("Failed to delete agent", {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to delete agent: ${errorMessage}`, {
         icon: null,
-        duration: 3000,
+        duration: 5000,
         position: "bottom-center",
+        style: errorToastStyle,
       })
     }
   }

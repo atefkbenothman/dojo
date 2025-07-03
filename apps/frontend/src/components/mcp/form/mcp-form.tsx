@@ -1,7 +1,6 @@
 import { KeyValueInputFields } from "@/components/mcp/form/key-value-input-fields"
 import { mcpFormSchema, type MCPFormValues } from "@/components/mcp/form/mcp-form-schema"
 import { createMCPObject, getDefaultFormValues } from "@/components/mcp/form/mcp-form-utils"
-import { MCPDeleteDialog } from "@/components/mcp/mcp-delete-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
@@ -20,15 +19,6 @@ import { useEffect, useCallback, useState, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
-
-interface MCPFormProps {
-  server?: MCPServer
-  mode: "add" | "edit"
-  variant?: "page" | "dialog"
-  isAuthenticated?: boolean
-  connectionStatus?: MCPConnectionState
-  onClose?: () => void
-}
 
 // Component for read-only notice
 interface ReadOnlyNoticeSectionProps {
@@ -335,6 +325,16 @@ function ToolsSection({ tools }: ToolsSectionProps) {
   )
 }
 
+interface MCPFormProps {
+  server?: MCPServer
+  mode: "add" | "edit"
+  variant?: "page" | "dialog"
+  isAuthenticated?: boolean
+  connectionStatus?: MCPConnectionState
+  onClose?: () => void
+  onDeleteClick?: (server: MCPServer) => void
+}
+
 export function MCPForm({
   server,
   mode,
@@ -342,10 +342,10 @@ export function MCPForm({
   isAuthenticated = false,
   connectionStatus,
   onClose,
+  onDeleteClick,
 }: MCPFormProps) {
   const { play } = useSoundEffectContext()
-  const { create, edit, remove, clone, activeConnections } = useMCP()
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const { create, edit, clone, activeConnections } = useMCP()
 
   // Check if user can edit
   const isPublicServer = server?.isPublic || false
@@ -475,28 +475,9 @@ export function MCPForm({
     onClose?.()
   }
 
-  const handleDelete = async () => {
-    if (!server) return
-    try {
-      await remove(server._id)
-      toast.success(`${server.name} server deleted`, {
-        icon: null,
-        duration: 3000,
-        position: "bottom-center",
-        style: successToastStyle,
-      })
-      play("./sounds/delete.mp3", { volume: 0.5 })
-      onClose?.()
-    } catch (error) {
-      play("./sounds/error.mp3", { volume: 0.5 })
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
-      toast.error(`Failed to delete server: ${errorMessage}`, {
-        icon: null,
-        duration: 5000,
-        position: "bottom-center",
-        style: errorToastStyle,
-      })
-    }
+  const handleDeleteClick = () => {
+    if (!server || !onDeleteClick) return
+    onDeleteClick(server)
   }
 
   const handleClone = useCallback(async () => {
@@ -534,11 +515,11 @@ export function MCPForm({
 
   const formFooter = (
     <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end w-full">
-      {mode === "edit" && canEdit && (
+      {mode === "edit" && canEdit && onDeleteClick && (
         <Button
           type="button"
           variant="destructive"
-          onClick={() => setShowDeleteDialog(true)}
+          onClick={handleDeleteClick}
           className="w-full sm:w-auto hover:cursor-pointer border-destructive"
         >
           Delete
@@ -575,7 +556,7 @@ export function MCPForm({
 
   // Check if we should show the footer
   const shouldShowFooter =
-    (mode === "edit" && canEdit) || // Delete button
+    (mode === "edit" && canEdit && onDeleteClick) || // Delete button
     (mode === "edit" && isPublicServer && isAuthenticated) || // Clone button
     !isPublicServer // Cancel and Save buttons
 
@@ -595,12 +576,6 @@ export function MCPForm({
             </Card>
           </form>
         </Form>
-        <MCPDeleteDialog
-          server={server || null}
-          open={showDeleteDialog}
-          onOpenChange={setShowDeleteDialog}
-          onConfirm={handleDelete}
-        />
       </>
     )
   }
@@ -627,12 +602,6 @@ export function MCPForm({
           </Card>
         </form>
       </Form>
-      <MCPDeleteDialog
-        server={server || null}
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        onConfirm={handleDelete}
-      />
     </>
   )
 }

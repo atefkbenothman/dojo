@@ -1,4 +1,4 @@
-import type { MCPFormValues } from "./mcp-form-schema"
+import type { MCPFormValues } from "@/components/mcp/form/mcp-form-schema"
 import type { Doc } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer, AllowedStdioCommand } from "@dojo/db/convex/types"
 import { WithoutSystemFields } from "convex/server"

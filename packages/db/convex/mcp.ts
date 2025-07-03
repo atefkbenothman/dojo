@@ -94,6 +94,7 @@ export const create = mutation({
 export const remove = mutation({
   args: {
     id: v.id("mcp"),
+    force: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx)
@@ -101,7 +102,73 @@ export const remove = mutation({
     if (!mcp) throw new Error("Not found")
     if (mcp.isPublic) throw new Error("Default MCP servers cannot be deleted.")
     if (!userId || mcp.userId !== userId) throw new Error("Unauthorized")
+    
+    // Check for dependencies if not forcing
+    if (!args.force) {
+      const allAgents = await ctx.db.query("agents").collect()
+      const dependentAgents = allAgents.filter(agent => 
+        agent.mcpServers.includes(args.id) &&
+        // Only consider agents the user owns
+        agent.userId === userId
+      )
+      
+      if (dependentAgents.length > 0) {
+        throw new Error(
+          `Cannot delete MCP server. It is used by ${dependentAgents.length} agent(s): ${
+            dependentAgents.map(a => a.name).join(", ")
+          }. Use force delete to remove it and update all affected agents.`
+        )
+      }
+    } else {
+      // Force delete: Remove this MCP server from all agents that reference it
+      const allAgents = await ctx.db.query("agents").collect()
+      const agentsToUpdate = allAgents.filter(agent => 
+        agent.mcpServers.includes(args.id) &&
+        agent.userId === userId
+      )
+      
+      // Update each agent to remove this MCP server
+      for (const agent of agentsToUpdate) {
+        const updatedMcpServers = agent.mcpServers.filter(id => id !== args.id)
+        await ctx.db.patch(agent._id, { mcpServers: updatedMcpServers })
+      }
+    }
+    
     return await ctx.db.delete(args.id)
+  },
+})
+
+// Check dependencies: Find all agents that reference this MCP server
+export const checkDependencies = query({
+  args: {
+    id: v.id("mcp"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    const mcp = await ctx.db.get(args.id)
+    if (!mcp) throw new Error("MCP server not found")
+    
+    // Check authorization
+    if (!mcp.isPublic && (!userId || mcp.userId !== userId)) {
+      throw new Error("Unauthorized")
+    }
+    
+    // Find all agents that reference this MCP server
+    const allAgents = await ctx.db.query("agents").collect()
+    const dependentAgents = allAgents.filter(agent => 
+      agent.mcpServers.includes(args.id) &&
+      // Only show agents the user can see
+      (agent.isPublic || (userId && agent.userId === userId))
+    )
+    
+    return {
+      count: dependentAgents.length,
+      agents: dependentAgents.map(agent => ({
+        id: agent._id,
+        name: agent.name,
+        isPublic: agent.isPublic,
+      }))
+    }
   },
 })
 

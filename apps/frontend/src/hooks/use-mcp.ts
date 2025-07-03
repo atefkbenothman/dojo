@@ -1,6 +1,6 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUser } from "@/hooks/use-user"
-import { errorToastStyle } from "@/lib/styles"
+import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useTRPCClient } from "@/lib/trpc/context"
 import { useMCPStore } from "@/store/use-mcp-store"
 import type { RouterOutputs } from "@dojo/backend/src/lib/types"
@@ -8,7 +8,7 @@ import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { MCPToolsCollection } from "@dojo/db/convex/types"
 import { useMutation } from "@tanstack/react-query"
-import { useMutation as useConvexMutation, useQuery as useConvexQuery } from "convex/react"
+import { useMutation as useConvexMutation, useQuery as useConvexQuery, useConvex } from "convex/react"
 import { WithoutSystemFields } from "convex/server"
 import { useMemo } from "react"
 import { toast } from "sonner"
@@ -68,6 +68,7 @@ export interface ActiveConnection {
 }
 
 export function useMCP() {
+  const convex = useConvex()
   const client = useTRPCClient()
   const { currentSession } = useUser()
 
@@ -224,12 +225,12 @@ export function useMCP() {
     }
   }
 
-  const remove = async (id: string) => {
+  const remove = async (id: string, force?: boolean) => {
     try {
-      await deleteMCP({ id: id as Id<"mcp"> })
+      await deleteMCP({ id: id as Id<"mcp">, force })
     } catch (error) {
-      play("./sounds/error.mp3", { volume: 0.5 })
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      play("./sounds/error.mp3", { volume: 0.5 })
       toast.error(`Failed to remove server: ${errorMessage}`, {
         icon: null,
         id: "remove-mcp-error",
@@ -238,6 +239,15 @@ export function useMCP() {
         style: errorToastStyle,
       })
       throw error
+    }
+  }
+
+  const checkServerDependencies = async (id: string) => {
+    try {
+      return await convex.query(api.mcp.checkDependencies, { id: id as Id<"mcp"> })
+    } catch (error) {
+      console.error("Failed to check dependencies:", error)
+      return null
     }
   }
 
@@ -250,6 +260,7 @@ export function useMCP() {
         id: "clone-mcp-success",
         duration: 3000,
         position: "bottom-center",
+        style: successToastStyle,
       })
     } catch (error) {
       play("./sounds/error.mp3", { volume: 0.5 })
@@ -277,5 +288,6 @@ export function useMCP() {
     edit,
     remove,
     clone,
+    checkServerDependencies,
   }
 }
