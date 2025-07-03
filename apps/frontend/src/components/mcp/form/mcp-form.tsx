@@ -494,10 +494,12 @@ export function MCPForm({
 
   const formContent = (
     <div className="flex flex-col h-full sm:h-auto sm:block space-y-4">
-      <div className="space-y-2">
-        <ReadOnlyNoticeSection canEdit={canEdit} isPublic={isPublicServer} />
-        {mode === "edit" && <StatusSection statusInfo={statusInfo} />}
-      </div>
+      {(!canEdit || (mode === "edit" && statusInfo)) && (
+        <div className="space-y-2">
+          <ReadOnlyNoticeSection canEdit={canEdit} isPublic={isPublicServer} />
+          {mode === "edit" && <StatusSection statusInfo={statusInfo} />}
+        </div>
+      )}
       <div className="space-y-8">
         <ServerNameSection form={form} canEdit={canEdit} mode={mode} />
         <ServerSummarySection form={form} canEdit={canEdit} />

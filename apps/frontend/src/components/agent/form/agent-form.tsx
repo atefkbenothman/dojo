@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useAgent } from "@/hooks/use-agent"
+import { useAgent, type AgentStatus } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
 import type { Doc } from "@dojo/db/convex/_generated/dataModel"
 import type { Agent } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Wrench, AlertCircle, Copy } from "lucide-react"
+import { Wrench, AlertCircle, Copy, CheckCircle2, Loader2 } from "lucide-react"
 import { useMemo, useEffect, useCallback, useState } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
@@ -34,6 +34,10 @@ interface AgentFormProps {
   mode: "add" | "edit"
   variant?: "page" | "dialog"
   isAuthenticated?: boolean
+  execution?: {
+    status: AgentStatus
+    error?: string
+  } | null
   onClose?: () => void
 }
 
@@ -53,6 +57,28 @@ function ReadOnlyNoticeSection({ canEdit, isPublic }: ReadOnlyNoticeSectionProps
         {isPublic
           ? "This is a public agent and cannot be edited. Clone it to create your own version."
           : "Sign in to edit this agent."}
+      </div>
+    </Card>
+  )
+}
+
+// Component for status section
+interface StatusSectionProps {
+  statusInfo: {
+    icon: React.ReactNode
+    text: string
+    className: string
+  } | null
+}
+
+function StatusSection({ statusInfo }: StatusSectionProps) {
+  if (!statusInfo) return null
+
+  return (
+    <Card className={cn("p-3 sm:p-4", statusInfo.className)}>
+      <div className="flex items-center gap-2 text-sm">
+        {statusInfo.icon}
+        <span>{statusInfo.text}</span>
       </div>
     </Card>
   )
@@ -302,7 +328,14 @@ function MCPServersSection({ form, canEdit, mcpServers, outputType }: MCPServers
   )
 }
 
-export function AgentForm({ agent, mode, variant = "page", isAuthenticated = false, onClose }: AgentFormProps) {
+export function AgentForm({
+  agent,
+  mode,
+  variant = "page",
+  isAuthenticated = false,
+  execution,
+  onClose,
+}: AgentFormProps) {
   const { mcpServers } = useMCP()
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
@@ -321,6 +354,45 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
 
   // Get default model for new agents
   const defaultModel = useMemo(() => getDefaultModel(models), [models])
+
+  // Get execution status info
+  const statusInfo = useMemo(() => {
+    if (!execution) return null
+
+    switch (execution.status) {
+      case "preparing":
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          text: "Preparing...",
+          className:
+            "bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/50 text-yellow-700 dark:text-yellow-400",
+        }
+      case "running":
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          text: "Running...",
+          className:
+            "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400",
+        }
+      case "completed":
+        return {
+          icon: <CheckCircle2 className="h-4 w-4" />,
+          text: "Completed",
+          className:
+            "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400",
+        }
+      case "failed":
+      case "cancelled":
+        return {
+          icon: <AlertCircle className="h-4 w-4" />,
+          text: execution.error || "Failed",
+          className:
+            "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400",
+        }
+      default:
+        return null
+    }
+  }, [execution])
 
   // Form setup
   const form = useForm<AgentFormValues>({
@@ -423,19 +495,26 @@ export function AgentForm({ agent, mode, variant = "page", isAuthenticated = fal
   }, [agent, clone, onClose])
 
   const formContent = (
-    <div className="flex flex-col h-full sm:h-auto sm:block space-y-8">
-      <ReadOnlyNoticeSection canEdit={canEdit} isPublic={isPublicAgent} />
-      <AgentNameSection form={form} canEdit={canEdit} mode={mode} />
-      <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
-      <ModelSection form={form} canEdit={canEdit} />
-      <OutputTypeSection form={form} canEdit={canEdit} />
-      <div className="flex-1 sm:flex-initial min-h-0 sm:min-h-fit flex flex-col">
-        <MCPServersSection
-          form={form}
-          canEdit={canEdit}
-          mcpServers={availableMcpServers}
-          outputType={form.watch("outputType")}
-        />
+    <div className="flex flex-col h-full sm:h-auto sm:block space-y-4">
+      {(!canEdit || (mode === "edit" && statusInfo)) && (
+        <div className="space-y-2">
+          <ReadOnlyNoticeSection canEdit={canEdit} isPublic={isPublicAgent} />
+          {mode === "edit" && <StatusSection statusInfo={statusInfo} />}
+        </div>
+      )}
+      <div className="space-y-8">
+        <AgentNameSection form={form} canEdit={canEdit} mode={mode} />
+        <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
+        <ModelSection form={form} canEdit={canEdit} />
+        <OutputTypeSection form={form} canEdit={canEdit} />
+        <div className="flex-1 sm:flex-initial min-h-0 sm:min-h-fit flex flex-col">
+          <MCPServersSection
+            form={form}
+            canEdit={canEdit}
+            mcpServers={availableMcpServers}
+            outputType={form.watch("outputType")}
+          />
+        </div>
       </div>
     </div>
   )
