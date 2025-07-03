@@ -108,20 +108,14 @@ export const getMcpServersForUser = query({
       throw new Error("Must be authenticated to get MCP servers")
     }
 
-    // Get public MCP servers
-    const publicMcpServers = await ctx.db
-      .query("mcp")
-      .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
-      .collect()
-
-    // Get user's private MCP servers
+    // Get only user's private MCP servers (generated agents are private and can only use private MCP servers)
     const userMcpServers = await ctx.db
       .query("mcp")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .filter((q) => q.neq(q.field("isPublic"), true))
       .collect()
 
-    return [...publicMcpServers, ...userMcpServers]
+    return userMcpServers
   },
 })
 
@@ -135,20 +129,14 @@ export const getAgentsForUser = query({
       throw new Error("Must be authenticated to get agents")
     }
 
-    // Get public agents
-    const publicAgents = await ctx.db
-      .query("agents")
-      .withIndex("by_isPublic", (q) => q.eq("isPublic", true))
-      .collect()
-
-    // Get user's private agents
+    // Get only user's private agents (generated workflows are private and can only use private agents)
     const userAgents = await ctx.db
       .query("agents")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .filter((q) => q.neq(q.field("isPublic"), true))
       .collect()
 
-    return [...publicAgents, ...userAgents]
+    return userAgents
   },
 })
 

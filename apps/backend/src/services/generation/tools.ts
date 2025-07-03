@@ -10,7 +10,7 @@ import { z } from "zod"
 
 export function createGetMcpServers(client: ConvexHttpClient) {
   return tool({
-    description: "Get available MCP servers",
+    description: "Get user's MCP servers",
     parameters: z.object({}), // No userId parameter needed
     execute: async () => {
       try {
@@ -85,7 +85,7 @@ export function createCreateAgent(client: ConvexHttpClient) {
 
 export function createGetAgents(client: ConvexHttpClient) {
   return tool({
-    description: "Get available agents (both public and user's private agents)",
+    description: "Get user's agents",
     parameters: z.object({}), // No userId parameter needed
     execute: async () => {
       try {
