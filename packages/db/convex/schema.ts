@@ -236,6 +236,54 @@ export const agentExecutionsFields = {
   completedAt: v.optional(v.number()),
 }
 
+// Agent generation execution tracking
+export const agentGenerationExecutionsFields = {
+  // Core fields
+  sessionId: v.id("sessions"),
+  userId: v.optional(v.id("users")),
+  prompt: v.string(),
+  modelId: v.string(),
+
+  // Status tracking
+  status: v.union(
+    v.literal("running"),
+    v.literal("completed"),
+    v.literal("failed"),
+  ),
+
+  // Result tracking
+  error: v.optional(v.string()),
+  agentId: v.optional(v.id("agents")), // Set when generation completes successfully
+
+  // Timestamps
+  startedAt: v.number(),
+  completedAt: v.optional(v.number()),
+}
+
+// Workflow generation execution tracking
+export const workflowGenerationExecutionsFields = {
+  // Core fields
+  sessionId: v.id("sessions"),
+  userId: v.optional(v.id("users")),
+  prompt: v.string(),
+  modelId: v.string(),
+
+  // Status tracking
+  status: v.union(
+    v.literal("running"),
+    v.literal("completed"),
+    v.literal("failed"),
+  ),
+
+  // Result tracking
+  error: v.optional(v.string()),
+  workflowId: v.optional(v.id("workflows")), // Set when generation completes successfully
+
+  // Timestamps
+  startedAt: v.number(),
+  completedAt: v.optional(v.number()),
+}
+
 export default defineSchema({
   ...authTables,
   providers: defineTable(providersFields),
@@ -269,6 +317,16 @@ export default defineSchema({
   agentExecutions: defineTable(agentExecutionsFields)
     .index("by_session", ["sessionId"])
     .index("by_agent", ["agentId"])
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_session_status", ["sessionId", "status"]),
+  agentGenerationExecutions: defineTable(agentGenerationExecutionsFields)
+    .index("by_session", ["sessionId"])
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_session_status", ["sessionId", "status"]),
+  workflowGenerationExecutions: defineTable(workflowGenerationExecutionsFields)
+    .index("by_session", ["sessionId"])
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
     .index("by_session_status", ["sessionId", "status"]),
