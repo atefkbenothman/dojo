@@ -1,5 +1,5 @@
 import { Id } from "./_generated/dataModel"
-import { mutation, query, QueryCtx } from "./_generated/server"
+import { mutation, query, QueryCtx, internalMutation } from "./_generated/server"
 import { workflowsFields } from "./schema"
 import { v } from "convex/values"
 
@@ -403,9 +403,76 @@ export const getWorkflowNodes = query({
       throw new Error("Unauthorized")
     }
 
-    return await ctx.db
+    // Get all workflow nodes for this workflow
+    const allNodes = await ctx.db
       .query("workflowNodes")
       .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
       .collect()
+
+    // Get all agents to check for valid references
+    const agents = await ctx.db.query("agents").collect()
+    const validAgentIds = new Set(agents.map(agent => agent._id))
+
+    // Filter out orphaned nodes
+    const validNodes = allNodes.filter(node => {
+      // Node must reference a valid agent
+      if (!validAgentIds.has(node.agentId)) {
+        return false
+      }
+
+      // If node has a parent, the parent must exist in the workflow
+      if (node.parentNodeId) {
+        const parentExists = allNodes.some(parentNode => 
+          parentNode.nodeId === node.parentNodeId
+        )
+        if (!parentExists) {
+          return false
+        }
+      }
+
+      return true
+    })
+
+    return validNodes
+  },
+})
+
+// Internal function to clean up orphaned workflow nodes
+export const cleanupOrphanedNodes = internalMutation({
+  handler: async (ctx) => {
+    // Get all workflow nodes and agents
+    const allWorkflowNodes = await ctx.db.query("workflowNodes").collect()
+    const agents = await ctx.db.query("agents").collect()
+    const validAgentIds = new Set(agents.map(agent => agent._id))
+
+    let deletedCount = 0
+
+    for (const node of allWorkflowNodes) {
+      let shouldDelete = false
+
+      // Check if agent reference is invalid
+      if (!validAgentIds.has(node.agentId)) {
+        shouldDelete = true
+      }
+
+      // Check if parent reference is invalid (only if node has a parent)
+      if (!shouldDelete && node.parentNodeId) {
+        const parentExists = allWorkflowNodes.some(parentNode => 
+          parentNode.nodeId === node.parentNodeId && 
+          parentNode.workflowId === node.workflowId
+        )
+        if (!parentExists) {
+          shouldDelete = true
+        }
+      }
+
+      if (shouldDelete) {
+        await ctx.db.delete(node._id)
+        deletedCount++
+      }
+    }
+
+    console.log(`Cleaned up ${deletedCount} orphaned workflow nodes`)
+    return { deletedCount }
   },
 })
