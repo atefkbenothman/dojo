@@ -38,6 +38,7 @@ export const updateStatus = mutation({
     executionId: v.id("agentExecutions"),
     status: v.union(
       v.literal("preparing"),
+      v.literal("connecting"),
       v.literal("running"),
       v.literal("completed"),
       v.literal("failed"),
@@ -75,7 +76,7 @@ export const requestCancellation = mutation({
     if (!execution) throw new Error("Execution not found")
 
     // Only allow cancellation if the execution is still running
-    if (execution.status !== "preparing" && execution.status !== "running") {
+    if (execution.status !== "preparing" && execution.status !== "connecting" && execution.status !== "running") {
       throw new Error(`Cannot cancel execution with status: ${execution.status}`)
     }
 
@@ -93,6 +94,7 @@ export const getBySession = query({
     status: v.optional(
       v.union(
         v.literal("preparing"),
+        v.literal("connecting"),
         v.literal("running"),
         v.literal("completed"),
         v.literal("failed"),
@@ -124,7 +126,11 @@ export const getActiveExecution = query({
       .filter((q) =>
         q.and(
           q.eq(q.field("agentId"), args.agentId),
-          q.or(q.eq(q.field("status"), "preparing"), q.eq(q.field("status"), "running")),
+          q.or(
+            q.eq(q.field("status"), "preparing"),
+            q.eq(q.field("status"), "connecting"),
+            q.eq(q.field("status"), "running")
+          ),
         ),
       )
       .first()
@@ -142,7 +148,11 @@ export const getActiveExecutions = query({
     const executions = await ctx.db
       .query("agentExecutions")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
-      .filter((q) => q.or(q.eq(q.field("status"), "preparing"), q.eq(q.field("status"), "running")))
+      .filter((q) => q.or(
+        q.eq(q.field("status"), "preparing"),
+        q.eq(q.field("status"), "connecting"),
+        q.eq(q.field("status"), "running")
+      ))
       .collect()
 
     return executions

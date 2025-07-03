@@ -217,6 +217,7 @@ export const agentExecutionsFields = {
   // Status tracking
   status: v.union(
     v.literal("preparing"),
+    v.literal("connecting"),
     v.literal("running"),
     v.literal("completed"),
     v.literal("failed"),

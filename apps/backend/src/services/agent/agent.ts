@@ -77,8 +77,6 @@ export class AgentService {
       const aiModel = await this.getAgentModel(agent, session)
 
       const userIdForLogging = session?.userId || "anonymous"
-      const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
-
       logger.info("Agent", `Running agent ${agent._id} for userId: ${userIdForLogging}`)
 
       // Create execution record if we have a session
@@ -93,16 +91,36 @@ export class AgentService {
           mcpServerIds,
         })
 
+        // Register the abort controller
+        AgentService.executionControllers.set(executionId, abortController)
+        logger.info("Agent", `Registered abort controller for execution ${executionId}`)
+
+        // Update status to connecting and establish MCP connections
+        await client.mutation(api.agentExecutions.updateStatus, {
+          executionId,
+          status: "connecting",
+        })
+
+        // Establish connections to required MCP servers
+        const connectionResult = await mcpConnectionManager.establishMultipleConnections(
+          session._id,
+          mcpServerIds,
+          { connectionType: "user" }
+        )
+
+        if (!connectionResult.success) {
+          throw new Error(`Failed to establish MCP connections: ${connectionResult.error}`)
+        }
+
         // Update status to running
         await client.mutation(api.agentExecutions.updateStatus, {
           executionId,
           status: "running",
         })
-
-        // Register the abort controller
-        AgentService.executionControllers.set(executionId, abortController)
-        logger.info("Agent", `Registered abort controller for execution ${executionId}`)
       }
+
+      // Get tools after connections are established
+      const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
       // Execute agent based on output type
       await this.executeAgent({
@@ -187,7 +205,7 @@ export class AgentService {
       }
 
       // Check if execution is in a stoppable state
-      if (execution.status !== "preparing" && execution.status !== "running") {
+      if (execution.status !== "preparing" && execution.status !== "connecting" && execution.status !== "running") {
         logger.info("Agent", `Execution ${executionId} is not running (status: ${execution.status})`)
         return {
           success: true, // Return success for idempotency
@@ -274,6 +292,7 @@ export class AgentService {
         throw new Error("Unknown or unhandled output type")
     }
   }
+
 }
 
 // Export singleton instance

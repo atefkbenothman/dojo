@@ -122,6 +122,75 @@ export class MCPConnectionManager {
   }
 
   /**
+   * Establishes multiple MCP connections for a given session and list of server IDs.
+   * Used to connect to all required MCP servers for an agent or workflow.
+   */
+  async establishMultipleConnections(
+    sessionId: Id<"sessions">,
+    mcpServerIds: Id<"mcp">[],
+    options?: {
+      workflowExecutionId?: Id<"workflowExecutions">
+      connectionType?: "user" | "workflow"
+    },
+  ): Promise<{ success: boolean; error?: string }> {
+    if (mcpServerIds.length === 0) {
+      logger.info("Connection", `No MCP servers to connect for session ${sessionId}`)
+      return { success: true }
+    }
+
+    logger.info("Connection", `Establishing ${mcpServerIds.length} connections for session ${sessionId}...`)
+
+    try {
+      // Get server configurations
+      const serverPromises = mcpServerIds.map(serverId => 
+        convex.query(api.mcp.get, { id: serverId })
+      )
+      const servers = await Promise.all(serverPromises)
+
+      // Filter out null servers and establish connections
+      const validServers = servers.filter(server => server !== null)
+      const connectionPromises = validServers.map(async (server) => {
+        try {
+          // Check if we're already connected to this server
+          const existingConnection = this.getConnection(sessionId, server._id)
+          if (existingConnection) {
+            logger.info("Connection", `Session ${sessionId}: Already connected to ${server.name}, reusing connection`)
+            return { success: true }
+          }
+
+          // Establish the connection
+          const result = await this.establishConnection(
+            sessionId,
+            server,
+            options
+          )
+
+          if (!result.success) {
+            logger.error("Connection", `Session ${sessionId}: Failed to connect to ${server.name}: ${result.error}`)
+            throw new Error(`Failed to connect to MCP server ${server.name}: ${result.error}`)
+          }
+
+          logger.info("Connection", `Session ${sessionId}: Successfully connected to ${server.name}`)
+          return { success: true }
+        } catch (error) {
+          logger.error("Connection", `Session ${sessionId}: Error connecting to ${server.name}`, error)
+          throw error
+        }
+      })
+
+      // Wait for all connections to be established
+      await Promise.all(connectionPromises)
+      
+      logger.info("Connection", `Session ${sessionId}: All ${validServers.length} MCP connections established successfully`)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to establish MCP connections"
+      logger.error("Connection", `Session ${sessionId}: Failed to establish multiple connections`, error)
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
    * Cleans up a specific MCP connection for a given session and server ID.
    * Handles client cleanup, cache removal, and connection count decrementing.
    */

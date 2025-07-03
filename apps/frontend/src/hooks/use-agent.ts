@@ -2,7 +2,6 @@
 
 import { useSoundEffectContext } from "./use-sound-effect"
 import { useChatProvider } from "@/hooks/use-chat"
-import { useMCP } from "@/hooks/use-mcp"
 import { useUser } from "@/hooks/use-user"
 import { errorToastStyle } from "@/lib/styles"
 import { useAuthToken } from "@convex-dev/auth/react"
@@ -16,9 +15,9 @@ import { nanoid } from "nanoid"
 import { useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
-// ============= Agent Types & Constants =============
 export const AGENT_STATUS = {
   PREPARING: "preparing",
+  CONNECTING: "connecting",
   RUNNING: "running",
   COMPLETED: "completed",
   FAILED: "failed",
@@ -41,7 +40,7 @@ export interface AgentExecution {
 }
 
 export const isAgentRunning = (status?: AgentStatus | null): boolean => {
-  return status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.RUNNING
+  return status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.CONNECTING || status === AGENT_STATUS.RUNNING
 }
 
 export const isAgentError = (status?: AgentStatus | null): boolean => {
@@ -57,9 +56,8 @@ export const canRunAgent = (agent: Agent, isAuthenticated: boolean, currentStatu
 export function useAgent() {
   const authToken = useAuthToken()
   const convex = useConvex()
-  const { connect } = useMCP()
   const { play } = useSoundEffectContext()
-  const { append, setMessages } = useChatProvider()
+  const { append } = useChatProvider()
   const { currentSession } = useUser()
 
   const guestSessionId = useMemo(() => {
@@ -106,34 +104,6 @@ export function useAgent() {
         return
       }
 
-      // Handle MCP server connections if needed
-      if (agent.mcpServers.length > 0) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nanoid(),
-            role: "assistant",
-            content: "Connecting to MCP servers...",
-          },
-        ])
-
-        try {
-          await connect(agent.mcpServers)
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Failed to connect to MCP servers"
-
-          toast.error(`MCP Connection Error: ${errorMessage}`, {
-            icon: null,
-            id: `agent-mcp-error-${agent._id}`,
-            duration: 5000,
-            position: "bottom-center",
-            style: errorToastStyle,
-          })
-          play("./sounds/error.mp3", { volume: 0.5 })
-          return
-        }
-      }
-
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
@@ -165,7 +135,7 @@ export function useAgent() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, connect, play, setMessages, currentSession],
+    [append, play, currentSession],
   )
 
   const stopAllAgents = async () => {
