@@ -34,5 +34,5 @@ export function LoadingAnimationInline({ className = "" }: { className?: string 
     return () => clearInterval(interval)
   }, [])
 
-  return <span className={`font-mono ${className}`}>{frames[frameIndex]}</span>
+  return <span className={`inline-flex items-center justify-center font-mono ${className}`}>{frames[frameIndex]}</span>
 }

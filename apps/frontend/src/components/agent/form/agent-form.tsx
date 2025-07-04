@@ -381,6 +381,13 @@ export function AgentForm({
           className:
             "bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/50 text-yellow-700 dark:text-yellow-400",
         }
+      case "connecting":
+        return {
+          icon: <LoadingAnimationInline className="text-yellow-600 dark:text-yellow-500" />,
+          text: "Connecting to MCP servers...",
+          className:
+            "bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/50 text-yellow-700 dark:text-yellow-400",
+        }
       case "running":
         return {
           icon: <LoadingAnimationInline className="h-4 w-4" />,

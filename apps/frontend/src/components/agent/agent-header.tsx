@@ -24,6 +24,7 @@ export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, 
   const status = execution?.status
   const isRunning = status === AGENT_STATUS.RUNNING
   const isPreparing = status === AGENT_STATUS.PREPARING
+  const isConnecting = status === AGENT_STATUS.CONNECTING
 
   return (
     <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between bg-card h-[42px]">
@@ -56,21 +57,28 @@ export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, 
               : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800",
           )}
           onClick={isRunning ? onStop : onRun}
-          disabled={(!isAuthenticated && !agent.isPublic) || isPreparing}
+          disabled={(!isAuthenticated && !agent.isPublic) || isPreparing || isConnecting}
           title={
             isPreparing
               ? "Agent is preparing"
-              : isRunning
-                ? "Stop agent"
-                : !isAuthenticated && !agent.isPublic
-                  ? "Login required to run private agents"
-                  : "Run agent"
+              : isConnecting
+                ? "Agent is connecting to MCP servers"
+                : isRunning
+                  ? "Stop agent"
+                  : !isAuthenticated && !agent.isPublic
+                    ? "Login required to run private agents"
+                    : "Run agent"
           }
         >
           {isPreparing ? (
             <>
               <LoadingAnimationInline className="mr-1" />
               Preparing
+            </>
+          ) : isConnecting ? (
+            <>
+              <LoadingAnimationInline className="mr-1" />
+              Connecting
             </>
           ) : isRunning ? (
             <>

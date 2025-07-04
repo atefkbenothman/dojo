@@ -56,7 +56,8 @@ export function AgentListItem({
   const status = execution?.status
   const isRunning = isAgentRunning(status)
   const hasError = isAgentError(status)
-  const isLoading = status === AGENT_STATUS.PREPARING
+  const isLoading = status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.CONNECTING
+  const isConnecting = status === AGENT_STATUS.CONNECTING
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent) => {
@@ -114,7 +115,7 @@ export function AgentListItem({
             <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
               {agent.name}
             </p>
-            <AgentStatusIndicator status={status} />
+            {isConnecting ? <LoadingAnimationInline /> : <AgentStatusIndicator status={status} />}
           </div>
           {/* Right Side */}
           <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
@@ -153,13 +154,15 @@ export function AgentListItem({
               disabled={(!isAuthenticated && !agent.isPublic) || isLoading}
               className="size-8 hover:cursor-pointer"
               title={
-                isLoading
+                status === AGENT_STATUS.PREPARING
                   ? "Agent is preparing"
-                  : isRunning
-                    ? "Stop agent"
-                    : !isAuthenticated && !agent.isPublic
-                      ? "Login required to run private agents"
-                      : "Run agent"
+                  : status === AGENT_STATUS.CONNECTING
+                    ? "Agent is connecting to MCP servers"
+                    : isRunning
+                      ? "Stop agent"
+                      : !isAuthenticated && !agent.isPublic
+                        ? "Login required to run private agents"
+                        : "Run agent"
               }
             >
               {isLoading ? (
