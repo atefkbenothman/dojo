@@ -11,9 +11,10 @@ export interface MCPFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   isAuthenticated?: boolean
+  onServerCreated?: (serverId: string) => void
 }
 
-export function MCPFormDialog({ mode, server, open, onOpenChange, isAuthenticated = false }: MCPFormDialogProps) {
+export function MCPFormDialog({ mode, server, open, onOpenChange, isAuthenticated = false, onServerCreated }: MCPFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -29,6 +30,7 @@ export function MCPFormDialog({ mode, server, open, onOpenChange, isAuthenticate
           variant="dialog"
           isAuthenticated={isAuthenticated}
           onClose={() => onOpenChange(false)}
+          onServerCreated={onServerCreated}
         />
       </DialogContent>
     </Dialog>

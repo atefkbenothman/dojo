@@ -8,26 +8,30 @@ import { MCPList } from "@/components/mcp/mcp-list"
 import { Button } from "@/components/ui/button"
 import { useMCP, MCPConnectionState } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useUrlSelection } from "@/hooks/use-url-selection"
 import { successToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { PanelLeft, PanelRight } from "lucide-react"
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { toast } from "sonner"
 
 export function Mcp() {
+  const { mcpServers, activeConnections, getConnection, connect, disconnect, remove, clone, checkServerDependencies } =
+    useMCP()
   const { isAuthenticated } = useConvexAuth()
-  const { mcpServers, activeConnections, getConnection, connect, disconnect, remove, clone, checkServerDependencies } = useMCP()
   const { play } = useSoundEffectContext()
+  const { selectedId: selectedServerId, setSelectedId: setSelectedServerId } = useUrlSelection()
 
-  const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
   const [editingServerId, setEditingServerId] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
   const [serverToDelete, setServerToDelete] = useState<MCPServer | null>(null)
-  const [affectedAgents, setAffectedAgents] = useState<Array<{ id: string; name: string; isPublic?: boolean }> | undefined>()
+  const [affectedAgents, setAffectedAgents] = useState<
+    Array<{ id: string; name: string; isPublic?: boolean }> | undefined
+  >()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Derive selected server from mcpServers array to ensure it's always up to date
@@ -64,48 +68,54 @@ export function Mcp() {
     setIsDialogOpen(true)
   }, [])
 
-  const handleDeleteServer = useCallback(async (server: MCPServer) => {
-    // Always check dependencies before showing dialog
-    const deps = await checkServerDependencies(server._id)
-    setAffectedAgents(deps?.agents || [])
-    setServerToDelete(server)
-  }, [checkServerDependencies])
+  const handleDeleteServer = useCallback(
+    async (server: MCPServer) => {
+      // Always check dependencies before showing dialog
+      const deps = await checkServerDependencies(server._id)
+      setAffectedAgents(deps?.agents || [])
+      setServerToDelete(server)
+    },
+    [checkServerDependencies],
+  )
 
-  const confirmDeleteServer = useCallback(async (force?: boolean) => {
-    if (serverToDelete) {
-      try {
-        await remove(serverToDelete._id, force)
-        
-        // Show success toast
-        const actionText = force ? "Force deleted" : "Deleted"
-        toast.success(`${actionText} ${serverToDelete.name} server`, {
-          icon: null,
-          duration: 3000,
-          position: "bottom-center",
-          style: successToastStyle,
-        })
-        play("./sounds/delete.mp3", { volume: 0.5 })
-        
-        // If the deleted server was selected, clear the selection
-        if (selectedServerId === serverToDelete._id) {
-          setSelectedServerId(null)
+  const confirmDeleteServer = useCallback(
+    async (force?: boolean) => {
+      if (serverToDelete) {
+        try {
+          await remove(serverToDelete._id, force)
+
+          // Show success toast
+          const actionText = force ? "Force deleted" : "Deleted"
+          toast.success(`${actionText} ${serverToDelete.name} server`, {
+            icon: null,
+            duration: 3000,
+            position: "bottom-center",
+            style: successToastStyle,
+          })
+          play("./sounds/delete.mp3", { volume: 0.5 })
+
+          // If the deleted server was selected, clear the selection
+          if (selectedServerId === serverToDelete._id) {
+            setSelectedServerId(null)
+          }
+          setServerToDelete(null)
+          setAffectedAgents(undefined)
+        } catch (error) {
+          // If it's a dependency error and we haven't forced, the dialog should stay open
+          // The checkDependencies should have already populated affectedAgents
+          const errorMessage = error instanceof Error ? error.message : ""
+          if (!force && errorMessage.includes("Cannot delete MCP server")) {
+            // Dialog stays open, dependencies should already be shown
+            return
+          }
+          // For other errors, close dialog and let the error toast show
+          setServerToDelete(null)
+          setAffectedAgents(undefined)
         }
-        setServerToDelete(null)
-        setAffectedAgents(undefined)
-      } catch (error) {
-        // If it's a dependency error and we haven't forced, the dialog should stay open
-        // The checkDependencies should have already populated affectedAgents
-        const errorMessage = error instanceof Error ? error.message : ""
-        if (!force && errorMessage.includes("Cannot delete MCP server")) {
-          // Dialog stays open, dependencies should already be shown
-          return
-        }
-        // For other errors, close dialog and let the error toast show
-        setServerToDelete(null)
-        setAffectedAgents(undefined)
       }
-    }
-  }, [remove, selectedServerId, serverToDelete, play])
+    },
+    [remove, selectedServerId, serverToDelete, play],
+  )
 
   const handleCreateServer = useCallback(() => {
     setEditingServerId(null)
@@ -113,12 +123,21 @@ export function Mcp() {
     setIsDialogOpen(true)
   }, [])
 
+  const handleServerCreated = useCallback(
+    (serverId: string) => {
+      // Auto-select the newly created server
+      setSelectedServerId(serverId)
+    },
+    [setSelectedServerId],
+  )
+
+
   const handleSelectServer = useCallback(
     (server: MCPServer) => {
       // Toggle selection - if clicking the same server, unselect it
       setSelectedServerId(selectedServerId === server._id ? null : server._id)
     },
-    [selectedServerId],
+    [selectedServerId, setSelectedServerId],
   )
 
   const handleConnect = useCallback(
@@ -209,7 +228,12 @@ export function Mcp() {
             </>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">Select a server</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedServerId && Array.isArray(mcpServers) 
+                  ? "Server does not exist" 
+                  : "Select a server"
+                }
+              </p>
             </div>
           )}
         </div>
@@ -226,6 +250,7 @@ export function Mcp() {
           }
         }}
         isAuthenticated={isAuthenticated}
+        onServerCreated={handleServerCreated}
       />
       {/* Delete Confirmation Dialog */}
       <MCPDeleteDialog

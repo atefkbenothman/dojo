@@ -193,7 +193,8 @@ export function useMCP() {
 
   const create = async (mcp: WithoutSystemFields<Doc<"mcp">>) => {
     try {
-      await createMCP(mcp)
+      const serverId = await createMCP(mcp)
+      return serverId
     } catch (error) {
       play("./sounds/error.mp3", { volume: 0.5 })
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"

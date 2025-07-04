@@ -14,8 +14,8 @@ import { successToastStyle, errorToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AlertCircle, CheckCircle2, Wrench } from "lucide-react"
-import { useEffect, useCallback, useState, useMemo } from "react"
+import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { useEffect, useCallback, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import type { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
@@ -333,6 +333,7 @@ interface MCPFormProps {
   connectionStatus?: MCPConnectionState
   onClose?: () => void
   onDeleteClick?: (server: MCPServer) => void
+  onServerCreated?: (serverId: string) => void
 }
 
 export function MCPForm({
@@ -343,6 +344,7 @@ export function MCPForm({
   connectionStatus,
   onClose,
   onDeleteClick,
+  onServerCreated,
 }: MCPFormProps) {
   const { play } = useSoundEffectContext()
   const { create, edit, clone, activeConnections } = useMCP()
@@ -438,13 +440,17 @@ export function MCPForm({
     try {
       const serverData = createMCPObject(data)
       if (mode === "add") {
-        await create(serverData)
+        const serverId = await create(serverData)
         toast.success(`${serverData.name} server added`, {
           icon: null,
           duration: 3000,
           position: "bottom-center",
           style: successToastStyle,
         })
+        // Call the callback with the new server ID
+        if (serverId) {
+          onServerCreated?.(serverId)
+        }
       } else if (server) {
         await edit({ id: server._id, ...serverData })
         toast.success("Server configuration saved", {
