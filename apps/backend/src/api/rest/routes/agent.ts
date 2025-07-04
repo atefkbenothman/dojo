@@ -12,7 +12,6 @@ const agentInputSchema = z.object({
   messages: z.array(z.any()).min(1, { message: "Missing or invalid messages array" }),
   agent: z.object({
     agentId: z.string(),
-    modelId: z.string().min(1, { message: "Missing modelId" }),
   }),
 })
 
@@ -26,12 +25,6 @@ agentRouter.post(
     const { session, client } = req
     const parsedInput = req.parsedInput as z.infer<typeof agentInputSchema>
     const { agent: agentInfo, messages } = parsedInput
-
-    // Extract and validate modelId
-    const modelId = agentInfo?.modelId
-    if (!modelId) {
-      throwError("Missing modelId in agent object", 400)
-    }
 
     logger.info(
       "REST /agent/run",
