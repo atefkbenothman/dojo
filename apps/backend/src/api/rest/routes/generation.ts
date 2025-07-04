@@ -1,9 +1,8 @@
-import { asyncHandler } from "../../../lib/errors"
+import { asyncHandler, throwError } from "../../../lib/errors"
 import { logger } from "../../../lib/logger"
 import { generateAgent } from "../../../services/generation/agent-generator"
 import { generateWorkflow } from "../../../services/generation/workflow-generator"
 import { createValidatedRequestMiddleware } from "../middleware"
-import { createClientFromAuth } from "../../../lib/convex-request-client"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import express, { type Request, type Response, Router } from "express"
@@ -32,7 +31,7 @@ generationRouter.post(
   "/agent",
   createValidatedRequestMiddleware(generateAgentSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const session = req.session
+    const { session, client } = req
 
     // Check authentication
     if (!session || !session.userId) {
@@ -45,36 +44,36 @@ generationRouter.post(
 
     const parsedInput = req.parsedInput as z.infer<typeof generateAgentSchema>
     const { prompt, generation } = parsedInput
-    const modelId = generation.modelId
+
+    // Extract and validate modelId
+    const modelId = generation?.modelId
+    if (!modelId) {
+      throwError("Missing modelId in generation object", 400)
+    }
 
     logger.info("REST /generate/agent", `Generation request from user: ${session.userId}`)
 
-    // Create Convex client with auth
-    const convexClient = createClientFromAuth(req.headers.authorization)
     let generationExecutionId: Id<"agentGenerationExecutions"> | undefined
 
     try {
       // Create generation execution record
-      generationExecutionId = await convexClient.mutation(api.agentGenerationExecutions.create, {
+      generationExecutionId = await client.mutation(api.agentGenerationExecutions.create, {
         prompt,
         modelId,
       })
 
       logger.info("REST /generate/agent", `Created generation execution: ${generationExecutionId}`)
 
-      // Extract the auth token from the authorization header
-      const authToken = req.headers.authorization?.substring(7) || ""
-
       const result = await generateAgent({
         prompt,
         sessionId: session._id,
         modelId,
-        authToken,
+        client,
       })
 
       if (result.success) {
         // Update execution as completed with agentId
-        await convexClient.mutation(api.agentGenerationExecutions.updateStatus, {
+        await client.mutation(api.agentGenerationExecutions.updateStatus, {
           executionId: generationExecutionId,
           status: "completed",
           agentId: result.agentId as Id<"agents">,
@@ -88,7 +87,7 @@ generationRouter.post(
         })
       } else {
         // Update execution as failed
-        await convexClient.mutation(api.agentGenerationExecutions.updateStatus, {
+        await client.mutation(api.agentGenerationExecutions.updateStatus, {
           executionId: generationExecutionId,
           status: "failed",
           error: result.error || "Failed to generate agent",
@@ -105,7 +104,7 @@ generationRouter.post(
       // Update execution as failed if we have an execution ID
       if (generationExecutionId) {
         try {
-          await convexClient.mutation(api.agentGenerationExecutions.updateStatus, {
+          await client.mutation(api.agentGenerationExecutions.updateStatus, {
             executionId: generationExecutionId,
             status: "failed",
             error: error instanceof Error ? error.message : "Internal server error during generation",
@@ -130,7 +129,7 @@ generationRouter.post(
   "/workflow",
   createValidatedRequestMiddleware(generateWorkflowSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const session = req.session
+    const { session, client } = req
 
     // Check authentication
     if (!session || !session.userId) {
@@ -143,36 +142,36 @@ generationRouter.post(
 
     const parsedInput = req.parsedInput as z.infer<typeof generateWorkflowSchema>
     const { prompt, generation } = parsedInput
-    const modelId = generation.modelId
+
+    // Extract and validate modelId
+    const modelId = generation?.modelId
+    if (!modelId) {
+      throwError("Missing modelId in generation object", 400)
+    }
 
     logger.info("REST /generate/workflow", `Generation request from user: ${session.userId}`)
 
-    // Create Convex client with auth
-    const convexClient = createClientFromAuth(req.headers.authorization)
     let generationExecutionId: Id<"workflowGenerationExecutions"> | undefined
 
     try {
       // Create generation execution record
-      generationExecutionId = await convexClient.mutation(api.workflowGenerationExecutions.create, {
+      generationExecutionId = await client.mutation(api.workflowGenerationExecutions.create, {
         prompt,
         modelId,
       })
 
       logger.info("REST /generate/workflow", `Created generation execution: ${generationExecutionId}`)
 
-      // Extract the auth token from the authorization header
-      const authToken = req.headers.authorization?.substring(7) || ""
-
       const result = await generateWorkflow({
         prompt,
         sessionId: session._id,
         modelId,
-        authToken,
+        client,
       })
 
       if (result.success) {
         // Update execution as completed with workflowId
-        await convexClient.mutation(api.workflowGenerationExecutions.updateStatus, {
+        await client.mutation(api.workflowGenerationExecutions.updateStatus, {
           executionId: generationExecutionId,
           status: "completed",
           workflowId: result.workflowId as Id<"workflows">,
@@ -186,7 +185,7 @@ generationRouter.post(
         })
       } else {
         // Update execution as failed
-        await convexClient.mutation(api.workflowGenerationExecutions.updateStatus, {
+        await client.mutation(api.workflowGenerationExecutions.updateStatus, {
           executionId: generationExecutionId,
           status: "failed",
           error: result.error || "Failed to generate workflow",
@@ -203,7 +202,7 @@ generationRouter.post(
       // Update execution as failed if we have an execution ID
       if (generationExecutionId) {
         try {
-          await convexClient.mutation(api.workflowGenerationExecutions.updateStatus, {
+          await client.mutation(api.workflowGenerationExecutions.updateStatus, {
             executionId: generationExecutionId,
             status: "failed",
             error: error instanceof Error ? error.message : "Internal server error during generation",

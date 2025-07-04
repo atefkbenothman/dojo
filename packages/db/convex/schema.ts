@@ -187,7 +187,8 @@ export const mcpConnectionsFields = {
 
   // Execution tracking (for workflow-managed connections)
   workflowExecutionId: v.optional(v.id("workflowExecutions")), // If connection was auto-created by workflow
-  connectionType: v.union(v.literal("user"), v.literal("workflow")), // Track connection source
+  agentExecutionId: v.optional(v.id("agentExecutions")), // If connection was auto-created by agent
+  connectionType: v.union(v.literal("user"), v.literal("workflow"), v.literal("agent")), // Track connection source
 
   // Status tracking
   status: v.union(
@@ -312,6 +313,7 @@ export default defineSchema({
     .index("by_backend", ["backendInstanceId"])
     .index("by_status", ["status"])
     .index("by_workflow_execution", ["workflowExecutionId"])
+    .index("by_agent_execution", ["agentExecutionId"])
     .index("by_connection_type", ["connectionType"]),
   agentExecutions: defineTable(agentExecutionsFields)
     .index("by_session", ["sessionId"])

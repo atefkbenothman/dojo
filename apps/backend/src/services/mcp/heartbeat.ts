@@ -1,4 +1,4 @@
-import { systemConvexClient } from "../../lib/convex-request-client"
+import { convex } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
 
@@ -20,7 +20,7 @@ export function startHeartbeat(instanceId: string) {
     () => {
       void (async () => {
         try {
-          const count = await systemConvexClient.mutation(api.mcpConnections.updateHeartbeats, {
+          const count = await convex.mutation(api.mcpConnections.updateHeartbeats, {
             backendInstanceId,
           })
           logger.debug("Heartbeat", `Updated ${count} connection heartbeats`)
@@ -53,7 +53,7 @@ export async function disconnectAllBackendConnections() {
   if (!backendInstanceId) return
 
   try {
-    const count = await systemConvexClient.mutation(api.mcpConnections.disconnectByBackend, {
+    const count = await convex.mutation(api.mcpConnections.disconnectByBackend, {
       backendInstanceId,
     })
     logger.info("Heartbeat", `Marked ${count} connections as disconnected`)

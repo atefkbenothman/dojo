@@ -23,22 +23,6 @@ export const getMyApiKeys = query({
   },
 })
 
-export const getApiKeyForUserAndModel = query({
-  args: { userId: v.id("users"), modelId: v.id("models") },
-  handler: async (ctx, args) => {
-    const model = await ctx.db.get(args.modelId)
-    if (!model) {
-      return null
-    }
-    const providerId = model.providerId
-    const apiKey = await ctx.db
-      .query("apiKeys")
-      .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("providerId", providerId))
-      .unique()
-    return apiKey
-  },
-})
-
 export const getApiKeyForUserAndProvider = query({
   args: {
     userId: v.id("users"),
@@ -48,6 +32,24 @@ export const getApiKeyForUserAndProvider = query({
     return await ctx.db
       .query("apiKeys")
       .withIndex("by_user_provider", (q) => q.eq("userId", args.userId).eq("providerId", args.providerId))
+      .unique()
+  },
+})
+
+// For backend use - uses current user from auth context
+export const getApiKeyForCurrentUserAndModel = query({
+  args: { modelId: v.id("models") },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return null
+
+    const model = await ctx.db.get(args.modelId)
+    if (!model) return null
+
+    const providerId = model.providerId
+    return await ctx.db
+      .query("apiKeys")
+      .withIndex("by_user_provider", (q) => q.eq("userId", userId).eq("providerId", providerId))
       .unique()
   },
 })

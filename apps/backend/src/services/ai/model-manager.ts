@@ -1,4 +1,4 @@
-import { systemConvexClient } from "../../lib/convex-request-client"
+import { convex } from "../../lib/convex-request-client"
 import { throwError } from "../../lib/errors"
 import { apiKeyService, ApiKeyService } from "../api-key/api-key-service"
 import { createAnthropic } from "@ai-sdk/anthropic"
@@ -7,18 +7,19 @@ import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createPerplexity } from "@ai-sdk/perplexity"
 import { api } from "@dojo/db/convex/_generated/api"
-import { Doc } from "@dojo/db/convex/_generated/dataModel"
+import { AIModelWithProvider } from "@dojo/db/convex/types"
 import { type LanguageModel, type ImageModel, wrapLanguageModel, extractReasoningMiddleware } from "ai"
+import type { ConvexHttpClient } from "convex/browser"
 
 export class ModelManager {
   private modelCache = new Map<string, LanguageModel | ImageModel>()
-  private modelsConfig: Awaited<ReturnType<typeof systemConvexClient.query<typeof api.models.modelsWithProviders>>> | null = null
+  private modelsConfig: AIModelWithProvider | null = null
 
-  async getModel(modelId: string, session: Doc<"sessions">): Promise<LanguageModel | ImageModel> {
+  async getModel(modelId: string, client: ConvexHttpClient): Promise<LanguageModel | ImageModel> {
     // Get API key for the model
     const apiKeyResult = await apiKeyService.getApiKeyForModel({
       modelId,
-      session,
+      client,
     })
 
     // Validate the API key
@@ -29,14 +30,14 @@ export class ModelManager {
 
     // Check cache first
     const cachedModel = this.modelCache.get(cacheKey)
+
     if (cachedModel) {
-      ApiKeyService.logApiKeyUsage(modelId, apiKeyResult.source, session.userId || undefined)
       return cachedModel
     }
 
     // Load models config if not already loaded
     if (!this.modelsConfig) {
-      this.modelsConfig = await systemConvexClient.query(api.models.modelsWithProviders)
+      this.modelsConfig = await convex.query(api.models.modelsWithProviders)
     }
 
     // Create new model instance
@@ -44,9 +45,6 @@ export class ModelManager {
 
     // Cache it
     this.modelCache.set(cacheKey, model)
-
-    // Log usage
-    ApiKeyService.logApiKeyUsage(modelId, apiKeyResult.source, session.userId || undefined)
 
     return model
   }

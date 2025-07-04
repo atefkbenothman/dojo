@@ -1,5 +1,5 @@
 import { BACKEND_INSTANCE_ID } from "../../index"
-import { systemConvexClient as convex } from "../../lib/convex-request-client"
+import { convex } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import type { ActiveMcpClient } from "../../lib/types"
 import { MCPClient } from "./client"
@@ -23,7 +23,8 @@ export class MCPConnectionManager {
     server: MCPServer,
     options?: {
       workflowExecutionId?: Id<"workflowExecutions">
-      connectionType?: "user" | "workflow"
+      agentExecutionId?: Id<"agentExecutions">
+      connectionType?: "user" | "workflow" | "agent"
     },
   ): Promise<{ success: boolean; client?: ActiveMcpClient; error?: string }> {
     // Create/update connection record in Convex (status: connecting)
@@ -35,6 +36,7 @@ export class MCPConnectionManager {
         backendInstanceId: BACKEND_INSTANCE_ID,
         status: "connecting",
         workflowExecutionId: options?.workflowExecutionId,
+        agentExecutionId: options?.agentExecutionId,
         connectionType: options?.connectionType || "user",
       })
     } catch (convexError) {
@@ -59,6 +61,7 @@ export class MCPConnectionManager {
             status: "error",
             error: errorMessage,
             workflowExecutionId: options?.workflowExecutionId,
+            agentExecutionId: options?.agentExecutionId,
             connectionType: options?.connectionType || "user",
           })
           .catch((err) => logger.error("Connection", "Failed to update connection status to error", err))
@@ -85,6 +88,7 @@ export class MCPConnectionManager {
             status: "error",
             error: errMessage,
             workflowExecutionId: options?.workflowExecutionId,
+            agentExecutionId: options?.agentExecutionId,
             connectionType: options?.connectionType || "user",
           })
           .catch((err) => logger.error("Connection", "Failed to update connection status to error", err))
@@ -111,6 +115,7 @@ export class MCPConnectionManager {
             backendInstanceId: BACKEND_INSTANCE_ID,
           status: "connected",
           workflowExecutionId: options?.workflowExecutionId,
+          agentExecutionId: options?.agentExecutionId,
           connectionType: options?.connectionType || "user",
         })
         .catch((err) => logger.error("Connection", "Failed to update connection status to connected", err))
@@ -130,9 +135,11 @@ export class MCPConnectionManager {
     mcpServerIds: Id<"mcp">[],
     options?: {
       workflowExecutionId?: Id<"workflowExecutions">
-      connectionType?: "user" | "workflow"
+      agentExecutionId?: Id<"agentExecutions">
+      connectionType?: "user" | "workflow" | "agent"
     },
-  ): Promise<{ success: boolean; error?: string }> {
+    authorizedClient?: any
+  ): Promise<{ success: boolean; error?: string; createdConnections?: Id<"mcp">[] }> {
     if (mcpServerIds.length === 0) {
       logger.info("Connection", `No MCP servers to connect for session ${sessionId}`)
       return { success: true }
@@ -141,21 +148,24 @@ export class MCPConnectionManager {
     logger.info("Connection", `Establishing ${mcpServerIds.length} connections for session ${sessionId}...`)
 
     try {
-      // Get server configurations
+      // Get server configurations using authorized client if provided
+      const client = authorizedClient || convex
       const serverPromises = mcpServerIds.map(serverId => 
-        convex.query(api.mcp.get, { id: serverId })
+        client.query(api.mcp.get, { id: serverId })
       )
       const servers = await Promise.all(serverPromises)
 
       // Filter out null servers and establish connections
       const validServers = servers.filter(server => server !== null)
+      const createdConnections: Id<"mcp">[] = []
+      
       const connectionPromises = validServers.map(async (server) => {
         try {
           // Check if we're already connected to this server
           const existingConnection = this.getConnection(sessionId, server._id)
           if (existingConnection) {
             logger.info("Connection", `Session ${sessionId}: Already connected to ${server.name}, reusing connection`)
-            return { success: true }
+            return { success: true, created: false }
           }
 
           // Establish the connection
@@ -171,7 +181,7 @@ export class MCPConnectionManager {
           }
 
           logger.info("Connection", `Session ${sessionId}: Successfully connected to ${server.name}`)
-          return { success: true }
+          return { success: true, created: true, serverId: server._id }
         } catch (error) {
           logger.error("Connection", `Session ${sessionId}: Error connecting to ${server.name}`, error)
           throw error
@@ -179,10 +189,17 @@ export class MCPConnectionManager {
       })
 
       // Wait for all connections to be established
-      await Promise.all(connectionPromises)
+      const results = await Promise.all(connectionPromises)
       
-      logger.info("Connection", `Session ${sessionId}: All ${validServers.length} MCP connections established successfully`)
-      return { success: true }
+      // Track which connections were created (not reused)
+      results.forEach((result, index) => {
+        if (result.created && result.serverId) {
+          createdConnections.push(result.serverId)
+        }
+      })
+      
+      logger.info("Connection", `Session ${sessionId}: All ${validServers.length} MCP connections established successfully (${createdConnections.length} new, ${validServers.length - createdConnections.length} reused)`)
+      return { success: true, createdConnections }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to establish MCP connections"
       logger.error("Connection", `Session ${sessionId}: Failed to establish multiple connections`, error)
@@ -339,6 +356,45 @@ export class MCPConnectionManager {
     } catch (error) {
       logger.error("Connection", `Error cleaning up workflow connections for execution ${workflowExecutionId}`, error)
       // Don't throw - cleanup errors shouldn't fail the workflow
+    }
+  }
+
+  /**
+   * Cleans up all MCP connections for a specific agent execution.
+   * Used to auto-disconnect agent-managed connections after execution.
+   */
+  async cleanupAgentConnections(agentExecutionId: Id<"agentExecutions">): Promise<void> {
+    try {
+      logger.info("Connection", `Cleaning up agent connections for execution ${agentExecutionId}...`)
+
+      // Get all agent connections for this execution from the database
+      const agentConnections = await convex.query(api.mcpConnections.getByAgentExecution, {
+        agentExecutionId,
+      })
+
+      logger.info(
+        "Connection",
+        `Found ${agentConnections.length} connections to cleanup for agent execution ${agentExecutionId}`,
+      )
+
+      // Clean up each connection
+      const cleanupPromises = agentConnections.map(async (connection) => {
+        try {
+          await this.cleanupConnection(connection.sessionId, connection.mcpServerId)
+        } catch (error) {
+          logger.error(
+            "Connection",
+            `Error cleaning up connection ${connection.mcpServerId} for session ${connection.sessionId}`,
+            error,
+          )
+        }
+      })
+
+      await Promise.allSettled(cleanupPromises)
+      logger.info("Connection", `Completed cleanup for agent execution ${agentExecutionId}`)
+    } catch (error) {
+      logger.error("Connection", `Error cleaning up agent connections for execution ${agentExecutionId}`, error)
+      // Don't throw - cleanup errors shouldn't fail the agent execution
     }
   }
 

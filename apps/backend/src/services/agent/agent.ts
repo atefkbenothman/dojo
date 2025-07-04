@@ -1,4 +1,3 @@
-import { createRequestClient, createClientFromAuth } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { streamObjectResponse } from "../ai/stream-object"
@@ -7,6 +6,7 @@ import { mcpConnectionManager } from "../mcp/connection-manager"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import type { CoreMessage, LanguageModel, ToolSet } from "ai"
+import type { ConvexHttpClient } from "convex/browser"
 import type { Response } from "express"
 
 interface RunAgentParams {
@@ -14,7 +14,7 @@ interface RunAgentParams {
   messages: CoreMessage[]
   session: Doc<"sessions"> | undefined
   res: Response
-  authorization?: string
+  client: ConvexHttpClient
 }
 
 interface RunAgentResult {
@@ -23,18 +23,14 @@ interface RunAgentResult {
 }
 
 export class AgentService {
-  private static readonly LOG_PREFIX = "[AgentService]"
-
   // Global registry of active executions
   private static executionControllers = new Map<string, AbortController>()
 
   async runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-    const { agentId, messages, session, res, authorization } = params
+    const { agentId, messages, session, res, client } = params
+
     let executionId: Id<"agentExecutions"> | null = null
     const abortController = new AbortController()
-
-    // Create a per-request client
-    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
 
     try {
       // Listen for client disconnection
@@ -74,7 +70,7 @@ export class AgentService {
       }
 
       // Get the AI model for this agent
-      const aiModel = await this.getAgentModel(agent, session)
+      const aiModel = await this.getAgentModel(agent, session, client)
 
       const userIdForLogging = session?.userId || "anonymous"
       logger.info("Agent", `Running agent ${agent._id} for userId: ${userIdForLogging}`)
@@ -105,7 +101,11 @@ export class AgentService {
         const connectionResult = await mcpConnectionManager.establishMultipleConnections(
           session._id,
           mcpServerIds,
-          { connectionType: "user" }
+          {
+            connectionType: "agent",
+            agentExecutionId: executionId,
+          },
+          client,
         )
 
         if (!connectionResult.success) {
@@ -177,19 +177,18 @@ export class AgentService {
         error: error instanceof Error ? error.message : "Internal server error",
       }
     } finally {
-      // Clean up the controller from registry
+      // Clean up the controller from registry and agent connections
       if (executionId) {
         AgentService.executionControllers.delete(executionId)
         logger.info("Agent", `Cleaned up abort controller for execution ${executionId}`)
+        // Clean up agent-created connections
+        await mcpConnectionManager.cleanupAgentConnections(executionId)
       }
     }
   }
 
   // New method to stop an execution
-  async stopExecution(executionId: string, authorization?: string): Promise<{ success: boolean; error?: string }> {
-    // Create a per-request client
-    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
-    
+  async stopExecution(executionId: string, client: ConvexHttpClient): Promise<{ success: boolean; error?: string }> {
     try {
       // First, check if the execution exists and is running
       const execution = await client.query(api.agentExecutions.get, {
@@ -245,13 +244,17 @@ export class AgentService {
     }
   }
 
-  private async getAgentModel(agent: Doc<"agents">, session: Doc<"sessions"> | undefined): Promise<LanguageModel> {
+  private async getAgentModel(
+    agent: Doc<"agents">,
+    session: Doc<"sessions"> | undefined,
+    client: ConvexHttpClient,
+  ): Promise<LanguageModel> {
     if (!session) {
       throw new Error("Session is required for agent execution")
     }
 
     // Use ModelManager to get the model instance (handles API keys, caching, etc.)
-    const modelInstance = await modelManager.getModel(agent.aiModelId, session)
+    const modelInstance = await modelManager.getModel(agent.aiModelId, client)
 
     return modelInstance as LanguageModel
   }
@@ -292,7 +295,6 @@ export class AgentService {
         throw new Error("Unknown or unhandled output type")
     }
   }
-
 }
 
 // Export singleton instance

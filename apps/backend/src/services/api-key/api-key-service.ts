@@ -1,10 +1,11 @@
-import { createRequestClient, systemConvexClient } from "../../lib/convex-request-client"
+import { convex } from "../../lib/convex-request-client"
 import { throwError } from "../../lib/errors"
 import { logger } from "../../lib/logger"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { env } from "@dojo/env/backend"
 import { decryptApiKey } from "@dojo/utils"
+import type { ConvexHttpClient } from "convex/browser"
 
 export interface ApiKeyResult {
   apiKey: string
@@ -13,7 +14,7 @@ export interface ApiKeyResult {
 
 export interface ApiKeyOptions {
   modelId: string
-  session: Doc<"sessions">
+  client: ConvexHttpClient // Authenticated client for user operations
 }
 
 /**
@@ -23,32 +24,27 @@ export class ApiKeyService {
   private static readonly LOG_PREFIX = "[ApiKeyService]"
 
   /**
-   * Retrieves the appropriate API key for a model and user session
+   * Retrieves the appropriate API key for a model and user
    * Handles both authenticated and guest users, with fallback keys for free models
    */
   async getApiKeyForModel(options: ApiKeyOptions): Promise<ApiKeyResult> {
-    const { modelId, session } = options
+    const { modelId, client } = options
     const requiresApiKey = await getModelRequiresApiKey(modelId)
 
-    // For authenticated users, try to get their specific API key first
-    if (session.userId) {
-      const userApiKey = await this.getUserApiKey(session.userId, modelId as Id<"models">)
-      if (userApiKey) {
-        return {
-          apiKey: userApiKey,
-          source: "user",
-        }
-      }
+    // Try to get user's specific API key (returns null if not authenticated or no key)
+    const userApiKey = await this.getUserApiKey(client, modelId as Id<"models">)
 
-      // If user doesn't have a key but model requires one, throw error
-      if (requiresApiKey) {
-        throwError(`API key for model '${modelId}' is missing or not configured`, 401)
+    if (userApiKey) {
+      return {
+        apiKey: userApiKey,
+        source: "user",
       }
-    } else {
-      // Guest users can only use models that don't require API keys
-      if (requiresApiKey) {
-        throwError("You must be logged in to use this model. Please log in and try again", 401)
-      }
+    }
+
+    // If no user API key but model requires one, check if user is authenticated
+    if (requiresApiKey) {
+      // Authenticated user but no API key for this model
+      throwError(`API key for model '${modelId}' is missing or not configured`, 401)
     }
 
     // Try to use fallback API key (for free models)
@@ -64,15 +60,12 @@ export class ApiKeyService {
   }
 
   /**
-   * Retrieves and decrypts a user's API key for a specific model
+   * Retrieves and decrypts a user's API key for a specific model using authenticated client
    */
-  private async getUserApiKey(userId: Id<"users">, modelId: Id<"models">): Promise<string | null> {
-    // Create a per-request client for user-specific queries
-    const client = createRequestClient()
-    
+  private async getUserApiKey(client: ConvexHttpClient, modelId: Id<"models">): Promise<string | null> {
     try {
-      const apiKeyObject = await client.query(api.apiKeys.getApiKeyForUserAndModel, {
-        userId,
+      // Use the current user from the authenticated client's context
+      const apiKeyObject = await client.query(api.apiKeys.getApiKeyForCurrentUserAndModel, {
         modelId,
       })
 
@@ -87,7 +80,7 @@ export class ApiKeyService {
 
       const decryptedApiKey = await decryptApiKey(apiKeyObject.apiKey, encryptionSecret)
       if (!decryptedApiKey) {
-        logger.error("ApiKey", `Failed to decrypt API key for user ${userId}, model ${modelId}`)
+        logger.error("ApiKey", `Failed to decrypt API key for model ${modelId}`)
         return null
       }
 
@@ -114,13 +107,6 @@ export class ApiKeyService {
       throwError(`API key for model '${modelId}' appears to be invalid (too short)`, 500)
     }
   }
-
-  /**
-   * Logs API key usage for monitoring purposes (without exposing the actual key)
-   */
-  static logApiKeyUsage(modelId: string, source: "user" | "fallback", userId?: string): void {
-    logger.debug("ApiKey", `API key used for model ${modelId}, source: ${source}, user: ${userId || "anonymous"}`)
-  }
 }
 
 // Export singleton instance
@@ -131,7 +117,7 @@ export const apiKeyService = new ApiKeyService()
  */
 export async function getModelRequiresApiKey(modelId: string): Promise<boolean> {
   try {
-    const modelsWithProviders = await systemConvexClient.query(api.models.modelsWithProviders)
+    const modelsWithProviders = await convex.query(api.models.modelsWithProviders)
     const model = modelsWithProviders.find((model) => model._id === modelId)
     if (!model || model.requiresApiKey === false) {
       return false
@@ -148,7 +134,7 @@ export async function getModelRequiresApiKey(modelId: string): Promise<boolean> 
  */
 export async function getModelFallbackApiKey(modelId: string): Promise<string | undefined> {
   try {
-    const modelsWithProviders = await systemConvexClient.query(api.models.modelsWithProviders)
+    const modelsWithProviders = await convex.query(api.models.modelsWithProviders)
     const model = modelsWithProviders.find((model) => model._id === modelId)
     if (model && model.requiresApiKey === false) {
       return env.GROQ_API_KEY_FALLBACK || ""

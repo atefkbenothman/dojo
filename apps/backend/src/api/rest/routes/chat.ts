@@ -1,4 +1,4 @@
-import { asyncHandler } from "../../../lib/errors"
+import { asyncHandler, throwError } from "../../../lib/errors"
 import { logger } from "../../../lib/logger"
 import { modelManager } from "../../../services/ai/model-manager"
 import { streamTextResponse } from "../../../services/ai/stream-text"
@@ -22,17 +22,21 @@ chatRouter.post(
   createValidatedRequestMiddleware(chatInputSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     // Session and parsedInput are guaranteed to exist due to middleware
-    const session = req.session!
+    const session = req.session
     const parsedInput = req.parsedInput as z.infer<typeof chatInputSchema>
-    const modelId = req.modelId!
     const { messages } = parsedInput
+
+    // Extract and validate modelId
+    const modelId = parsedInput.chat?.modelId
+    if (!modelId) {
+      throwError("Missing modelId in chat object", 400)
+    }
 
     const userIdForLogging = session.userId || "anonymous"
 
     logger.info("REST /chat/send-message", `request received for userId: ${userIdForLogging}, using model: ${modelId}`)
 
-    // Get model instance through ModelManager (handles API keys, caching, etc.)
-    const modelInstance = await modelManager.getModel(modelId, session)
+    const modelInstance = await modelManager.getModel(modelId, req.client)
 
     const aiModel = modelInstance as LanguageModel
     const combinedTools = mcpConnectionManager.aggregateTools(session._id)

@@ -4,7 +4,7 @@ import { generationRouter } from "./api/rest/routes/generation"
 import { workflowRouter } from "./api/rest/routes/workflow"
 import { createTRPCContext } from "./api/trpc/context"
 import { appRouter } from "./api/trpc/router"
-import { systemConvexClient } from "./lib/convex-request-client"
+import { convex } from "./lib/convex-request-client"
 import { errorHandlerMiddleware } from "./lib/errors"
 import { logger } from "./lib/logger"
 import { mcpConnectionManager } from "./services/mcp/connection-manager"
@@ -21,18 +21,9 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 // Generate a unique backend instance ID (could be hostname + process.pid)
 export const BACKEND_INSTANCE_ID = `${process.env.HOSTNAME || "localhost"}-${process.pid}-${Date.now()}`
 
-const models = await systemConvexClient.query(api.models.list)
-const mcpServers = await systemConvexClient.query(api.mcp.list)
+const models = await convex.query(api.models.list)
+const mcpServers = await convex.query(api.mcp.list)
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      modelId: string | undefined
-      parsedInput: unknown
-    }
-  }
-}
 
 const app: Express = express()
 

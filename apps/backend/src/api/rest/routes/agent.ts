@@ -1,7 +1,7 @@
 import { asyncHandler, throwError } from "../../../lib/errors"
 import { logger } from "../../../lib/logger"
-import { requireSessionMiddleware } from "../../../lib/session"
 import { agentService } from "../../../services/agent/agent"
+import { createValidatedRequestMiddleware } from "../middleware"
 import { CoreMessage } from "ai"
 import express, { type Request, type Response, Router } from "express"
 import { z } from "zod"
@@ -12,24 +12,26 @@ const agentInputSchema = z.object({
   messages: z.array(z.any()).min(1, { message: "Missing or invalid messages array" }),
   agent: z.object({
     agentId: z.string(),
+    modelId: z.string().min(1, { message: "Missing modelId" }),
   }),
 })
 
+// Schema for stop execution (empty body, just needs session)
+const stopExecutionSchema = z.object({})
+
 agentRouter.post(
   "/run",
-  requireSessionMiddleware,
+  createValidatedRequestMiddleware(agentInputSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const validationResult = agentInputSchema.safeParse(req.body)
+    const { session, client } = req
+    const parsedInput = req.parsedInput as z.infer<typeof agentInputSchema>
+    const { agent: agentInfo, messages } = parsedInput
 
-    if (!validationResult.success) {
-      throwError("Invalid input", 400)
+    // Extract and validate modelId
+    const modelId = agentInfo?.modelId
+    if (!modelId) {
+      throwError("Missing modelId in agent object", 400)
     }
-
-    const parsedInput = validationResult.data
-    const { agent: agentInfo, messages } = parsedInput as { agent: { agentId: string }; messages: CoreMessage[] }
-
-    // Session is guaranteed to exist due to requireSessionMiddleware
-    const session = req.session!
 
     logger.info(
       "REST /agent/run",
@@ -38,10 +40,10 @@ agentRouter.post(
 
     const result = await agentService.runAgent({
       agentId: agentInfo.agentId,
-      messages,
+      messages: messages as CoreMessage[],
       session,
       res,
-      authorization: req.headers.authorization,
+      client,
     })
 
     if (!result.success) {
@@ -55,7 +57,7 @@ agentRouter.post(
 
 agentRouter.post(
   "/execution/:executionId/stop",
-  requireSessionMiddleware,
+  createValidatedRequestMiddleware(stopExecutionSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { executionId } = req.params
 
@@ -63,14 +65,14 @@ agentRouter.post(
       throwError("Execution ID is required", 400)
     }
 
-    const session = req.session!
+    const { session, client } = req
 
     logger.info(
       "REST /agent/execution/stop",
       `Stop request received for execution: ${executionId}, userId: ${session.userId || "anonymous"}`,
     )
 
-    const result = await agentService.stopExecution(executionId, req.headers.authorization)
+    const result = await agentService.stopExecution(executionId, client)
 
     if (!result.success) {
       if (result.error?.includes("not found")) {

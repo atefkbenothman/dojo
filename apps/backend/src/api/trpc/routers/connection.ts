@@ -1,4 +1,3 @@
-import { createRequestClient, createClientFromAuth } from "../../../lib/convex-request-client"
 import { mcpConnectionManager } from "../../../services/mcp/connection-manager"
 import { router, publicProcedure } from "../trpc"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -27,7 +26,7 @@ export const connectionRouter = router({
    * but authorization is handled internally based on server properties.
    */
   connect: publicProcedure.input(connectInputSchema).mutation(async ({ input, ctx }) => {
-    const { session } = ctx
+    const { session, client } = ctx
 
     if (!session) {
       throw new TRPCError({
@@ -35,9 +34,6 @@ export const connectionRouter = router({
         message: "Session could not be established.",
       })
     }
-
-    // Create a per-request client based on the authorization
-    const client = ctx.authorization ? createClientFromAuth(ctx.authorization) : createRequestClient()
 
     const { servers } = input
     const mcpServers = await Promise.all(
@@ -56,7 +52,9 @@ export const connectionRouter = router({
 
         // Additional check: Servers requiring user keys need authentication
         if (server.requiresUserKey && !isUserAuthenticated) {
-          throw new Error(`Authentication is required to connect to server "${server.name}" as it requires API keys or configuration.`)
+          throw new Error(
+            `Authentication is required to connect to server "${server.name}" as it requires API keys or configuration.`,
+          )
         }
 
         if (server.localOnly && isProduction) {

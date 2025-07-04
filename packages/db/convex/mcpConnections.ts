@@ -16,7 +16,8 @@ export const upsert = mutation({
     ),
     error: v.optional(v.string()),
     workflowExecutionId: v.optional(v.id("workflowExecutions")),
-    connectionType: v.union(v.literal("user"), v.literal("workflow")),
+    agentExecutionId: v.optional(v.id("agentExecutions")),
+    connectionType: v.union(v.literal("user"), v.literal("workflow"), v.literal("agent")),
   },
   handler: async (ctx, args) => {
     // Get userId from session
@@ -41,6 +42,7 @@ export const upsert = mutation({
         backendInstanceId: args.backendInstanceId,
         lastHeartbeat: now,
         workflowExecutionId: args.workflowExecutionId,
+        agentExecutionId: args.agentExecutionId,
         connectionType: args.connectionType,
         ...(args.status === "disconnected" ? { disconnectedAt: now } : {}),
       })
@@ -54,11 +56,12 @@ export const upsert = mutation({
         backendInstanceId: args.backendInstanceId,
         status: args.status,
         error: args.error,
-        workflowExecutionId: args.workflowExecutionId,
         connectionType: args.connectionType,
         connectedAt: now,
         lastHeartbeat: now,
         disconnectedAt: undefined,
+        workflowExecutionId: args.workflowExecutionId,
+        agentExecutionId: args.agentExecutionId,
       })
       return connectionId
     }
@@ -184,6 +187,21 @@ export const getByWorkflowExecution = query({
     const connections = await ctx.db
       .query("mcpConnections")
       .withIndex("by_workflow_execution", (q) => q.eq("workflowExecutionId", args.workflowExecutionId))
+      .collect()
+
+    return connections
+  },
+})
+
+// Get connections by agent execution ID  
+export const getByAgentExecution = query({
+  args: {
+    agentExecutionId: v.id("agentExecutions"),
+  },
+  handler: async (ctx, args) => {
+    const connections = await ctx.db
+      .query("mcpConnections")
+      .withIndex("by_agent_execution", (q) => q.eq("agentExecutionId", args.agentExecutionId))
       .collect()
 
     return connections

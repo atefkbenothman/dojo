@@ -1,7 +1,7 @@
 import { asyncHandler, throwError } from "../../../lib/errors"
 import { logger } from "../../../lib/logger"
-import { requireSessionMiddleware } from "../../../lib/session"
 import { workflowService } from "../../../services/workflow/workflow"
+import { createValidatedRequestMiddleware } from "../middleware"
 import type { CoreMessage } from "ai"
 import express, { type Request, type Response, Router } from "express"
 import { z } from "zod"
@@ -21,25 +21,27 @@ const workflowInputSchema = z.object({
     .min(1, { message: "Missing or invalid messages array" }),
   workflow: z.object({
     workflowId: z.string(),
+    modelId: z.string().min(1, { message: "Missing modelId" }),
   }),
 })
 
+// Schema for stop execution (empty body, just needs session)
+const stopExecutionSchema = z.object({})
+
 workflowRouter.post(
   "/run",
-  requireSessionMiddleware,
+  createValidatedRequestMiddleware(workflowInputSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    // Parse and validate input
-    const validationResult = workflowInputSchema.safeParse(req.body)
-
-    if (!validationResult.success) {
-      throwError("Invalid input", 400)
-    }
-
-    const parsedInput = validationResult.data
+    // Session, parsedInput, and client are guaranteed to exist due to middleware
+    const session = req.session
+    const parsedInput = req.parsedInput as z.infer<typeof workflowInputSchema>
     const { messages, workflow: workflowInfo } = parsedInput
 
-    // Session is guaranteed to exist due to requireSessionMiddleware
-    const session = req.session!
+    // Extract and validate modelId
+    const modelId = workflowInfo?.modelId
+    if (!modelId) {
+      throwError("Missing modelId in workflow object", 400)
+    }
 
     logger.info(
       "REST /workflow/run",
@@ -51,7 +53,7 @@ workflowRouter.post(
       messages: messages as CoreMessage[],
       session,
       res,
-      authorization: req.headers.authorization,
+      client: req.client,
     })
 
     if (!result.success) {
@@ -70,7 +72,7 @@ workflowRouter.post(
 
 workflowRouter.post(
   "/execution/:executionId/stop",
-  requireSessionMiddleware,
+  createValidatedRequestMiddleware(stopExecutionSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { executionId } = req.params
 
@@ -78,14 +80,14 @@ workflowRouter.post(
       throwError("Execution ID is required", 400)
     }
 
-    const session = req.session!
+    const { session, client } = req
 
     logger.info(
       "REST /workflow/execution/stop",
       `Stop request received for execution: ${executionId}, userId: ${session.userId || "anonymous"}`,
     )
 
-    const result = await workflowService.stopExecution(executionId, req.headers.authorization)
+    const result = await workflowService.stopExecution(executionId, client)
 
     if (!result.success) {
       if (result.error?.includes("not found")) {

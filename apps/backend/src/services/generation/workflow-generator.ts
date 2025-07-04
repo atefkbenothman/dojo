@@ -1,4 +1,4 @@
-import { createRequestClient } from "../../lib/convex-request-client"
+import type { ConvexHttpClient } from "convex/browser"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { WORKFLOW_GENERATOR_PROMPT } from "../ai/prompts"
@@ -11,7 +11,7 @@ interface GenerateWorkflowParams {
   prompt: string
   sessionId: string
   modelId: string
-  authToken: string
+  client: ConvexHttpClient
 }
 
 interface GenerateWorkflowResult {
@@ -24,11 +24,9 @@ export async function generateWorkflow({
   prompt,
   sessionId,
   modelId,
-  authToken,
+  client,
 }: GenerateWorkflowParams): Promise<GenerateWorkflowResult> {
   try {
-    // Create a client with auth for this request
-    const client = createRequestClient(authToken)
 
     // Get the session to use with model manager
     const session = await client.query(api.sessions.get, {
@@ -42,8 +40,8 @@ export async function generateWorkflow({
       }
     }
 
-    // Get the model using the session
-    const model = (await modelManager.getModel(modelId, session)) as LanguageModel
+    // Get the model using the session and authenticated client
+    const model = (await modelManager.getModel(modelId, client)) as LanguageModel
 
     // Create tools with the authenticated client
     const toolsWithClient = {

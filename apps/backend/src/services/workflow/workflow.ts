@@ -1,19 +1,19 @@
-import { createRequestClient, createClientFromAuth } from "../../lib/convex-request-client"
+import { createRequestClient } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { mcpConnectionManager } from "../mcp/connection-manager"
 import { logWorkflow, WorkflowExecutor } from "./executor"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import type { CoreMessage } from "ai"
-import type { Response } from "express"
 import type { ConvexHttpClient } from "convex/browser"
+import type { Response } from "express"
 
 interface RunWorkflowParams {
   workflowId: string
   messages: CoreMessage[]
-  session: Doc<"sessions"> | undefined
+  session: Doc<"sessions">
   res: Response
-  authorization?: string
+  client: ConvexHttpClient
 }
 
 interface RunWorkflowResult {
@@ -26,9 +26,7 @@ interface WorkflowExecutorOptions {
   persistExecution?: boolean
   executionId?: Id<"workflowExecutions">
   sessionId?: Id<"sessions">
-  userId?: Id<"users">
   abortSignal?: AbortSignal
-  authorization?: string
 }
 
 export class WorkflowService {
@@ -42,12 +40,10 @@ export class WorkflowService {
   }
 
   async runWorkflow(params: RunWorkflowParams): Promise<RunWorkflowResult> {
-    const { workflowId, messages, session, res, authorization } = params
+    const { workflowId, messages, session, res, client } = params
+
     let executionId: Id<"workflowExecutions"> | null = null
     const abortController = new AbortController()
-    
-    // Create a per-request client
-    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
 
     try {
       // Listen for client disconnection
@@ -109,27 +105,25 @@ export class WorkflowService {
         }
       }
 
-      // Create execution record if we have a session
-      if (session) {
-        executionId = await client.mutation(api.workflowExecutions.create, {
-          workflowId: workflow._id,
-          sessionId: session._id,
-          totalSteps: nodes.length, // All nodes are step nodes now
-          agentIds: nodes.map((n) => n.agentId),
-        })
+      // Create execution record
+      executionId = await client.mutation(api.workflowExecutions.create, {
+        workflowId: workflow._id,
+        sessionId: session._id,
+        totalSteps: nodes.length, // All nodes are step nodes now
+        agentIds: nodes.map((n) => n.agentId),
+      })
 
-        // Note: MCP connections are now handled per-step during execution
+      // Note: MCP connections are now handled per-step during execution
 
-        // Register the abort controller
-        WorkflowService.executionControllers.set(executionId, abortController)
-        logger.info("Workflow", `Registered abort controller for execution ${executionId}`)
-      }
+      // Register the abort controller
+      WorkflowService.executionControllers.set(executionId, abortController)
+      logger.info("Workflow", `Registered abort controller for execution ${executionId}`)
 
       // Prepare execution context
-      const userIdForLogging = session?.userId || "anonymous"
+      const userIdForLogging = session.userId || "anonymous"
 
       // Note: Tools will be dynamically aggregated after workflow connections are established
-      const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
+      const combinedTools = mcpConnectionManager.aggregateTools(session._id)
 
       logWorkflow(`Starting workflow ${workflow._id} for userId: ${userIdForLogging}, nodes: ${nodes.length}`)
 
@@ -142,9 +136,9 @@ export class WorkflowService {
       const executor = new WorkflowExecutor(workflow, nodes, res, {
         ...this.defaultExecutorOptions,
         executionId: executionId || undefined,
-        sessionId: session?._id,
+        sessionId: session._id,
         abortSignal: abortController.signal,
-        authorization,
+        client,
       })
 
       const result = await executor.execute(messages)
@@ -213,10 +207,7 @@ export class WorkflowService {
   }
 
   // New method to stop a workflow execution
-  async stopExecution(executionId: string, authorization?: string): Promise<{ success: boolean; error?: string }> {
-    // Create a per-request client
-    const client = authorization ? createClientFromAuth(authorization) : createRequestClient()
-    
+  async stopExecution(executionId: string, client: ConvexHttpClient): Promise<{ success: boolean; error?: string }> {
     try {
       // First, check if the execution exists and is running
       const execution = await client.query(api.workflowExecutions.get, {
@@ -299,7 +290,10 @@ export class WorkflowService {
     }
   }
 
-  private async fetchWorkflowNodes(workflow: Doc<"workflows">, client: ConvexHttpClient): Promise<Doc<"workflowNodes">[]> {
+  private async fetchWorkflowNodes(
+    workflow: Doc<"workflows">,
+    client: ConvexHttpClient,
+  ): Promise<Doc<"workflowNodes">[]> {
     try {
       const nodes = await client.query(api.workflows.getWorkflowNodes, {
         workflowId: workflow._id,
