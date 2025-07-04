@@ -16,6 +16,7 @@ import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
+import { useUrlSelection } from "@/hooks/use-url-selection"
 import { toast } from "sonner"
 
 export function Agent() {
@@ -24,7 +25,7 @@ export function Agent() {
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
 
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const { selectedId: selectedAgentId, setSelectedId: setSelectedAgentId } = useUrlSelection()
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add")
@@ -123,7 +124,7 @@ export function Agent() {
       // Toggle selection - if clicking the same agent, unselect it
       setSelectedAgentId(selectedAgentId === agent._id ? null : agent._id)
     },
-    [selectedAgentId],
+    [selectedAgentId, setSelectedAgentId],
   )
 
   const handleRunAgent = useCallback(
@@ -143,6 +144,11 @@ export function Agent() {
   const handleGenerateAgent = useCallback(() => {
     setIsGenerateDialogOpen(true)
   }, [])
+
+  const handleAgentCreated = useCallback((agentId: string) => {
+    // Auto-select the newly created agent
+    setSelectedAgentId(agentId)
+  }, [setSelectedAgentId])
 
   return (
     <>
@@ -211,7 +217,12 @@ export function Agent() {
             </>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">Select an agent</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedAgentId && Array.isArray(agents) 
+                  ? "Agent does not exist" 
+                  : "Select an agent"
+                }
+              </p>
             </div>
           )}
         </div>
@@ -228,6 +239,7 @@ export function Agent() {
           }
         }}
         isAuthenticated={isAuthenticated}
+        onAgentCreated={handleAgentCreated}
       />
       {/* Delete Confirmation Dialog */}
       <AgentDeleteDialog

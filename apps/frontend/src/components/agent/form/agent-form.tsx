@@ -41,6 +41,7 @@ interface AgentFormProps {
   } | null
   onClose?: () => void
   onDeleteClick?: (agent: Agent) => void
+  onAgentCreated?: (agentId: string) => void
 }
 
 // Component for read-only notice
@@ -347,6 +348,7 @@ export function AgentForm({
   execution,
   onClose,
   onDeleteClick,
+  onAgentCreated,
 }: AgentFormProps) {
   const { mcpServers } = useMCP()
   const { models } = useAIModels()
@@ -443,13 +445,17 @@ export function AgentForm({
       const agentData = prepareAgentData(data, false)
 
       if (mode === "add") {
-        await create(agentData)
+        const agentId = await create(agentData)
         toast.success(`${data.name} agent added`, {
           icon: null,
           duration: 3000,
           position: "bottom-center",
           style: successToastStyle,
         })
+        // Call the callback with the new agent ID
+        if (agentId) {
+          onAgentCreated?.(agentId)
+        }
       } else if (agent) {
         await edit({
           id: agent._id,

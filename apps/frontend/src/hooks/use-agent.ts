@@ -65,7 +65,7 @@ export function useAgent() {
   }, [authToken, currentSession])
 
   const agents = useQuery(api.agents.list)
-  const create = useMutation(api.agents.create)
+  const createAgent = useMutation(api.agents.create)
   const edit = useMutation(api.agents.edit)
   const remove = useMutation(api.agents.remove)
   const cloneAgent = useMutation(api.agents.clone)
@@ -214,6 +214,24 @@ export function useAgent() {
     } catch (error) {
       console.error("Failed to check dependencies:", error)
       return null
+    }
+  }
+
+  const create = async (agent: any) => {
+    try {
+      const agentId = await createAgent(agent)
+      return agentId
+    } catch (error) {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
+      toast.error(`Failed to create agent: ${errorMessage}`, {
+        icon: null,
+        id: "create-agent-error",
+        duration: 5000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+      throw error
     }
   }
 
