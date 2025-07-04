@@ -1,7 +1,6 @@
-import { createRequestClient } from "../../lib/convex-request-client"
 import { logger } from "../../lib/logger"
 import { mcpConnectionManager } from "../mcp/connection-manager"
-import { logWorkflow, WorkflowExecutor } from "./executor"
+import { logWorkflow, WorkflowExecutor, type WorkflowExecutorOptions } from "./executor"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import type { CoreMessage } from "ai"
@@ -22,12 +21,6 @@ interface RunWorkflowResult {
   error?: string
 }
 
-interface WorkflowExecutorOptions {
-  persistExecution?: boolean
-  executionId?: Id<"workflowExecutions">
-  sessionId?: Id<"sessions">
-  abortSignal?: AbortSignal
-}
 
 export class WorkflowService {
   private static readonly LOG_PREFIX = "[WorkflowService]"
@@ -35,7 +28,7 @@ export class WorkflowService {
   // Global registry of active workflow executions
   private static executionControllers = new Map<string, AbortController>()
 
-  private readonly defaultExecutorOptions: WorkflowExecutorOptions = {
+  private readonly defaultExecutorOptions: Partial<WorkflowExecutorOptions> = {
     persistExecution: true,
   }
 

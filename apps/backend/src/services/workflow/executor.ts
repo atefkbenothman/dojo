@@ -9,7 +9,7 @@ import { type CoreMessage, type LanguageModel, type ToolSet } from "ai"
 import type { ConvexHttpClient } from "convex/browser"
 import { type Response } from "express"
 
-interface WorkflowExecutorOptions {
+export interface WorkflowExecutorOptions {
   persistExecution?: boolean
   executionId?: Id<"workflowExecutions">
   sessionId: Id<"sessions">
