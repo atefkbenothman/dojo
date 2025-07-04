@@ -2,7 +2,6 @@ import { agentFormSchema, type AgentFormValues } from "@/components/agent/form/a
 import {
   filterMcpServersByVisibility,
   getDefaultAgentFormValues,
-  getDefaultModel,
   getModelIdFromConvex,
   prepareAgentData,
 } from "@/components/agent/form/agent-form-utils"
@@ -19,6 +18,7 @@ import { useAgent, type AgentStatus } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { DEFAULT_MODEL_ID } from "@/lib/constants"
 import { successToastStyle, errorToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import type { Doc } from "@dojo/db/convex/_generated/dataModel"
@@ -364,7 +364,10 @@ export function AgentForm({
   )
 
   // Get default model for new agents
-  const defaultModel = useMemo(() => getDefaultModel(models), [models])
+  const defaultModel = useMemo(() => {
+    const defaultModel = models.find((m) => m.modelId === DEFAULT_MODEL_ID)
+    return defaultModel?._id || ""
+  }, [models])
 
   // Get execution status info
   const statusInfo = useMemo(() => {

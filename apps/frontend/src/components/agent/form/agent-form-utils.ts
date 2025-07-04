@@ -27,12 +27,6 @@ export function filterMcpServersByVisibility(
   return mcpServers.filter((server) => server.isPublic)
 }
 
-// Get default model from available models
-export function getDefaultModel(models: Doc<"models">[]): string {
-  const freeModel = models.find((m) => !m.requiresApiKey)
-  return freeModel?._id || models[0]?._id || ""
-}
-
 // Convert model ID to Convex ID
 export function getConvexModelId(models: Doc<"models">[], modelId?: string): string | undefined {
   if (!modelId) return undefined
