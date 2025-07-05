@@ -77,8 +77,9 @@ export class MCPConnectionManager {
     try {
       await mcpClient.start()
     } catch (err) {
-      const errMessage = `Failed to start MCPClient for session ${sessionId}, server ${server._id}`
-      logger.error("Connection", errMessage, err)
+      const rootCause = err instanceof Error ? err.message : String(err)
+      const errMessage = `Failed to start MCPClient: ${rootCause}`
+      logger.error("Connection", `${errMessage} for session ${sessionId}, server ${server._id}`, err)
 
       // Update connection status to error
       if (connectionId) {
