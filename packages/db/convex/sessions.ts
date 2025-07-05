@@ -65,8 +65,7 @@ export const getOrCreate = mutation({
         .unique()
 
       if (existingSession) {
-        // Update last accessed time
-        await ctx.db.patch(existingSession._id, { lastAccessed: Date.now() })
+        // Return existing session without updating lastAccessed to avoid unnecessary re-renders
         return existingSession
       }
 
@@ -87,8 +86,7 @@ export const getOrCreate = mutation({
         .unique()
 
       if (existingSession) {
-        // Update last accessed time
-        await ctx.db.patch(existingSession._id, { lastAccessed: Date.now() })
+        // Return existing session without updating lastAccessed to avoid unnecessary re-renders
         return existingSession
       }
 
