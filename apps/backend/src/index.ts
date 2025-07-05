@@ -8,7 +8,6 @@ import { convex } from "./lib/convex-request-client"
 import { errorHandlerMiddleware } from "./lib/errors"
 import { logger } from "./lib/logger"
 import { mcpConnectionManager } from "./services/mcp/connection-manager"
-import { startHeartbeat, stopHeartbeat, disconnectAllBackendConnections } from "./services/mcp/heartbeat"
 import { api } from "@dojo/db/convex/_generated/api"
 import { env } from "@dojo/env/backend"
 import { createExpressMiddleware } from "@trpc/server/adapters/express"
@@ -65,8 +64,6 @@ const server = app.listen(PORT, () => {
   logger.info("Core", `Configured MCP Servers: ${mcpServers.map((mcp) => mcp.name).join(", ")}`)
   logger.info("Core", `AI Models: ${models.map((model) => model.modelId).join(", ")}`)
 
-  // Start heartbeat service
-  startHeartbeat(BACKEND_INSTANCE_ID)
 })
 
 process.on("uncaughtException", (err) => {
@@ -91,11 +88,8 @@ async function gracefulShutdown(signal: string) {
   logger.info("Core", `${signal} received, starting graceful shutdown...`)
 
   try {
-    // Stop heartbeat service
-    stopHeartbeat()
-
     // Mark all connections from this backend as disconnected
-    await disconnectAllBackendConnections()
+    await mcpConnectionManager.cleanupAllConnections()
 
     // Stop accepting new connections
     logger.info("Core", "Closing HTTP server...")

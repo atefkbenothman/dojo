@@ -204,7 +204,6 @@ export const mcpConnectionsFields = {
 
   // Timestamps
   connectedAt: v.number(),
-  lastHeartbeat: v.number(), // Backend updates this periodically
   disconnectedAt: v.optional(v.number()),
   statusUpdatedAt: v.number(), // When the status was last changed
 }

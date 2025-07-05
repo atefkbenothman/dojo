@@ -15,7 +15,7 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
 import { PanelLeft, PanelRight } from "lucide-react"
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
 export function Mcp() {
@@ -55,7 +55,7 @@ export function Mcp() {
         statusMap.set(server._id, {
           status: conn.status as MCPConnectionState["status"],
           error: conn.error,
-          isStale: !!conn.isStale,
+          isStale: false, // No longer using heartbeat-based stale detection
           statusUpdatedAt: conn.statusUpdatedAt,
         })
       }
@@ -131,7 +131,6 @@ export function Mcp() {
     },
     [setSelectedServerId],
   )
-
 
   const handleSelectServer = useCallback(
     (server: MCPServer) => {
@@ -230,10 +229,7 @@ export function Mcp() {
           ) : (
             <div className="flex items-center justify-center h-full">
               <p className="text-sm text-muted-foreground">
-                {selectedServerId && Array.isArray(mcpServers) 
-                  ? "Server does not exist" 
-                  : "Select a server"
-                }
+                {selectedServerId && Array.isArray(mcpServers) ? "Server does not exist" : "Select a server"}
               </p>
             </div>
           )}

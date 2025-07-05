@@ -41,7 +41,6 @@ export const upsert = mutation({
         status: args.status,
         error: args.error,
         backendInstanceId: args.backendInstanceId,
-        lastHeartbeat: now,
         statusUpdatedAt: args.statusUpdatedAt || now,
         workflowExecutionId: args.workflowExecutionId,
         agentExecutionId: args.agentExecutionId,
@@ -60,7 +59,6 @@ export const upsert = mutation({
         error: args.error,
         connectionType: args.connectionType,
         connectedAt: now,
-        lastHeartbeat: now,
         statusUpdatedAt: args.statusUpdatedAt || now,
         disconnectedAt: undefined,
         workflowExecutionId: args.workflowExecutionId,
@@ -71,36 +69,7 @@ export const upsert = mutation({
   },
 })
 
-// Update heartbeat for a connection
-export const updateHeartbeat = mutation({
-  args: {
-    connectionId: v.id("mcpConnections"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.connectionId, {
-      lastHeartbeat: Date.now(),
-    })
-  },
-})
 
-// Bulk update heartbeats for a backend instance
-export const updateHeartbeats = mutation({
-  args: {
-    backendInstanceId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const connections = await ctx.db
-      .query("mcpConnections")
-      .withIndex("by_backend", (q) => q.eq("backendInstanceId", args.backendInstanceId))
-      .filter((q) => q.eq(q.field("status"), "connected"))
-      .collect()
-
-    const now = Date.now()
-    await Promise.all(connections.map((conn) => ctx.db.patch(conn._id, { lastHeartbeat: now })))
-
-    return connections.length
-  },
-})
 
 // Mark connections as disconnected for a backend instance (used on shutdown)
 export const disconnectByBackend = mutation({
@@ -140,25 +109,7 @@ export const getBySession = query({
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
       .collect()
 
-    // Filter out stale connections (no heartbeat in last 90 seconds)
-    // IMPORTANT: This threshold must be greater than the heartbeat interval
-    // in the backend service (currently 30 seconds) to avoid false positives
-    const now = Date.now()
-    const STALE_THRESHOLD = 90 * 1000 // 90 seconds
-
-    return connections.map((conn) => {
-      // Check if connected status is stale (no heartbeat)
-      const isHeartbeatStale = conn.status === "connected" && now - conn.lastHeartbeat > STALE_THRESHOLD
-      
-      // Check if error status is stale (older than 1 hour)
-      const ERROR_STALE_THRESHOLD = 60 * 60 * 1000 // 1 hour
-      const isErrorStale = conn.status === "error" && conn.statusUpdatedAt && (now - conn.statusUpdatedAt > ERROR_STALE_THRESHOLD)
-      
-      return {
-        ...conn,
-        isStale: isHeartbeatStale || isErrorStale,
-      }
-    })
+    return connections
   },
 })
 
@@ -176,21 +127,7 @@ export const getConnection = query({
 
     if (!connection) return null
 
-    // Check if connection is stale
-    // IMPORTANT: This threshold must be greater than the heartbeat interval
-    // in the backend service (currently 30 seconds) to avoid false positives
-    const now = Date.now()
-    const STALE_THRESHOLD = 90 * 1000 // 90 seconds
-    const isHeartbeatStale = connection.status === "connected" && now - connection.lastHeartbeat > STALE_THRESHOLD
-    
-    // Check if error status is stale (older than 1 hour)
-    const ERROR_STALE_THRESHOLD = 60 * 60 * 1000 // 1 hour
-    const isErrorStale = connection.status === "error" && connection.statusUpdatedAt && (now - connection.statusUpdatedAt > ERROR_STALE_THRESHOLD)
-
-    return {
-      ...connection,
-      isStale: isHeartbeatStale || isErrorStale,
-    }
+    return connection
   },
 })
 
@@ -224,28 +161,3 @@ export const getByAgentExecution = query({
   },
 })
 
-// Clean up stale connections (for periodic cleanup)
-export const cleanupStale = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const now = Date.now()
-    const STALE_THRESHOLD = 5 * 60 * 1000 // 5 minutes
-
-    const staleConnections = await ctx.db
-      .query("mcpConnections")
-      .filter((q) => q.and(q.eq(q.field("status"), "connected"), q.lt(q.field("lastHeartbeat"), now - STALE_THRESHOLD)))
-      .collect()
-
-    await Promise.all(
-      staleConnections.map((conn) =>
-        ctx.db.patch(conn._id, {
-          status: "disconnected",
-          disconnectedAt: now,
-          error: "Connection timeout - no heartbeat",
-        }),
-      ),
-    )
-
-    return staleConnections.length
-  },
-})

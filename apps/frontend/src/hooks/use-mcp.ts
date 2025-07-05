@@ -95,7 +95,7 @@ export function useMCP() {
     if (!mcpConnections || !mcpServers) return []
 
     return mcpConnections
-      .filter((conn) => conn.status === "connected" && !conn.isStale)
+      .filter((conn) => conn.status === "connected")
       .map((conn) => {
         const server = mcpServers.find((s) => s._id === conn.mcpServerId)
         return {
