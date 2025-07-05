@@ -55,7 +55,8 @@ export function Mcp() {
         statusMap.set(server._id, {
           status: conn.status as MCPConnectionState["status"],
           error: conn.error,
-          isStale: conn.isStale,
+          isStale: !!conn.isStale,
+          statusUpdatedAt: conn.statusUpdatedAt,
         })
       }
     })

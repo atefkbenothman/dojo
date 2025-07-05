@@ -35,6 +35,7 @@ export class MCPConnectionManager {
         sessionId,
         backendInstanceId: BACKEND_INSTANCE_ID,
         status: "connecting",
+        statusUpdatedAt: Date.now(),
         workflowExecutionId: options?.workflowExecutionId,
         agentExecutionId: options?.agentExecutionId,
         connectionType: options?.connectionType || "user",
@@ -59,6 +60,7 @@ export class MCPConnectionManager {
             sessionId,
                 backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
+            statusUpdatedAt: Date.now(),
             error: errorMessage,
             workflowExecutionId: options?.workflowExecutionId,
             agentExecutionId: options?.agentExecutionId,
@@ -86,6 +88,7 @@ export class MCPConnectionManager {
             sessionId,
                 backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
+            statusUpdatedAt: Date.now(),
             error: errMessage,
             workflowExecutionId: options?.workflowExecutionId,
             agentExecutionId: options?.agentExecutionId,
@@ -114,6 +117,7 @@ export class MCPConnectionManager {
           sessionId,
             backendInstanceId: BACKEND_INSTANCE_ID,
           status: "connected",
+          statusUpdatedAt: Date.now(),
           workflowExecutionId: options?.workflowExecutionId,
           agentExecutionId: options?.agentExecutionId,
           connectionType: options?.connectionType || "user",
@@ -227,6 +231,7 @@ export class MCPConnectionManager {
           sessionId,
           backendInstanceId: BACKEND_INSTANCE_ID,
           status: "disconnecting",
+          statusUpdatedAt: Date.now(),
           connectionType: "user", // Default for cleanup calls
         })
         .catch((err) => logger.error("Connection", "Failed to update connection status to disconnecting", err))
@@ -248,6 +253,7 @@ export class MCPConnectionManager {
           sessionId,
           backendInstanceId: BACKEND_INSTANCE_ID,
           status: "disconnected",
+          statusUpdatedAt: Date.now(),
           connectionType: "user", // Default for cleanup calls
         })
         .catch((err) => logger.error("Connection", "Failed to update connection status to disconnected", err))

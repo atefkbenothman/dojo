@@ -14,6 +14,7 @@ export const upsert = mutation({
       v.literal("disconnected"),
       v.literal("error"),
     ),
+    statusUpdatedAt: v.optional(v.number()),
     error: v.optional(v.string()),
     workflowExecutionId: v.optional(v.id("workflowExecutions")),
     agentExecutionId: v.optional(v.id("agentExecutions")),
@@ -41,6 +42,7 @@ export const upsert = mutation({
         error: args.error,
         backendInstanceId: args.backendInstanceId,
         lastHeartbeat: now,
+        statusUpdatedAt: args.statusUpdatedAt || now,
         workflowExecutionId: args.workflowExecutionId,
         agentExecutionId: args.agentExecutionId,
         connectionType: args.connectionType,
@@ -59,6 +61,7 @@ export const upsert = mutation({
         connectionType: args.connectionType,
         connectedAt: now,
         lastHeartbeat: now,
+        statusUpdatedAt: args.statusUpdatedAt || now,
         disconnectedAt: undefined,
         workflowExecutionId: args.workflowExecutionId,
         agentExecutionId: args.agentExecutionId,
@@ -143,10 +146,19 @@ export const getBySession = query({
     const now = Date.now()
     const STALE_THRESHOLD = 90 * 1000 // 90 seconds
 
-    return connections.map((conn) => ({
-      ...conn,
-      isStale: conn.status === "connected" && now - conn.lastHeartbeat > STALE_THRESHOLD,
-    }))
+    return connections.map((conn) => {
+      // Check if connected status is stale (no heartbeat)
+      const isHeartbeatStale = conn.status === "connected" && now - conn.lastHeartbeat > STALE_THRESHOLD
+      
+      // Check if error status is stale (older than 1 hour)
+      const ERROR_STALE_THRESHOLD = 60 * 60 * 1000 // 1 hour
+      const isErrorStale = conn.status === "error" && conn.statusUpdatedAt && (now - conn.statusUpdatedAt > ERROR_STALE_THRESHOLD)
+      
+      return {
+        ...conn,
+        isStale: isHeartbeatStale || isErrorStale,
+      }
+    })
   },
 })
 
@@ -169,11 +181,15 @@ export const getConnection = query({
     // in the backend service (currently 30 seconds) to avoid false positives
     const now = Date.now()
     const STALE_THRESHOLD = 90 * 1000 // 90 seconds
-    const isStale = connection.status === "connected" && now - connection.lastHeartbeat > STALE_THRESHOLD
+    const isHeartbeatStale = connection.status === "connected" && now - connection.lastHeartbeat > STALE_THRESHOLD
+    
+    // Check if error status is stale (older than 1 hour)
+    const ERROR_STALE_THRESHOLD = 60 * 60 * 1000 // 1 hour
+    const isErrorStale = connection.status === "error" && connection.statusUpdatedAt && (now - connection.statusUpdatedAt > ERROR_STALE_THRESHOLD)
 
     return {
       ...connection,
-      isStale,
+      isStale: isHeartbeatStale || isErrorStale,
     }
   },
 })

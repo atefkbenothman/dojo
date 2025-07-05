@@ -1,6 +1,5 @@
 "use client"
 
-// import { MCP_SERVER_ICONS } from "@/components/icons"
 import { MCPStatusIndicator } from "@/components/mcp/mcp-status-indicator"
 import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
@@ -51,11 +50,28 @@ export function MCPListItem({
   const isConnecting = isMCPConnecting(status)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
+  // Get ring color based on database status
+  const getRingColor = () => {
+    if (!status || status.status === "disconnected") {
+      return ""
+    }
+
+    switch (status.status) {
+      case "connected":
+        return status.isStale ? "ring-red-500/80" : "ring-green-500/80"
+      case "connecting":
+      case "disconnecting":
+        return "ring-yellow-500/80"
+      case "error":
+        return "ring-red-500/80"
+      default:
+        return ""
+    }
+  }
+
   // Determine if user can edit/delete this server
   const canEdit = isAuthenticated && !server.isPublic
   const canDelete = isAuthenticated && !server.isPublic
-
-  // const Icon = MCP_SERVER_ICONS[server.name.toLowerCase()] || null
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent) => {
@@ -109,7 +125,9 @@ export function MCPListItem({
     <Card
       className={cn(
         "w-full bg-background overflow-hidden p-2 hover:bg-background/50",
-        // Only show ring when selected
+        // Show status ring when there's a status
+        getRingColor() && `ring-1 ${getRingColor()}`,
+        // Show primary ring when selected (original behavior)
         isSelected && "ring-1 ring-primary/80 bg-background/50",
       )}
       onClick={handleCardClick}

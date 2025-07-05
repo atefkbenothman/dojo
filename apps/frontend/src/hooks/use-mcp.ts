@@ -29,6 +29,7 @@ export interface MCPConnectionState {
   status: MCPConnectionStatus
   error?: string
   isStale?: boolean
+  statusUpdatedAt?: number
 }
 
 // Utility functions
