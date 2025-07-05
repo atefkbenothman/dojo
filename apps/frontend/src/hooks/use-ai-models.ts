@@ -1,17 +1,17 @@
 "use client"
 
+import { useStableQuery } from "@/hooks/use-stable-query"
 import { useModelStore } from "@/store/use-model-store"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { useQuery } from "convex/react"
 import { useCallback, useMemo } from "react"
 
 export function useAIModels() {
   const selectedModelId = useModelStore((state) => state.selectedModelId)
 
-  const models = useQuery(api.models.list)
-  const modelsWithProviders = useQuery(api.models.modelsWithAvailability)
-  const providers = useQuery(api.models.providers)
+  const models = useStableQuery(api.models.list)
+  const modelsWithProviders = useStableQuery(api.models.modelsWithAvailability)
+  const providers = useStableQuery(api.models.providers)
 
   const selectedModel = useMemo(() => {
     return models?.find((model) => model.modelId === selectedModelId)

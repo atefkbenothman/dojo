@@ -1,12 +1,12 @@
 "use client"
 
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { env } from "@dojo/env/frontend"
-import { useQuery } from "convex/react"
 import { useRouter } from "next/navigation"
 import { useCallback, useMemo } from "react"
 import { toast } from "sonner"
@@ -30,8 +30,8 @@ export function useGeneration() {
   const { play } = useSoundEffectContext()
 
   // Subscribe to active generation executions
-  const activeAgentGeneration = useQuery(api.agentGenerationExecutions.getActiveExecution, authToken ? {} : "skip")
-  const activeWorkflowGeneration = useQuery(
+  const activeAgentGeneration = useStableQuery(api.agentGenerationExecutions.getActiveExecution, authToken ? {} : "skip")
+  const activeWorkflowGeneration = useStableQuery(
     api.workflowGenerationExecutions.getActiveExecution,
     authToken ? {} : "skip",
   )

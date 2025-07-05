@@ -1,4 +1,5 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useTRPCClient } from "@/lib/trpc/context"
 import { useSession } from "@/providers/session-provider"
@@ -8,7 +9,7 @@ import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { MCPToolsCollection } from "@dojo/db/convex/types"
 import { useMutation } from "@tanstack/react-query"
-import { useMutation as useConvexMutation, useQuery as useConvexQuery, useConvex } from "convex/react"
+import { useMutation as useConvexMutation, useConvex } from "convex/react"
 import { WithoutSystemFields } from "convex/server"
 import { useMemo } from "react"
 import { toast } from "sonner"
@@ -76,24 +77,22 @@ export function useMCP() {
   // Simple store for tools data only
   const { tools, setTools, clearTools } = useMCPStore()
 
-  const mcpServers = useConvexQuery(api.mcp.list)
+  const mcpServers = useStableQuery(api.mcp.list) || []
   const createMCP = useConvexMutation(api.mcp.create)
   const editMCP = useConvexMutation(api.mcp.edit)
   const deleteMCP = useConvexMutation(api.mcp.remove)
   const cloneMCP = useConvexMutation(api.mcp.clone)
 
   // Query MCP connections from Convex
-  const mcpConnections = useConvexQuery(
+  const mcpConnections = useStableQuery(
     api.mcpConnections.getBySession,
     currentSession ? { sessionId: currentSession._id } : "skip",
-  )
+  ) || []
 
   const { play } = useSoundEffectContext()
 
   // Get active connections from Convex data
   const activeConnections = useMemo(() => {
-    if (!mcpConnections || !mcpServers) return []
-
     return mcpConnections
       .filter((conn) => conn.status === "connected")
       .map((conn) => {
@@ -108,7 +107,6 @@ export function useMCP() {
 
   // Get connection data from Convex
   const getConnection = (serverId: string) => {
-    if (!mcpConnections) return null
     return mcpConnections.find((c) => c.mcpServerId === serverId) || null
   }
 

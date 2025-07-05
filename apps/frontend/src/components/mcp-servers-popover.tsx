@@ -2,13 +2,13 @@
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useStableQuery } from "@/hooks/use-stable-query"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { useQuery } from "convex/react"
 import { Server } from "lucide-react"
 
 export function MCPServersPopover({ serverIds }: { serverIds: Id<"mcp">[] }) {
-  const servers = useQuery(api.mcp.list)
+  const servers = useStableQuery(api.mcp.list)
   const serverNames = serverIds
     .map((id) => servers?.find((s) => s._id === id)?.name)
     .filter((name) => name !== undefined)

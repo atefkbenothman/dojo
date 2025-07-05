@@ -2,6 +2,7 @@
 
 import { useChatProvider } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
 import { useAuthToken } from "@convex-dev/auth/react"
@@ -10,7 +11,7 @@ import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
 import { Message } from "ai"
-import { useMutation, useQuery, useConvex } from "convex/react"
+import { useMutation, useConvex } from "convex/react"
 import { nanoid } from "nanoid"
 import { useCallback, useMemo } from "react"
 import { toast } from "sonner"
@@ -60,14 +61,14 @@ export function useAgent() {
   const { append } = useChatProvider()
   const { currentSession } = useSession()
 
-  const agents = useQuery(api.agents.list)
+  const agents = useStableQuery(api.agents.list)
   const createAgent = useMutation(api.agents.create)
   const edit = useMutation(api.agents.edit)
   const remove = useMutation(api.agents.remove)
   const cloneAgent = useMutation(api.agents.clone)
 
   // Subscribe to agent executions for real-time updates
-  const agentExecutions = useQuery(
+  const agentExecutions = useStableQuery(
     api.agentExecutions.getBySession,
     currentSession ? { sessionId: currentSession._id } : "skip",
   )
