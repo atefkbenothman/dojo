@@ -125,10 +125,8 @@ export function useMCP() {
           setTools(serverId, result.tools || {})
           play("./sounds/connect.mp3", { volume: 0.5 })
         } else {
-          const errorMsg =
-            result && "error" in result && typeof result.error === "string" ? result.error : "Connection failed"
           play("./sounds/error.mp3", { volume: 0.5 })
-          toast.error(errorMsg, {
+          toast.error("Failed to connect to server", {
             icon: null,
             id: `mcp-error-${serverId}`,
             duration: 5000,

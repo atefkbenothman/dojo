@@ -58,7 +58,7 @@ export class MCPConnectionManager {
           .mutation(api.mcpConnections.upsert, {
             mcpServerId: server._id,
             sessionId,
-                backendInstanceId: BACKEND_INSTANCE_ID,
+            backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
             statusUpdatedAt: Date.now(),
             error: errorMessage,
@@ -78,7 +78,7 @@ export class MCPConnectionManager {
       await mcpClient.start()
     } catch (err) {
       const rootCause = err instanceof Error ? err.message : String(err)
-      const errMessage = `Failed to start MCPClient: ${rootCause}`
+      const errMessage = "Failed to start MCP server"
       logger.error("Connection", `${errMessage} for session ${sessionId}, server ${server._id}`, err)
 
       // Update connection status to error
@@ -87,7 +87,7 @@ export class MCPConnectionManager {
           .mutation(api.mcpConnections.upsert, {
             mcpServerId: server._id,
             sessionId,
-                backendInstanceId: BACKEND_INSTANCE_ID,
+            backendInstanceId: BACKEND_INSTANCE_ID,
             status: "error",
             statusUpdatedAt: Date.now(),
             error: errMessage,
@@ -116,7 +116,7 @@ export class MCPConnectionManager {
         .mutation(api.mcpConnections.upsert, {
           mcpServerId: server._id,
           sessionId,
-            backendInstanceId: BACKEND_INSTANCE_ID,
+          backendInstanceId: BACKEND_INSTANCE_ID,
           status: "connected",
           statusUpdatedAt: Date.now(),
           workflowExecutionId: options?.workflowExecutionId,
@@ -143,7 +143,7 @@ export class MCPConnectionManager {
       agentExecutionId?: Id<"agentExecutions">
       connectionType?: "user" | "workflow" | "agent"
     },
-    authorizedClient?: any
+    authorizedClient?: any,
   ): Promise<{ success: boolean; error?: string; createdConnections?: Id<"mcp">[] }> {
     if (mcpServerIds.length === 0) {
       logger.info("Connection", `No MCP servers to connect for session ${sessionId}`)
@@ -155,15 +155,13 @@ export class MCPConnectionManager {
     try {
       // Get server configurations using authorized client if provided
       const client = authorizedClient || convex
-      const serverPromises = mcpServerIds.map(serverId => 
-        client.query(api.mcp.get, { id: serverId })
-      )
+      const serverPromises = mcpServerIds.map((serverId) => client.query(api.mcp.get, { id: serverId }))
       const servers = await Promise.all(serverPromises)
 
       // Filter out null servers and establish connections
-      const validServers = servers.filter(server => server !== null)
+      const validServers = servers.filter((server) => server !== null)
       const createdConnections: Id<"mcp">[] = []
-      
+
       const connectionPromises = validServers.map(async (server) => {
         try {
           // Check if we're already connected to this server
@@ -174,11 +172,7 @@ export class MCPConnectionManager {
           }
 
           // Establish the connection
-          const result = await this.establishConnection(
-            sessionId,
-            server,
-            options
-          )
+          const result = await this.establishConnection(sessionId, server, options)
 
           if (!result.success) {
             logger.error("Connection", `Session ${sessionId}: Failed to connect to ${server.name}: ${result.error}`)
@@ -195,15 +189,18 @@ export class MCPConnectionManager {
 
       // Wait for all connections to be established
       const results = await Promise.all(connectionPromises)
-      
+
       // Track which connections were created (not reused)
       results.forEach((result, index) => {
         if (result.created && result.serverId) {
           createdConnections.push(result.serverId)
         }
       })
-      
-      logger.info("Connection", `Session ${sessionId}: All ${validServers.length} MCP connections established successfully (${createdConnections.length} new, ${validServers.length - createdConnections.length} reused)`)
+
+      logger.info(
+        "Connection",
+        `Session ${sessionId}: All ${validServers.length} MCP connections established successfully (${createdConnections.length} new, ${validServers.length - createdConnections.length} reused)`,
+      )
       return { success: true, createdConnections }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to establish MCP connections"

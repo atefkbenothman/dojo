@@ -81,6 +81,11 @@ export class TransportFactory {
       throw new Error(`Invalid command. Only npx and uvx commands are allowed for stdio MCP servers`)
     }
 
+    // Validate args are provided
+    if (!server.config.args || server.config.args.length === 0) {
+      throw new Error(`MCP server must have at least one argument. Command: ${server.config.command}`)
+    }
+
     const envs: Record<string, string> = {}
 
     // Copy process.env, filtering out undefined values
@@ -109,6 +114,11 @@ export class TransportFactory {
     // Validate command is allowed
     if (!ALLOWED_STDIO_COMMANDS.includes(server.config.command as any)) {
       throw new Error(`Invalid command. Only npx and uvx commands are allowed for stdio MCP servers`)
+    }
+
+    // Validate args are provided
+    if (!server.config.args || server.config.args.length === 0) {
+      throw new Error(`MCP server must have at least one argument. Command: ${server.config.command}`)
     }
 
     const envs: Record<string, string> = {}
