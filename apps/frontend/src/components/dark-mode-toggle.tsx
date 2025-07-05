@@ -14,20 +14,21 @@ export function DarkModeToggle() {
     setMounted(true)
   }, [])
 
+  // Return skeleton with same dimensions to prevent layout shift
+  if (!mounted) {
+    return <div className="h-9 w-[72px] rounded-md bg-muted border" />
+  }
+
   return (
-    <div>
-      {mounted && (
-        <Tabs defaultValue={theme} className="h-9">
-          <TabsList>
-            <TabsTrigger value="light" onClick={() => setTheme("light")}>
-              <Sun />
-            </TabsTrigger>
-            <TabsTrigger value="dark" onClick={() => setTheme("dark")}>
-              <Moon />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      )}
-    </div>
+    <Tabs defaultValue={theme} className="h-9 border">
+      <TabsList>
+        <TabsTrigger value="light" onClick={() => setTheme("light")}>
+          <Sun />
+        </TabsTrigger>
+        <TabsTrigger value="dark" onClick={() => setTheme("dark")}>
+          <Moon />
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
   )
 }

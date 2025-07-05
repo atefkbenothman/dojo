@@ -1,6 +1,5 @@
 "use client"
 
-import { SignInCard } from "@/components/settings/sign-in-card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,36 +21,24 @@ import { useMutation } from "convex/react"
 import { TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 
-interface UserIdManagerProps {
-  user: Doc<"users"> | null | undefined
+interface UserManagerProps {
+  user: Doc<"users">
 }
 
-export function UserManager({ user }: UserIdManagerProps) {
+export function UserManager({ user }: UserManagerProps) {
   const deleteUserMutation = useMutation(api.user.deleteUser)
-  const { signIn, signOut } = useAuthActions()
-
-  if (user === undefined) return null
-  if (user === null) {
-    return (
-      <SignInCard
-        description="Sign in to see your user information and manage your account."
-        onSignIn={() => void signIn("github", { redirectTo: window.location.pathname })}
-      />
-    )
-  }
+  const { signOut } = useAuthActions()
 
   const handleDeleteAccount = async () => {
-    if (user) {
-      await deleteUserMutation({ id: user._id })
-      await signOut()
-      toast.success("Your account has been deleted.", {
-        icon: null,
-        id: "account-deleted",
-        duration: 5000,
-        position: "bottom-center",
-        style: successToastStyle,
-      })
-    }
+    await deleteUserMutation({ id: user._id })
+    await signOut()
+    toast.success("Your account has been deleted.", {
+      icon: null,
+      id: "account-deleted",
+      duration: 5000,
+      position: "bottom-center",
+      style: successToastStyle,
+    })
   }
 
   return (

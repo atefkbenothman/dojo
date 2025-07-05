@@ -2,7 +2,6 @@
 
 import { SettingsDialog } from "@/components/settings/settings-dialog"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
-import { useLayout } from "@/hooks/use-layout"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { House, Server, Bot, User, Layers } from "lucide-react"
@@ -36,7 +35,6 @@ const navigationItems = [
 export function SideNav() {
   const pathname = usePathname()
   const { play } = useSoundEffectContext()
-  const { isMobile } = useLayout()
 
   const [userDialogOpen, setUserDialogOpen] = useState(false)
 
@@ -46,22 +44,14 @@ export function SideNav() {
 
   return (
     <nav
-      className={cn(
-        "bg-card flex-shrink-0 border-border",
-        // Desktop: Vertical sidebar
-        !isMobile && "w-[42px] h-full flex-col border-r-[1.5px] hidden md:flex",
-        // Mobile: Horizontal bar
-        isMobile && "w-full h-[42px] flex-row border-b-[1.5px] md:hidden flex items-center"
-      )}
+      className="bg-card flex-shrink-0 border-border flex w-full h-[42px] flex-row border-b-[1.5px] items-center md:w-[42px] md:h-full md:flex-col md:border-r-[1.5px] md:border-b-0 md:items-stretch"
     >
       {/* Logo/Brand - Desktop only */}
-      {!isMobile && (
-        <div className="bg-card flex h-[42px] flex-shrink-0 items-center justify-center border-b-[1.5px]">
-          <Link href="/" className="hover:cursor-pointer" onMouseDown={handleClick}>
-            <p className="text-base font-medium">⛩️</p>
-          </Link>
-        </div>
-      )}
+      <div className="hidden md:flex bg-card h-[42px] flex-shrink-0 items-center justify-center border-b-[1.5px]">
+        <Link href="/" className="hover:cursor-pointer" onMouseDown={handleClick}>
+          <p className="text-base font-medium">⛩️</p>
+        </Link>
+      </div>
 
       <TooltipProvider>
         {/* Navigation Items */}
@@ -69,15 +59,15 @@ export function SideNav() {
           className={cn(
             "flex gap-4 py-2",
             // Desktop: Vertical stack
-            !isMobile && "flex-col flex-1",
+            "md:flex-col md:flex-1",
             // Mobile: Horizontal row
-            isMobile && "flex-row flex-1 px-2",
+            "flex-row flex-1 px-2 md:px-0",
           )}
         >
           {navigationItems.map(({ href, icon: Icon, label }) => {
             const isActive = href === "/dashboard" ? pathname === href : pathname.startsWith(href)
             return (
-              <div key={href} className={cn("flex items-center justify-center", !isMobile && "w-full")}>
+              <div key={href} className="flex items-center justify-center md:w-full">
                 <Tooltip delayDuration={800}>
                   <TooltipTrigger asChild>
                     <Link
@@ -95,7 +85,8 @@ export function SideNav() {
                       </div>
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side={isMobile ? "bottom" : "right"}>{label}</TooltipContent>
+                  <TooltipContent side="right" className="hidden md:block">{label}</TooltipContent>
+                  <TooltipContent side="bottom" className="md:hidden">{label}</TooltipContent>
                 </Tooltip>
               </div>
             )
@@ -107,9 +98,9 @@ export function SideNav() {
           className={cn(
             "flex items-center py-2",
             // Desktop: Full width with top border
-            !isMobile && "w-full border-t-[1.5px] justify-center",
+            "md:w-full md:border-t-[1.5px] md:justify-center",
             // Mobile: Right side with left border
-            isMobile && "border-l-[1.5px] h-full px-2",
+            "border-l-[1.5px] h-full px-2 md:border-l-0 md:h-auto",
           )}
         >
           <div

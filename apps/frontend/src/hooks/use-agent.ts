@@ -1,9 +1,9 @@
 "use client"
 
-import { useSoundEffectContext } from "./use-sound-effect"
 import { useChatProvider } from "@/hooks/use-chat"
-import { useUser } from "@/hooks/use-user"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { errorToastStyle } from "@/lib/styles"
+import { useSession } from "@/providers/session-provider"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -54,15 +54,11 @@ export const canRunAgent = (agent: Agent, isAuthenticated: boolean, currentStatu
 }
 
 export function useAgent() {
-  const authToken = useAuthToken()
   const convex = useConvex()
+  const authToken = useAuthToken()
   const { play } = useSoundEffectContext()
   const { append } = useChatProvider()
-  const { currentSession } = useUser()
-
-  const guestSessionId = useMemo(() => {
-    return !authToken && currentSession?.clientSessionId ? currentSession.clientSessionId : null
-  }, [authToken, currentSession])
+  const { currentSession } = useSession()
 
   const agents = useQuery(api.agents.list)
   const createAgent = useMutation(api.agents.create)
@@ -154,7 +150,7 @@ export function useAgent() {
             headers: {
               "Content-Type": "application/json",
               ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-              ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
+              ...(currentSession?.clientSessionId ? { "X-Guest-Session-ID": currentSession.clientSessionId } : {}),
             },
           })
 

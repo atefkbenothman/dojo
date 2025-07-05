@@ -2,7 +2,7 @@
 
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { GUEST_SESSION_KEY } from "@/lib/constants"
-import { TRPCProvider } from "@/lib/trpc/context"
+import { TRPCProvider as TRPCProviderContext } from "@/lib/trpc/context"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { type AppRouter } from "@dojo/backend/src/api/trpc/router"
 import { env } from "@dojo/env/frontend"
@@ -11,10 +11,11 @@ import { httpBatchLink } from "@trpc/client"
 import { createTRPCClient } from "@trpc/client"
 import { useMemo, useState } from "react"
 
-export function DojoTRPCProvider({ children }: { children: React.ReactNode }) {
+export function TRPCProvider({ children }: { children: React.ReactNode }) {
   const authToken = useAuthToken()
-  const [queryClient] = useState(() => new QueryClient())
   const { readStorage } = useLocalStorage()
+
+  const [queryClient] = useState(() => new QueryClient())
 
   const trpcClientInstance = useMemo(
     () =>
@@ -50,9 +51,9 @@ export function DojoTRPCProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TRPCProvider trpcClient={trpcClientInstance} queryClient={queryClient}>
+      <TRPCProviderContext trpcClient={trpcClientInstance} queryClient={queryClient}>
         {children}
-      </TRPCProvider>
+      </TRPCProviderContext>
     </QueryClientProvider>
   )
 }

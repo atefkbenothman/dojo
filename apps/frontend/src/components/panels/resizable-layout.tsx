@@ -5,7 +5,6 @@ import { MainPanelHeader } from "@/components/panels/main-panel-header"
 import { SideNav } from "@/components/panels/side-nav"
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable"
 import { useChatProvider } from "@/hooks/use-chat"
-import { useLayout } from "@/hooks/use-layout"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
 import { cn } from "@/lib/utils"
 import { useRef, useCallback } from "react"
@@ -25,7 +24,6 @@ const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 60
 
 export function ResizableLayout({ children, defaultLayout, isServerHealthy }: ResizableLayoutProps) {
   const { handleNewChat } = useChatProvider()
-  const { isMobile } = useLayout()
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
 
@@ -64,17 +62,17 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
   }, [desktopHandleChatPanelToggle])
 
   return (
-    <div className={cn("h-[100dvh] w-screen overflow-hidden", isMobile ? "flex flex-col" : "flex")}>
+    <div className="h-[100dvh] w-screen overflow-hidden flex flex-col md:flex-row">
       {/* Mobile: Header and nav at top level for correct ordering */}
-      {isMobile && (
-        <>
-          <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />
-          <SideNav />
-        </>
-      )}
+      <div className="md:hidden">
+        <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />
+        <SideNav />
+      </div>
 
       {/* Desktop: SideNav on the left */}
-      {!isMobile && <SideNav />}
+      <div className="hidden md:block">
+        <SideNav />
+      </div>
 
       {/* Main content area - Always same structure for all screen sizes */}
       <ResizablePanelGroup direction="horizontal" onLayout={onLayout} className="flex-1 overflow-hidden">
@@ -82,7 +80,9 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
         <ResizablePanel defaultSize={defaultLayout[0]} className={cn(isMaximized && "hidden")}>
           <div className="flex h-full flex-col">
             {/* Desktop: Header inside panel (original working structure) */}
-            {!isMobile && <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />}
+            <div className="hidden md:block">
+              <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />
+            </div>
             <div className="flex-1 overflow-auto min-w-[calc(100vw-42px)]">{children}</div>
           </div>
         </ResizablePanel>

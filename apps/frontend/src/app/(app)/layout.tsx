@@ -1,13 +1,13 @@
 import "../globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
-import { SessionInitializer } from "@/components/session-initializer"
 import { AIChatProvider } from "@/hooks/use-chat"
 import { LayoutProvider } from "@/hooks/use-layout"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
 import { serverTrpc } from "@/lib/trpc/client"
-import { DojoTRPCProvider } from "@/lib/trpc/provider"
+import { TRPCProvider } from "@/lib/trpc/provider"
 import { ConvexClientProvider } from "@/providers/convex-client-provider"
 import { DarkModeProvider } from "@/providers/dark-mode-provider"
+import { SessionProvider } from "@/providers/session-provider"
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server"
 import { asyncTryCatch } from "@dojo/utils"
 import { Analytics } from "@vercel/analytics/next"
@@ -85,8 +85,8 @@ export default async function AppLayout({
           <DarkModeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <SoundEffectProvider>
               <ConvexClientProvider>
-                <SessionInitializer>
-                  <DojoTRPCProvider>
+                <SessionProvider>
+                  <TRPCProvider>
                     <LayoutProvider>
                       <AIChatProvider>
                         <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
@@ -94,8 +94,8 @@ export default async function AppLayout({
                         </ResizableLayout>
                       </AIChatProvider>
                     </LayoutProvider>
-                  </DojoTRPCProvider>
-                </SessionInitializer>
+                  </TRPCProvider>
+                </SessionProvider>
               </ConvexClientProvider>
               <Toaster toastOptions={{ style: { borderRadius: "var(--radius-sm)" } }} />
               <Analytics />

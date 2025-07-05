@@ -1,12 +1,12 @@
 "use client"
 
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { useUser } from "@/hooks/use-user"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
+import { useSession } from "@/providers/session-provider"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
-import { useQuery } from "convex/react"
 import { env } from "@dojo/env/frontend"
+import { useQuery } from "convex/react"
 import { useRouter } from "next/navigation"
 import { useCallback, useMemo } from "react"
 import { toast } from "sonner"
@@ -26,12 +26,15 @@ interface GenerateWorkflowParams {
 export function useGeneration() {
   const router = useRouter()
   const authToken = useAuthToken()
-  const { currentSession } = useUser()
+  const { currentSession } = useSession()
   const { play } = useSoundEffectContext()
 
   // Subscribe to active generation executions
   const activeAgentGeneration = useQuery(api.agentGenerationExecutions.getActiveExecution, authToken ? {} : "skip")
-  const activeWorkflowGeneration = useQuery(api.workflowGenerationExecutions.getActiveExecution, authToken ? {} : "skip")
+  const activeWorkflowGeneration = useQuery(
+    api.workflowGenerationExecutions.getActiveExecution,
+    authToken ? {} : "skip",
+  )
 
   // Derive loading states from Convex data
   const isGeneratingAgent = useMemo(() => {

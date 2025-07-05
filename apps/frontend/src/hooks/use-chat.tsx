@@ -1,14 +1,14 @@
 "use client"
 
 import { useAIModels } from "@/hooks/use-ai-models"
-import { useUser } from "@/hooks/use-user"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { SYSTEM_PROMPT } from "@/lib/constants"
+import { useSession } from "@/providers/session-provider"
 import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
-import { useState, createContext, useContext, useCallback, useMemo } from "react"
+import { useState, createContext, useContext, useCallback, memo } from "react"
 
 const initialMessages: Message[] = [
   {
@@ -16,33 +16,23 @@ const initialMessages: Message[] = [
     role: "system",
     content: SYSTEM_PROMPT,
   },
-  // {
-  //   id: "intro",
-  //   role: "assistant",
-  //   content: DEFAULT_ASSISTANT_MESSAGE,
-  // },
 ]
 
 export function useAIChat() {
   const authToken = useAuthToken()
 
   const { play } = useSoundEffectContext()
-  const { currentSession } = useUser()
+  const { clientSessionId } = useSession()
   const { selectedModel } = useAIModels()
 
   const [context, setContext] = useState<string>("")
   const [chatError, setChatError] = useState<string | null>(null)
 
-  const guestSessionId = useMemo(() => {
-    const sessionId = !authToken && currentSession?.clientSessionId ? currentSession.clientSessionId : null
-    return sessionId
-  }, [authToken, currentSession])
-
   const { messages, status, input, append, setMessages, error, stop } = useChat({
     api: "/api/chat",
     headers: {
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      ...(guestSessionId ? { "X-Guest-Session-ID": guestSessionId } : {}),
+      ...(clientSessionId ? { "X-Guest-Session-ID": clientSessionId } : {}),
     },
     initialMessages: initialMessages as Message[],
     experimental_throttle: 500,
@@ -132,7 +122,7 @@ export function useChatProvider() {
   return context
 }
 
-export function AIChatProvider({ children }: AIChatProviderProps) {
+export const AIChatProvider = memo(function AIChatProvider({ children }: AIChatProviderProps) {
   const chatState = useAIChat()
   return <AIChatContext.Provider value={chatState}>{children}</AIChatContext.Provider>
-}
+})

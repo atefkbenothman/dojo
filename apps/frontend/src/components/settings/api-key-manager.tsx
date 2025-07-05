@@ -1,27 +1,24 @@
 "use client"
 
 import { saveApiKey, removeApiKey, getDecryptedApiKeys } from "@/app/actions/api-keys"
-import { SignInCard } from "@/components/settings/sign-in-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
-import { useAuthActions } from "@convex-dev/auth/react"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { Eye, EyeOff } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 
 interface ApiKeyManagerProps {
-  user: Doc<"users"> | null | undefined
+  user: Doc<"users">
   userApiKeys: Doc<"apiKeys">[]
   providers: Doc<"providers">[]
 }
 
 export function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
   const { play } = useSoundEffectContext()
-  const { signIn } = useAuthActions()
 
   const [keyStates, setKeyStates] = useState<
     Record<
@@ -63,16 +60,6 @@ export function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerPro
 
     loadDecryptedKeys()
   }, [userApiKeys, providers])
-
-  if (user === undefined) return null
-  if (user === null) {
-    return (
-      <SignInCard
-        description="Please sign in to manage and save your API keys securely."
-        onSignIn={() => void signIn("github", { redirectTo: window.location.pathname })}
-      />
-    )
-  }
 
   const updateKeyState = (providerId: Id<"providers">, updates: Partial<(typeof keyStates)[Id<"providers">]>) => {
     setKeyStates((prev) => ({

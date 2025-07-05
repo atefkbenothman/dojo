@@ -1,6 +1,6 @@
+import { Id } from "./_generated/dataModel"
 import { internalMutation, mutation, query, QueryCtx } from "./_generated/server"
 import { v } from "convex/values"
-import { Id } from "./_generated/dataModel"
 
 // Helper to get current userId from auth context
 async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
@@ -25,14 +25,13 @@ export const getCurrentUserSession = query({
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
     if (!userId) return null
-    
+
     return await ctx.db
       .query("sessions")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique()
   },
 })
-
 
 // Retrieves a session by clientSessionId
 export const getByClientSessionId = query({
@@ -55,7 +54,7 @@ export const getOrCreate = mutation({
   handler: async (ctx, { clientSessionId }) => {
     // Check if user is authenticated
     const userId = await getCurrentUserId(ctx)
-    
+
     // Authenticated User Flow
     if (userId) {
       // Find existing session for this user

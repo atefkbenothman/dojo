@@ -14,7 +14,7 @@ export function SignInCard({ description, onSignIn }: SignInCardProps) {
   const GitHubIcon = MCP_SERVER_ICONS.github as ComponentType<SVGProps<SVGSVGElement>> | null
 
   return (
-    <div className="flex h-full items-center justify-center">
+    <div className="flex h-full w-full items-center justify-center">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sign In with GitHub</CardTitle>

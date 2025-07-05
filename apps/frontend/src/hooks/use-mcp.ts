@@ -1,7 +1,7 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { useUser } from "@/hooks/use-user"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useTRPCClient } from "@/lib/trpc/context"
+import { useSession } from "@/providers/session-provider"
 import { useMCPStore } from "@/store/use-mcp-store"
 import type { RouterOutputs } from "@dojo/backend/src/lib/types"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -71,7 +71,7 @@ export interface ActiveConnection {
 export function useMCP() {
   const convex = useConvex()
   const client = useTRPCClient()
-  const { currentSession } = useUser()
+  const { currentSession } = useSession()
 
   // Simple store for tools data only
   const { tools, setTools, clearTools } = useMCPStore()
