@@ -53,8 +53,8 @@ export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, 
           className={cn(
             "border-[1px] hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
             isRunning
-              ? "bg-red-700 hover:bg-red-800 text-white border-red-500 hover:border-red-800"
-              : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800",
+              ? "bg-red-700 hover:bg-red-800 text-white border-red-500 hover:border-red-800 disabled:hover:bg-red-700"
+              : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800 disabled:hover:bg-green-700",
           )}
           onClick={isRunning ? onStop : onRun}
           disabled={(!isAuthenticated && !agent.isPublic) || isPreparing || isConnecting}

@@ -54,7 +54,7 @@ function ReadOnlyNoticeSection({ canEdit, isPublic }: ReadOnlyNoticeSectionProps
   if (canEdit) return null
 
   return (
-    <Card className="p-3 sm:p-4 bg-muted/50 border-muted">
+    <Card className="p-3 sm:p-4 bg-muted/60 border-muted/20">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <AlertCircle className="h-4 w-4" />
         {isPublic
@@ -586,7 +586,7 @@ export function AgentForm({
       <form onSubmit={form.handleSubmit(handleSave)} className="h-full sm:h-auto flex flex-col">
         <Card className="p-0 border-0 sm:border-[1.5px] gap-0 rounded-none sm:rounded-lg h-full sm:h-auto flex flex-col">
           <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0 sticky top-0 z-10 bg-card sm:static">
-            <CardTitle>{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
+            <CardTitle className="text-sm font-medium">{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
           </CardHeader>
           <CardContent className="p-4 bg-background flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible flex flex-col">
             {formContent}

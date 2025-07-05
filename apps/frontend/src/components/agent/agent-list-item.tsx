@@ -59,6 +59,25 @@ export function AgentListItem({
   const isLoading = status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.CONNECTING
   const isConnecting = status === AGENT_STATUS.CONNECTING
 
+  // Get ring color based on agent status
+  const getRingColor = () => {
+    if (!status || status === "completed" || status === "cancelled") {
+      return ""
+    }
+    
+    switch (status) {
+      case "running":
+        return "ring-green-500/80"
+      case "preparing":
+      case "connecting":
+        return "ring-yellow-500/80"
+      case "failed":
+        return "ring-red-500/80"
+      default:
+        return ""
+    }
+  }
+
   const handleCardClick = useCallback(
     (e: React.MouseEvent) => {
       play("./sounds/click.mp3", { volume: 0.5 })
@@ -102,7 +121,9 @@ export function AgentListItem({
     <Card
       className={cn(
         "w-full bg-background overflow-hidden p-2 hover:bg-background/50",
-        // Only show ring when selected
+        // Show status ring when there's a status
+        getRingColor() && `ring-1 ${getRingColor()}`,
+        // Show primary ring when selected (original behavior)
         isSelected && "ring-1 ring-primary/80 bg-background/50",
       )}
       onClick={handleCardClick}

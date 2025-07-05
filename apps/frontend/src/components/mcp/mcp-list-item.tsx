@@ -210,7 +210,13 @@ export function MCPListItem({
                       : "Connect"
                 }
               >
-                {isConnected ? <Unplug className="h-2.5 w-2.5" /> : <Plug className="h-2.5 w-2.5" />}
+                {isConnecting ? (
+                  <LoadingAnimationInline className="text-xs" />
+                ) : isConnected ? (
+                  <Unplug className="h-2.5 w-2.5" />
+                ) : (
+                  <Plug className="h-2.5 w-2.5" />
+                )}
               </Button>
             )}
           </div>
