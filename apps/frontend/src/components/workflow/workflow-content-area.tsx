@@ -5,7 +5,6 @@ import { ReactFlowWorkflowCanvas } from "@/components/workflow/canvas/reactflow-
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
 import { WorkflowHeader } from "@/components/workflow/workflow-header"
 import { useAgent } from "@/hooks/use-agent"
-import { useAuth } from "@/hooks/use-auth"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent } from "@dojo/db/convex/types"
@@ -37,9 +36,13 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   // Get data from hooks
   const { selectedWorkflow: workflow, workflowNodes, executions: workflowExecutions } = useWorkflow()
   const { agents } = useAgent()
-  const { isAuthenticated } = useAuth()
 
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
+
+  // Get current execution for this workflow (matches WorkflowListItem logic)
+  const execution = workflowExecutions
+    .filter(exec => exec.workflowId === workflow?._id)
+    .sort((a, b) => b.startedAt - a.startedAt)[0] || undefined
 
   const handleRunWorkflow = useCallback(async () => {
     if (!workflow) return
@@ -69,9 +72,10 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
     >
       <WorkflowHeader
         workflow={workflow}
+        execution={execution}
         onEditClick={() => onEditWorkflow(workflow)}
         onRunClick={handleRunWorkflow}
-        canRun={!!workflow.instructions && workflow.instructions.trim() !== "" && !!workflow.rootNodeId}
+        onStopClick={handleStopWorkflow}
         tabsContent={
           <TabsList className="h-8 w-40">
             <TabsTrigger value="build" className="text-xs">
@@ -103,7 +107,6 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
         <WorkflowRunner
           workflow={workflow}
           agents={agents || []}
-          isAuthenticated={isAuthenticated}
           workflowExecutions={workflowExecutions}
           workflowNodes={workflowNodes}
           onRunWorkflow={onRunWorkflow}

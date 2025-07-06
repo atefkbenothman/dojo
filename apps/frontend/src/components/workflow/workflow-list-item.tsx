@@ -12,6 +12,7 @@ import {
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Progress } from "@/components/ui/progress"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useWorkflow } from "@/hooks/use-workflow"
 import { cn } from "@/lib/utils"
 import type { Workflow, WorkflowExecution } from "@dojo/db/convex/types"
 import { Settings, Play, Pencil, Trash, Copy, Square, CheckCircle, XCircle, Clock } from "lucide-react"
@@ -63,19 +64,24 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   nodeCount,
 }: WorkflowListItemProps) {
   const { play } = useSoundEffectContext()
+  const { canRun, isWorkflowRunning } = useWorkflow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   // Determine if user can edit/delete this workflow
   const canEdit = isAuthenticated && !workflow.isPublic
   const canDelete = isAuthenticated && !workflow.isPublic
-  const canRun = !!workflow.instructions && workflow.instructions.trim() !== "" && !!workflow.rootNodeId
-
-  // Get workflow status
-  const isRunning = execution?.status === "running" || execution?.status === "preparing"
+  
+  // Use centralized logic from hook
+  const workflowCanRun = canRun(workflow, execution)
+  const isRunning = isWorkflowRunning(execution)
   const isPreparing = execution?.status === "preparing"
   const isCompleted = execution?.status === "completed"
   const isFailed = execution?.status === "failed"
   const isCancelled = execution?.status === "cancelled"
+  
+  // Final run button state: disabled when canRun is false AND not currently running
+  // (if running, button becomes a stop button and should remain enabled)
+  const shouldDisableRunButton = !workflowCanRun && !isRunning
 
   // Get ring color based on workflow status
   const getRingColor = () => {
@@ -203,7 +209,7 @@ export const WorkflowListItem = memo(function WorkflowListItem({
               variant="outline"
               size="icon"
               onClick={handlePlayClick}
-              disabled={!canRun && !isRunning}
+              disabled={shouldDisableRunButton}
               className="size-8 hover:cursor-pointer"
               title={isRunning ? "Stop workflow" : "Run workflow"}
             >

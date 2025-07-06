@@ -8,7 +8,6 @@ import { memo } from "react"
 interface WorkflowRunnerProps {
   workflow: Workflow
   agents: Agent[]
-  isAuthenticated: boolean
   workflowExecutions: WorkflowExecution[]
   workflowNodes: WorkflowNode[]
   onRunWorkflow: (workflow: Workflow) => void

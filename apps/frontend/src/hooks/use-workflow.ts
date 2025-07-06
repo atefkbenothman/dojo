@@ -1,21 +1,21 @@
 "use client"
 
-import { useCallback, useMemo, useEffect, useState, useRef } from "react"
-import { useMutation } from "convex/react"
-import { Message } from "ai"
-import { nanoid } from "nanoid"
-import { toast } from "sonner"
-import { useAuthToken } from "@convex-dev/auth/react"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
+import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow, WorkflowNode, WorkflowExecution } from "@dojo/db/convex/types"
+import { Workflow, WorkflowExecution } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
+import { Message } from "ai"
+import { useMutation } from "convex/react"
+import { nanoid } from "nanoid"
+import { useCallback, useMemo, useEffect, useState, useRef } from "react"
+import { toast } from "sonner"
 
 export function useWorkflow() {
   const authToken = useAuthToken()
@@ -23,22 +23,22 @@ export function useWorkflow() {
   const { append, setMessages } = useChatProvider()
   const { currentSession } = useSession()
   const { selectedId: selectedWorkflowId } = useUrlSelection()
-  
+
   // Fetch all workflows
   const workflows = useStableQuery(api.workflows.list)
-  
+
   // Fetch selected workflow details
   const selectedWorkflow = useStableQuery(
     api.workflows.get,
     selectedWorkflowId ? { id: selectedWorkflowId as Id<"workflows"> } : "skip",
   )
-  
+
   // Fetch workflow nodes for selected workflow
   const workflowNodes = useStableQuery(
     api.workflows.getWorkflowNodes,
     selectedWorkflowId ? { workflowId: selectedWorkflowId as Id<"workflows"> } : "skip",
   )
-  
+
   // Fetch workflow executions for current session
   const workflowExecutions = useStableQuery(
     api.workflowExecutions.getBySession,
@@ -272,7 +272,7 @@ export function useWorkflow() {
   const stableWorkflows = useMemo(() => workflows || [], [workflows])
   const stableWorkflowNodes = useMemo(() => workflowNodes || [], [workflowNodes])
   const stableExecutions = useMemo(() => workflowExecutions || [], [workflowExecutions])
-  
+
   // Helper function to get active execution for a workflow
   const getWorkflowExecution = useCallback(
     (workflowId: Id<"workflows">) => {
@@ -286,22 +286,41 @@ export function useWorkflow() {
     [stableExecutions],
   )
 
+  // Centralized run button logic - used by both WorkflowListItem and WorkflowHeader
+  const canRun = useCallback((workflow: Workflow, execution?: WorkflowExecution) => {
+    // Step 1: Workflow Configuration State
+    if (!workflow.instructions || workflow.instructions.trim() === "") return false
+    if (!workflow.rootNodeId) return false
+
+    // Note: Authentication & ownership checks removed - backend filtering ensures
+    // users only see workflows they have permission to run
+
+    return true
+  }, [])
+
+  // Helper to check if workflow is currently running
+  const isWorkflowRunning = useCallback((execution?: WorkflowExecution) => {
+    return execution?.status === "running" || execution?.status === "preparing"
+  }, [])
+
   return {
     // Data
     workflows: stableWorkflows,
     selectedWorkflow: selectedWorkflow || null,
     workflowNodes: stableWorkflowNodes,
     executions: stableExecutions,
-    
+
     // Helpers
     getWorkflowExecution,
-    
+    canRun,
+    isWorkflowRunning,
+
     // CRUD operations
     create,
     edit,
     remove,
     clone,
-    
+
     // Execution operations
     runWorkflow,
     stopWorkflow,
