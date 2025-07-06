@@ -2,6 +2,7 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useTRPCClient } from "@/lib/trpc/context"
+import { useAuth } from "@/hooks/use-auth"
 import { useSession } from "@/providers/session-provider"
 import { useMCPStore } from "@/store/use-mcp-store"
 import type { RouterOutputs } from "@dojo/backend/src/lib/types"
@@ -72,6 +73,7 @@ export interface ActiveConnection {
 export function useMCP() {
   const convex = useConvex()
   const client = useTRPCClient()
+  const { isAuthenticated } = useAuth()
   const { currentSession } = useSession()
 
   // Simple store for tools data only
@@ -281,10 +283,10 @@ export function useMCP() {
       // Can't connect local servers in production
       if (server.localOnly && process.env.NODE_ENV === "production") return false
       // Can't connect servers requiring keys without authentication
-      if (!currentSession?.userId && server.requiresUserKey) return false
+      if (!isAuthenticated && server.requiresUserKey) return false
       return true
     },
-    [currentSession?.userId],
+    [isAuthenticated],
   )
 
   return {
