@@ -125,7 +125,7 @@ export function AgentListItem({
             {isConnecting ? <LoadingAnimationInline /> : <AgentStatusIndicator status={status} />}
           </div>
           {/* Right Side */}
-          <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="flex items-center gap-2 flex-shrink-0 w-auto justify-start sm:justify-end">
             {/* Settings */}
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>

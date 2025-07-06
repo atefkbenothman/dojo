@@ -68,7 +68,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
         onRunClick={handleRunWorkflow}
         onStopClick={handleStopWorkflow}
         tabsContent={
-          <TabsList className="h-8 w-40">
+          <TabsList className="h-8 w-40 border">
             <TabsTrigger value="build" className="text-xs">
               Build
             </TabsTrigger>
