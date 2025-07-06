@@ -23,7 +23,6 @@ export const BACKEND_INSTANCE_ID = `${process.env.HOSTNAME || "localhost"}-${pro
 const models = await convex.query(api.models.list)
 const mcpServers = await convex.query(api.mcp.list)
 
-
 const app: Express = express()
 
 app.use(
@@ -63,7 +62,6 @@ const server = app.listen(PORT, () => {
   logger.info("Core", "tRPC router mounted at /trpc")
   logger.info("Core", `Configured MCP Servers: ${mcpServers.map((mcp) => mcp.name).join(", ")}`)
   logger.info("Core", `AI Models: ${models.map((model) => model.modelId).join(", ")}`)
-
 })
 
 process.on("uncaughtException", (err) => {

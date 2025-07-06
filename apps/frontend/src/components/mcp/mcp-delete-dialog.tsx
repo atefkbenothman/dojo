@@ -44,7 +44,8 @@ export const MCPDeleteDialog = memo(function MCPDeleteDialog({
               {hasAffectedAgents ? (
                 <>
                   <div>
-                    The MCP server &ldquo;{server?.name}&rdquo; is currently being used by {affectedAgents.length} agent{affectedAgents.length > 1 ? "s" : ""}:
+                    The MCP server &ldquo;{server?.name}&rdquo; is currently being used by {affectedAgents.length} agent
+                    {affectedAgents.length > 1 ? "s" : ""}:
                   </div>
                   <ul className="list-disc pl-5 space-y-1">
                     {affectedAgents.map((agent) => (
@@ -59,8 +60,8 @@ export const MCPDeleteDialog = memo(function MCPDeleteDialog({
                 </>
               ) : (
                 <div>
-                  This action cannot be undone. This will permanently delete the MCP server &ldquo;{server?.name}&rdquo; and
-                  remove it from your account.
+                  This action cannot be undone. This will permanently delete the MCP server &ldquo;{server?.name}&rdquo;
+                  and remove it from your account.
                 </div>
               )}
             </div>

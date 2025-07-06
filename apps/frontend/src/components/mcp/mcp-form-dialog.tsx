@@ -14,7 +14,14 @@ export interface MCPFormDialogProps {
   onServerCreated?: (serverId: string) => void
 }
 
-export function MCPFormDialog({ mode, server, open, onOpenChange, isAuthenticated = false, onServerCreated }: MCPFormDialogProps) {
+export function MCPFormDialog({
+  mode,
+  server,
+  open,
+  onOpenChange,
+  isAuthenticated = false,
+  onServerCreated,
+}: MCPFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent

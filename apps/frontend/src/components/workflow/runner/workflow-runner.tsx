@@ -20,9 +20,10 @@ export const WorkflowRunner = memo(function WorkflowRunner({
   workflowExecutions,
   workflowNodes,
 }: WorkflowRunnerProps) {
-  const execution = workflowExecutions
-    .filter(exec => exec.workflowId === workflow._id)
-    .sort((a, b) => b.startedAt - a.startedAt)[0] || undefined
+  const execution =
+    workflowExecutions
+      .filter((exec) => exec.workflowId === workflow._id)
+      .sort((a, b) => b.startedAt - a.startedAt)[0] || undefined
 
   return (
     <div className="h-full bg-background">

@@ -27,7 +27,7 @@ async function validateMCPServersForAgent(ctx: QueryCtx, isPublic: boolean | und
   for (const mcpServerId of mcpServerIds) {
     const mcpServer = await ctx.db.get(mcpServerId)
     if (!mcpServer) throw new Error("MCP server not found")
-    
+
     if (isPublic) {
       // Public agents can only use public MCP servers
       if (!mcpServer.isPublic) {
@@ -36,7 +36,9 @@ async function validateMCPServersForAgent(ctx: QueryCtx, isPublic: boolean | und
     } else {
       // Private agents cannot use public MCP servers
       if (mcpServer.isPublic) {
-        throw new Error("Private agents cannot use public MCP servers. Public MCP servers are only available for public agents.")
+        throw new Error(
+          "Private agents cannot use public MCP servers. Public MCP servers are only available for public agents.",
+        )
       }
     }
   }
@@ -144,18 +146,18 @@ export const remove = mutation({
     if (!agent) throw new Error("Not found")
     if (agent.isPublic) throw new Error("Default agents cannot be deleted.")
     if (!userId || agent.userId !== userId) throw new Error("Unauthorized")
-    
+
     // Check for dependencies if not forcing
     if (!args.force) {
       const allWorkflowNodes = await ctx.db
         .query("workflowNodes")
         .filter((q) => q.eq(q.field("agentId"), args.id))
         .collect()
-      
+
       // Filter to only nodes in workflows the user owns
       const dependentNodes = []
       const workflowNames = new Set<string>()
-      
+
       for (const node of allWorkflowNodes) {
         const workflow = await ctx.db.get(node.workflowId)
         if (workflow && workflow.userId === userId) {
@@ -163,11 +165,11 @@ export const remove = mutation({
           workflowNames.add(workflow.name)
         }
       }
-      
+
       if (dependentNodes.length > 0) {
         const workflowList = Array.from(workflowNames).join(", ")
         throw new Error(
-          `Cannot delete agent. It is used in ${dependentNodes.length} workflow node(s) across ${workflowNames.size} workflow(s): ${workflowList}. Use force delete to remove it and delete all affected workflow nodes.`
+          `Cannot delete agent. It is used in ${dependentNodes.length} workflow node(s) across ${workflowNames.size} workflow(s): ${workflowList}. Use force delete to remove it and delete all affected workflow nodes.`,
         )
       }
     } else {
@@ -176,17 +178,17 @@ export const remove = mutation({
         .query("workflowNodes")
         .filter((q) => q.eq(q.field("agentId"), args.id))
         .collect()
-      
+
       // Track workflows that might need rootNodeId updates
       const affectedWorkflows = new Set<string>()
-      
+
       // Delete workflow nodes (only those in workflows the user owns)
       for (const node of allWorkflowNodes) {
         const workflow = await ctx.db.get(node.workflowId)
         if (workflow && workflow.userId === userId) {
           await ctx.db.delete(node._id)
           affectedWorkflows.add(node.workflowId)
-          
+
           // If this was a root node, we need to update the workflow
           if (workflow.rootNodeId === node.nodeId) {
             await ctx.db.patch(node.workflowId, { rootNodeId: undefined })
@@ -194,7 +196,7 @@ export const remove = mutation({
         }
       }
     }
-    
+
     return await ctx.db.delete(args.id)
   },
 })
@@ -208,29 +210,29 @@ export const checkDependencies = query({
     const userId = await getCurrentUserId(ctx)
     const agent = await ctx.db.get(args.id)
     if (!agent) throw new Error("Agent not found")
-    
+
     // Check authorization
     if (!agent.isPublic && (!userId || agent.userId !== userId)) {
       throw new Error("Unauthorized")
     }
-    
+
     // Find all workflow nodes that reference this agent
     const allWorkflowNodes = await ctx.db
       .query("workflowNodes")
       .filter((q) => q.eq(q.field("agentId"), args.id))
       .collect()
-    
+
     // Group by workflow and get workflow details
     const workflowMap = new Map<string, { id: string; name: string; nodeCount: number; isPublic?: boolean }>()
-    
+
     for (const node of allWorkflowNodes) {
       const workflow = await ctx.db.get(node.workflowId)
       if (!workflow) continue
-      
+
       // Only include workflows the user can see
       const canSee = workflow.isPublic || (userId && workflow.userId === userId)
       if (!canSee) continue
-      
+
       const workflowKey = node.workflowId
       if (workflowMap.has(workflowKey)) {
         workflowMap.get(workflowKey)!.nodeCount++
@@ -243,12 +245,12 @@ export const checkDependencies = query({
         })
       }
     }
-    
+
     const workflows = Array.from(workflowMap.values())
-    
+
     return {
       count: workflows.length,
-      workflows: workflows
+      workflows: workflows,
     }
   },
 })
@@ -283,7 +285,14 @@ export const clone = mutation({
 
         if (mcpServer.isPublic) {
           // Clone the public MCP server to create a private copy
-          const { _id, _creationTime, userId: _mcpUserId, isPublic: _mcpIsPublic, isTemplate: _mcpIsTemplate, ...mcpData } = mcpServer
+          const {
+            _id,
+            _creationTime,
+            userId: _mcpUserId,
+            isPublic: _mcpIsPublic,
+            isTemplate: _mcpIsTemplate,
+            ...mcpData
+          } = mcpServer
           const clonedMcpId = await ctx.db.insert("mcp", {
             ...mcpData,
             name: `${mcpServer.name} (Copy)`,

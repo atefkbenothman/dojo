@@ -233,14 +233,14 @@ export const updateNodeProgress = mutation({
       nodeExecutions,
       currentNodes,
     }
-    
+
     // Only update workflow status to "running" when nodes are active
     // Don't change the status when all nodes complete - let the workflow service
     // determine the final status based on success/failure
     if (currentNodes.length > 0) {
       updates.status = "running"
     }
-    
+
     await ctx.db.patch(args.executionId, updates)
   },
 })

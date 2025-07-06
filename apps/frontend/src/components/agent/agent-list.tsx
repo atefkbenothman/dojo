@@ -110,7 +110,6 @@ export const AgentList = memo(function AgentList({
     return { runningAgents: running, publicAgents: publicList, userAgents: user }
   }, [agents, executions])
 
-
   // Filter agents based on search
   const filterAgents = useCallback(
     (agentList: Agent[]) => {
@@ -252,14 +251,23 @@ export const AgentList = memo(function AgentList({
                   disabled={!isAuthenticated}
                   title={!isAuthenticated ? "Authentication required to generate agents" : undefined}
                 >
-                  {isGeneratingAgent ? <LoadingAnimationInline className="mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {isGeneratingAgent ? (
+                    <LoadingAnimationInline className="mr-2" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
                   {isAuthenticated ? (isGeneratingAgent ? "Generating" : "Generate with AI") : "Sign in to generate"}
                 </Button>
               )}
             </div>
           </div>
           {/* Agent List with Accordion Sections */}
-          <Accordion type="multiple" value={openSections} onValueChange={(sections) => setAccordionSections("agents", sections)} className="w-full">
+          <Accordion
+            type="multiple"
+            value={openSections}
+            onValueChange={(sections) => setAccordionSections("agents", sections)}
+            className="w-full"
+          >
             {/* Running Agents Section */}
             <AccordionItem value="running">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">

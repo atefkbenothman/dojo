@@ -14,7 +14,7 @@ async function getCurrentUserId(ctx: QueryCtx): Promise<Id<"users"> | null> {
 async function validateAgentForWorkflow(ctx: QueryCtx, workflowIsPublic: boolean | undefined, agentId: Id<"agents">) {
   const agent = await ctx.db.get(agentId)
   if (!agent) throw new Error("Agent not found")
-  
+
   if (workflowIsPublic) {
     // Public workflows can only use public agents
     if (!agent.isPublic) {
@@ -23,7 +23,9 @@ async function validateAgentForWorkflow(ctx: QueryCtx, workflowIsPublic: boolean
   } else {
     // Private workflows cannot use public agents
     if (agent.isPublic) {
-      throw new Error("Private workflows cannot use public agents. Public agents are only available for public workflows.")
+      throw new Error(
+        "Private workflows cannot use public agents. Public agents are only available for public workflows.",
+      )
     }
   }
 }
@@ -113,18 +115,18 @@ export const remove = mutation({
     if (!workflow) throw new Error("Not found")
     if (workflow.isPublic) throw new Error("Default workflows cannot be deleted.")
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
-    
+
     // Delete all workflow nodes associated with this workflow
     const workflowNodes = await ctx.db
       .query("workflowNodes")
       .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
       .collect()
-    
+
     // Delete all nodes first
     for (const node of workflowNodes) {
       await ctx.db.delete(node._id)
     }
-    
+
     // Then delete the workflow itself
     return await ctx.db.delete(args.id)
   },
@@ -175,7 +177,7 @@ export const clone = mutation({
 
     for (const node of originalNodes) {
       const { _id, _creationTime, workflowId, agentId, ...nodeData } = node
-      
+
       let newAgentId = agentId
       if (agentId) {
         // Check if we've already cloned this agent
@@ -187,8 +189,14 @@ export const clone = mutation({
             if (agent.isPublic) {
               // Clone the public agent (which will also clone its MCP servers)
               // We need to manually clone the agent here since we can't call mutations from mutations
-              const { _id: _agentId, _creationTime: _agentCreationTime, userId: _agentUserId, isPublic: _agentIsPublic, ...agentData } = agent
-              
+              const {
+                _id: _agentId,
+                _creationTime: _agentCreationTime,
+                userId: _agentUserId,
+                isPublic: _agentIsPublic,
+                ...agentData
+              } = agent
+
               // Clone public MCP servers for this agent
               let clonedMcpServers = agentData.mcpServers
               if (agentData.mcpServers && agentData.mcpServers.length > 0) {
@@ -203,7 +211,14 @@ export const clone = mutation({
                       newMcpServerIds.push(clonedMcpMap.get(mcpServerId)!)
                     } else {
                       // Clone the public MCP server
-                      const { _id: _mcpId, _creationTime: _mcpCreationTime, userId: _mcpUserId, isPublic: _mcpIsPublic, isTemplate: _mcpIsTemplate, ...mcpData } = mcpServer
+                      const {
+                        _id: _mcpId,
+                        _creationTime: _mcpCreationTime,
+                        userId: _mcpUserId,
+                        isPublic: _mcpIsPublic,
+                        isTemplate: _mcpIsTemplate,
+                        ...mcpData
+                      } = mcpServer
                       const clonedMcpId = await ctx.db.insert("mcp", {
                         ...mcpData,
                         name: `${mcpServer.name} (Copy)`,
@@ -413,7 +428,7 @@ export const getWorkflowNodes = query({
     // Return empty array if workflow doesn't exist instead of throwing error
     // This prevents UI errors when workflow is deleted but queries are still running
     if (!workflow) return []
-    
+
     // Only allow if public or owned by the caller
     if (!workflow.isPublic && (!userId || workflow.userId !== userId)) {
       throw new Error("Unauthorized")
@@ -427,10 +442,10 @@ export const getWorkflowNodes = query({
 
     // Get all agents to check for valid references
     const agents = await ctx.db.query("agents").collect()
-    const validAgentIds = new Set(agents.map(agent => agent._id))
+    const validAgentIds = new Set(agents.map((agent) => agent._id))
 
     // Filter out orphaned nodes
-    const validNodes = allNodes.filter(node => {
+    const validNodes = allNodes.filter((node) => {
       // Node must reference a valid agent
       if (!validAgentIds.has(node.agentId)) {
         return false
@@ -438,9 +453,7 @@ export const getWorkflowNodes = query({
 
       // If node has a parent, the parent must exist in the workflow
       if (node.parentNodeId) {
-        const parentExists = allNodes.some(parentNode => 
-          parentNode.nodeId === node.parentNodeId
-        )
+        const parentExists = allNodes.some((parentNode) => parentNode.nodeId === node.parentNodeId)
         if (!parentExists) {
           return false
         }
@@ -459,7 +472,7 @@ export const cleanupOrphanedNodes = internalMutation({
     // Get all workflow nodes and agents
     const allWorkflowNodes = await ctx.db.query("workflowNodes").collect()
     const agents = await ctx.db.query("agents").collect()
-    const validAgentIds = new Set(agents.map(agent => agent._id))
+    const validAgentIds = new Set(agents.map((agent) => agent._id))
 
     let deletedCount = 0
 
@@ -473,9 +486,8 @@ export const cleanupOrphanedNodes = internalMutation({
 
       // Check if parent reference is invalid (only if node has a parent)
       if (!shouldDelete && node.parentNodeId) {
-        const parentExists = allWorkflowNodes.some(parentNode => 
-          parentNode.nodeId === node.parentNodeId && 
-          parentNode.workflowId === node.workflowId
+        const parentExists = allWorkflowNodes.some(
+          (parentNode) => parentNode.nodeId === node.parentNodeId && parentNode.workflowId === node.workflowId,
         )
         if (!parentExists) {
           shouldDelete = true

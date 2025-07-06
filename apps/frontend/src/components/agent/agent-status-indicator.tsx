@@ -10,11 +10,11 @@ export function AgentStatusIndicator({ status, showText = false }: AgentStatusIn
   if (!status || status === "completed" || status === "cancelled") {
     return null
   }
-  
+
   // Determine color and text based on status
   let colorClass: string
   let statusText: string
-  
+
   switch (status) {
     case "running":
       colorClass = "bg-green-500"

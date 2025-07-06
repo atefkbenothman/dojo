@@ -2,13 +2,13 @@
 
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
+import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useImage } from "@/hooks/use-image"
-import { useModelStore } from "@/store/use-model-store"
 import { useImageStore } from "@/store/use-image-store"
+import { useModelStore } from "@/store/use-model-store"
 import { ArrowUp } from "lucide-react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
 
@@ -80,7 +80,10 @@ export const ChatFooter = memo(function ChatFooter() {
           onKeyDown={handleKeyDown}
           className="ring-none max-h-[280px] min-h-[120px] flex-1 resize-none border-none focus-visible:ring-transparent sm:text-[16px] md:text-xs"
         />
-        <ChatControls onSend={handleSend} isLoading={status === "submitted" || status === "streaming" || isImageGenerating} />
+        <ChatControls
+          onSend={handleSend}
+          isLoading={status === "submitted" || status === "streaming" || isImageGenerating}
+        />
       </div>
     </div>
   )

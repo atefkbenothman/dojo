@@ -3,11 +3,11 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { cn } from "@/lib/utils"
 import { Agent, WorkflowExecution, Workflow } from "@dojo/db/convex/types"
 import { CheckCircle, XCircle, Circle, Copy, AlertTriangle, AlertCircle } from "lucide-react"
 import { memo, useCallback, useRef } from "react"
-import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 
 interface WorkflowExecutionViewProps {
   workflow: Workflow

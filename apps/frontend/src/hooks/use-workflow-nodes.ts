@@ -58,7 +58,7 @@ export function useWorkflowNodes({
         })
       }
     },
-    [workflowNodes]
+    [workflowNodes],
   )
 
   // Confirm delete node - actually performs deletion
@@ -92,7 +92,7 @@ export function useWorkflowNodes({
         console.error("Failed to assign agent:", error)
       }
     },
-    [selectedWorkflow, isAuthenticated, updateNodeMutation]
+    [selectedWorkflow, isAuthenticated, updateNodeMutation],
   )
 
   // Add a new step with an agent to an existing parent
@@ -118,7 +118,7 @@ export function useWorkflowNodes({
         console.error("Failed to add step with agent:", error)
       }
     },
-    [selectedWorkflow, isAuthenticated, addNodeMutation]
+    [selectedWorkflow, isAuthenticated, addNodeMutation],
   )
 
   // Add the first step to a workflow (root node)
@@ -155,14 +155,14 @@ export function useWorkflowNodes({
         console.error("Failed to add first step:", error)
       }
     },
-    [selectedWorkflow, isAuthenticated, addNodeMutation, onEditWorkflow]
+    [selectedWorkflow, isAuthenticated, addNodeMutation, onEditWorkflow],
   )
 
   return {
     // State
     nodeToDelete,
     setNodeToDelete,
-    
+
     // Handlers
     handleRemoveNode,
     confirmDeleteNode,

@@ -7,19 +7,19 @@ export function useUrlSelection() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const selectedId = searchParams.get('id')
+  const selectedId = searchParams.get("id")
 
   const setSelectedId = useCallback(
     (id: string | null) => {
       const params = new URLSearchParams(searchParams)
-      const currentId = searchParams.get('id')
-      
+      const currentId = searchParams.get("id")
+
       if (id) {
-        params.set('id', id)
+        params.set("id", id)
       } else {
-        params.delete('id')
+        params.delete("id")
       }
-      
+
       // Smart navigation decision
       if (id === null || id === currentId) {
         // Deselection or same selection toggle - don't create history
@@ -29,7 +29,7 @@ export function useUrlSelection() {
         router.push(`?${params.toString()}`)
       }
     },
-    [searchParams, router]
+    [searchParams, router],
   )
 
   return { selectedId, setSelectedId }

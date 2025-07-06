@@ -52,7 +52,8 @@ export const NodeDeleteDialog = memo(function NodeDeleteDialog({
             Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the node &ldquo;{getNodeDisplayName()}&rdquo; and {getWarningMessage()}
+            This action cannot be undone. This will permanently delete the node &ldquo;{getNodeDisplayName()}&rdquo; and{" "}
+            {getWarningMessage()}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

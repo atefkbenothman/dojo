@@ -43,9 +43,7 @@ export function SideNav() {
   }, [play])
 
   return (
-    <nav
-      className="bg-card flex-shrink-0 border-border flex w-full h-[42px] flex-row border-b-[1.5px] items-center md:w-[42px] md:h-full md:flex-col md:border-r-[1.5px] md:border-b-0 md:items-stretch"
-    >
+    <nav className="bg-card flex-shrink-0 border-border flex w-full h-[42px] flex-row border-b-[1.5px] items-center md:w-[42px] md:h-full md:flex-col md:border-r-[1.5px] md:border-b-0 md:items-stretch">
       {/* Logo/Brand - Desktop only */}
       <div className="hidden md:flex bg-card h-[42px] flex-shrink-0 items-center justify-center border-b-[1.5px]">
         <Link href="/" className="hover:cursor-pointer" onMouseDown={handleClick}>
@@ -85,8 +83,12 @@ export function SideNav() {
                       </div>
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="hidden md:block">{label}</TooltipContent>
-                  <TooltipContent side="bottom" className="md:hidden">{label}</TooltipContent>
+                  <TooltipContent side="right" className="hidden md:block">
+                    {label}
+                  </TooltipContent>
+                  <TooltipContent side="bottom" className="md:hidden">
+                    {label}
+                  </TooltipContent>
                 </Tooltip>
               </div>
             )

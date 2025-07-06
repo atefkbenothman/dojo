@@ -69,8 +69,6 @@ export const upsert = mutation({
   },
 })
 
-
-
 // Mark connections as disconnected for a backend instance (used on shutdown)
 export const disconnectByBackend = mutation({
   args: {
@@ -146,7 +144,7 @@ export const getByWorkflowExecution = query({
   },
 })
 
-// Get connections by agent execution ID  
+// Get connections by agent execution ID
 export const getByAgentExecution = query({
   args: {
     agentExecutionId: v.id("agentExecutions"),
@@ -160,4 +158,3 @@ export const getByAgentExecution = query({
     return connections
   },
 })
-

@@ -9,7 +9,12 @@ interface MCPContentAreaProps {
   onDeleteClick?: (server: MCPServer) => void
 }
 
-export function MCPContentArea({ server, connectionStatus, isAuthenticated = false, onDeleteClick }: MCPContentAreaProps) {
+export function MCPContentArea({
+  server,
+  connectionStatus,
+  isAuthenticated = false,
+  onDeleteClick,
+}: MCPContentAreaProps) {
   return (
     <div className="flex-1 relative flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-auto">

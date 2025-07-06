@@ -29,9 +29,9 @@ function removeStorage(key: string): void {
 }
 
 export function useLocalStorage() {
-  return { 
-    readStorage, 
-    writeStorage, 
-    removeStorage 
+  return {
+    readStorage,
+    writeStorage,
+    removeStorage,
   }
 }

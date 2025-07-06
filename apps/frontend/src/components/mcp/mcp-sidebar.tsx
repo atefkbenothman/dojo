@@ -1,12 +1,12 @@
 "use client"
 
+import { MCPList } from "@/components/mcp/mcp-list"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { PanelLeft, PanelRight } from "lucide-react"
-import { MCPList } from "./mcp-list"
-import { useSidebar } from "@/hooks/use-sidebar"
-import type { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
 import type { MCPConnectionState } from "@/hooks/use-mcp"
+import { useSidebar } from "@/hooks/use-sidebar"
+import { cn } from "@/lib/utils"
+import type { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
+import { PanelLeft, PanelRight } from "lucide-react"
 
 interface MCPSidebarProps {
   servers: MCPServer[]
@@ -38,12 +38,7 @@ export function MCPSidebar({
   const { isCollapsed, toggleSidebar, expandSidebar } = useSidebar()
 
   return (
-    <div
-      className={cn(
-        "shrink-0 bg-card border-r-[1.5px] flex flex-col h-full",
-        isCollapsed ? "w-[42px]" : "w-96",
-      )}
-    >
+    <div className={cn("shrink-0 bg-card border-r-[1.5px] flex flex-col h-full", isCollapsed ? "w-[42px]" : "w-96")}>
       {/* Header */}
       <div
         className={cn(

@@ -42,9 +42,10 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
 
   // Get current execution for this workflow (matches WorkflowListItem logic)
-  const execution = workflowExecutions
-    .filter(exec => exec.workflowId === workflow._id)
-    .sort((a, b) => b.startedAt - a.startedAt)[0] || undefined
+  const execution =
+    workflowExecutions
+      .filter((exec) => exec.workflowId === workflow._id)
+      .sort((a, b) => b.startedAt - a.startedAt)[0] || undefined
 
   const handleRunWorkflow = useCallback(async () => {
     await onRunWorkflow(workflow)

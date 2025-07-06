@@ -87,7 +87,6 @@ export const MCPList = memo(function MCPList({
     return { connectedServers: connected, globalServers: global, templateServers: template, userServers: user }
   }, [servers, activeConnections])
 
-
   // Filter servers based on search
   const filterServers = (serverList: MCPServer[]) => {
     if (searchInput === "") return serverList
@@ -239,7 +238,12 @@ export const MCPList = memo(function MCPList({
             </div>
           </div>
           {/* Server List with Accordion Sections */}
-          <Accordion type="multiple" value={openSections} onValueChange={(sections) => setAccordionSections("mcps", sections)} className="w-full">
+          <Accordion
+            type="multiple"
+            value={openSections}
+            onValueChange={(sections) => setAccordionSections("mcps", sections)}
+            className="w-full"
+          >
             {/* Connected Servers Section */}
             <AccordionItem value="connected">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">

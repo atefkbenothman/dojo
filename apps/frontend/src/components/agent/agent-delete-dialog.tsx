@@ -44,7 +44,8 @@ export const AgentDeleteDialog = memo(function AgentDeleteDialog({
               {hasAffectedWorkflows ? (
                 <>
                   <div>
-                    The agent &ldquo;{agent?.name}&rdquo; is currently being used in {affectedWorkflows.length} workflow{affectedWorkflows.length > 1 ? "s" : ""}:
+                    The agent &ldquo;{agent?.name}&rdquo; is currently being used in {affectedWorkflows.length} workflow
+                    {affectedWorkflows.length > 1 ? "s" : ""}:
                   </div>
                   <ul className="list-disc pl-5 space-y-1">
                     {affectedWorkflows.map((workflow) => (

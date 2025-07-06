@@ -15,7 +15,7 @@ interface LayoutProviderProps {
 }
 
 // Breakpoint constants to match Tailwind
-const MOBILE_BREAKPOINT = 768  // md breakpoint
+const MOBILE_BREAKPOINT = 768 // md breakpoint
 const TABLET_BREAKPOINT = 1024 // lg breakpoint
 
 export function LayoutProvider({ children }: LayoutProviderProps) {
@@ -50,11 +50,7 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
     isDesktop,
   }
 
-  return (
-    <LayoutContext.Provider value={value}>
-      {children}
-    </LayoutContext.Provider>
-  )
+  return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>
 }
 
 export function useLayout(): LayoutContextType {

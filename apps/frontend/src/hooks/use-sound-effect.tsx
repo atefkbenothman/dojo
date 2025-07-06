@@ -50,7 +50,7 @@ export function SoundEffectProvider({ children }: { children: React.ReactNode })
       document.removeEventListener("click", handleUserInteraction)
       document.removeEventListener("keydown", handleUserInteraction)
     }
-    
+
     // Store the handler in a ref to ensure we remove the same function
     handleUserInteractionRef.current = handleUserInteraction
 

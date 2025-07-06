@@ -129,7 +129,7 @@ export const getActiveExecution = query({
           q.or(
             q.eq(q.field("status"), "preparing"),
             q.eq(q.field("status"), "connecting"),
-            q.eq(q.field("status"), "running")
+            q.eq(q.field("status"), "running"),
           ),
         ),
       )
@@ -148,11 +148,13 @@ export const getActiveExecutions = query({
     const executions = await ctx.db
       .query("agentExecutions")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
-      .filter((q) => q.or(
-        q.eq(q.field("status"), "preparing"),
-        q.eq(q.field("status"), "connecting"),
-        q.eq(q.field("status"), "running")
-      ))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "preparing"),
+          q.eq(q.field("status"), "connecting"),
+          q.eq(q.field("status"), "running"),
+        ),
+      )
       .collect()
 
     return executions

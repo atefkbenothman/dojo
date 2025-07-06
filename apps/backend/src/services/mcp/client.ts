@@ -33,7 +33,7 @@ export class MCPClient {
         onUncaughtError: (error: unknown) => {
           logger.error("MCP", `Uncaught error for server ${this.server._id}:`, error)
           throw new Error(`MCP client uncaught error: ${error instanceof Error ? error.message : String(error)}`)
-        }
+        },
       }),
     )
 

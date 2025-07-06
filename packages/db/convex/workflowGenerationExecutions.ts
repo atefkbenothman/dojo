@@ -41,11 +41,7 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     executionId: v.id("workflowGenerationExecutions"),
-    status: v.union(
-      v.literal("running"),
-      v.literal("completed"),
-      v.literal("failed"),
-    ),
+    status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed")),
     error: v.optional(v.string()),
     workflowId: v.optional(v.id("workflows")),
   },
@@ -76,13 +72,7 @@ export const updateStatus = mutation({
 // Query executions by user
 export const getByUser = query({
   args: {
-    status: v.optional(
-      v.union(
-        v.literal("running"),
-        v.literal("completed"),
-        v.literal("failed"),
-      ),
-    ),
+    status: v.optional(v.union(v.literal("running"), v.literal("completed"), v.literal("failed"))),
   },
   handler: async (ctx, args) => {
     // Get userId from auth context
