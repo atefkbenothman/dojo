@@ -20,7 +20,6 @@ import { useState, useCallback, memo } from "react"
 
 interface WorkflowListItemProps {
   workflow: Workflow
-  isAuthenticated: boolean
   onEditClick: (workflow: Workflow) => void
   onDeleteClick: (workflow: Workflow) => void
   onCloneClick: (workflow: Workflow) => void
@@ -51,7 +50,6 @@ const formatDuration = (startedAt: number, completedAt?: number) => {
 
 export const WorkflowListItem = memo(function WorkflowListItem({
   workflow,
-  isAuthenticated,
   onEditClick,
   onDeleteClick,
   onCloneClick,
@@ -65,9 +63,9 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   const { canRun, isWorkflowRunning } = useWorkflow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  // Determine if user can edit/delete this workflow
-  const canEdit = isAuthenticated && !workflow.isPublic
-  const canDelete = isAuthenticated && !workflow.isPublic
+  // Determine if user can edit/delete this workflow (backend handles filtering)
+  const canEdit = !workflow.isPublic
+  const canDelete = !workflow.isPublic
 
   // Use centralized logic from hook
   const workflowCanRun = canRun(workflow, execution)

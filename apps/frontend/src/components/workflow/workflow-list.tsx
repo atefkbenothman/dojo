@@ -154,7 +154,6 @@ export const WorkflowList = memo(function WorkflowList({
   const createWorkflowListItemProps = useCallback(
     (workflow: Workflow) => ({
       workflow,
-      isAuthenticated,
       onEditClick: onEditWorkflow,
       onDeleteClick: onDeleteWorkflow,
       onCloneClick: onCloneWorkflow,
@@ -164,7 +163,6 @@ export const WorkflowList = memo(function WorkflowList({
       execution: workflowExecutionsStable[workflow._id],
     }),
     [
-      isAuthenticated,
       onEditWorkflow,
       onDeleteWorkflow,
       onCloneWorkflow,

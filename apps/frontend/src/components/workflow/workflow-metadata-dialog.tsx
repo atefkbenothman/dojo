@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from "@/hooks/use-auth"
 import { Workflow } from "@dojo/db/convex/types"
 import { useState, useEffect } from "react"
 
@@ -20,15 +21,16 @@ interface WorkflowMetadataDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (updates: { name: string; description: string; instructions: string }) => Promise<void>
-  isAuthenticated?: boolean
 }
 
-export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave, isAuthenticated = false }: WorkflowMetadataDialogProps) {
+export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }: WorkflowMetadataDialogProps) {
+  const { isAuthenticated } = useAuth()
+
   const [name, setName] = useState(workflow.name)
   const [description, setDescription] = useState(workflow.description)
   const [instructions, setInstructions] = useState(workflow.instructions)
   const [isSaving, setIsSaving] = useState(false)
-  
+
   // Check if this workflow can be edited
   const canEdit = isAuthenticated && !workflow.isPublic
 

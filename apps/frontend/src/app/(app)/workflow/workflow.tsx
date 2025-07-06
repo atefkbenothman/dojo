@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useCallback } from "react"
 import { NodeDeleteDialog } from "@/components/workflow/node-delete-dialog"
 import { WorkflowContentArea } from "@/components/workflow/workflow-content-area"
 import { WorkflowDeleteDialog } from "@/components/workflow/workflow-delete-dialog"
@@ -15,13 +14,24 @@ import { useWorkflow } from "@/hooks/use-workflow"
 import { useWorkflowNodes } from "@/hooks/use-workflow-nodes"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType } from "@dojo/db/convex/types"
+import { useState, useCallback } from "react"
 
 export function Workflow() {
   const { isAuthenticated } = useAuth()
   const { selectedId: selectedWorkflowId, setSelectedId: setSelectedWorkflowId } = useUrlSelection()
 
   // Get all workflow data and operations from the enhanced hook
-  const { workflows, selectedWorkflow, workflowNodes, executions, getWorkflowExecution, create, edit, remove, runWorkflow, stopWorkflow, clone } = useWorkflow()
+  const {
+    selectedWorkflow,
+    workflowNodes,
+    getWorkflowExecution,
+    create,
+    edit,
+    remove,
+    runWorkflow,
+    stopWorkflow,
+    clone,
+  } = useWorkflow()
   const { agents } = useAgent()
   const { getModel } = useAIModels()
 
@@ -210,7 +220,6 @@ export function Workflow() {
           open={isMetadataDialogOpen}
           onOpenChange={handleMetadataDialogChange}
           onSave={handleSaveWorkflowMetadata}
-          isAuthenticated={isAuthenticated}
         />
       )}
       {/* Node Delete Confirmation Dialog */}
@@ -222,11 +231,7 @@ export function Workflow() {
         onConfirm={confirmDeleteNode}
       />
       {/* Generate Workflow Dialog */}
-      <WorkflowGenerateDialog
-        open={isGenerateDialogOpen}
-        onOpenChange={setIsGenerateDialogOpen}
-        isAuthenticated={isAuthenticated}
-      />
+      <WorkflowGenerateDialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen} />
     </>
   )
 }

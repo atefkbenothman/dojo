@@ -7,10 +7,9 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 export interface WorkflowGenerateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  isAuthenticated?: boolean
 }
 
-export function WorkflowGenerateDialog({ open, onOpenChange, isAuthenticated = false }: WorkflowGenerateDialogProps) {
+export function WorkflowGenerateDialog({ open, onOpenChange }: WorkflowGenerateDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -20,7 +19,7 @@ export function WorkflowGenerateDialog({ open, onOpenChange, isAuthenticated = f
         <VisuallyHidden>
           <DialogTitle />
         </VisuallyHidden>
-        <WorkflowGenerateForm variant="dialog" isAuthenticated={isAuthenticated} onClose={() => onOpenChange(false)} />
+        <WorkflowGenerateForm variant="dialog" onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useAuth } from "@/hooks/use-auth"
 import { useGeneration } from "@/hooks/use-generation"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
@@ -28,7 +29,6 @@ type WorkflowGenerateFormValues = z.infer<typeof workflowGenerateFormSchema>
 
 interface WorkflowGenerateFormProps {
   variant?: "page" | "dialog"
-  isAuthenticated?: boolean
   onClose?: () => void
 }
 
@@ -139,12 +139,12 @@ function ModelSection({ form }: ModelSectionProps) {
 
 export function WorkflowGenerateForm({
   variant = "dialog",
-  isAuthenticated = false,
   onClose,
 }: WorkflowGenerateFormProps) {
   const { play } = useSoundEffectContext()
   const { models } = useAIModels()
   const { generateWorkflow, isGeneratingWorkflow, activeWorkflowGeneration } = useGeneration()
+  const { isAuthenticated } = useAuth()
 
   // Get generation status for UI
   const generationStatus = activeWorkflowGeneration?.status
