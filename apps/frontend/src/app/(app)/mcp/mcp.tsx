@@ -164,7 +164,6 @@ export function Mcp() {
         <MCPSidebar
           servers={mcpServers}
           selectedServerId={selectedServer?._id || null}
-          isAuthenticated={isAuthenticated}
           activeConnections={activeConnections}
           connectionStatuses={connectionStatuses}
           onSelectServer={handleSelectServer}
@@ -182,7 +181,6 @@ export function Mcp() {
               <MCPHeader
                 server={selectedServer}
                 connectionStatus={connectionStatuses.get(selectedServer._id)}
-                isAuthenticated={isAuthenticated}
                 onEdit={() => handleEditServer(selectedServer)}
                 onConnect={() => handleConnect(selectedServer)}
                 onDisconnect={() => handleDisconnect(selectedServer)}

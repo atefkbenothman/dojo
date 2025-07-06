@@ -11,7 +11,7 @@ import { MCPToolsCollection } from "@dojo/db/convex/types"
 import { useMutation } from "@tanstack/react-query"
 import { useMutation as useConvexMutation, useConvex } from "convex/react"
 import { WithoutSystemFields } from "convex/server"
-import { useMemo } from "react"
+import { useMemo, useCallback } from "react"
 import { toast } from "sonner"
 
 // Connection status constants
@@ -84,10 +84,8 @@ export function useMCP() {
   const cloneMCP = useConvexMutation(api.mcp.clone)
 
   // Query MCP connections from Convex
-  const mcpConnections = useStableQuery(
-    api.mcpConnections.getBySession,
-    currentSession ? { sessionId: currentSession._id } : "skip",
-  ) || []
+  const mcpConnections =
+    useStableQuery(api.mcpConnections.getBySession, currentSession ? { sessionId: currentSession._id } : "skip") || []
 
   const { play } = useSoundEffectContext()
 
@@ -276,6 +274,19 @@ export function useMCP() {
 
   const stableMcpServers = useMemo(() => mcpServers || [], [mcpServers])
 
+  const canConnect = useCallback(
+    (server: Doc<"mcp">, connectionState?: MCPConnectionState | null) => {
+      // Can't connect if already connected or connecting
+      if (isMCPConnected(connectionState) || isMCPConnecting(connectionState)) return false
+      // Can't connect local servers in production
+      if (server.localOnly && process.env.NODE_ENV === "production") return false
+      // Can't connect servers requiring keys without authentication
+      if (!currentSession?.userId && server.requiresUserKey) return false
+      return true
+    },
+    [currentSession?.userId],
+  )
+
   return {
     mcpServers: stableMcpServers,
     activeConnections,
@@ -287,5 +298,7 @@ export function useMCP() {
     remove,
     clone,
     checkServerDependencies,
+    canConnect,
+    isMCPConnecting,
   }
 }

@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
-import { ActiveConnection, isMCPConnected, isMCPConnecting, MCPConnectionState } from "@/hooks/use-mcp"
+import { ActiveConnection, isMCPConnected, isMCPConnecting, MCPConnectionState, useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import type { MCPServer } from "@dojo/db/convex/types"
@@ -21,7 +21,6 @@ import { useState, useCallback } from "react"
 
 interface MCPListItemProps {
   server: MCPServer
-  isAuthenticated: boolean
   onEditClick: (server: MCPServer) => void
   onDeleteClick: (server: MCPServer) => void
   onCloneClick: (server: MCPServer) => void
@@ -34,7 +33,6 @@ interface MCPListItemProps {
 
 export function MCPListItem({
   server,
-  isAuthenticated,
   onEditClick,
   onDeleteClick,
   onCloneClick,
@@ -45,6 +43,7 @@ export function MCPListItem({
   status,
 }: MCPListItemProps) {
   const { play } = useSoundEffectContext()
+  const { canConnect } = useMCP()
 
   const isConnected = isMCPConnected(status)
   const isConnecting = isMCPConnecting(status)
@@ -69,9 +68,12 @@ export function MCPListItem({
     }
   }
 
-  // Determine if user can edit/delete this server
-  const canEdit = isAuthenticated && !server.isPublic
-  const canDelete = isAuthenticated && !server.isPublic
+  // Determine if user can edit/delete this server (backend handles filtering)
+  const canEdit = !server.isPublic
+  const canDelete = !server.isPublic
+  
+  // Use centralized business logic
+  const serverCanConnect = canConnect(server, status)
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent) => {
@@ -177,47 +179,29 @@ export function MCPListItem({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* Connect/Disconnect or Clone button */}
-            {server.isPublic && server.requiresUserKey && isAuthenticated && !isConnected ? (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={(e) => handleMenuAction(e, () => onCloneClick(server))}
-                className="size-8 hover:cursor-pointer"
-                title="Clone this server to add your API keys, then connect"
-              >
-                <Copy className="h-2.5 w-2.5" />
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleConnectionToggle}
-                disabled={
-                  isConnected
-                    ? false
-                    : (!isAuthenticated && server.requiresUserKey) ||
-                      isConnecting ||
-                      (server.localOnly && process.env.NODE_ENV === "production")
-                }
-                className="size-8 hover:cursor-pointer"
-                title={
-                  isConnected
-                    ? "Disconnect"
-                    : !isAuthenticated && server.requiresUserKey
-                      ? "Login required to use servers with API keys"
-                      : "Connect"
-                }
-              >
-                {isConnecting ? (
-                  <LoadingAnimationInline className="text-xs" />
-                ) : isConnected ? (
-                  <Unplug className="h-2.5 w-2.5" />
-                ) : (
-                  <Plug className="h-2.5 w-2.5" />
-                )}
-              </Button>
-            )}
+            {/* Connect/Disconnect button */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleConnectionToggle}
+              disabled={isConnected ? false : !serverCanConnect}
+              className="size-8 hover:cursor-pointer"
+              title={
+                isConnected
+                  ? "Disconnect"
+                  : !serverCanConnect
+                    ? "Cannot connect to this server"
+                    : "Connect"
+              }
+            >
+              {isConnecting ? (
+                <LoadingAnimationInline className="text-xs" />
+              ) : isConnected ? (
+                <Unplug className="h-2.5 w-2.5" />
+              ) : (
+                <Plug className="h-2.5 w-2.5" />
+              )}
+            </Button>
           </div>
         </div>
         {/* Badge Row */}

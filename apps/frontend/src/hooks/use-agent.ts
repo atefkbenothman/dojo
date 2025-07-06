@@ -75,19 +75,6 @@ export function useAgent() {
 
   const runAgent = useCallback(
     async (agent: Agent) => {
-      // Check if session is ready before attempting to run agent
-      if (!currentSession) {
-        toast.error("Session not ready. Please wait a moment and try again.", {
-          icon: null,
-          id: "agent-session-not-ready",
-          duration: 3000,
-          position: "bottom-center",
-          style: errorToastStyle,
-        })
-        play("./sounds/error.mp3", { volume: 0.5 })
-        return
-      }
-
       // Check if agent has a model configured
       if (!agent.aiModelId) {
         toast.error("Agent does not have an AI model configured.", {
@@ -132,7 +119,7 @@ export function useAgent() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, play, currentSession],
+    [append, play],
   )
 
   const stopAllAgents = async () => {
@@ -176,7 +163,7 @@ export function useAgent() {
 
   const stableAgents = useMemo(() => agents || [], [agents])
 
-  // Helper to check if agent is currently running  
+  // Helper to check if agent is currently running
   const isAgentRunning = useCallback((execution?: AgentExecution) => {
     return (
       execution?.status === AGENT_STATUS.PREPARING ||
@@ -189,8 +176,7 @@ export function useAgent() {
   const getAgentExecution = useCallback(
     (agentId: Id<"agents">) => {
       // First check if we have a real execution from Convex
-      const realExecution =
-        agentExecutions?.find((exec) => exec.agentId === agentId && isAgentRunning(exec)) || null
+      const realExecution = agentExecutions?.find((exec) => exec.agentId === agentId && isAgentRunning(exec)) || null
 
       return realExecution
     },

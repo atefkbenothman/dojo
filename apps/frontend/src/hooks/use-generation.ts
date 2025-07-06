@@ -26,11 +26,13 @@ interface GenerateWorkflowParams {
 export function useGeneration() {
   const router = useRouter()
   const authToken = useAuthToken()
-  const { currentSession } = useSession()
   const { play } = useSoundEffectContext()
 
   // Subscribe to active generation executions
-  const activeAgentGeneration = useStableQuery(api.agentGenerationExecutions.getActiveExecution, authToken ? {} : "skip")
+  const activeAgentGeneration = useStableQuery(
+    api.agentGenerationExecutions.getActiveExecution,
+    authToken ? {} : "skip",
+  )
   const activeWorkflowGeneration = useStableQuery(
     api.workflowGenerationExecutions.getActiveExecution,
     authToken ? {} : "skip",
@@ -47,18 +49,6 @@ export function useGeneration() {
 
   const generateAgent = useCallback(
     async ({ name, prompt, modelId }: GenerateAgentParams) => {
-      if (!currentSession) {
-        toast.error("Session not ready. Please wait a moment and try again.", {
-          icon: null,
-          id: "generation-session-not-ready",
-          duration: 3000,
-          position: "bottom-center",
-          style: errorToastStyle,
-        })
-        play("./sounds/error.mp3", { volume: 0.5 })
-        return { success: false }
-      }
-
       if (!authToken) {
         toast.error("Authentication required to generate agents with AI", {
           icon: null,
@@ -121,23 +111,11 @@ export function useGeneration() {
         return { success: false, error: errorMessage }
       }
     },
-    [authToken, currentSession, play, router],
+    [authToken, play, router],
   )
 
   const generateWorkflow = useCallback(
     async ({ name, prompt, modelId }: GenerateWorkflowParams) => {
-      if (!currentSession) {
-        toast.error("Session not ready. Please wait a moment and try again.", {
-          icon: null,
-          id: "generation-session-not-ready",
-          duration: 3000,
-          position: "bottom-center",
-          style: errorToastStyle,
-        })
-        play("./sounds/error.mp3", { volume: 0.5 })
-        return { success: false }
-      }
-
       if (!authToken) {
         toast.error("Authentication required to generate workflows with AI", {
           icon: null,
@@ -200,7 +178,7 @@ export function useGeneration() {
         return { success: false, error: errorMessage }
       }
     },
-    [authToken, currentSession, play, router],
+    [authToken, play, router],
   )
 
   return {

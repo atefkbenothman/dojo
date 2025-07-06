@@ -4,9 +4,11 @@ import { MCPListItem } from "@/components/mcp/mcp-list-item"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/hooks/use-auth"
 import { MCPConnectionState } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
+import { useSession } from "@/providers/session-provider"
 import { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
 import { Search, Plus, Plug, Globe, Server, ReceiptText } from "lucide-react"
 import { useState, memo, useMemo, useCallback } from "react"
@@ -14,7 +16,6 @@ import { useState, memo, useMemo, useCallback } from "react"
 interface MCPListProps {
   servers: MCPServer[]
   selectedServerId: string | null
-  isAuthenticated: boolean
   activeConnections: Array<{ serverId: string; name: string; tools: MCPToolsCollection }>
   connectionStatuses: Map<string, MCPConnectionState>
   onSelectServer: (server: MCPServer) => void
@@ -31,7 +32,6 @@ interface MCPListProps {
 export const MCPList = memo(function MCPList({
   servers,
   selectedServerId,
-  isAuthenticated,
   activeConnections,
   connectionStatuses,
   onSelectServer,
@@ -44,9 +44,11 @@ export const MCPList = memo(function MCPList({
   isCollapsed,
   onExpandSidebar,
 }: MCPListProps) {
+  const { play } = useSoundEffectContext()
+  const { isAuthenticated } = useAuth()
+
   const [searchInput, setSearchInput] = useState<string>("")
   const [openSections, setOpenSections] = useState<string[]>([])
-  const { play } = useSoundEffectContext()
 
   const handleClick = useCallback(() => {
     play("./sounds/click.mp3", { volume: 0.5 })
@@ -258,7 +260,6 @@ export const MCPList = memo(function MCPList({
                         <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
                           <MCPListItem
                             server={server}
-                            isAuthenticated={isAuthenticated}
                             onEditClick={onEditServer}
                             onDeleteClick={onDeleteServer}
                             onCloneClick={onCloneServer}
@@ -304,7 +305,6 @@ export const MCPList = memo(function MCPList({
                         <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
                           <MCPListItem
                             server={server}
-                            isAuthenticated={isAuthenticated}
                             onEditClick={onEditServer}
                             onDeleteClick={onDeleteServer}
                             onCloneClick={onCloneServer}
@@ -345,7 +345,6 @@ export const MCPList = memo(function MCPList({
                         <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
                           <MCPListItem
                             server={server}
-                            isAuthenticated={isAuthenticated}
                             onEditClick={onEditServer}
                             onDeleteClick={onDeleteServer}
                             onCloneClick={onCloneServer}
@@ -387,7 +386,6 @@ export const MCPList = memo(function MCPList({
                         <div key={server._id} className="cursor-pointer" onClick={() => onSelectServer(server)}>
                           <MCPListItem
                             server={server}
-                            isAuthenticated={isAuthenticated}
                             onEditClick={onEditServer}
                             onDeleteClick={onDeleteServer}
                             onCloneClick={onCloneServer}

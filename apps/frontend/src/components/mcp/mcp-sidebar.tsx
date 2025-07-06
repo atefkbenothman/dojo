@@ -11,7 +11,6 @@ import type { MCPConnectionState } from "@/hooks/use-mcp"
 interface MCPSidebarProps {
   servers: MCPServer[]
   selectedServerId: string | null
-  isAuthenticated: boolean
   activeConnections: Array<{ serverId: string; name: string; tools: MCPToolsCollection }>
   connectionStatuses: Map<string, MCPConnectionState>
   onSelectServer: (server: MCPServer) => void
@@ -26,7 +25,6 @@ interface MCPSidebarProps {
 export function MCPSidebar({
   servers,
   selectedServerId,
-  isAuthenticated,
   activeConnections,
   connectionStatuses,
   onSelectServer,
@@ -67,7 +65,6 @@ export function MCPSidebar({
       <MCPList
         servers={servers}
         selectedServerId={selectedServerId}
-        isAuthenticated={isAuthenticated}
         activeConnections={activeConnections}
         connectionStatuses={connectionStatuses}
         onSelectServer={onSelectServer}
