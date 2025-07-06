@@ -31,7 +31,7 @@ export function useImage() {
 
   const mutation = useMutation<RouterOutputs["image"]["generate"], Error, ImageGenerationInput>({
     mutationFn: imageGenerationMutationFn,
-    onSuccess: (result) => {
+    onSuccess: () => {
       // Image generation is currently disabled in the backend
       // When re-enabled, uncomment the following:
       // const imagesArr = result?.images || []

@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Sparkles } from "lucide-react"
 import { useCallback, useMemo } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, UseFormReturn } from "react-hook-form"
 import { z } from "zod"
 
 // Form schema for agent generation
@@ -33,7 +33,7 @@ interface AgentGenerateFormProps {
 
 // Component for name input section
 interface NameSectionProps {
-  form: any
+  form: UseFormReturn<AgentGenerateFormValues>
 }
 
 function NameSection({ form }: NameSectionProps) {
@@ -58,7 +58,7 @@ function NameSection({ form }: NameSectionProps) {
 
 // Component for prompt section
 interface PromptSectionProps {
-  form: any
+  form: UseFormReturn<AgentGenerateFormValues>
 }
 
 function PromptSection({ form }: PromptSectionProps) {
@@ -87,7 +87,7 @@ function PromptSection({ form }: PromptSectionProps) {
 
 // Component for model selection
 interface ModelSectionProps {
-  form: any
+  form: UseFormReturn<AgentGenerateFormValues>
 }
 
 function ModelSection({ form }: ModelSectionProps) {
@@ -97,7 +97,7 @@ function ModelSection({ form }: ModelSectionProps) {
   const selectedModelId = useMemo(() => {
     const model = models.find((m) => m._id === form.watch("aiModelId"))
     return model?.modelId
-  }, [models, form.watch("aiModelId")])
+  }, [models, form])
 
   const handleModelChange = useCallback(
     (modelId: string) => {
@@ -118,7 +118,7 @@ function ModelSection({ form }: ModelSectionProps) {
       <FormField
         control={form.control}
         name="aiModelId"
-        render={({ field }) => (
+        render={() => (
           <FormItem>
             <FormControl>
               <ModelSelect
@@ -136,13 +136,10 @@ function ModelSection({ form }: ModelSectionProps) {
   )
 }
 
-export function AgentGenerateForm({ variant = "dialog", onClose }: AgentGenerateFormProps) {
+export function AgentGenerateForm({ onClose }: Pick<AgentGenerateFormProps, "onClose">) {
   const { models } = useAIModels()
-  const { generateAgent, isGeneratingAgent, activeAgentGeneration } = useGeneration()
+  const { generateAgent, isGeneratingAgent } = useGeneration()
   const { isAuthenticated } = useAuth()
-
-  // Get generation status for UI
-  const generationStatus = activeAgentGeneration?.status
 
   // Get default model for new agents
   const defaultModel = useMemo(() => {

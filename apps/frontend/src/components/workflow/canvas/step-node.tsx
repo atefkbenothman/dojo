@@ -10,7 +10,7 @@ import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-t
 import { Agent } from "@dojo/db/convex/types"
 import { Handle, Position } from "@xyflow/react"
 import { Trash, CheckCircle, XCircle, Clock, Plus, SquarePen } from "lucide-react"
-import { useState, memo, useCallback } from "react"
+import { memo, useCallback } from "react"
 
 // Step Node Data
 export interface StepNodeData {
@@ -31,8 +31,6 @@ export interface StepNodeProps {
 }
 
 export const StepNode = memo(function StepNode({ data, selected = false }: StepNodeProps) {
-  const [isHovered, setIsHovered] = useState(false)
-
   const handleAddStep = useCallback(
     (agent: Agent) => {
       if (data.workflowNode && data.onAddStepWithAgent) {
@@ -114,8 +112,6 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
           data.executionStatus === "running" && "animate-pulse shadow-blue-200 dark:shadow-blue-800",
           selected && "ring-2 ring-primary/80",
         )}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         {/* Action buttons in top right corner */}
         <div className="absolute top-2 right-2 z-10 flex items-center gap-1">

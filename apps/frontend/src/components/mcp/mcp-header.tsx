@@ -10,10 +10,8 @@ import { memo } from "react"
 interface MCPHeaderProps {
   server: MCPServer
   connectionStatus?: MCPConnectionState
-  onEdit: () => void
   onConnect: () => void
   onDisconnect: () => void
-  onClone: () => void
 }
 
 export const MCPHeader = memo(function MCPHeader({
@@ -21,7 +19,6 @@ export const MCPHeader = memo(function MCPHeader({
   connectionStatus,
   onConnect,
   onDisconnect,
-  onClone,
 }: MCPHeaderProps) {
   const { canConnect } = useMCP()
   const isConnected = isMCPConnected(connectionStatus)
@@ -48,11 +45,7 @@ export const MCPHeader = memo(function MCPHeader({
           )}
           onClick={isConnected ? onDisconnect : onConnect}
           disabled={isConnected ? false : !serverCanConnect}
-          title={
-            !serverCanConnect
-              ? "Cannot connect to this server"
-              : undefined
-          }
+          title={!serverCanConnect ? "Cannot connect to this server" : undefined}
         >
           {isConnected ? (
             <>

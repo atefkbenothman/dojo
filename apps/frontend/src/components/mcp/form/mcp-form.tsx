@@ -45,10 +45,9 @@ function ReadOnlyNoticeSection({ canEdit, isPublic }: ReadOnlyNoticeSectionProps
 interface ServerNameSectionProps {
   form: UseFormReturn<MCPFormValues>
   canEdit: boolean
-  mode: "add" | "edit"
 }
 
-function ServerNameSection({ form, canEdit, mode }: ServerNameSectionProps) {
+function ServerNameSection({ form, canEdit }: ServerNameSectionProps) {
   return (
     <div className="space-y-2">
       <p className="text-base font-medium text-muted-foreground">Server Name</p>
@@ -507,7 +506,7 @@ export function MCPForm({
         </div>
       )}
       <div className="space-y-8">
-        <ServerNameSection form={form} canEdit={canEdit} mode={mode} />
+        <ServerNameSection form={form} canEdit={canEdit} />
         <ServerSummarySection form={form} canEdit={canEdit} />
         <TransportTypeSection
           form={form}

@@ -3,15 +3,9 @@
 import { AgentStatusIndicator } from "@/components/agent/agent-status-indicator"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
-import { type AgentExecution, isAgentError, AGENT_STATUS, useAgent } from "@/hooks/use-agent"
+import { type AgentExecution, AGENT_STATUS, useAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
@@ -55,7 +49,6 @@ export function AgentListItem({
   const agentCanRun = canRun(agent)
   const isRunning = isAgentRunning(execution)
   const status = execution?.status
-  const hasError = isAgentError(status)
   const isLoading = status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.CONNECTING
   const isConnecting = status === AGENT_STATUS.CONNECTING
 
@@ -82,12 +75,9 @@ export function AgentListItem({
     }
   }
 
-  const handleCardClick = useCallback(
-    (e: React.MouseEvent) => {
-      play("./sounds/click.mp3", { volume: 0.5 })
-    },
-    [play],
-  )
+  const handleCardClick = useCallback(() => {
+    play("./sounds/click.mp3", { volume: 0.5 })
+  }, [play])
 
   // Determine if user can edit/delete this agent
   // Note: Backend filtering ensures users only see agents they can edit/delete

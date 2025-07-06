@@ -37,7 +37,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       writeStorage(GUEST_SESSION_KEY, sessionId)
     }
     return sessionId
-  }, [isGuest]) // readStorage and writeStorage are stable
+  }, [isGuest, readStorage, writeStorage])
 
   // Query current session based on auth state
   const authSession = useStableQuery(api.sessions.getCurrentUserSession, isAuthenticated ? {} : "skip")

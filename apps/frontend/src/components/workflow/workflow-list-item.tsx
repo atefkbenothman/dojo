@@ -2,13 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Progress } from "@/components/ui/progress"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
@@ -68,12 +62,9 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   const canDelete = !workflow.isPublic
 
   // Use centralized logic from hook
-  const workflowCanRun = canRun(workflow, execution)
+  const workflowCanRun = canRun(workflow)
   const isRunning = isWorkflowRunning(execution)
   const isPreparing = execution?.status === "preparing"
-  const isCompleted = execution?.status === "completed"
-  const isFailed = execution?.status === "failed"
-  const isCancelled = execution?.status === "cancelled"
 
   // Final run button state: disabled when canRun is false AND not currently running
   // (if running, button becomes a stop button and should remain enabled)

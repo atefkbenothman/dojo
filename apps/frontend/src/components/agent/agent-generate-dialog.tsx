@@ -1,7 +1,7 @@
 "use client"
 
 import { AgentGenerateForm } from "@/components/agent/agent-generate-form"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 export interface AgentGenerateDialogProps {
@@ -19,7 +19,7 @@ export function AgentGenerateDialog({ open, onOpenChange }: AgentGenerateDialogP
         <VisuallyHidden>
           <DialogTitle />
         </VisuallyHidden>
-        <AgentGenerateForm variant="dialog" onClose={() => onOpenChange(false)} />
+        <AgentGenerateForm onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )

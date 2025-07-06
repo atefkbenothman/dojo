@@ -7,7 +7,6 @@ import { AgentGenerateDialog } from "@/components/agent/agent-generate-dialog"
 import { AgentHeader } from "@/components/agent/agent-header"
 import { AgentSidebar } from "@/components/agent/agent-sidebar"
 import { useAgent, type AgentExecution } from "@/hooks/use-agent"
-import { useAIModels } from "@/hooks/use-ai-models"
 import { useAuth } from "@/hooks/use-auth"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUrlSelection } from "@/hooks/use-url-selection"
@@ -19,7 +18,6 @@ import { toast } from "sonner"
 export function Agent() {
   const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove, checkAgentDependencies } = useAgent()
   const { isAuthenticated } = useAuth()
-  const { models } = useAIModels()
   const { play } = useSoundEffectContext()
 
   const { selectedId: selectedAgentId, setSelectedId: setSelectedAgentId } = useUrlSelection()
@@ -53,12 +51,8 @@ export function Agent() {
       .filter(Boolean) as AgentExecution[]
   }, [agents, getAgentExecution])
 
-  // Get selected agent's execution and model info
+  // Get selected agent's execution
   const selectedExecution = selectedAgent ? getAgentExecution(selectedAgent._id) : null
-  const selectedModel = useMemo(() => {
-    if (!selectedAgent) return null
-    return models.find((m) => m._id === selectedAgent.aiModelId)
-  }, [models, selectedAgent])
 
   const handleEditAgent = useCallback((agent: Agent) => {
     setEditingAgent(agent)
@@ -98,15 +92,14 @@ export function Agent() {
           }
           setAgentToDelete(null)
           setAffectedWorkflows(undefined)
-        } catch (error) {
+        } catch {
           // If it's a dependency error and we haven't forced, the dialog should stay open
-          const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
           setAgentToDelete(null)
           setAffectedWorkflows(undefined)
         }
       }
     },
-    [agentToDelete, selectedAgentId, remove, play],
+    [agentToDelete, selectedAgentId, remove, play, setSelectedAgentId],
   )
 
   const handleCreateAgent = useCallback(() => {
@@ -174,16 +167,10 @@ export function Agent() {
               <AgentHeader
                 agent={selectedAgent}
                 execution={selectedExecution}
-                onEdit={() => handleEditAgent(selectedAgent)}
                 onRun={() => handleRunAgent(selectedAgent)}
                 onStop={stopAllAgents}
               />
-              <AgentContentArea
-                agent={selectedAgent}
-                model={selectedModel}
-                execution={selectedExecution}
-                onDeleteClick={handleDeleteAgent}
-              />
+              <AgentContentArea agent={selectedAgent} execution={selectedExecution} onDeleteClick={handleDeleteAgent} />
             </>
           ) : (
             <div className="flex items-center justify-center h-full">

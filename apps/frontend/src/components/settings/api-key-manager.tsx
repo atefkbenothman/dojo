@@ -12,12 +12,11 @@ import { useState, useEffect } from "react"
 import { toast } from "sonner"
 
 interface ApiKeyManagerProps {
-  user: Doc<"users">
   userApiKeys: Doc<"apiKeys">[]
   providers: Doc<"providers">[]
 }
 
-export function ApiKeyManager({ user, userApiKeys, providers }: ApiKeyManagerProps) {
+export function ApiKeyManager({ userApiKeys, providers }: ApiKeyManagerProps) {
   const { play } = useSoundEffectContext()
 
   const [keyStates, setKeyStates] = useState<

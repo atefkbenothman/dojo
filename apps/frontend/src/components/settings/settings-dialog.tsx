@@ -55,7 +55,7 @@ export const SettingsDialog = memo(function SettingsDialog({ isOpen, setIsOpen }
               <UserManager user={user} />
             </TabsContent>
             <TabsContent value="api-keys" className="flex-1 overflow-y-auto py-4 px-1 min-h-0">
-              <ApiKeyManager user={user} userApiKeys={userApiKeys} providers={providers} />
+              <ApiKeyManager userApiKeys={userApiKeys} providers={providers} />
             </TabsContent>
             <TabsContent value="other"></TabsContent>
           </Tabs>

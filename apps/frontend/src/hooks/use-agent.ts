@@ -54,6 +54,17 @@ export const canRunAgent = (agent: Agent, isAuthenticated: boolean, currentStatu
   return true
 }
 
+// Type for agent creation based on the mutation's expected parameters
+interface CreateAgentParams {
+  userId?: Id<"users"> | undefined
+  isPublic?: boolean | undefined
+  name: string
+  mcpServers: Id<"mcp">[]
+  outputType: "object" | "text"
+  systemPrompt: string
+  aiModelId: Id<"models">
+}
+
 export function useAgent() {
   const convex = useConvex()
   const authToken = useAuthToken()
@@ -209,7 +220,7 @@ export function useAgent() {
     }
   }
 
-  const create = async (agent: any) => {
+  const create = async (agent: CreateAgentParams) => {
     try {
       const agentId = await createAgent(agent)
       return agentId

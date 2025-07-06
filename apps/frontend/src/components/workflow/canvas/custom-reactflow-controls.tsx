@@ -8,14 +8,12 @@ import { memo, useCallback } from "react"
 interface CustomReactFlowControlsProps {
   minZoom?: number
   maxZoom?: number
-  zoomStep?: number
   className?: string
 }
 
 export const CustomReactFlowControls = memo(function CustomReactFlowControls({
   minZoom = 0.25,
   maxZoom = 2,
-  zoomStep = 0.1,
   className = "",
 }: CustomReactFlowControlsProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow()

@@ -3,29 +3,28 @@
 import { AgentStatusIndicator } from "@/components/agent/agent-status-indicator"
 import { Button } from "@/components/ui/button"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
-import { type AgentStatus, type AgentExecution, AGENT_STATUS, useAgent } from "@/hooks/use-agent"
+import { type AgentExecution, AGENT_STATUS, useAgent } from "@/hooks/use-agent"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
-import { Pencil, Play, Square } from "lucide-react"
+import { Play, Square } from "lucide-react"
 
 interface AgentHeaderProps {
   agent: Agent
   execution: AgentExecution | null
-  onEdit: () => void
   onRun: () => void
   onStop: () => void
 }
 
-export function AgentHeader({ agent, execution, onEdit, onRun, onStop }: AgentHeaderProps) {
+export function AgentHeader({ agent, execution, onRun, onStop }: AgentHeaderProps) {
   const { canRun, isAgentRunning } = useAgent()
-  
+
   // Use centralized logic from hook (IDENTICAL to AgentListItem)
   const agentCanRun = canRun(agent)
   const isRunning = isAgentRunning(execution || undefined)
   const status = execution?.status
   const isPreparing = status === AGENT_STATUS.PREPARING
   const isConnecting = status === AGENT_STATUS.CONNECTING
-  
+
   // Final run button state: disabled when canRun is false AND not currently running
   // (if running, button becomes a stop button and should remain enabled)
   const shouldDisableRunButton = !agentCanRun && !isRunning
@@ -36,19 +35,6 @@ export function AgentHeader({ agent, execution, onEdit, onRun, onStop }: AgentHe
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <p className="text-sm font-semibold truncate">{agent.name}</p>
         <AgentStatusIndicator status={status} />
-        {/* Edit - only show for non-public agents */}
-        {/* {!agent.isPublic && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEdit}
-            className="hover:cursor-pointer"
-            disabled={!isAuthenticated}
-            title={!isAuthenticated ? "Login required to edit agents" : "Edit agent"}
-          >
-            <Pencil className="h-3 w-3 text-muted-foreground" />
-          </Button>
-        )} */}
       </div>
 
       {/* Right section - Run/Stop button */}

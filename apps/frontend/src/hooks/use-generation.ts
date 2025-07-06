@@ -3,7 +3,6 @@
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
-import { useSession } from "@/providers/session-provider"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { env } from "@dojo/env/frontend"

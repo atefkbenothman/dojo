@@ -19,7 +19,7 @@ export function WorkflowGenerateDialog({ open, onOpenChange }: WorkflowGenerateD
         <VisuallyHidden>
           <DialogTitle />
         </VisuallyHidden>
-        <WorkflowGenerateForm variant="dialog" onClose={() => onOpenChange(false)} />
+        <WorkflowGenerateForm onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )

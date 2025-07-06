@@ -4,13 +4,7 @@ import { MCPStatusIndicator } from "@/components/mcp/mcp-status-indicator"
 import { ToolsPopover } from "@/components/mcp/tools-popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { ActiveConnection, isMCPConnected, isMCPConnecting, MCPConnectionState, useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
@@ -75,12 +69,9 @@ export function MCPListItem({
   // Use centralized business logic
   const serverCanConnect = canConnect(server, status)
 
-  const handleCardClick = useCallback(
-    (e: React.MouseEvent) => {
-      play("./sounds/click.mp3", { volume: 0.5 })
-    },
-    [play],
-  )
+  const handleCardClick = useCallback(() => {
+    play("./sounds/click.mp3", { volume: 0.5 })
+  }, [play])
 
   const handleMenuAction = useCallback((e: React.MouseEvent, action: () => void) => {
     e.stopPropagation()

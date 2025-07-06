@@ -1,4 +1,3 @@
-import { WorkflowNode } from "@dojo/db/convex/types"
 import dagre from "dagre"
 import { Node, Edge, Position } from "reactflow"
 
@@ -130,20 +129,20 @@ export function calculateInitialViewport(
   }
 
   const bounds = getLayoutBounds(nodes)
-  
+
   // Calculate zoom to fit content with padding
   const zoomX = containerWidth / (bounds.width * (1 + padding))
   const zoomY = containerHeight / (bounds.height * (1 + padding))
   const zoom = Math.min(Math.max(Math.min(zoomX, zoomY), 0.25), 2) // Between 0.25 and 2 to match ReactFlow
-  
+
   // Calculate center position
   const centerX = bounds.x + bounds.width / 2
   const centerY = bounds.y + bounds.height / 2
-  
+
   // Calculate viewport position to center the content
   const x = containerWidth / 2 - centerX * zoom
   const y = containerHeight / 2 - centerY * zoom
-  
+
   return { x, y, zoom }
 }
 

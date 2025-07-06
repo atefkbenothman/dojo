@@ -1,16 +1,15 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { PanelLeft, PanelRight } from "lucide-react"
-import { useCallback } from "react"
-import { WorkflowList } from "./workflow-list"
-import { useWorkflow } from "@/hooks/use-workflow"
-import { useAgent } from "@/hooks/use-agent"
+import { WorkflowList } from "@/components/workflow/workflow-list"
 import { useAuth } from "@/hooks/use-auth"
 import { useSidebar } from "@/hooks/use-sidebar"
-import type { Workflow } from "@dojo/db/convex/types"
+import { useWorkflow } from "@/hooks/use-workflow"
+import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
+import type { Workflow } from "@dojo/db/convex/types"
+import { PanelLeft, PanelRight } from "lucide-react"
+import { useCallback } from "react"
 
 interface WorkflowSidebarProps {
   selectedWorkflowId: string | null
@@ -35,23 +34,16 @@ export function WorkflowSidebar({
   onStopWorkflow,
   onGenerateWorkflow,
 }: WorkflowSidebarProps) {
-  // Get data from hooks
   const { workflows, executions } = useWorkflow()
-  const { agents } = useAgent()
   const { isAuthenticated } = useAuth()
   const { isCollapsed, toggleSidebar, expandSidebar } = useSidebar()
-  
+
   const handleExpandSidebar = useCallback(() => {
     expandSidebar()
   }, [expandSidebar])
 
   return (
-    <div
-      className={cn(
-        "shrink-0 bg-card border-r-[1.5px] flex flex-col h-full",
-        isCollapsed ? "w-[42px]" : "w-96",
-      )}
-    >
+    <div className={cn("shrink-0 bg-card border-r-[1.5px] flex flex-col h-full", isCollapsed ? "w-[42px]" : "w-96")}>
       {/* Header */}
       <div
         className={cn(
@@ -75,7 +67,6 @@ export function WorkflowSidebar({
         selectedWorkflowId={selectedWorkflowId}
         isAuthenticated={isAuthenticated}
         workflowExecutions={executions}
-        agents={agents || []}
         onSelectWorkflow={onSelectWorkflow}
         onCreateWorkflow={onCreateWorkflow}
         onEditWorkflow={onEditWorkflow}

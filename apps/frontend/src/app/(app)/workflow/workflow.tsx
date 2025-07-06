@@ -100,11 +100,14 @@ export function Workflow() {
     }
   }, [])
 
-  const handleNodeDeleteDialogChange = useCallback((open: boolean) => {
-    if (!open) {
-      setNodeToDelete(null)
-    }
-  }, [])
+  const handleNodeDeleteDialogChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setNodeToDelete(null)
+      }
+    },
+    [setNodeToDelete],
+  )
 
   const getAgentForNode = useCallback(
     (agentId?: string) => {

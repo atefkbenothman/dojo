@@ -1,10 +1,10 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { Workflow, WorkflowExecution } from "@dojo/db/convex/types"
 import { Play, Pencil, Square } from "lucide-react"
-import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { memo, ReactNode } from "react"
 
 interface WorkflowHeaderProps {
@@ -27,14 +27,14 @@ export const WorkflowHeader = memo(function WorkflowHeader({
   const { canRun, isWorkflowRunning } = useWorkflow()
 
   // Use centralized logic from hook (IDENTICAL to WorkflowListItem)
-  const workflowCanRun = canRun(workflow, execution)
+  const workflowCanRun = canRun(workflow)
   const isRunning = isWorkflowRunning(execution)
   const isPreparing = execution?.status === "preparing"
-  
+
   // Final run button state: disabled when canRun is false AND not currently running
   // (if running, button becomes a stop button and should remain enabled)
   const shouldDisableRunButton = !workflowCanRun && !isRunning
-  
+
   const handleButtonClick = () => {
     if (isRunning) {
       onStopClick()
@@ -60,9 +60,7 @@ export const WorkflowHeader = memo(function WorkflowHeader({
         </div>
 
         {/* Center section - Tabs */}
-        <div className="flex items-center justify-center">
-          {tabsContent}
-        </div>
+        <div className="flex items-center justify-center">{tabsContent}</div>
 
         {/* Right section - Run/Stop button */}
         <div className="flex items-center justify-end">

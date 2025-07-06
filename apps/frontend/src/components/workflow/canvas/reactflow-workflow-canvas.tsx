@@ -18,6 +18,7 @@ import {
   ReactFlowProvider,
   NodeTypes,
   Viewport,
+  MarkerType,
   useReactFlow,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
@@ -225,7 +226,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
                 color: strokeColor,
               }
             : {
-                type: "arrowclosed" as any,
+                type: MarkerType.ArrowClosed,
                 color: strokeColor,
               },
       }
@@ -239,7 +240,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     }
 
     return calculateInitialViewport(enhancedNodes, containerSize.width, containerSize.height, fitViewOptions.padding)
-  }, [enhancedNodes, containerSize.width, containerSize.height, fitViewOptions.padding])
+  }, [enhancedNodes, containerSize.width, containerSize.height])
 
   // Update container size when component mounts
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { NodeExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
@@ -9,7 +10,6 @@ import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-t
 import { Agent } from "@dojo/db/convex/types"
 import { ChevronDown, Trash, CheckCircle, XCircle, Clock, Plus } from "lucide-react"
 import { useState, memo, useCallback } from "react"
-import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Handle, Position, NodeProps } from "reactflow"
 
 // Step Node Data - no more variant or instructions props
@@ -26,9 +26,7 @@ interface StepNodeData {
   getModel?: (modelId: string) => { name: string } | undefined
 }
 
-interface StepNodeProps extends NodeProps<StepNodeData> {}
-
-export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps) {
+export const StepNode = memo(function StepNode({ data, selected }: NodeProps<StepNodeData>) {
   const [isHovered, setIsHovered] = useState(false)
 
   const isExpanded = data.expanded || false
@@ -36,7 +34,7 @@ export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps
   // Step node specific handlers
   const handleToggleExpand = useCallback(() => {
     data.onToggleExpand?.()
-  }, [data.onToggleExpand])
+  }, [data])
 
   const handleAddStep = useCallback(
     (agent: Agent) => {

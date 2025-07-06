@@ -91,10 +91,9 @@ function StatusSection({ statusInfo }: StatusSectionProps) {
 interface AgentNameSectionProps {
   form: UseFormReturn<AgentFormValues>
   canEdit: boolean
-  mode: "add" | "edit"
 }
 
-function AgentNameSection({ form, canEdit, mode }: AgentNameSectionProps) {
+function AgentNameSection({ form, canEdit }: AgentNameSectionProps) {
   return (
     <div className="space-y-2">
       <p className="text-base font-medium text-muted-foreground">Agent Name</p>
@@ -167,11 +166,11 @@ interface ModelSectionProps {
 function ModelSection({ form, canEdit }: ModelSectionProps) {
   const { models } = useAIModels()
 
+  // Extract the watched value to a variable to simplify the dependency array
+  const watchedModelId = form.watch("aiModelId")
+
   // Convert between Convex ID and modelId
-  const selectedModelId = useMemo(
-    () => getModelIdFromConvex(models, form.watch("aiModelId")),
-    [models, form.watch("aiModelId")],
-  )
+  const selectedModelId = useMemo(() => getModelIdFromConvex(models, watchedModelId), [models, watchedModelId])
 
   const handleModelChange = useCallback(
     (modelId: string) => {
@@ -189,7 +188,7 @@ function ModelSection({ form, canEdit }: ModelSectionProps) {
       <FormField
         control={form.control}
         name="aiModelId"
-        render={({ field }) => (
+        render={() => (
           <FormItem>
             <FormControl>
               <ModelSelect
@@ -497,7 +496,7 @@ export function AgentForm({
     try {
       await clone(agent._id)
       onClose?.()
-    } catch (error) {
+    } catch {
       // Error handling is already done in the clone function
     }
   }, [agent, clone, onClose])
@@ -511,7 +510,7 @@ export function AgentForm({
         </div>
       )}
       <div className="space-y-8">
-        <AgentNameSection form={form} canEdit={canEdit} mode={mode} />
+        <AgentNameSection form={form} canEdit={canEdit} />
         <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
         <ModelSection form={form} canEdit={canEdit} />
         <OutputTypeSection form={form} canEdit={canEdit} />
@@ -586,7 +585,9 @@ export function AgentForm({
       <form onSubmit={form.handleSubmit(handleSave)} className="h-full sm:h-auto flex flex-col">
         <Card className="p-0 border-0 sm:border-[1.5px] gap-0 rounded-none sm:rounded-lg h-full sm:h-auto flex flex-col">
           <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0 sticky top-0 z-10 bg-card sm:static">
-            <CardTitle className="text-sm font-medium">{mode === "add" ? "New Agent" : `${agent?.name} Config`}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {mode === "add" ? "New Agent" : `${agent?.name} Config`}
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-4 bg-background flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible flex flex-col">
             {formContent}

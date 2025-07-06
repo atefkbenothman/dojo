@@ -1,8 +1,8 @@
+import { useAuth } from "@/hooks/use-auth"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle, successToastStyle } from "@/lib/styles"
 import { useTRPCClient } from "@/lib/trpc/context"
-import { useAuth } from "@/hooks/use-auth"
 import { useSession } from "@/providers/session-provider"
 import { useMCPStore } from "@/store/use-mcp-store"
 import type { RouterOutputs } from "@dojo/backend/src/lib/types"
@@ -79,15 +79,21 @@ export function useMCP() {
   // Simple store for tools data only
   const { tools, setTools, clearTools } = useMCPStore()
 
-  const mcpServers = useStableQuery(api.mcp.list) || []
+  // Wrap logical expressions in useMemo to stabilize dependencies
+  const rawMcpServers = useStableQuery(api.mcp.list)
+  const mcpServers = useMemo(() => rawMcpServers || [], [rawMcpServers])
+
   const createMCP = useConvexMutation(api.mcp.create)
   const editMCP = useConvexMutation(api.mcp.edit)
   const deleteMCP = useConvexMutation(api.mcp.remove)
   const cloneMCP = useConvexMutation(api.mcp.clone)
 
   // Query MCP connections from Convex
-  const mcpConnections =
-    useStableQuery(api.mcpConnections.getBySession, currentSession ? { sessionId: currentSession._id } : "skip") || []
+  const rawMcpConnections = useStableQuery(
+    api.mcpConnections.getBySession,
+    currentSession ? { sessionId: currentSession._id } : "skip",
+  )
+  const mcpConnections = useMemo(() => rawMcpConnections || [], [rawMcpConnections])
 
   const { play } = useSoundEffectContext()
 
@@ -274,8 +280,6 @@ export function useMCP() {
     }
   }
 
-  const stableMcpServers = useMemo(() => mcpServers || [], [mcpServers])
-
   const canConnect = useCallback(
     (server: Doc<"mcp">, connectionState?: MCPConnectionState | null) => {
       // Can't connect if already connected or connecting
@@ -290,7 +294,7 @@ export function useMCP() {
   )
 
   return {
-    mcpServers: stableMcpServers,
+    mcpServers,
     activeConnections,
     getConnection,
     connect,

@@ -5,13 +5,13 @@ import { MCPDeleteDialog } from "@/components/mcp/mcp-delete-dialog"
 import { MCPFormDialog } from "@/components/mcp/mcp-form-dialog"
 import { MCPHeader } from "@/components/mcp/mcp-header"
 import { MCPSidebar } from "@/components/mcp/mcp-sidebar"
+import { useAuth } from "@/hooks/use-auth"
 import { useMCP, MCPConnectionState } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { successToastStyle } from "@/lib/styles"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
-import { useAuth } from "@/hooks/use-auth"
 import { useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
@@ -111,7 +111,7 @@ export function Mcp() {
         }
       }
     },
-    [remove, selectedServerId, serverToDelete, play],
+    [remove, selectedServerId, setSelectedServerId, serverToDelete, play],
   )
 
   const handleCreateServer = useCallback(() => {
@@ -181,10 +181,8 @@ export function Mcp() {
               <MCPHeader
                 server={selectedServer}
                 connectionStatus={connectionStatuses.get(selectedServer._id)}
-                onEdit={() => handleEditServer(selectedServer)}
                 onConnect={() => handleConnect(selectedServer)}
                 onDisconnect={() => handleDisconnect(selectedServer)}
-                onClone={() => handleCloneServer(selectedServer)}
               />
               <MCPContentArea
                 server={selectedServer}

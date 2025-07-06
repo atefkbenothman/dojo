@@ -7,7 +7,7 @@ import { useImageStore } from "@/store/use-image-store"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { ToolInvocation, UIMessage } from "ai"
 import { Hammer, Check, Clock, Play, Lightbulb, Info, AlertTriangle } from "lucide-react"
-import { useEffect, RefObject, memo, useMemo, useState, useRef } from "react"
+import { useEffect, RefObject, memo, useMemo, useRef } from "react"
 
 interface MessageAccordionProps {
   variant?: "error" | "system" | "reasoning" | "tool"

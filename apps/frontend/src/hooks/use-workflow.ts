@@ -55,6 +55,7 @@ export function useWorkflow() {
     currentSessionRef.current = currentSession
     appendRef.current = append
     setMessagesRef.current = setMessages
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSession?._id, append, setMessages])
 
   const create = useMutation(api.workflows.create)
@@ -63,7 +64,7 @@ export function useWorkflow() {
   const cloneWorkflow = useMutation(api.workflows.clone)
 
   // Local state for optimistic updates during workflow preparation
-  const [preparingWorkflows, setPreparingWorkflows] = useState<Set<Id<"workflows">>>(new Set())
+  const [, setPreparingWorkflows] = useState<Set<Id<"workflows">>>(new Set())
 
   const runWorkflow = useCallback(
     async (workflow: Workflow) => {
@@ -286,7 +287,7 @@ export function useWorkflow() {
     [stableExecutions],
   )
 
-  const canRun = useCallback((workflow: Workflow, execution?: WorkflowExecution) => {
+  const canRun = useCallback((workflow: Workflow) => {
     if (!workflow.instructions || workflow.instructions.trim() === "") return false
     if (!workflow.rootNodeId) return false
     return true

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Sparkles } from "lucide-react"
 import { useCallback, useMemo } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, UseFormReturn } from "react-hook-form"
 import { z } from "zod"
 
 // Form schema for workflow generation
@@ -34,7 +34,7 @@ interface WorkflowGenerateFormProps {
 
 // Component for name input section
 interface NameSectionProps {
-  form: any
+  form: UseFormReturn<WorkflowGenerateFormValues>
 }
 
 function NameSection({ form }: NameSectionProps) {
@@ -59,7 +59,7 @@ function NameSection({ form }: NameSectionProps) {
 
 // Component for prompt section
 interface PromptSectionProps {
-  form: any
+  form: UseFormReturn<WorkflowGenerateFormValues>
 }
 
 function PromptSection({ form }: PromptSectionProps) {
@@ -88,17 +88,20 @@ function PromptSection({ form }: PromptSectionProps) {
 
 // Component for model selection
 interface ModelSectionProps {
-  form: any
+  form: UseFormReturn<WorkflowGenerateFormValues>
 }
 
 function ModelSection({ form }: ModelSectionProps) {
   const { models } = useAIModels()
 
+  // Extract the watched value to a variable to simplify the dependency array
+  const watchedModelId = form.watch("aiModelId")
+
   // Convert between Convex ID and modelId
   const selectedModelId = useMemo(() => {
-    const model = models.find((m) => m._id === form.watch("aiModelId"))
+    const model = models.find((m) => m._id === watchedModelId)
     return model?.modelId
-  }, [models, form.watch("aiModelId")])
+  }, [models, watchedModelId])
 
   const handleModelChange = useCallback(
     (modelId: string) => {
@@ -119,7 +122,7 @@ function ModelSection({ form }: ModelSectionProps) {
       <FormField
         control={form.control}
         name="aiModelId"
-        render={({ field }) => (
+        render={() => (
           <FormItem>
             <FormControl>
               <ModelSelect
@@ -137,17 +140,11 @@ function ModelSection({ form }: ModelSectionProps) {
   )
 }
 
-export function WorkflowGenerateForm({
-  variant = "dialog",
-  onClose,
-}: WorkflowGenerateFormProps) {
+export function WorkflowGenerateForm({ onClose }: Pick<WorkflowGenerateFormProps, "onClose">) {
   const { play } = useSoundEffectContext()
   const { models } = useAIModels()
-  const { generateWorkflow, isGeneratingWorkflow, activeWorkflowGeneration } = useGeneration()
+  const { generateWorkflow, isGeneratingWorkflow } = useGeneration()
   const { isAuthenticated } = useAuth()
-
-  // Get generation status for UI
-  const generationStatus = activeWorkflowGeneration?.status
 
   // Get default model for new workflows
   const defaultModel = useMemo(() => {
@@ -209,7 +206,7 @@ export function WorkflowGenerateForm({
         type="submit"
         disabled={!form.formState.isDirty || form.formState.isSubmitting || !isAuthenticated || isGeneratingWorkflow}
         className="w-full sm:w-auto hover:cursor-pointer"
-        variant={variant === "dialog" ? "secondary" : "default"}
+        variant="default"
       >
         <div className="flex items-center gap-2">
           {isGeneratingWorkflow ? <LoadingAnimationInline /> : <Sparkles className="h-3 w-3" />}

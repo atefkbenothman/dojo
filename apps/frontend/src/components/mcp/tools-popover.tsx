@@ -11,11 +11,12 @@ interface ToolsPopoverProps {
 
 export function ToolsPopover({ tools }: ToolsPopoverProps) {
   const toolNames = Object.keys(tools)
-  if (toolNames.length === 0) return null
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
   }, [])
+
+  if (toolNames.length === 0) return null
 
   return (
     <Popover>
