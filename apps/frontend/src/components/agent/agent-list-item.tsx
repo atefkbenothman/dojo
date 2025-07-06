@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { type AgentExecution, AGENT_STATUS, useAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useAuth } from "@/hooks/use-auth"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
@@ -37,6 +38,7 @@ export function AgentListItem({
   const { play } = useSoundEffectContext()
   const { models } = useAIModels()
   const { canRun, isAgentRunning } = useAgent()
+  const { isAuthenticated } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   // Get model name
@@ -83,6 +85,7 @@ export function AgentListItem({
   // Note: Backend filtering ensures users only see agents they can edit/delete
   const canEdit = !agent.isPublic
   const canDelete = !agent.isPublic
+  const canClone = isAuthenticated
 
   const handleMenuAction = useCallback((e: React.MouseEvent, action: () => void) => {
     e.stopPropagation()
@@ -131,31 +134,36 @@ export function AgentListItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                {canEdit && (
-                  <DropdownMenuItem
-                    onClick={(e) => handleMenuAction(e, () => onEditClick(agent))}
-                    className="hover:cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem
-                  onClick={(e) => handleMenuAction(e, () => onCloneClick(agent))}
-                  className="hover:cursor-pointer"
+                  onClick={canEdit ? (e) => handleMenuAction(e, () => onEditClick(agent)) : undefined}
+                  className={cn("hover:cursor-pointer", !canEdit && "opacity-50 cursor-not-allowed")}
+                  disabled={!canEdit}
+                  title={!canEdit ? "Cannot edit public agents" : undefined}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={canClone ? (e) => handleMenuAction(e, () => onCloneClick(agent)) : undefined}
+                  className={cn("hover:cursor-pointer", !canClone && "opacity-50 cursor-not-allowed")}
+                  disabled={!canClone}
+                  title={!canClone ? "Sign in to clone agents" : undefined}
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
-                {canDelete && (
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive hover:cursor-pointer"
-                    onClick={(e) => handleMenuAction(e, () => onDeleteClick(agent))}
-                  >
-                    <Trash className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                  className={cn(
+                    "text-destructive focus:text-destructive hover:cursor-pointer",
+                    !canDelete && "opacity-50 cursor-not-allowed",
+                  )}
+                  onClick={canDelete ? (e) => handleMenuAction(e, () => onDeleteClick(agent)) : undefined}
+                  disabled={!canDelete}
+                  title={!canDelete ? "Cannot delete public agents" : undefined}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Run/Stop button */}

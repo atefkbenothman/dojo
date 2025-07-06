@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Progress } from "@/components/ui/progress"
+import { useAuth } from "@/hooks/use-auth"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { cn } from "@/lib/utils"
@@ -55,11 +56,13 @@ export const WorkflowListItem = memo(function WorkflowListItem({
 }: WorkflowListItemProps) {
   const { play } = useSoundEffectContext()
   const { canRun, isWorkflowRunning } = useWorkflow()
+  const { isAuthenticated } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   // Determine if user can edit/delete this workflow (backend handles filtering)
   const canEdit = !workflow.isPublic
   const canDelete = !workflow.isPublic
+  const canClone = isAuthenticated
 
   // Use centralized logic from hook
   const workflowCanRun = canRun(workflow)
@@ -161,31 +164,36 @@ export const WorkflowListItem = memo(function WorkflowListItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                {canEdit && (
-                  <DropdownMenuItem
-                    onClick={(e) => handleMenuAction(e, () => onEditClick(workflow))}
-                    className="hover:cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem
-                  onClick={(e) => handleMenuAction(e, () => onCloneClick(workflow))}
-                  className="hover:cursor-pointer"
+                  onClick={canEdit ? (e) => handleMenuAction(e, () => onEditClick(workflow)) : undefined}
+                  className={cn("hover:cursor-pointer", !canEdit && "opacity-50 cursor-not-allowed")}
+                  disabled={!canEdit}
+                  title={!canEdit ? "Cannot edit public workflows" : undefined}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={canClone ? (e) => handleMenuAction(e, () => onCloneClick(workflow)) : undefined}
+                  className={cn("hover:cursor-pointer", !canClone && "opacity-50 cursor-not-allowed")}
+                  disabled={!canClone}
+                  title={!canClone ? "Sign in to clone workflows" : undefined}
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
-                {canDelete && (
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive hover:cursor-pointer"
-                    onClick={(e) => handleMenuAction(e, () => onDeleteClick(workflow))}
-                  >
-                    <Trash className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                  className={cn(
+                    "text-destructive focus:text-destructive hover:cursor-pointer",
+                    !canDelete && "opacity-50 cursor-not-allowed",
+                  )}
+                  onClick={canDelete ? (e) => handleMenuAction(e, () => onDeleteClick(workflow)) : undefined}
+                  disabled={!canDelete}
+                  title={!canDelete ? "Cannot delete public workflows" : undefined}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Run/Stop button */}

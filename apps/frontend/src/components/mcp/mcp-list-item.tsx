@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
+import { useAuth } from "@/hooks/use-auth"
 import { ActiveConnection, isMCPConnected, isMCPConnecting, MCPConnectionState, useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
@@ -38,6 +39,7 @@ export function MCPListItem({
 }: MCPListItemProps) {
   const { play } = useSoundEffectContext()
   const { canConnect } = useMCP()
+  const { isAuthenticated } = useAuth()
 
   const isConnected = isMCPConnected(status)
   const isConnecting = isMCPConnecting(status)
@@ -62,9 +64,9 @@ export function MCPListItem({
     }
   }
 
-  // Determine if user can edit/delete this server (backend handles filtering)
   const canEdit = !server.isPublic
   const canDelete = !server.isPublic
+  const canClone = isAuthenticated
 
   // Use centralized business logic
   const serverCanConnect = canConnect(server, status)
@@ -140,31 +142,36 @@ export function MCPListItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                {canEdit && (
-                  <DropdownMenuItem
-                    onClick={(e) => handleMenuAction(e, () => onEditClick(server))}
-                    className="hover:cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem
-                  onClick={(e) => handleMenuAction(e, () => onCloneClick(server))}
-                  className="hover:cursor-pointer"
+                  onClick={canEdit ? (e) => handleMenuAction(e, () => onEditClick(server)) : undefined}
+                  className={cn("hover:cursor-pointer", !canEdit && "opacity-50 cursor-not-allowed")}
+                  disabled={!canEdit}
+                  title={!canEdit ? "Cannot edit public servers" : undefined}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={canClone ? (e) => handleMenuAction(e, () => onCloneClick(server)) : undefined}
+                  className={cn("hover:cursor-pointer", !canClone && "opacity-50 cursor-not-allowed")}
+                  disabled={!canClone}
+                  title={!canClone ? "Sign in to clone servers" : undefined}
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
-                {canDelete && (
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive hover:cursor-pointer"
-                    onClick={(e) => handleMenuAction(e, () => onDeleteClick(server))}
-                  >
-                    <Trash className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                  className={cn(
+                    "text-destructive focus:text-destructive hover:cursor-pointer",
+                    !canDelete && "opacity-50 cursor-not-allowed",
+                  )}
+                  onClick={canDelete ? (e) => handleMenuAction(e, () => onDeleteClick(server)) : undefined}
+                  disabled={!canDelete}
+                  title={!canDelete ? "Cannot delete public servers" : undefined}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Connect/Disconnect button */}
