@@ -30,7 +30,7 @@ interface ReactFlowWorkflowCanvasProps {
   agents: Agent[]
   workflowNodes: WorkflowNode[]
   isAuthenticated: boolean
-  workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
+  workflowExecutions: WorkflowExecution[]
   getModel: (modelId: string) => { name: string } | undefined
   onEditMetadata?: () => void
   // Node handlers
@@ -74,7 +74,12 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   const [lastWorkflowId, setLastWorkflowId] = useState<string | null>(null)
 
   // Get execution data for this workflow
-  const execution = workflowExecutions.get(workflow._id)
+  const execution = useMemo(() => {
+    const workflowExecs = workflowExecutions
+      .filter(exec => exec.workflowId === workflow._id)
+      .sort((a, b) => b.startedAt - a.startedAt)
+    return workflowExecs[0] || undefined
+  }, [workflowExecutions, workflow._id])
 
   // Use stable execution status hook
   const { getNodeExecutionStatus } = useStableExecutionStatus(execution)

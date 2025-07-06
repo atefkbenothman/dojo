@@ -9,7 +9,7 @@ interface WorkflowRunnerProps {
   workflow: Workflow
   agents: Agent[]
   isAuthenticated: boolean
-  workflowExecutions: Map<Id<"workflows">, WorkflowExecution>
+  workflowExecutions: WorkflowExecution[]
   workflowNodes: WorkflowNode[]
   onRunWorkflow: (workflow: Workflow) => void
   onStopWorkflow: (workflowId: Id<"workflows">) => void
@@ -21,7 +21,9 @@ export const WorkflowRunner = memo(function WorkflowRunner({
   workflowExecutions,
   workflowNodes,
 }: WorkflowRunnerProps) {
-  const execution = workflowExecutions.get(workflow._id)
+  const execution = workflowExecutions
+    .filter(exec => exec.workflowId === workflow._id)
+    .sort((a, b) => b.startedAt - a.startedAt)[0] || undefined
 
   return (
     <div className="h-full bg-background">
