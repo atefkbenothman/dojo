@@ -77,7 +77,7 @@ export class TransportFactory {
     }
 
     // Validate command is allowed
-    if (!ALLOWED_STDIO_COMMANDS.includes(server.config.command as any)) {
+    if (!ALLOWED_STDIO_COMMANDS.includes(server.config.command)) {
       throw new Error(`Invalid command. Only npx and uvx commands are allowed for stdio MCP servers`)
     }
 
@@ -112,7 +112,7 @@ export class TransportFactory {
     server: Extract<MCPServerWithTransport, { transportType: "stdio" }>,
   ): StdioTransportConfig {
     // Validate command is allowed
-    if (!ALLOWED_STDIO_COMMANDS.includes(server.config.command as any)) {
+    if (!ALLOWED_STDIO_COMMANDS.includes(server.config.command as "npx" | "uvx")) {
       throw new Error(`Invalid command. Only npx and uvx commands are allowed for stdio MCP servers`)
     }
 

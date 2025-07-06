@@ -62,7 +62,7 @@ declare global {
   namespace Express {
     interface Request {
       session: Doc<"sessions">
-      parsedInput: any
+      parsedInput: unknown
       client: ConvexHttpClient
     }
   }

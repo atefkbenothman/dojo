@@ -263,7 +263,7 @@ export class WorkflowExecutor {
 
             if (result.success) {
               // Add children to queue
-              const children = await this.getChildNodes(node.nodeId)
+              const children = this.getChildNodes(node.nodeId)
               queue.push(...children)
               this.log(`Node ${node.nodeId} completed, added ${children.length} children to queue`)
             } else {
@@ -306,7 +306,7 @@ export class WorkflowExecutor {
     return allCompletedNodes
   }
 
-  private async getChildNodes(nodeId: string): Promise<Doc<"workflowNodes">[]> {
+  private getChildNodes(nodeId: string): Doc<"workflowNodes">[] {
     return this.workflowNodes.filter((n) => n.parentNodeId === nodeId).sort((a, b) => (a.order || 0) - (b.order || 0)) // Respect order for deterministic execution
   }
 
@@ -444,7 +444,7 @@ export class WorkflowExecutor {
       if (agent.outputType === "text") {
         stepOutput = await this.executeTextStep(agent, node, messages, aiModel, context)
       } else {
-        stepOutput = await this.executeObjectStep(agent, node, messages, aiModel, context)
+        stepOutput = await this.executeObjectStep(agent, node, messages, aiModel)
       }
 
       // Mark as completed
@@ -598,7 +598,6 @@ export class WorkflowExecutor {
     node: Doc<"workflowNodes">,
     messages: CoreMessage[],
     aiModel: LanguageModel,
-    context: NodeExecutionContext,
   ): Promise<string> {
     try {
       // Use streamObjectResponse with returnObject flag to get the complete object

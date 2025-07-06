@@ -21,7 +21,6 @@ interface RunWorkflowResult {
   error?: string
 }
 
-
 export class WorkflowService {
   private static readonly LOG_PREFIX = "[WorkflowService]"
 
@@ -70,7 +69,7 @@ export class WorkflowService {
       }
 
       // Validate tree structure
-      const treeValidationError = await this.validateWorkflowTree(nodes)
+      const treeValidationError = this.validateWorkflowTree(nodes)
       if (treeValidationError) {
         return {
           success: false,
@@ -304,7 +303,7 @@ export class WorkflowService {
     }
   }
 
-  private async validateWorkflowTree(nodes: Doc<"workflowNodes">[]): Promise<string | null> {
+  private validateWorkflowTree(nodes: Doc<"workflowNodes">[]): string | null {
     // Find root nodes (nodes with no parent)
     const rootNodes = nodes.filter((n) => !n.parentNodeId)
     if (rootNodes.length === 0) {

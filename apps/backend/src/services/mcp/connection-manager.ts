@@ -7,6 +7,7 @@ import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import type { ToolSet } from "ai"
+import type { ConvexHttpClient } from "convex/browser"
 
 /**
  * Manages MCP client connections and caching
@@ -77,7 +78,6 @@ export class MCPConnectionManager {
     try {
       await mcpClient.start()
     } catch (err) {
-      const rootCause = err instanceof Error ? err.message : String(err)
       const errMessage = "Failed to start MCP server"
       logger.error("Connection", `${errMessage} for session ${sessionId}, server ${server._id}`, err)
 
@@ -143,7 +143,7 @@ export class MCPConnectionManager {
       agentExecutionId?: Id<"agentExecutions">
       connectionType?: "user" | "workflow" | "agent"
     },
-    authorizedClient?: any,
+    authorizedClient?: ConvexHttpClient,
   ): Promise<{ success: boolean; error?: string; createdConnections?: Id<"mcp">[] }> {
     if (mcpServerIds.length === 0) {
       logger.info("Connection", `No MCP servers to connect for session ${sessionId}`)
@@ -162,7 +162,7 @@ export class MCPConnectionManager {
       const validServers = servers.filter((server) => server !== null)
       const createdConnections: Id<"mcp">[] = []
 
-      const connectionPromises = validServers.map(async (server) => {
+      const connectionPromises = validServers.map(async (server: MCPServer) => {
         try {
           // Check if we're already connected to this server
           const existingConnection = this.getConnection(sessionId, server._id)
@@ -191,7 +191,7 @@ export class MCPConnectionManager {
       const results = await Promise.all(connectionPromises)
 
       // Track which connections were created (not reused)
-      results.forEach((result, index) => {
+      results.forEach((result: { success: boolean; created?: boolean; serverId?: Id<"mcp"> }) => {
         if (result.created && result.serverId) {
           createdConnections.push(result.serverId)
         }
