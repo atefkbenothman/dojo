@@ -5,8 +5,7 @@ import { AgentDeleteDialog } from "@/components/agent/agent-delete-dialog"
 import { AgentFormDialog } from "@/components/agent/agent-form-dialog"
 import { AgentGenerateDialog } from "@/components/agent/agent-generate-dialog"
 import { AgentHeader } from "@/components/agent/agent-header"
-import { AgentList } from "@/components/agent/agent-list"
-import { Button } from "@/components/ui/button"
+import { AgentSidebar } from "@/components/agent/agent-sidebar"
 import { useAgent, type AgentExecution } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
@@ -14,7 +13,6 @@ import { successToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { toast } from "sonner"
@@ -33,7 +31,6 @@ export function Agent() {
   const [affectedWorkflows, setAffectedWorkflows] = useState<
     Array<{ id: string; name: string; nodeCount: number; isPublic?: boolean }> | undefined
   >()
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false)
 
   // Derive selected agent from agents array to ensure it's always up to date
@@ -154,47 +151,20 @@ export function Agent() {
     <>
       <div className="flex h-full bg-background overflow-hidden">
         {/* Left Sidebar */}
-        <div
-          className={cn(
-            "shrink-0 bg-card border-r-[1.5px] flex flex-col h-full",
-            isSidebarCollapsed ? "w-[42px]" : "w-96",
-          )}
-        >
-          {/* Header */}
-          <div
-            className={cn(
-              "border-b-[1.5px] flex-shrink-0 flex items-center h-[42px]",
-              isSidebarCollapsed ? "justify-center" : "justify-between p-4",
-            )}
-          >
-            {!isSidebarCollapsed && <p className="text-sm font-semibold">Agents</p>}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
-            >
-              {isSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-            </Button>
-          </div>
-          {/* Agent List */}
-          <AgentList
-            agents={agents}
-            selectedAgentId={selectedAgentId}
-            isAuthenticated={isAuthenticated}
-            executions={executions}
-            onSelectAgent={handleSelectAgent}
-            onCreateAgent={handleCreateAgent}
-            onEditAgent={handleEditAgent}
-            onDeleteAgent={handleDeleteAgent}
-            onCloneAgent={handleCloneAgent}
-            onRunAgent={handleRunAgent}
-            onStopAllAgents={stopAllAgents}
-            onGenerateAgent={handleGenerateAgent}
-            isCollapsed={isSidebarCollapsed}
-            onExpandSidebar={() => setIsSidebarCollapsed(false)}
-          />
-        </div>
+        <AgentSidebar
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          isAuthenticated={isAuthenticated}
+          executions={executions}
+          onSelectAgent={handleSelectAgent}
+          onCreateAgent={handleCreateAgent}
+          onEditAgent={handleEditAgent}
+          onDeleteAgent={handleDeleteAgent}
+          onCloneAgent={handleCloneAgent}
+          onRunAgent={handleRunAgent}
+          onStopAllAgents={stopAllAgents}
+          onGenerateAgent={handleGenerateAgent}
+        />
         {/* Main Content */}
         <div className="flex flex-col flex-1 overflow-x-hidden">
           {selectedAgent ? (

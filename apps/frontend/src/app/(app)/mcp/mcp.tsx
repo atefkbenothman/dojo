@@ -4,17 +4,14 @@ import { MCPContentArea } from "@/components/mcp/mcp-content-area"
 import { MCPDeleteDialog } from "@/components/mcp/mcp-delete-dialog"
 import { MCPFormDialog } from "@/components/mcp/mcp-form-dialog"
 import { MCPHeader } from "@/components/mcp/mcp-header"
-import { MCPList } from "@/components/mcp/mcp-list"
-import { Button } from "@/components/ui/button"
+import { MCPSidebar } from "@/components/mcp/mcp-sidebar"
 import { useMCP, MCPConnectionState } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { successToastStyle } from "@/lib/styles"
-import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
 import { useConvexAuth } from "convex/react"
-import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
@@ -32,7 +29,6 @@ export function Mcp() {
   const [affectedAgents, setAffectedAgents] = useState<
     Array<{ id: string; name: string; isPublic?: boolean }> | undefined
   >()
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Derive selected server from mcpServers array to ensure it's always up to date
   const selectedServer = useMemo(() => {
@@ -165,47 +161,20 @@ export function Mcp() {
     <>
       <div className="flex h-full bg-background overflow-hidden">
         {/* Left Sidebar */}
-        <div
-          className={cn(
-            "shrink-0 bg-card border-r-[1.5px] flex flex-col h-full",
-            isSidebarCollapsed ? "w-[42px]" : "w-96",
-          )}
-        >
-          {/* Header */}
-          <div
-            className={cn(
-              "border-b-[1.5px] flex-shrink-0 flex items-center h-[42px]",
-              isSidebarCollapsed ? "justify-center" : "justify-between p-4",
-            )}
-          >
-            {!isSidebarCollapsed && <p className="text-sm font-semibold">MCP Servers</p>}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className={cn("hover:cursor-pointer", !isSidebarCollapsed && "ml-auto")}
-            >
-              {isSidebarCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-            </Button>
-          </div>
-          {/* Server List */}
-          <MCPList
-            servers={mcpServers}
-            selectedServerId={selectedServer?._id || null}
-            isAuthenticated={isAuthenticated}
-            activeConnections={activeConnections}
-            connectionStatuses={connectionStatuses}
-            onSelectServer={handleSelectServer}
-            onCreateServer={handleCreateServer}
-            onEditServer={handleEditServer}
-            onDeleteServer={handleDeleteServer}
-            onCloneServer={handleCloneServer}
-            onConnect={handleConnect}
-            onDisconnect={handleDisconnect}
-            isCollapsed={isSidebarCollapsed}
-            onExpandSidebar={() => setIsSidebarCollapsed(false)}
-          />
-        </div>
+        <MCPSidebar
+          servers={mcpServers}
+          selectedServerId={selectedServer?._id || null}
+          isAuthenticated={isAuthenticated}
+          activeConnections={activeConnections}
+          connectionStatuses={connectionStatuses}
+          onSelectServer={handleSelectServer}
+          onCreateServer={handleCreateServer}
+          onEditServer={handleEditServer}
+          onDeleteServer={handleDeleteServer}
+          onCloneServer={handleCloneServer}
+          onConnect={handleConnect}
+          onDisconnect={handleDisconnect}
+        />
         {/* Main Content */}
         <div className="flex flex-col flex-1 overflow-x-hidden">
           {selectedServer ? (
