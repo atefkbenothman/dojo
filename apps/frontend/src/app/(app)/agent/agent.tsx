@@ -12,14 +12,14 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { successToastStyle } from "@/lib/styles"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
-import { useConvexAuth } from "convex/react"
+import { useAuth } from "@/hooks/use-auth"
 import { useState, useCallback, useMemo } from "react"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { toast } from "sonner"
 
 export function Agent() {
   const { agents, runAgent, stopAllAgents, getAgentExecution, clone, remove, checkAgentDependencies } = useAgent()
-  const { isAuthenticated } = useConvexAuth()
+  const { isAuthenticated } = useAuth()
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
 

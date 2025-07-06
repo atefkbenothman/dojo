@@ -11,14 +11,14 @@ import { useUrlSelection } from "@/hooks/use-url-selection"
 import { successToastStyle } from "@/lib/styles"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import type { MCPServer } from "@dojo/db/convex/types"
-import { useConvexAuth } from "convex/react"
+import { useAuth } from "@/hooks/use-auth"
 import { useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
 export function Mcp() {
   const { mcpServers, activeConnections, getConnection, connect, disconnect, remove, clone, checkServerDependencies } =
     useMCP()
-  const { isAuthenticated } = useConvexAuth()
+  const { isAuthenticated } = useAuth()
   const { play } = useSoundEffectContext()
   const { selectedId: selectedServerId, setSelectedId: setSelectedServerId } = useUrlSelection()
 
