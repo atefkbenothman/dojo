@@ -3,28 +3,32 @@
 import { AgentStatusIndicator } from "@/components/agent/agent-status-indicator"
 import { Button } from "@/components/ui/button"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
-import { type AgentStatus, AGENT_STATUS, canRunAgent } from "@/hooks/use-agent"
+import { type AgentStatus, type AgentExecution, AGENT_STATUS, useAgent } from "@/hooks/use-agent"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@dojo/db/convex/types"
 import { Pencil, Play, Square } from "lucide-react"
 
 interface AgentHeaderProps {
   agent: Agent
-  execution: {
-    status: AgentStatus
-    error?: string
-  } | null
-  isAuthenticated: boolean
+  execution: AgentExecution | null
   onEdit: () => void
   onRun: () => void
   onStop: () => void
 }
 
-export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, onStop }: AgentHeaderProps) {
+export function AgentHeader({ agent, execution, onEdit, onRun, onStop }: AgentHeaderProps) {
+  const { canRun, isAgentRunning } = useAgent()
+  
+  // Use centralized logic from hook (IDENTICAL to AgentListItem)
+  const agentCanRun = canRun(agent)
+  const isRunning = isAgentRunning(execution || undefined)
   const status = execution?.status
-  const isRunning = status === AGENT_STATUS.RUNNING
   const isPreparing = status === AGENT_STATUS.PREPARING
   const isConnecting = status === AGENT_STATUS.CONNECTING
+  
+  // Final run button state: disabled when canRun is false AND not currently running
+  // (if running, button becomes a stop button and should remain enabled)
+  const shouldDisableRunButton = !agentCanRun && !isRunning
 
   return (
     <div className="p-4 border-b-[1.5px] flex-shrink-0 flex items-center justify-between bg-card h-[42px]">
@@ -57,7 +61,7 @@ export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, 
               : "bg-green-700 hover:bg-green-800 text-white border-green-500 hover:border-green-800 disabled:hover:bg-green-700",
           )}
           onClick={isRunning ? onStop : onRun}
-          disabled={(!isAuthenticated && !agent.isPublic) || isPreparing || isConnecting}
+          disabled={shouldDisableRunButton}
           title={
             isPreparing
               ? "Agent is preparing"
@@ -65,9 +69,7 @@ export function AgentHeader({ agent, execution, isAuthenticated, onEdit, onRun, 
                 ? "Agent is connecting to MCP servers"
                 : isRunning
                   ? "Stop agent"
-                  : !isAuthenticated && !agent.isPublic
-                    ? "Login required to run private agents"
-                    : "Run agent"
+                  : "Run agent"
           }
         >
           {isPreparing ? (

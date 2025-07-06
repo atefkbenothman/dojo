@@ -138,7 +138,7 @@ export function useAgent() {
   const stopAllAgents = async () => {
     if (!currentSession) return
 
-    const runningExecutions = agentExecutions?.filter((exec) => isAgentRunning(exec.status)) || []
+    const runningExecutions = agentExecutions?.filter((exec) => isAgentRunning(exec)) || []
 
     if (runningExecutions.length === 0) return
 
@@ -176,16 +176,25 @@ export function useAgent() {
 
   const stableAgents = useMemo(() => agents || [], [agents])
 
+  // Helper to check if agent is currently running  
+  const isAgentRunning = useCallback((execution?: AgentExecution) => {
+    return (
+      execution?.status === AGENT_STATUS.PREPARING ||
+      execution?.status === AGENT_STATUS.CONNECTING ||
+      execution?.status === AGENT_STATUS.RUNNING
+    )
+  }, [])
+
   // Helper function to get active execution for an agent
   const getAgentExecution = useCallback(
     (agentId: Id<"agents">) => {
       // First check if we have a real execution from Convex
       const realExecution =
-        agentExecutions?.find((exec) => exec.agentId === agentId && isAgentRunning(exec.status)) || null
+        agentExecutions?.find((exec) => exec.agentId === agentId && isAgentRunning(exec)) || null
 
       return realExecution
     },
-    [agentExecutions],
+    [agentExecutions, isAgentRunning],
   )
 
   const removeAgent = async (id: string, force?: boolean) => {
@@ -256,6 +265,10 @@ export function useAgent() {
     }
   }
 
+  const canRun = useCallback((agent: Agent) => {
+    return agent.aiModelId ? true : false
+  }, [])
+
   return {
     agents: stableAgents,
     runAgent,
@@ -268,5 +281,8 @@ export function useAgent() {
     // Direct Convex helpers
     getAgentExecution,
     checkAgentDependencies,
+    // Centralized logic helpers
+    canRun,
+    isAgentRunning,
   }
 }

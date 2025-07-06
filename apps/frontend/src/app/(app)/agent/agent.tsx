@@ -172,7 +172,6 @@ export function Agent() {
               <AgentHeader
                 agent={selectedAgent}
                 execution={selectedExecution}
-                isAuthenticated={isAuthenticated}
                 onEdit={() => handleEditAgent(selectedAgent)}
                 onRun={() => handleRunAgent(selectedAgent)}
                 onStop={stopAllAgents}

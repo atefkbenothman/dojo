@@ -278,7 +278,6 @@ export const AgentList = memo(function AgentList({
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>
                           <AgentListItem
                             agent={agent}
-                            isAuthenticated={isAuthenticated}
                             onEditClick={onEditAgent}
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
@@ -322,7 +321,6 @@ export const AgentList = memo(function AgentList({
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>
                           <AgentListItem
                             agent={agent}
-                            isAuthenticated={isAuthenticated}
                             onEditClick={onEditAgent}
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}
@@ -362,7 +360,6 @@ export const AgentList = memo(function AgentList({
                         <div key={agent._id} className="cursor-pointer" onClick={() => onSelectAgent(agent)}>
                           <AgentListItem
                             agent={agent}
-                            isAuthenticated={isAuthenticated}
                             onEditClick={onEditAgent}
                             onDeleteClick={onDeleteAgent}
                             onCloneClick={onCloneAgent}

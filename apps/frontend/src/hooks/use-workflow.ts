@@ -286,15 +286,9 @@ export function useWorkflow() {
     [stableExecutions],
   )
 
-  // Centralized run button logic - used by both WorkflowListItem and WorkflowHeader
   const canRun = useCallback((workflow: Workflow, execution?: WorkflowExecution) => {
-    // Step 1: Workflow Configuration State
     if (!workflow.instructions || workflow.instructions.trim() === "") return false
     if (!workflow.rootNodeId) return false
-
-    // Note: Authentication & ownership checks removed - backend filtering ensures
-    // users only see workflows they have permission to run
-
     return true
   }, [])
 

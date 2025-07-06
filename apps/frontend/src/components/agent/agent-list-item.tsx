@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
-import { type AgentExecution, isAgentRunning, isAgentError, AGENT_STATUS } from "@/hooks/use-agent"
+import { type AgentExecution, isAgentError, AGENT_STATUS, useAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
@@ -21,7 +21,6 @@ import { useState, useMemo, useCallback } from "react"
 
 interface AgentListItemProps {
   agent: Agent
-  isAuthenticated: boolean
   onEditClick: (agent: Agent) => void
   onDeleteClick: (agent: Agent) => void
   onCloneClick: (agent: Agent) => void
@@ -33,7 +32,6 @@ interface AgentListItemProps {
 
 export function AgentListItem({
   agent,
-  isAuthenticated,
   onEditClick,
   onDeleteClick,
   onCloneClick,
@@ -44,6 +42,7 @@ export function AgentListItem({
 }: AgentListItemProps) {
   const { play } = useSoundEffectContext()
   const { models } = useAIModels()
+  const { canRun, isAgentRunning } = useAgent()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   // Get model name
@@ -52,12 +51,17 @@ export function AgentListItem({
     return model?.name || "Unknown Model"
   }, [models, agent.aiModelId])
 
-  // Derive state from execution
+  // Use centralized logic from hook
+  const agentCanRun = canRun(agent)
+  const isRunning = isAgentRunning(execution)
   const status = execution?.status
-  const isRunning = isAgentRunning(status)
   const hasError = isAgentError(status)
   const isLoading = status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.CONNECTING
   const isConnecting = status === AGENT_STATUS.CONNECTING
+  
+  // Final run button state: disabled when canRun is false AND not currently running
+  // (if running, button becomes a stop button and should remain enabled)
+  const shouldDisableRunButton = !agentCanRun && !isRunning
 
   // Get ring color based on agent status
   const getRingColor = () => {
@@ -86,8 +90,9 @@ export function AgentListItem({
   )
 
   // Determine if user can edit/delete this agent
-  const canEdit = isAuthenticated && !agent.isPublic
-  const canDelete = isAuthenticated && !agent.isPublic
+  // Note: Backend filtering ensures users only see agents they can edit/delete
+  const canEdit = !agent.isPublic
+  const canDelete = !agent.isPublic
 
   const handleMenuAction = useCallback(
     (e: React.MouseEvent, action: () => void) => {
@@ -171,7 +176,7 @@ export function AgentListItem({
               variant="outline"
               size="icon"
               onClick={isRunning ? handleStopClick : handleRunClick}
-              disabled={(!isAuthenticated && !agent.isPublic) || isLoading}
+              disabled={shouldDisableRunButton}
               className="size-8 hover:cursor-pointer"
               title={
                 status === AGENT_STATUS.PREPARING
@@ -180,9 +185,7 @@ export function AgentListItem({
                     ? "Agent is connecting to MCP servers"
                     : isRunning
                       ? "Stop agent"
-                      : !isAuthenticated && !agent.isPublic
-                        ? "Login required to run private agents"
-                        : "Run agent"
+                      : "Run agent"
               }
             >
               {isLoading ? (
