@@ -17,20 +17,12 @@ import { useSession } from "@/providers/session-provider"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType } from "@dojo/db/convex/types"
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo } from "react"
 
 export function Workflow() {
-  console.log("[Workflow] Main component render")
-
   const { isAuthenticated } = useAuth()
   const { currentSession } = useSession()
   const { selectedId: selectedWorkflowId, setSelectedId: setSelectedWorkflowId } = useUrlSelection()
-
-  // Track component lifecycle
-  useEffect(() => {
-    console.log("[Workflow] Main component mounted")
-    return () => console.log("[Workflow] Main component unmounted!")
-  }, [])
 
   // Separate stable workflow data from real-time execution data
   const workflows = useStableQuery(api.workflows.list)

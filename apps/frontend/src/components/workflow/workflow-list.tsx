@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent, Workflow, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
 import { Search, Globe, Plus, Play, Layers, Sparkles } from "lucide-react"
-import { useState, useMemo, useCallback, memo, useRef, useEffect } from "react"
+import { useState, useMemo, useCallback, memo } from "react"
 
 interface WorkflowListProps {
   workflows: Workflow[]
@@ -50,38 +50,6 @@ export const WorkflowList = memo(function WorkflowList({
 }: WorkflowListProps) {
   const [searchInput, setSearchInput] = useState<string>("")
   const [openSections, setOpenSections] = useState<string[]>([])
-  
-  console.log('[WorkflowList] Render - openSections:', openSections)
-  
-  // Track which props are changing
-  const prevPropsRef = useRef<any>({})
-  useEffect(() => {
-    const props = {
-      workflows,
-      selectedWorkflowId,
-      isAuthenticated,
-      workflowExecutions,
-      agents,
-      onSelectWorkflow,
-      onCreateWorkflow,
-      onEditWorkflow,
-      onDeleteWorkflow,
-      onCloneWorkflow,
-      onRunWorkflow,
-      onStopWorkflow,
-      onGenerateWorkflow,
-      isCollapsed,
-      onExpandSidebar,
-    }
-    
-    Object.keys(props).forEach(key => {
-      if (prevPropsRef.current[key] !== props[key as keyof typeof props]) {
-        console.log(`[WorkflowList] Prop changed: ${key}`)
-      }
-    })
-    
-    prevPropsRef.current = props
-  })
 
   // Memoize workflowExecutions as a stable reference for comparisons
   const workflowExecutionsStable = useMemo(() => {
@@ -127,17 +95,6 @@ export const WorkflowList = memo(function WorkflowList({
 
   const { play } = useSoundEffectContext()
   const { isGeneratingWorkflow } = useGeneration()
-  
-  // Track openSections changes
-  useEffect(() => {
-    console.log('[WorkflowList] openSections changed to:', openSections)
-  }, [openSections])
-  
-  // Track component mount/unmount
-  useEffect(() => {
-    console.log('[WorkflowList] Component mounted')
-    return () => console.log('[WorkflowList] Component unmounted!')
-  }, [])
 
   const handleClick = useCallback(() => {
     play("./sounds/click.mp3", { volume: 0.5 })
@@ -371,10 +328,7 @@ export const WorkflowList = memo(function WorkflowList({
                     </p>
                   ) : (
                     filteredRunningWorkflows.map((workflow) => (
-                      <div key={workflow._id} className="cursor-pointer" onClick={() => {
-                        console.log('[WorkflowList] Workflow selected:', workflow._id)
-                        onSelectWorkflow(workflow)
-                      }}>
+                      <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
                         <WorkflowListItem {...createWorkflowListItemProps(workflow)} />
                       </div>
                     ))
@@ -400,10 +354,7 @@ export const WorkflowList = memo(function WorkflowList({
                     </p>
                   ) : (
                     filteredGlobalWorkflows.map((workflow) => (
-                      <div key={workflow._id} className="cursor-pointer" onClick={() => {
-                        console.log('[WorkflowList] Workflow selected:', workflow._id)
-                        onSelectWorkflow(workflow)
-                      }}>
+                      <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
                         <WorkflowListItem {...createWorkflowListItemProps(workflow)} />
                       </div>
                     ))
@@ -436,10 +387,7 @@ export const WorkflowList = memo(function WorkflowList({
                     </p>
                   ) : (
                     filteredUserWorkflows.map((workflow) => (
-                      <div key={workflow._id} className="cursor-pointer" onClick={() => {
-                        console.log('[WorkflowList] Workflow selected:', workflow._id)
-                        onSelectWorkflow(workflow)
-                      }}>
+                      <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
                         <WorkflowListItem {...createWorkflowListItemProps(workflow)} />
                       </div>
                     ))

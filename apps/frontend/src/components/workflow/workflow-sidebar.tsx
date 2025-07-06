@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { PanelLeft, PanelRight } from "lucide-react"
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { WorkflowList } from "./workflow-list"
 import type { Workflow, Agent, WorkflowNode, WorkflowExecution } from "@dojo/db/convex/types"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -39,15 +39,7 @@ export function WorkflowSidebar({
   onStopWorkflow,
   onGenerateWorkflow,
 }: WorkflowSidebarProps) {
-  console.log('[WorkflowSidebar] Render')
-  
   const [isCollapsed, setIsCollapsed] = useState(false)
-  
-  // Track component lifecycle
-  useEffect(() => {
-    console.log('[WorkflowSidebar] Component mounted')
-    return () => console.log('[WorkflowSidebar] Component unmounted!')
-  }, [])
   
   const handleExpandSidebar = useCallback(() => {
     setIsCollapsed(false)
