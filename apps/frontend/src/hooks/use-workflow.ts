@@ -36,7 +36,7 @@ export function useWorkflow() {
   // Fetch workflow nodes for selected workflow
   const workflowNodes = useStableQuery(
     api.workflows.getWorkflowNodes,
-    selectedWorkflowId ? { workflowId: selectedWorkflowId as Id<"workflows"> } : "skip",
+    selectedWorkflowId && selectedWorkflow ? { workflowId: selectedWorkflowId as Id<"workflows"> } : "skip",
   )
 
   // Fetch workflow executions for current session

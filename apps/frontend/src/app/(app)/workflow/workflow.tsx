@@ -24,6 +24,7 @@ export function Workflow() {
   const {
     selectedWorkflow,
     workflowNodes,
+    executions,
     getWorkflowExecution,
     create,
     edit,
@@ -115,11 +116,11 @@ export function Workflow() {
 
   const handleConfirmDeleteWorkflow = useCallback(async () => {
     if (workflowToDelete) {
-      await remove({ id: workflowToDelete._id })
-      // If the deleted workflow was selected, clear the selection
+      // Clear the selection BEFORE deletion to prevent queries from running on deleted workflow
       if (selectedWorkflowId === workflowToDelete._id) {
         setSelectedWorkflowId(null)
       }
+      await remove({ id: workflowToDelete._id })
       setWorkflowToDelete(null)
     }
   }, [remove, selectedWorkflowId, workflowToDelete, setSelectedWorkflowId])
@@ -193,17 +194,27 @@ export function Workflow() {
         />
         {/* Main Content */}
         <div className="flex flex-col flex-1 overflow-x-auto">
-          <WorkflowContentArea
-            selectedWorkflowId={selectedWorkflowId}
-            onEditWorkflow={handleEditWorkflow}
-            onRunWorkflow={runWorkflow}
-            onStopWorkflow={stopWorkflow}
-            onRemoveNode={handleRemoveNode}
-            onChangeNodeAgent={handleChangeNodeAgent}
-            onAddStepWithAgent={handleAddStepWithAgent}
-            onAddFirstStep={handleAddFirstStep}
-            getModel={getModelWrapper}
-          />
+          {selectedWorkflow ? (
+            <WorkflowContentArea
+              workflow={selectedWorkflow}
+              workflowNodes={workflowNodes}
+              workflowExecutions={executions}
+              onEditWorkflow={handleEditWorkflow}
+              onRunWorkflow={runWorkflow}
+              onStopWorkflow={stopWorkflow}
+              onRemoveNode={handleRemoveNode}
+              onChangeNodeAgent={handleChangeNodeAgent}
+              onAddStepWithAgent={handleAddStepWithAgent}
+              onAddFirstStep={handleAddFirstStep}
+              getModel={getModelWrapper}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">
+                {selectedWorkflowId ? "Workflow does not exist" : "Select a workflow"}
+              </p>
+            </div>
+          )}
         </div>
       </div>
       {/* Delete Confirmation Dialog */}

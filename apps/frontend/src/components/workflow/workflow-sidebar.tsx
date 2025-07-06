@@ -3,11 +3,12 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { PanelLeft, PanelRight } from "lucide-react"
-import { useState, useCallback } from "react"
+import { useCallback } from "react"
 import { WorkflowList } from "./workflow-list"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { useAgent } from "@/hooks/use-agent"
 import { useAuth } from "@/hooks/use-auth"
+import { useSidebar } from "@/hooks/use-sidebar"
 import type { Workflow } from "@dojo/db/convex/types"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 
@@ -38,12 +39,11 @@ export function WorkflowSidebar({
   const { workflows, executions } = useWorkflow()
   const { agents } = useAgent()
   const { isAuthenticated } = useAuth()
-  
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const { isCollapsed, toggleSidebar, expandSidebar } = useSidebar()
   
   const handleExpandSidebar = useCallback(() => {
-    setIsCollapsed(false)
-  }, [])
+    expandSidebar()
+  }, [expandSidebar])
 
   return (
     <div
@@ -63,7 +63,7 @@ export function WorkflowSidebar({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleSidebar}
           className={cn("hover:cursor-pointer", !isCollapsed && "ml-auto")}
         >
           {isCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}

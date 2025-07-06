@@ -5,13 +5,14 @@ import { ReactFlowWorkflowCanvas } from "@/components/workflow/canvas/reactflow-
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
 import { WorkflowHeader } from "@/components/workflow/workflow-header"
 import { useAgent } from "@/hooks/use-agent"
-import { useWorkflow } from "@/hooks/use-workflow"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow, Agent } from "@dojo/db/convex/types"
+import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
 import { useState, useCallback, memo } from "react"
 
 interface WorkflowContentAreaProps {
-  selectedWorkflowId: string | null
+  workflow: Workflow
+  workflowNodes: WorkflowNode[]
+  workflowExecutions: WorkflowExecution[]
   onEditWorkflow: (workflow: Workflow) => void
   onRunWorkflow: (workflow: Workflow) => void
   onStopWorkflow: (workflowId: Id<"workflows">) => void
@@ -23,7 +24,9 @@ interface WorkflowContentAreaProps {
 }
 
 export const WorkflowContentArea = memo(function WorkflowContentArea({
-  selectedWorkflowId,
+  workflow,
+  workflowNodes,
+  workflowExecutions,
   onEditWorkflow,
   onRunWorkflow,
   onStopWorkflow,
@@ -33,36 +36,23 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   onAddFirstStep,
   getModel,
 }: WorkflowContentAreaProps) {
-  // Get data from hooks
-  const { selectedWorkflow: workflow, workflowNodes, executions: workflowExecutions } = useWorkflow()
+  // Get agents from hook
   const { agents } = useAgent()
 
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
 
   // Get current execution for this workflow (matches WorkflowListItem logic)
   const execution = workflowExecutions
-    .filter(exec => exec.workflowId === workflow?._id)
+    .filter(exec => exec.workflowId === workflow._id)
     .sort((a, b) => b.startedAt - a.startedAt)[0] || undefined
 
   const handleRunWorkflow = useCallback(async () => {
-    if (!workflow) return
     await onRunWorkflow(workflow)
   }, [workflow, onRunWorkflow])
 
   const handleStopWorkflow = useCallback(() => {
-    if (!workflow) return
     onStopWorkflow(workflow._id)
   }, [workflow, onStopWorkflow])
-
-  if (!workflow) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-sm text-muted-foreground">
-          {selectedWorkflowId ? "Workflow does not exist" : "Select a workflow"}
-        </p>
-      </div>
-    )
-  }
 
   return (
     <Tabs

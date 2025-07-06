@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/hooks/use-auth"
 import { MCPConnectionState } from "@/hooks/use-mcp"
+import { useSidebar } from "@/hooks/use-sidebar"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
@@ -47,7 +48,8 @@ export const MCPList = memo(function MCPList({
   const { isAuthenticated } = useAuth()
 
   const [searchInput, setSearchInput] = useState<string>("")
-  const [openSections, setOpenSections] = useState<string[]>([])
+  const { getAccordionSections, setAccordionSections } = useSidebar()
+  const openSections = getAccordionSections("mcps")
 
   const handleClick = useCallback(() => {
     play("./sounds/click.mp3", { volume: 0.5 })
@@ -85,6 +87,7 @@ export const MCPList = memo(function MCPList({
     return { connectedServers: connected, globalServers: global, templateServers: template, userServers: user }
   }, [servers, activeConnections])
 
+
   // Filter servers based on search
   const filterServers = (serverList: MCPServer[]) => {
     if (searchInput === "") return serverList
@@ -112,7 +115,7 @@ export const MCPList = memo(function MCPList({
 
   const handleSectionClick = (section: string) => {
     onExpandSidebar()
-    setOpenSections([section])
+    setAccordionSections("mcps", [section])
   }
 
   const handleAddClick = () => {
@@ -236,7 +239,7 @@ export const MCPList = memo(function MCPList({
             </div>
           </div>
           {/* Server List with Accordion Sections */}
-          <Accordion type="multiple" value={openSections} onValueChange={setOpenSections} className="w-full">
+          <Accordion type="multiple" value={openSections} onValueChange={(sections) => setAccordionSections("mcps", sections)} className="w-full">
             {/* Connected Servers Section */}
             <AccordionItem value="connected">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">

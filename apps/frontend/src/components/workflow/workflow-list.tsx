@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { WorkflowListItem } from "@/components/workflow/workflow-list-item"
 import { useGeneration } from "@/hooks/use-generation"
+import { useSidebar } from "@/hooks/use-sidebar"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { cn } from "@/lib/utils"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
@@ -49,7 +50,8 @@ export const WorkflowList = memo(function WorkflowList({
   onExpandSidebar,
 }: WorkflowListProps) {
   const [searchInput, setSearchInput] = useState<string>("")
-  const [openSections, setOpenSections] = useState<string[]>([])
+  const { getAccordionSections, setAccordionSections } = useSidebar()
+  const openSections = getAccordionSections("workflows")
 
   // Memoize workflowExecutions as a stable reference for comparisons
   const workflowExecutionsStable = useMemo(() => {
@@ -95,6 +97,7 @@ export const WorkflowList = memo(function WorkflowList({
   const { play } = useSoundEffectContext()
   const { isGeneratingWorkflow } = useGeneration()
 
+
   const handleClick = useCallback(() => {
     play("./sounds/click.mp3", { volume: 0.5 })
   }, [play])
@@ -112,9 +115,9 @@ export const WorkflowList = memo(function WorkflowList({
   const handleSectionClick = useCallback(
     (section: string) => {
       onExpandSidebar()
-      setOpenSections([section])
+      setAccordionSections("workflows", [section])
     },
-    [onExpandSidebar],
+    [onExpandSidebar, setAccordionSections],
   )
 
   const handleAddClick = useCallback(() => {
@@ -308,7 +311,7 @@ export const WorkflowList = memo(function WorkflowList({
             </div>
           </div>
           {/* Workflow List with Accordion Sections */}
-          <Accordion type="multiple" value={openSections} onValueChange={setOpenSections} className="w-full">
+          <Accordion type="multiple" value={openSections} onValueChange={(sections) => setAccordionSections("workflows", sections)} className="w-full">
             {/* Running Workflows Section */}
             <AccordionItem value="running">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10">

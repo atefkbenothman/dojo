@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { PanelLeft, PanelRight } from "lucide-react"
-import { useState } from "react"
 import { MCPList } from "./mcp-list"
+import { useSidebar } from "@/hooks/use-sidebar"
 import type { MCPServer, MCPToolsCollection } from "@dojo/db/convex/types"
 import type { MCPConnectionState } from "@/hooks/use-mcp"
 
@@ -35,7 +35,7 @@ export function MCPSidebar({
   onConnect,
   onDisconnect,
 }: MCPSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const { isCollapsed, toggleSidebar, expandSidebar } = useSidebar()
 
   return (
     <div
@@ -55,7 +55,7 @@ export function MCPSidebar({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleSidebar}
           className={cn("hover:cursor-pointer", !isCollapsed && "ml-auto")}
         >
           {isCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
@@ -75,7 +75,7 @@ export function MCPSidebar({
         onConnect={onConnect}
         onDisconnect={onDisconnect}
         isCollapsed={isCollapsed}
-        onExpandSidebar={() => setIsCollapsed(false)}
+        onExpandSidebar={expandSidebar}
       />
     </div>
   )

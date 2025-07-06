@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { PanelLeft, PanelRight } from "lucide-react"
-import { useState } from "react"
 import { AgentList } from "./agent-list"
+import { useSidebar } from "@/hooks/use-sidebar"
 import type { Agent } from "@dojo/db/convex/types"
 import type { AgentExecution } from "@/hooks/use-agent"
 
@@ -37,7 +37,7 @@ export function AgentSidebar({
   onStopAllAgents,
   onGenerateAgent,
 }: AgentSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const { isCollapsed, toggleSidebar, expandSidebar } = useSidebar()
 
   return (
     <div
@@ -57,7 +57,7 @@ export function AgentSidebar({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleSidebar}
           className={cn("hover:cursor-pointer", !isCollapsed && "ml-auto")}
         >
           {isCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
@@ -78,7 +78,7 @@ export function AgentSidebar({
         onStopAllAgents={onStopAllAgents}
         onGenerateAgent={onGenerateAgent}
         isCollapsed={isCollapsed}
-        onExpandSidebar={() => setIsCollapsed(false)}
+        onExpandSidebar={expandSidebar}
       />
     </div>
   )

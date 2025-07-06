@@ -113,6 +113,19 @@ export const remove = mutation({
     if (!workflow) throw new Error("Not found")
     if (workflow.isPublic) throw new Error("Default workflows cannot be deleted.")
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
+    
+    // Delete all workflow nodes associated with this workflow
+    const workflowNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
+      .collect()
+    
+    // Delete all nodes first
+    for (const node of workflowNodes) {
+      await ctx.db.delete(node._id)
+    }
+    
+    // Then delete the workflow itself
     return await ctx.db.delete(args.id)
   },
 })
@@ -397,7 +410,10 @@ export const getWorkflowNodes = query({
     const userId = await getCurrentUserId(ctx)
     const workflow = await ctx.db.get(args.workflowId)
 
-    if (!workflow) throw new Error("Workflow not found")
+    // Return empty array if workflow doesn't exist instead of throwing error
+    // This prevents UI errors when workflow is deleted but queries are still running
+    if (!workflow) return []
+    
     // Only allow if public or owned by the caller
     if (!workflow.isPublic && (!userId || workflow.userId !== userId)) {
       throw new Error("Unauthorized")
