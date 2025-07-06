@@ -1,9 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { useReactFlow, useStore } from "@xyflow/react"
 import { Minus, Plus, Focus } from "lucide-react"
 import { memo, useCallback } from "react"
-import { useReactFlow, useStore } from "reactflow"
 
 interface CustomReactFlowControlsProps {
   minZoom?: number

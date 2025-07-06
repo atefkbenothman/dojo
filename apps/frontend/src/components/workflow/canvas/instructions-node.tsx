@@ -4,29 +4,33 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { Handle, Position } from "@xyflow/react"
 import { FileText, Pencil } from "lucide-react"
 import { memo } from "react"
-import { Handle, Position, NodeProps } from "reactflow"
 
 // Instructions Node Data
-interface InstructionsNodeData {
+export interface InstructionsNodeData {
   instructions?: string
   onEditClick?: () => void
 }
 
-interface InstructionsNodeProps extends NodeProps<InstructionsNodeData> {}
+export interface InstructionsNodeProps {
+  data: InstructionsNodeData
+  selected?: boolean
+  id: string
+}
 
 // Instructions Card Component
 interface InstructionsCardProps {
   instructions?: string
   onEditClick?: () => void
-  selected: boolean
+  selected?: boolean
 }
 
 const InstructionsCard = memo(function InstructionsCard({
   instructions,
   onEditClick,
-  selected,
+  selected = false,
 }: InstructionsCardProps) {
   return (
     <>
@@ -65,7 +69,7 @@ const InstructionsCard = memo(function InstructionsCard({
 })
 
 // Instructions Node Component
-export const InstructionsNode = memo(function InstructionsNode({ data, selected }: InstructionsNodeProps) {
+export const InstructionsNode = memo(function InstructionsNode({ data, selected = false }: InstructionsNodeProps) {
   return (
     <>
       <Card

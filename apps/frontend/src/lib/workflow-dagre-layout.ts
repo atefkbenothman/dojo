@@ -116,6 +116,38 @@ export function getLayoutBounds(nodes: Node[]): { x: number; y: number; width: n
 }
 
 /**
+ * Calculate the initial viewport to center the workflow
+ * This prevents flicker by providing the correct viewport from the start
+ */
+export function calculateInitialViewport(
+  nodes: Node[],
+  containerWidth: number = 800,
+  containerHeight: number = 600,
+  padding: number = 0.3,
+): { x: number; y: number; zoom: number } {
+  if (nodes.length === 0) {
+    return { x: 0, y: 0, zoom: 1 }
+  }
+
+  const bounds = getLayoutBounds(nodes)
+  
+  // Calculate zoom to fit content with padding
+  const zoomX = containerWidth / (bounds.width * (1 + padding))
+  const zoomY = containerHeight / (bounds.height * (1 + padding))
+  const zoom = Math.min(Math.max(Math.min(zoomX, zoomY), 0.25), 2) // Between 0.25 and 2 to match ReactFlow
+  
+  // Calculate center position
+  const centerX = bounds.x + bounds.width / 2
+  const centerY = bounds.y + bounds.height / 2
+  
+  // Calculate viewport position to center the content
+  const x = containerWidth / 2 - centerX * zoom
+  const y = containerHeight / 2 - centerY * zoom
+  
+  return { x, y, zoom }
+}
+
+/**
  * Create a layout specifically optimized for workflow trees
  * This is a convenience wrapper that sets good defaults for workflow layouts
  */

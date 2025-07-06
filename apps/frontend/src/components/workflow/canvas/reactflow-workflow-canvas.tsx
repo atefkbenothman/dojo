@@ -7,32 +7,31 @@ import { InstructionsNode } from "@/components/workflow/canvas/instructions-node
 import { StepNode } from "@/components/workflow/canvas/step-node"
 import { useStableExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
-import { calculateWorkflowLayout } from "@/lib/workflow-dagre-layout"
+import { calculateWorkflowLayout, calculateInitialViewport } from "@/lib/workflow-dagre-layout"
 import { transformToReactFlow } from "@/lib/workflow-reactflow-transform"
-import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
-import { Plus } from "lucide-react"
-import { useCallback, useState, memo, useMemo, useEffect } from "react"
-import ReactFlow, {
+import {
+  ReactFlow,
   Background,
   ConnectionMode,
   Panel,
-  useReactFlow,
   ReactFlowProvider,
-  useNodesInitialized,
-  Node,
-  Edge,
-} from "reactflow"
-import "reactflow/dist/style.css"
+  NodeTypes,
+  Viewport,
+  useReactFlow,
+} from "@xyflow/react"
+import "@xyflow/react/dist/style.css"
+import { Plus } from "lucide-react"
+import { useCallback, useState, memo, useMemo, useEffect, useRef } from "react"
 
 interface ReactFlowWorkflowCanvasProps {
   workflow: Workflow
   agents: Agent[]
   workflowNodes: WorkflowNode[]
-  isAuthenticated: boolean
   workflowExecutions: WorkflowExecution[]
   getModel: (modelId: string) => { name: string } | undefined
   onEditMetadata?: () => void
+  isVisible?: boolean
   // Node handlers
   onRemoveNode?: (nodeId: string) => void
   onChangeNodeAgent?: (nodeId: string, agent: Agent) => void
@@ -40,7 +39,7 @@ interface ReactFlowWorkflowCanvasProps {
   onAddFirstStep?: (agent: Agent) => void
 }
 
-const nodeTypes = {
+const nodeTypes: NodeTypes = {
   instructionsNode: InstructionsNode,
   stepNode: StepNode,
 }
@@ -59,24 +58,25 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   workflow,
   agents,
   workflowNodes,
-  isAuthenticated,
   workflowExecutions,
   getModel,
   onEditMetadata,
+  isVisible,
   onRemoveNode,
   onChangeNodeAgent,
   onAddStepWithAgent,
   onAddFirstStep,
 }: ReactFlowWorkflowCanvasProps) {
   const { fitView } = useReactFlow()
-  const nodesInitialized = useNodesInitialized()
   const [selectedNodes, setSelectedNodes] = useState<string[]>([])
-  const [lastWorkflowId, setLastWorkflowId] = useState<string | null>(null)
+  const [containerSize, setContainerSize] = useState({ width: 800, height: 600 })
+  const containerRef = useRef<HTMLDivElement>(null)
+  const wasVisibleRef = useRef(false) // Initialize to false to catch first visibility
 
   // Get execution data for this workflow
   const execution = useMemo(() => {
     const workflowExecs = workflowExecutions
-      .filter(exec => exec.workflowId === workflow._id)
+      .filter((exec) => exec.workflowId === workflow._id)
       .sort((a, b) => b.startedAt - a.startedAt)
     return workflowExecs[0] || undefined
   }, [workflowExecutions, workflow._id])
@@ -92,52 +92,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     // Always use expanded height since we removed the collapse functionality
     return 240
   }, [])
-
-  // Transform workflow data to ReactFlow format (without execution status)
-  const { nodes: transformedNodes, edges: transformedEdges } = useMemo(() => {
-    const result = transformToReactFlow({
-      workflowNodes: workflowNodes || [],
-      agents,
-      instructions: workflow.instructions,
-      onEditInstructions: onEditMetadata,
-    })
-
-    // Update node heights based on expanded state
-    return {
-      ...result,
-      nodes: result.nodes.map((node) => ({
-        ...node,
-        height: getNodeHeight(node.id, node.data.variant === "instructions"),
-      })),
-    }
-  }, [workflowNodes, agents, workflow.instructions, onEditMetadata, getNodeHeight])
-
-  // Apply layout algorithm
-  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
-    const result = calculateWorkflowLayout(transformedNodes, transformedEdges, {
-      horizontalSpacing: 120,
-      verticalSpacing: 80,
-      direction: "TB",
-    })
-
-    return result
-  }, [transformedNodes, transformedEdges])
-
-  // Fit view when workflow changes or on initial load
-  useEffect(() => {
-    // Check if this is a new workflow (different from the last one we fitted)
-    const isNewWorkflow = workflow._id !== lastWorkflowId
-
-    if (layoutedNodes.length > 0 && isNewWorkflow) {
-      // Use a small timeout to ensure ReactFlow has rendered the new nodes
-      const timeoutId = setTimeout(() => {
-        fitView(fitViewOptions)
-        setLastWorkflowId(workflow._id)
-      }, 100)
-
-      return () => clearTimeout(timeoutId)
-    }
-  }, [workflow._id, layoutedNodes.length, lastWorkflowId, fitView])
 
   // Stable callback for adding first step
   const handleAddFirstStep = useCallback(
@@ -169,6 +123,37 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     [onAddStepWithAgent],
   )
 
+  // Transform workflow data to ReactFlow format (without execution status)
+  const { nodes: transformedNodes, edges: transformedEdges } = useMemo(() => {
+    const result = transformToReactFlow({
+      workflowNodes: workflowNodes || [],
+      agents,
+      instructions: workflow.instructions,
+      onEditInstructions: onEditMetadata,
+    })
+
+    // Update node heights based on expanded state and fix width/height types
+    return {
+      ...result,
+      nodes: result.nodes.map((node) => ({
+        ...node,
+        width: node.width || undefined, // Convert null to undefined
+        height: getNodeHeight(node.id, node.data.variant === "instructions"),
+      })),
+    }
+  }, [workflowNodes, agents, workflow.instructions, onEditMetadata, getNodeHeight])
+
+  // Apply layout algorithm
+  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
+    const result = calculateWorkflowLayout(transformedNodes, transformedEdges, {
+      horizontalSpacing: 120,
+      verticalSpacing: 80,
+      direction: "TB",
+    })
+
+    return result
+  }, [transformedNodes, transformedEdges])
+
   // Apply execution status and handlers to nodes
   const enhancedNodes = useMemo(() => {
     return layoutedNodes.map((node) => {
@@ -176,6 +161,8 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
 
       return {
         ...node,
+        width: node.width || undefined, // Convert null to undefined
+        height: node.height || undefined, // Convert null to undefined
         selected: selectedNodes.includes(node.id),
         data: {
           ...node.data,
@@ -245,10 +232,58 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     })
   }, [layoutedEdges, getNodeExecutionStatus])
 
+  // Calculate initial viewport for workflow centering
+  const initialViewport = useMemo((): Viewport => {
+    if (enhancedNodes.length === 0) {
+      return defaultViewport
+    }
+
+    return calculateInitialViewport(enhancedNodes, containerSize.width, containerSize.height, fitViewOptions.padding)
+  }, [enhancedNodes, containerSize.width, containerSize.height, fitViewOptions.padding])
+
+  // Update container size when component mounts
+  useEffect(() => {
+    const updateContainerSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        })
+      }
+    }
+
+    // Set initial size
+    updateContainerSize()
+
+    // Listen for resize events
+    window.addEventListener("resize", updateContainerSize)
+    return () => window.removeEventListener("resize", updateContainerSize)
+  }, [])
+
+  // Handle tab visibility changes - re-center when becoming visible
+  useEffect(() => {
+    const wasVisible = wasVisibleRef.current
+
+    // Check if we're transitioning from hidden to visible
+    if (isVisible && !wasVisible && enhancedNodes.length > 0) {
+      // Re-measure container size in case it changed while hidden
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        })
+      }
+      fitView(fitViewOptions)
+    }
+
+    // Update the ref after processing
+    wasVisibleRef.current = isVisible ?? false
+  }, [isVisible, enhancedNodes.length, fitView])
+
   const hasWorkflowNodes = workflowNodes && workflowNodes.length > 0
 
   return (
-    <div className="h-full">
+    <div className="h-full" ref={containerRef}>
       {/* ReactFlow Canvas */}
       <div className="relative h-full">
         <ReactFlow
@@ -259,7 +294,8 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           fitViewOptions={fitViewOptions}
           minZoom={0.25}
           maxZoom={2}
-          defaultViewport={defaultViewport}
+          defaultViewport={initialViewport}
+          key={`${workflow._id}-${enhancedNodes.length}`} // Force re-render with new viewport
           nodesDraggable={false} // Keep disabled for structured layout
           nodesConnectable={false} // Disable connection creation for now
           elementsSelectable={true} // Enable selection

@@ -4,9 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ReactFlowWorkflowCanvas } from "@/components/workflow/canvas/reactflow-workflow-canvas"
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
 import { WorkflowHeader } from "@/components/workflow/workflow-header"
-import { useWorkflow } from "@/hooks/use-workflow"
 import { useAgent } from "@/hooks/use-agent"
 import { useAuth } from "@/hooks/use-auth"
+import { useWorkflow } from "@/hooks/use-workflow"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent } from "@dojo/db/convex/types"
 import { useState, useCallback, memo } from "react"
@@ -38,7 +38,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   const { selectedWorkflow: workflow, workflowNodes, executions: workflowExecutions } = useWorkflow()
   const { agents } = useAgent()
   const { isAuthenticated } = useAuth()
-  
+
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
 
   const handleRunWorkflow = useCallback(async () => {
@@ -89,9 +89,9 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
           workflow={workflow}
           agents={agents || []}
           workflowNodes={workflowNodes}
-          isAuthenticated={isAuthenticated}
           workflowExecutions={workflowExecutions}
           getModel={getModel}
+          isVisible={activeTab === "build"}
           onAddFirstStep={onAddFirstStep}
           onEditMetadata={() => onEditWorkflow(workflow)}
           onRemoveNode={onRemoveNode}

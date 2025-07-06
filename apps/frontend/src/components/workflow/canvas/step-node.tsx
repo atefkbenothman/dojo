@@ -2,18 +2,18 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { NodeExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
 import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-transform"
 import { Agent } from "@dojo/db/convex/types"
+import { Handle, Position } from "@xyflow/react"
 import { Trash, CheckCircle, XCircle, Clock, Plus, SquarePen } from "lucide-react"
 import { useState, memo, useCallback } from "react"
-import { LoadingAnimationInline } from "@/components/ui/loading-animation"
-import { Handle, Position, NodeProps } from "reactflow"
 
-// Step Node Data - no more variant or instructions props
-interface StepNodeData {
+// Step Node Data
+export interface StepNodeData {
   workflowNode?: TransformNodeData["workflowNode"]
   agent?: Agent
   executionStatus?: NodeExecutionStatus
@@ -24,12 +24,14 @@ interface StepNodeData {
   getModel?: (modelId: string) => { name: string } | undefined
 }
 
-interface StepNodeProps extends NodeProps<StepNodeData> {}
+export interface StepNodeProps {
+  data: StepNodeData
+  selected?: boolean
+  id: string
+}
 
-export const StepNode = memo(function StepNode({ data, selected }: StepNodeProps) {
+export const StepNode = memo(function StepNode({ data, selected = false }: StepNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
-
-  // Step node specific handlers
 
   const handleAddStep = useCallback(
     (agent: Agent) => {
