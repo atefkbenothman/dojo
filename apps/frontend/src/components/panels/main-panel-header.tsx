@@ -12,9 +12,10 @@ import { useCallback } from "react"
 
 interface MainPanelHeaderProps {
   onChatPanelToggle: () => void
+  hasUnreadMessages: boolean
 }
 
-export function MainPanelHeader({ onChatPanelToggle }: MainPanelHeaderProps) {
+export function MainPanelHeader({ onChatPanelToggle, hasUnreadMessages }: MainPanelHeaderProps) {
   const { play } = useSoundEffectContext()
 
   const handleLogoClick = useCallback(() => {
@@ -37,8 +38,14 @@ export function MainPanelHeader({ onChatPanelToggle }: MainPanelHeaderProps) {
         <GithubLinkButton />
         <DarkModeToggle />
         <SoundToggle />
-        <Button onClick={onChatPanelToggle} size="icon" variant="outline" className="hover:cursor-pointer">
+        <Button onClick={onChatPanelToggle} size="icon" variant="outline" className="relative hover:cursor-pointer">
           <MessageSquare className="h-4.5 w-4.5" />
+          {hasUnreadMessages && (
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+          )}
         </Button>
       </div>
     </div>

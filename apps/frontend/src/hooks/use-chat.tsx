@@ -27,6 +27,7 @@ export function useAIChat() {
 
   const [context, setContext] = useState<string>("")
   const [chatError, setChatError] = useState<string | null>(null)
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
 
   const { messages, status, input, append, setMessages, error, stop } = useChat({
     api: "/api/chat",
@@ -43,6 +44,7 @@ export function useAIChat() {
     },
     onFinish: () => {
       play("./sounds/done.mp3", { volume: 0.5 })
+      setHasUnreadMessages(true)
     },
   })
 
@@ -87,7 +89,12 @@ export function useAIChat() {
     stop()
     setMessages(initialMessages)
     setChatError(null)
+    setHasUnreadMessages(false)
   }, [setMessages, stop])
+
+  const clearNotifications = useCallback(() => {
+    setHasUnreadMessages(false)
+  }, [])
 
   return {
     messages: messages as (UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } })[],
@@ -103,6 +110,8 @@ export function useAIChat() {
     stop,
     setMessages,
     setChatError,
+    hasUnreadMessages,
+    clearNotifications,
   }
 }
 

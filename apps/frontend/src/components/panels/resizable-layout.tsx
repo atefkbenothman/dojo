@@ -7,7 +7,7 @@ import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/componen
 import { useChatProvider } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
 import { cn } from "@/lib/utils"
-import { useRef, useCallback } from "react"
+import { useRef, useCallback, useEffect } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
 
 interface ResizableLayoutProps {
@@ -23,7 +23,7 @@ const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
 const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 60
 
 export function ResizableLayout({ children, defaultLayout, isServerHealthy }: ResizableLayoutProps) {
-  const { handleNewChat } = useChatProvider()
+  const { handleNewChat, hasUnreadMessages, clearNotifications } = useChatProvider()
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
 
@@ -56,6 +56,13 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
     syncPanelCollapsedState(false)
   }, [syncPanelCollapsedState])
 
+  // Clear notifications when panel opens
+  useEffect(() => {
+    if (!isChatPanelCollapsed && hasUnreadMessages) {
+      clearNotifications()
+    }
+  }, [isChatPanelCollapsed, hasUnreadMessages, clearNotifications])
+
   // Chat panel toggle - same behavior for all screen sizes
   const onChatPanelToggle = useCallback(() => {
     desktopHandleChatPanelToggle()
@@ -65,7 +72,7 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
     <div className="h-[100dvh] w-screen overflow-hidden flex flex-col md:flex-row">
       {/* Mobile: Header and nav at top level for correct ordering */}
       <div className="md:hidden">
-        <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />
+        <MainPanelHeader onChatPanelToggle={onChatPanelToggle} hasUnreadMessages={hasUnreadMessages} />
         <SideNav />
       </div>
 
@@ -81,7 +88,7 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
           <div className="flex h-full flex-col">
             {/* Desktop: Header inside panel (original working structure) */}
             <div className="hidden md:block">
-              <MainPanelHeader onChatPanelToggle={onChatPanelToggle} />
+              <MainPanelHeader onChatPanelToggle={onChatPanelToggle} hasUnreadMessages={hasUnreadMessages} />
             </div>
             <div className="flex-1 overflow-auto min-w-[calc(100vw-42px)]">{children}</div>
           </div>
