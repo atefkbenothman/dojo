@@ -22,6 +22,7 @@ export const getModelByModelId = query({
     return await ctx.db
       .query("models")
       .withIndex("by_modelId", (q) => q.eq("modelId", args.modelId))
+      .filter((q) => q.eq(q.field("enabled"), true))
       .unique()
   },
 })
@@ -29,14 +30,14 @@ export const getModelByModelId = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("models").collect()
+    return await ctx.db.query("models").filter((q) => q.eq(q.field("enabled"), true)).collect()
   },
 })
 
 export const modelsWithProviders = query({
   args: {},
   handler: async (ctx) => {
-    const models = await ctx.db.query("models").collect()
+    const models = await ctx.db.query("models").filter((q) => q.eq(q.field("enabled"), true)).collect()
     const modelsWithProviders = await Promise.all(
       models.map(async (model) => {
         const provider = await ctx.db.get(model.providerId as Id<"providers">)
@@ -54,8 +55,8 @@ export const modelsWithAvailability = query({
     // Get current user
     const userId = await getCurrentUserId(ctx)
 
-    // Fetch all models with providers
-    const models = await ctx.db.query("models").collect()
+    // Fetch all enabled models with providers
+    const models = await ctx.db.query("models").filter((q) => q.eq(q.field("enabled"), true)).collect()
     const providers = await ctx.db.query("providers").collect()
 
     // Fetch user's API keys if authenticated
