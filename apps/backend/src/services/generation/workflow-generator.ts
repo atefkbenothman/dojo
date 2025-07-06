@@ -1,4 +1,3 @@
-import type { ConvexHttpClient } from "convex/browser"
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { WORKFLOW_GENERATOR_PROMPT } from "../ai/prompts"
@@ -6,6 +5,7 @@ import { createGetAgents, createCreateWorkflow } from "./tools"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { generateText, type LanguageModel } from "ai"
+import type { ConvexHttpClient } from "convex/browser"
 
 interface GenerateWorkflowParams {
   prompt: string
@@ -27,7 +27,6 @@ export async function generateWorkflow({
   client,
 }: GenerateWorkflowParams): Promise<GenerateWorkflowResult> {
   try {
-
     // Get the session to use with model manager
     const session = await client.query(api.sessions.get, {
       sessionId: sessionId as Id<"sessions">,
@@ -56,7 +55,10 @@ export async function generateWorkflow({
         { role: "user", content: prompt },
       ],
       tools: toolsWithClient,
-      toolChoice: "auto",
+      toolChoice: {
+        type: "tool",
+        toolName: "createWorkflow",
+      },
       maxSteps: 5,
     })
 
