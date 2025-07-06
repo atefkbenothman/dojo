@@ -15,6 +15,7 @@ export const modelsFields = {
   providerId: v.id("providers"),
   requiresApiKey: v.boolean(),
   type: v.string(),
+  enabled: v.boolean(),
 }
 
 // MCP server configurations
@@ -246,11 +247,7 @@ export const agentGenerationExecutionsFields = {
   modelId: v.string(),
 
   // Status tracking
-  status: v.union(
-    v.literal("running"),
-    v.literal("completed"),
-    v.literal("failed"),
-  ),
+  status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed")),
 
   // Result tracking
   error: v.optional(v.string()),
@@ -269,11 +266,7 @@ export const workflowGenerationExecutionsFields = {
   modelId: v.string(),
 
   // Status tracking
-  status: v.union(
-    v.literal("running"),
-    v.literal("completed"),
-    v.literal("failed"),
-  ),
+  status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed")),
 
   // Result tracking
   error: v.optional(v.string()),
