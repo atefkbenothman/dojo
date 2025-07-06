@@ -8,13 +8,12 @@ import { AgentHeader } from "@/components/agent/agent-header"
 import { AgentSidebar } from "@/components/agent/agent-sidebar"
 import { useAgent, type AgentExecution } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
-import { useSoundEffectContext } from "@/hooks/use-sound-effect"
-import { successToastStyle } from "@/lib/styles"
-import { cn } from "@/lib/utils"
-import type { Agent } from "@dojo/db/convex/types"
 import { useAuth } from "@/hooks/use-auth"
-import { useState, useCallback, useMemo } from "react"
+import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useUrlSelection } from "@/hooks/use-url-selection"
+import { successToastStyle } from "@/lib/styles"
+import type { Agent } from "@dojo/db/convex/types"
+import { useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
 export function Agent() {
@@ -142,10 +141,13 @@ export function Agent() {
     setIsGenerateDialogOpen(true)
   }, [])
 
-  const handleAgentCreated = useCallback((agentId: string) => {
-    // Auto-select the newly created agent
-    setSelectedAgentId(agentId)
-  }, [setSelectedAgentId])
+  const handleAgentCreated = useCallback(
+    (agentId: string) => {
+      // Auto-select the newly created agent
+      setSelectedAgentId(agentId)
+    },
+    [setSelectedAgentId],
+  )
 
   return (
     <>
@@ -180,17 +182,13 @@ export function Agent() {
                 agent={selectedAgent}
                 model={selectedModel}
                 execution={selectedExecution}
-                isAuthenticated={isAuthenticated}
                 onDeleteClick={handleDeleteAgent}
               />
             </>
           ) : (
             <div className="flex items-center justify-center h-full">
               <p className="text-sm text-muted-foreground">
-                {selectedAgentId && Array.isArray(agents) 
-                  ? "Agent does not exist" 
-                  : "Select an agent"
-                }
+                {selectedAgentId && Array.isArray(agents) ? "Agent does not exist" : "Select an agent"}
               </p>
             </div>
           )}
@@ -207,7 +205,6 @@ export function Agent() {
             setEditingAgent(null)
           }
         }}
-        isAuthenticated={isAuthenticated}
         onAgentCreated={handleAgentCreated}
       />
       {/* Delete Confirmation Dialog */}
@@ -224,11 +221,7 @@ export function Agent() {
         affectedWorkflows={affectedWorkflows}
       />
       {/* Generate Agent Dialog */}
-      <AgentGenerateDialog
-        open={isGenerateDialogOpen}
-        onOpenChange={setIsGenerateDialogOpen}
-        isAuthenticated={isAuthenticated}
-      />
+      <AgentGenerateDialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen} />
     </>
   )
 }

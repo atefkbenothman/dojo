@@ -7,10 +7,9 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 export interface AgentGenerateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  isAuthenticated?: boolean
 }
 
-export function AgentGenerateDialog({ open, onOpenChange, isAuthenticated = false }: AgentGenerateDialogProps) {
+export function AgentGenerateDialog({ open, onOpenChange }: AgentGenerateDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -20,7 +19,7 @@ export function AgentGenerateDialog({ open, onOpenChange, isAuthenticated = fals
         <VisuallyHidden>
           <DialogTitle />
         </VisuallyHidden>
-        <AgentGenerateForm variant="dialog" isAuthenticated={isAuthenticated} onClose={() => onOpenChange(false)} />
+        <AgentGenerateForm variant="dialog" onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )

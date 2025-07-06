@@ -10,11 +10,10 @@ export interface AgentFormDialogProps {
   agent?: Agent
   open: boolean
   onOpenChange: (open: boolean) => void
-  isAuthenticated?: boolean
   onAgentCreated?: (agentId: string) => void
 }
 
-export function AgentFormDialog({ mode, agent, open, onOpenChange, isAuthenticated = false, onAgentCreated }: AgentFormDialogProps) {
+export function AgentFormDialog({ mode, agent, open, onOpenChange, onAgentCreated }: AgentFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -28,7 +27,6 @@ export function AgentFormDialog({ mode, agent, open, onOpenChange, isAuthenticat
           agent={agent}
           mode={mode}
           variant="dialog"
-          isAuthenticated={isAuthenticated}
           onClose={() => onOpenChange(false)}
           onAgentCreated={onAgentCreated}
         />

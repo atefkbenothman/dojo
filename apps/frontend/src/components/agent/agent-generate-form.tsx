@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useAuth } from "@/hooks/use-auth"
 import { useGeneration } from "@/hooks/use-generation"
 import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -27,7 +28,6 @@ type AgentGenerateFormValues = z.infer<typeof agentGenerateFormSchema>
 
 interface AgentGenerateFormProps {
   variant?: "page" | "dialog"
-  isAuthenticated?: boolean
   onClose?: () => void
 }
 
@@ -136,9 +136,10 @@ function ModelSection({ form }: ModelSectionProps) {
   )
 }
 
-export function AgentGenerateForm({ variant = "dialog", isAuthenticated = false, onClose }: AgentGenerateFormProps) {
+export function AgentGenerateForm({ variant = "dialog", onClose }: AgentGenerateFormProps) {
   const { models } = useAIModels()
   const { generateAgent, isGeneratingAgent, activeAgentGeneration } = useGeneration()
+  const { isAuthenticated } = useAuth()
 
   // Get generation status for UI
   const generationStatus = activeAgentGeneration?.status

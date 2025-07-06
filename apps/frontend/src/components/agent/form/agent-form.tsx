@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useAgent, type AgentStatus } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
+import { useAuth } from "@/hooks/use-auth"
 import { useMCP } from "@/hooks/use-mcp"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { DEFAULT_MODEL_ID } from "@/lib/constants"
@@ -34,7 +35,6 @@ interface AgentFormProps {
   agent?: Agent
   mode: "add" | "edit"
   variant?: "page" | "dialog"
-  isAuthenticated?: boolean
   execution?: {
     status: AgentStatus
     error?: string
@@ -344,7 +344,6 @@ export function AgentForm({
   agent,
   mode,
   variant = "page",
-  isAuthenticated = false,
   execution,
   onClose,
   onDeleteClick,
@@ -354,6 +353,7 @@ export function AgentForm({
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
   const { create, edit, clone } = useAgent()
+  const { isAuthenticated } = useAuth()
 
   // Check if user can edit
   const isPublicAgent = agent?.isPublic || false
