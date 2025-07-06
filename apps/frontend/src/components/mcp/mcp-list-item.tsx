@@ -71,7 +71,7 @@ export function MCPListItem({
   // Determine if user can edit/delete this server (backend handles filtering)
   const canEdit = !server.isPublic
   const canDelete = !server.isPublic
-  
+
   // Use centralized business logic
   const serverCanConnect = canConnect(server, status)
 
@@ -82,14 +82,11 @@ export function MCPListItem({
     [play],
   )
 
-  const handleMenuAction = useCallback(
-    (e: React.MouseEvent, action: () => void) => {
-      e.stopPropagation()
-      setDropdownOpen(false)
-      action()
-    },
-    []
-  )
+  const handleMenuAction = useCallback((e: React.MouseEvent, action: () => void) => {
+    e.stopPropagation()
+    setDropdownOpen(false)
+    action()
+  }, [])
 
   const handleConnectionToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -153,29 +150,29 @@ export function MCPListItem({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
                 {canEdit && (
-                  <>
-                    <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onEditClick(server))}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
+                  <DropdownMenuItem
+                    onClick={(e) => handleMenuAction(e, () => onEditClick(server))}
+                    className="hover:cursor-pointer"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onCloneClick(server))}>
+                <DropdownMenuItem
+                  onClick={(e) => handleMenuAction(e, () => onCloneClick(server))}
+                  className="hover:cursor-pointer"
+                >
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
                 {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={(e) => handleMenuAction(e, () => onDeleteClick(server))}
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive hover:cursor-pointer"
+                    onClick={(e) => handleMenuAction(e, () => onDeleteClick(server))}
+                  >
+                    <Trash className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -186,13 +183,7 @@ export function MCPListItem({
               onClick={handleConnectionToggle}
               disabled={isConnected ? false : !serverCanConnect}
               className="size-8 hover:cursor-pointer"
-              title={
-                isConnected
-                  ? "Disconnect"
-                  : !serverCanConnect
-                    ? "Cannot connect to this server"
-                    : "Connect"
-              }
+              title={isConnected ? "Disconnect" : !serverCanConnect ? "Cannot connect to this server" : "Connect"}
             >
               {isConnecting ? (
                 <LoadingAnimationInline className="text-xs" />

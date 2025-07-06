@@ -58,7 +58,7 @@ export function AgentListItem({
   const hasError = isAgentError(status)
   const isLoading = status === AGENT_STATUS.PREPARING || status === AGENT_STATUS.CONNECTING
   const isConnecting = status === AGENT_STATUS.CONNECTING
-  
+
   // Final run button state: disabled when canRun is false AND not currently running
   // (if running, button becomes a stop button and should remain enabled)
   const shouldDisableRunButton = !agentCanRun && !isRunning
@@ -68,7 +68,7 @@ export function AgentListItem({
     if (!status || status === "completed" || status === "cancelled") {
       return ""
     }
-    
+
     switch (status) {
       case "running":
         return "ring-green-500/80"
@@ -94,14 +94,11 @@ export function AgentListItem({
   const canEdit = !agent.isPublic
   const canDelete = !agent.isPublic
 
-  const handleMenuAction = useCallback(
-    (e: React.MouseEvent, action: () => void) => {
-      e.stopPropagation()
-      setDropdownOpen(false)
-      action()
-    },
-    []
-  )
+  const handleMenuAction = useCallback((e: React.MouseEvent, action: () => void) => {
+    e.stopPropagation()
+    setDropdownOpen(false)
+    action()
+  }, [])
 
   const handleRunClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -145,29 +142,29 @@ export function AgentListItem({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
                 {canEdit && (
-                  <>
-                    <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onEditClick(agent))}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
+                  <DropdownMenuItem
+                    onClick={(e) => handleMenuAction(e, () => onEditClick(agent))}
+                    className="hover:cursor-pointer"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onCloneClick(agent))}>
+                <DropdownMenuItem
+                  onClick={(e) => handleMenuAction(e, () => onCloneClick(agent))}
+                  className="hover:cursor-pointer"
+                >
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
                 {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={(e) => handleMenuAction(e, () => onDeleteClick(agent))}
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive hover:cursor-pointer"
+                    onClick={(e) => handleMenuAction(e, () => onDeleteClick(agent))}
+                  >
+                    <Trash className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

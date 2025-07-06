@@ -34,9 +34,7 @@ interface WorkflowListItemProps {
 // Helper function to calculate execution progress
 const calculateProgress = (execution: WorkflowExecution): number => {
   if (!execution.nodeExecutions || execution.nodeExecutions.length === 0) return 0
-  const completed = execution.nodeExecutions.filter(
-    (ne) => ne.status === "completed" || ne.status === "failed"
-  ).length
+  const completed = execution.nodeExecutions.filter((ne) => ne.status === "completed" || ne.status === "failed").length
   return Math.round((completed / execution.totalSteps) * 100)
 }
 
@@ -70,7 +68,7 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   // Determine if user can edit/delete this workflow
   const canEdit = isAuthenticated && !workflow.isPublic
   const canDelete = isAuthenticated && !workflow.isPublic
-  
+
   // Use centralized logic from hook
   const workflowCanRun = canRun(workflow, execution)
   const isRunning = isWorkflowRunning(execution)
@@ -78,7 +76,7 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   const isCompleted = execution?.status === "completed"
   const isFailed = execution?.status === "failed"
   const isCancelled = execution?.status === "cancelled"
-  
+
   // Final run button state: disabled when canRun is false AND not currently running
   // (if running, button becomes a stop button and should remain enabled)
   const shouldDisableRunButton = !workflowCanRun && !isRunning
@@ -86,7 +84,7 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   // Get ring color based on workflow status
   const getRingColor = () => {
     if (!execution || execution.status === "cancelled") return ""
-    
+
     switch (execution.status) {
       case "running":
         return "ring-green-500/80"
@@ -132,17 +130,14 @@ export const WorkflowListItem = memo(function WorkflowListItem({
         onRun()
       }
     },
-    [play, isRunning, onRun, onStop]
+    [play, isRunning, onRun, onStop],
   )
 
-  const handleMenuAction = useCallback(
-    (e: React.MouseEvent, action: () => void) => {
-      e.stopPropagation()
-      setDropdownOpen(false)
-      action()
-    },
-    []
-  )
+  const handleMenuAction = useCallback((e: React.MouseEvent, action: () => void) => {
+    e.stopPropagation()
+    setDropdownOpen(false)
+    action()
+  }, [])
 
   const progress = execution ? calculateProgress(execution) : 0
 
@@ -178,29 +173,29 @@ export const WorkflowListItem = memo(function WorkflowListItem({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
                 {canEdit && (
-                  <>
-                    <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onEditClick(workflow))}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
+                  <DropdownMenuItem
+                    onClick={(e) => handleMenuAction(e, () => onEditClick(workflow))}
+                    className="hover:cursor-pointer"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onCloneClick(workflow))}>
+                <DropdownMenuItem
+                  onClick={(e) => handleMenuAction(e, () => onCloneClick(workflow))}
+                  className="hover:cursor-pointer"
+                >
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
                 {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={(e) => handleMenuAction(e, () => onDeleteClick(workflow))}
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive hover:cursor-pointer"
+                    onClick={(e) => handleMenuAction(e, () => onDeleteClick(workflow))}
+                  >
+                    <Trash className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
