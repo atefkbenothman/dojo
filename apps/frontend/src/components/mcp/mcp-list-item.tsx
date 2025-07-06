@@ -80,23 +80,14 @@ export function MCPListItem({
     [play],
   )
 
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDropdownOpen(false)
-    onEditClick(server)
-  }
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDropdownOpen(false)
-    onDeleteClick(server)
-  }
-
-  const handleCloneClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDropdownOpen(false)
-    onCloneClick(server)
-  }
+  const handleMenuAction = useCallback(
+    (e: React.MouseEvent, action: () => void) => {
+      e.stopPropagation()
+      setDropdownOpen(false)
+      action()
+    },
+    []
+  )
 
   const handleConnectionToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -159,23 +150,31 @@ export function MCPListItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer" disabled={!canEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleCloneClick} className="cursor-pointer" disabled={!isAuthenticated}>
+                {canEdit && (
+                  <>
+                    <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onEditClick(server))}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onCloneClick(server))}>
                   <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleDeleteClick}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                  disabled={!canDelete}
-                >
-                  <Trash className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={(e) => handleMenuAction(e, () => onDeleteClick(server))}
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Connect/Disconnect or Clone button */}
@@ -183,7 +182,7 @@ export function MCPListItem({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleCloneClick}
+                onClick={(e) => handleMenuAction(e, () => onCloneClick(server))}
                 className="size-8 hover:cursor-pointer"
                 title="Clone this server to add your API keys, then connect"
               >

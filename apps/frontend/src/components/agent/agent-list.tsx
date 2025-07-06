@@ -239,7 +239,7 @@ export const AgentList = memo(function AgentList({
                 disabled={!isAuthenticated}
                 title={!isAuthenticated ? "Authentication required to create agents" : undefined}
               >
-                {isAuthenticated ? "Add Agent" : "Sign in to add agents"}
+                {isAuthenticated ? "Create Agent" : "Sign in to create agents"}
               </Button>
               {onGenerateAgent && (
                 <Button

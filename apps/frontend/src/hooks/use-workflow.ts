@@ -1,25 +1,49 @@
 "use client"
 
+import { useCallback, useMemo, useEffect, useState, useRef } from "react"
+import { useMutation } from "convex/react"
+import { Message } from "ai"
+import { nanoid } from "nanoid"
+import { toast } from "sonner"
+import { useAuthToken } from "@convex-dev/auth/react"
 import { useChatProvider } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
+import { useStableQuery } from "@/hooks/use-stable-query"
+import { useUrlSelection } from "@/hooks/use-url-selection"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
-import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow } from "@dojo/db/convex/types"
+import { Workflow, WorkflowNode, WorkflowExecution } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
-import { Message } from "ai"
-import { useMutation } from "convex/react"
-import { nanoid } from "nanoid"
-import { useCallback, useMemo, useEffect, useState, useRef } from "react"
-import { toast } from "sonner"
 
 export function useWorkflow() {
   const authToken = useAuthToken()
   const { play } = useSoundEffectContext()
   const { append, setMessages } = useChatProvider()
   const { currentSession } = useSession()
+  const { selectedId: selectedWorkflowId } = useUrlSelection()
+  
+  // Fetch all workflows
+  const workflows = useStableQuery(api.workflows.list)
+  
+  // Fetch selected workflow details
+  const selectedWorkflow = useStableQuery(
+    api.workflows.get,
+    selectedWorkflowId ? { id: selectedWorkflowId as Id<"workflows"> } : "skip",
+  )
+  
+  // Fetch workflow nodes for selected workflow
+  const workflowNodes = useStableQuery(
+    api.workflows.getWorkflowNodes,
+    selectedWorkflowId ? { workflowId: selectedWorkflowId as Id<"workflows"> } : "skip",
+  )
+  
+  // Fetch workflow executions for current session
+  const workflowExecutions = useStableQuery(
+    api.workflowExecutions.getBySession,
+    currentSession ? { sessionId: currentSession._id } : "skip",
+  )
 
   // Use refs to stabilize callbacks while still accessing current values
   const currentSessionRef = useRef(currentSession)
@@ -244,11 +268,41 @@ export function useWorkflow() {
     [cloneWorkflow, play],
   )
 
+  // Memoize arrays to prevent unnecessary re-renders
+  const stableWorkflows = useMemo(() => workflows || [], [workflows])
+  const stableWorkflowNodes = useMemo(() => workflowNodes || [], [workflowNodes])
+  const stableExecutions = useMemo(() => workflowExecutions || [], [workflowExecutions])
+  
+  // Helper function to get active execution for a workflow
+  const getWorkflowExecution = useCallback(
+    (workflowId: Id<"workflows">) => {
+      if (!stableExecutions.length) return null
+      // Get the most recent execution for this workflow
+      const workflowExecs = stableExecutions
+        .filter((exec) => exec.workflowId === workflowId)
+        .sort((a, b) => b.startedAt - a.startedAt)
+      return workflowExecs[0] || null
+    },
+    [stableExecutions],
+  )
+
   return {
+    // Data
+    workflows: stableWorkflows,
+    selectedWorkflow: selectedWorkflow || null,
+    workflowNodes: stableWorkflowNodes,
+    executions: stableExecutions,
+    
+    // Helpers
+    getWorkflowExecution,
+    
+    // CRUD operations
     create,
     edit,
     remove,
     clone,
+    
+    // Execution operations
     runWorkflow,
     stopWorkflow,
     stopAllWorkflows,

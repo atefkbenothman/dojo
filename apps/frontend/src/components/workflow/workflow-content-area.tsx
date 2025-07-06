@@ -4,18 +4,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ReactFlowWorkflowCanvas } from "@/components/workflow/canvas/reactflow-workflow-canvas"
 import { WorkflowRunner } from "@/components/workflow/runner/workflow-runner"
 import { WorkflowHeader } from "@/components/workflow/workflow-header"
+import { useWorkflow } from "@/hooks/use-workflow"
+import { useAgent } from "@/hooks/use-agent"
+import { useAuth } from "@/hooks/use-auth"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
+import { Workflow, Agent } from "@dojo/db/convex/types"
 import { useState, useCallback, memo } from "react"
 
 interface WorkflowContentAreaProps {
-  workflow: Workflow | null
   selectedWorkflowId: string | null
-  workflows: Workflow[]
-  agents: Agent[]
-  workflowNodes: WorkflowNode[]
-  workflowExecutions: WorkflowExecution[]
-  isAuthenticated: boolean
   onEditWorkflow: (workflow: Workflow) => void
   onRunWorkflow: (workflow: Workflow) => void
   onStopWorkflow: (workflowId: Id<"workflows">) => void
@@ -27,13 +24,7 @@ interface WorkflowContentAreaProps {
 }
 
 export const WorkflowContentArea = memo(function WorkflowContentArea({
-  workflow,
   selectedWorkflowId,
-  workflows,
-  agents,
-  workflowNodes,
-  workflowExecutions,
-  isAuthenticated,
   onEditWorkflow,
   onRunWorkflow,
   onStopWorkflow,
@@ -43,6 +34,11 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   onAddFirstStep,
   getModel,
 }: WorkflowContentAreaProps) {
+  // Get data from hooks
+  const { selectedWorkflow: workflow, workflowNodes, executions: workflowExecutions } = useWorkflow()
+  const { agents } = useAgent()
+  const { isAuthenticated } = useAuth()
+  
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
 
   const handleRunWorkflow = useCallback(async () => {
@@ -59,7 +55,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-sm text-muted-foreground">
-          {selectedWorkflowId && Array.isArray(workflows) ? "Workflow does not exist" : "Select a workflow"}
+          {selectedWorkflowId ? "Workflow does not exist" : "Select a workflow"}
         </p>
       </div>
     )
@@ -91,7 +87,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
       <TabsContent value="build" className="flex-1 overflow-hidden gap-0">
         <ReactFlowWorkflowCanvas
           workflow={workflow}
-          agents={agents}
+          agents={agents || []}
           workflowNodes={workflowNodes}
           isAuthenticated={isAuthenticated}
           workflowExecutions={workflowExecutions}
@@ -106,7 +102,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
       <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
         <WorkflowRunner
           workflow={workflow}
-          agents={agents}
+          agents={agents || []}
           isAuthenticated={isAuthenticated}
           workflowExecutions={workflowExecutions}
           workflowNodes={workflowNodes}

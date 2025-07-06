@@ -5,15 +5,14 @@ import { cn } from "@/lib/utils"
 import { PanelLeft, PanelRight } from "lucide-react"
 import { useState, useCallback } from "react"
 import { WorkflowList } from "./workflow-list"
-import type { Workflow, Agent, WorkflowNode, WorkflowExecution } from "@dojo/db/convex/types"
+import { useWorkflow } from "@/hooks/use-workflow"
+import { useAgent } from "@/hooks/use-agent"
+import { useAuth } from "@/hooks/use-auth"
+import type { Workflow } from "@dojo/db/convex/types"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 
 interface WorkflowSidebarProps {
-  workflows: Workflow[]
   selectedWorkflowId: string | null
-  isAuthenticated: boolean
-  workflowExecutions: WorkflowExecution[]
-  agents: Agent[]
   onSelectWorkflow: (workflow: Workflow) => void
   onCreateWorkflow: () => void
   onEditWorkflow: (workflow: Workflow) => void
@@ -25,11 +24,7 @@ interface WorkflowSidebarProps {
 }
 
 export function WorkflowSidebar({
-  workflows,
   selectedWorkflowId,
-  isAuthenticated,
-  workflowExecutions,
-  agents,
   onSelectWorkflow,
   onCreateWorkflow,
   onEditWorkflow,
@@ -39,6 +34,11 @@ export function WorkflowSidebar({
   onStopWorkflow,
   onGenerateWorkflow,
 }: WorkflowSidebarProps) {
+  // Get data from hooks
+  const { workflows, executions } = useWorkflow()
+  const { agents } = useAgent()
+  const { isAuthenticated } = useAuth()
+  
   const [isCollapsed, setIsCollapsed] = useState(false)
   
   const handleExpandSidebar = useCallback(() => {
@@ -74,8 +74,8 @@ export function WorkflowSidebar({
         workflows={workflows}
         selectedWorkflowId={selectedWorkflowId}
         isAuthenticated={isAuthenticated}
-        workflowExecutions={workflowExecutions}
-        agents={agents}
+        workflowExecutions={executions}
+        agents={agents || []}
         onSelectWorkflow={onSelectWorkflow}
         onCreateWorkflow={onCreateWorkflow}
         onEditWorkflow={onEditWorkflow}

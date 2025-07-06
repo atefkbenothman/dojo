@@ -79,7 +79,7 @@ export const WorkflowListItem = memo(function WorkflowListItem({
 
   // Get ring color based on workflow status
   const getRingColor = () => {
-    if (!execution) return ""
+    if (!execution || execution.status === "cancelled") return ""
     
     switch (execution.status) {
       case "running":
@@ -90,8 +90,6 @@ export const WorkflowListItem = memo(function WorkflowListItem({
         return "ring-green-500/80"
       case "failed":
         return "ring-red-500/80"
-      case "cancelled":
-        return "ring-gray-500/80"
       default:
         return ""
     }
@@ -99,7 +97,7 @@ export const WorkflowListItem = memo(function WorkflowListItem({
 
   // Get status icon
   const getStatusIcon = () => {
-    if (!execution) return null
+    if (!execution || execution.status === "cancelled") return null
     switch (execution.status) {
       case "preparing":
         return <Clock className="h-3 w-3 text-yellow-500" />
@@ -109,8 +107,6 @@ export const WorkflowListItem = memo(function WorkflowListItem({
         return <CheckCircle className="h-3 w-3 text-green-500" />
       case "failed":
         return <XCircle className="h-3 w-3 text-red-500" />
-      case "cancelled":
-        return <XCircle className="h-3 w-3 text-gray-500" />
       default:
         return null
     }
@@ -147,90 +143,84 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   return (
     <Card
       className={cn(
-        "transition-all duration-150 hover:cursor-pointer",
-        isSelected
-          ? "bg-accent shadow-sm ring-1 ring-primary/20"
-          : "hover:bg-muted/40 hover:shadow-sm",
-        getRingColor() && `ring-1 ${getRingColor()}`
+        "w-full bg-background overflow-hidden p-2 hover:bg-background/50",
+        // Show status ring when there's a status
+        getRingColor() && `ring-1 ${getRingColor()}`,
+        // Show primary ring when selected (original behavior)
+        isSelected && "ring-1 ring-primary/80 bg-background/50",
       )}
-      onMouseDown={handleCardClick}
+      onClick={handleCardClick}
     >
-      <CardContent className="p-3 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium truncate">{workflow.name}</h3>
-              {getStatusIcon()}
-            </div>
-            {workflow.description && (
-              <p className="text-xs text-muted-foreground truncate mt-1">{workflow.description}</p>
-            )}
+      <CardContent className="p-0">
+        {/* Header matching MCP/agent card exactly */}
+        <div className="p-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
+          {/* Title with status */}
+          <div className="min-w-0 flex-1 flex items-center gap-2">
+            <p className={cn("text-sm font-medium truncate text-primary/70", isSelected && "text-primary")}>
+              {workflow.name}
+            </p>
+            {getStatusIcon()}
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {/* Run/Stop button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePlayClick}
-              disabled={!canRun && !isRunning}
-              className="h-8 w-8 hover:cursor-pointer"
-              title={isRunning ? "Stop workflow" : "Run workflow"}
-            >
-              {isPreparing ? (
-                <LoadingAnimationInline className="h-3 w-3" />
-              ) : isRunning ? (
-                <Square className="h-3 w-3" />
-              ) : (
-                <Play className="h-3 w-3" />
-              )}
-            </Button>
-
-            {/* Dropdown menu */}
+          {/* Right Side */}
+          <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
+            {/* Settings */}
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 hover:cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Settings className="h-3 w-3" />
+                <Button variant="outline" size="icon" className="size-8 hover:cursor-pointer">
+                  <Settings className="h-2.5 w-2.5 text-foreground/90" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="start" className="w-48">
                 {canEdit && (
                   <>
                     <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onEditClick(workflow))}>
-                      <Pencil className="h-3 w-3 mr-2" />
+                      <Pencil className="mr-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
                 <DropdownMenuItem onClick={(e) => handleMenuAction(e, () => onCloneClick(workflow))}>
-                  <Copy className="h-3 w-3 mr-2" />
+                  <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </DropdownMenuItem>
                 {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600"
+                      className="text-destructive focus:text-destructive"
                       onClick={(e) => handleMenuAction(e, () => onDeleteClick(workflow))}
                     >
-                      <Trash className="h-3 w-3 mr-2" />
+                      <Trash className="mr-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* Run/Stop button */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handlePlayClick}
+              disabled={!canRun && !isRunning}
+              className="size-8 hover:cursor-pointer"
+              title={isRunning ? "Stop workflow" : "Run workflow"}
+            >
+              {isPreparing ? (
+                <LoadingAnimationInline className="text-xs" />
+              ) : isRunning ? (
+                <Square className="h-2.5 w-2.5" />
+              ) : (
+                <Play className="h-2.5 w-2.5" />
+              )}
+            </Button>
           </div>
         </div>
 
         {/* Progress bar for running workflows */}
         {isRunning && execution && (
-          <div className="space-y-1">
+          <div className="px-3 pb-2 space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{progress}% complete</span>
               <span>{formatDuration(execution.startedAt)}</span>
@@ -239,12 +229,16 @@ export const WorkflowListItem = memo(function WorkflowListItem({
           </div>
         )}
 
-        {/* Node count */}
-        {nodeCount !== undefined && (
-          <div className="text-xs text-muted-foreground">
-            {nodeCount} {nodeCount === 1 ? "step" : "steps"}
+        {/* Badge Row */}
+        <div className="px-3 py-2 space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            {nodeCount !== undefined && (
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border">
+                {nodeCount} {nodeCount === 1 ? "STEP" : "STEPS"}
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   )

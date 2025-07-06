@@ -230,7 +230,7 @@ export const MCPList = memo(function MCPList({
                 disabled={!isAuthenticated}
                 title={!isAuthenticated ? "Authentication required to create MCP servers" : undefined}
               >
-                {isAuthenticated ? "Add MCP Server" : "Sign in to add servers"}
+                {isAuthenticated ? "Create MCP Server" : "Sign in to create servers"}
               </Button>
             </div>
           </div>

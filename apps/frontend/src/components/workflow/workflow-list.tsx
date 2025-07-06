@@ -65,7 +65,6 @@ export const WorkflowList = memo(function WorkflowList({
     return executions
   }, [workflowExecutions])
 
-
   // Memoize the workflow categorization to prevent unnecessary recalculations
   const workflowCategories = useMemo(() => {
     const running: Workflow[] = []
@@ -226,7 +225,7 @@ export const WorkflowList = memo(function WorkflowList({
             </div>
           </div>
 
-          <div className="w-full bg-border h-[1px]" />
+          <div className="w-full border-t-[1.5px]" />
 
           {/* Running */}
           <div className="flex w-full items-center justify-center">
@@ -241,19 +240,6 @@ export const WorkflowList = memo(function WorkflowList({
             </div>
           </div>
 
-          {/* Global */}
-          <div className="flex w-full items-center justify-center">
-            <div
-              onClick={() => handleSectionClick("global")}
-              onMouseDown={handleClick}
-              className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
-            >
-              <div className="text-primary/70 group-hover:text-primary">
-                <Globe className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-
           {/* My Workflows */}
           <div className="flex w-full items-center justify-center">
             <div
@@ -263,6 +249,19 @@ export const WorkflowList = memo(function WorkflowList({
             >
               <div className="text-primary/70 group-hover:text-primary">
                 <Layers className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Global */}
+          <div className="flex w-full items-center justify-center">
+            <div
+              onClick={() => handleSectionClick("global")}
+              onMouseDown={handleClick}
+              className="group hover:bg-muted hover:border-border border border-transparent p-2 hover:cursor-pointer hover:border"
+            >
+              <div className="text-primary/70 group-hover:text-primary">
+                <Globe className="h-5 w-5" />
               </div>
             </div>
           </div>
@@ -339,32 +338,6 @@ export const WorkflowList = memo(function WorkflowList({
 
             <div className="border-b-[1px]" />
 
-            <AccordionItem value="global">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-20">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">Public Workflows</span>
-                  <span className="text-xs text-muted-foreground">({filteredGlobalWorkflows.length})</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4 py-4">
-                <div className="flex flex-col gap-4">
-                  {filteredGlobalWorkflows.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-2">
-                      {searchInput ? "No global workflows match your search" : "No global workflows available"}
-                    </p>
-                  ) : (
-                    filteredGlobalWorkflows.map((workflow) => (
-                      <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
-                        <WorkflowListItem {...createWorkflowListItemProps(workflow)} />
-                      </div>
-                    ))
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <div className="bg-border h-[1px]" />
-
             {/* User Workflows Section - Always shown */}
             <AccordionItem value="user" className="">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-10 border-0">
@@ -396,7 +369,32 @@ export const WorkflowList = memo(function WorkflowList({
               </AccordionContent>
             </AccordionItem>
 
-            <div className="bg-border h-[1px]" />
+            <div className="border-b-[1px]" />
+
+            <AccordionItem value="global">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card z-20">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">Public</span>
+                  <span className="text-xs text-muted-foreground">({filteredGlobalWorkflows.length})</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4 py-4">
+                <div className="flex flex-col gap-4">
+                  {filteredGlobalWorkflows.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2">
+                      {searchInput ? "No global workflows match your search" : "No global workflows available"}
+                    </p>
+                  ) : (
+                    filteredGlobalWorkflows.map((workflow) => (
+                      <div key={workflow._id} className="cursor-pointer" onClick={() => onSelectWorkflow(workflow)}>
+                        <WorkflowListItem {...createWorkflowListItemProps(workflow)} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+            <div className="border-b-[1px]" />
           </Accordion>
         </>
       )}
