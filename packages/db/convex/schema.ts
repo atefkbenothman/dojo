@@ -59,6 +59,7 @@ export const agentsFields = {
   name: v.string(),
   outputType: v.union(v.literal("text"), v.literal("object")),
   systemPrompt: v.string(),
+  contextPrompt: v.optional(v.string()),
   isPublic: v.optional(v.boolean()),
   aiModelId: v.id("models"),
 }

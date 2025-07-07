@@ -9,7 +9,7 @@ import { z } from "zod"
 export const agentRouter: Router = express.Router()
 
 const agentInputSchema = z.object({
-  messages: z.array(z.any()).min(1, { message: "Missing or invalid messages array" }),
+  messages: z.array(z.any()), // Allow empty array for standalone agent execution
   agent: z.object({
     agentId: z.string(),
   }),

@@ -497,6 +497,20 @@ export class WorkflowExecutor {
     return modelInstance as LanguageModel
   }
 
+  /**
+   * Builds structured user message with XML formatting when context is provided.
+   */
+  private buildStructuredUserMessage(prompt: string, contextPrompt?: string): string {
+    // If no context, return just the prompt wrapped in XML
+    if (!contextPrompt || contextPrompt.trim() === "") {
+      return `<Prompt>${prompt}</Prompt>`
+    }
+
+    // Build structured XML message with context
+    return `<Context>${contextPrompt.trim()}</Context>
+<Prompt>${prompt}</Prompt>`
+  }
+
   private buildMessagesWithContext(
     workflowPrompt: string,
     agent: Doc<"agents">,
@@ -504,25 +518,12 @@ export class WorkflowExecutor {
   ): CoreMessage[] {
     const messages: CoreMessage[] = []
 
-    // Check if workflow instructions are already in the conversation history as a system message
-    const hasWorkflowInstructions = context.conversationHistory.some(
-      (m) => m.role === "system" && m.content.includes(this.workflow.instructions),
-    )
-
-    // Only add agent's system prompt, avoiding duplicate workflow instructions
-    if (hasWorkflowInstructions) {
-      // Just add the agent's prompt
-      messages.push({
-        role: "system",
-        content: agent.systemPrompt,
-      })
-    } else {
-      // Add combined workflow instructions and agent prompt
-      messages.push({
-        role: "system",
-        content: `${this.workflow.instructions}\n\n${agent.systemPrompt}`,
-      })
-    }
+    // Build XML-structured system prompt for workflow agents
+    const systemPrompt = this.buildWorkflowSystemPrompt(agent)
+    messages.push({
+      role: "system",
+      content: systemPrompt,
+    })
 
     // Add conversation history from context (includes parent chain)
     messages.push(...context.conversationHistory)
@@ -530,9 +531,12 @@ export class WorkflowExecutor {
     // Add current workflow prompt if not already in history
     const hasUserPrompt = context.conversationHistory.some((m) => m.role === "user")
     if (!hasUserPrompt) {
+      // Build structured user message if agent has context
+      const userContent = this.buildStructuredUserMessage(workflowPrompt, agent.contextPrompt)
+      
       messages.push({
         role: "user",
-        content: workflowPrompt,
+        content: userContent,
       })
     }
 
@@ -547,6 +551,25 @@ export class WorkflowExecutor {
     }
 
     return messages
+  }
+
+  /**
+   * Builds an XML-structured system prompt for workflow agents
+   */
+  private buildWorkflowSystemPrompt(agent: Doc<"agents">): string {
+    return `<workflow>
+  <introduction>
+    You are part of a multi-agent workflow system. Each agent has a specific role and contributes to achieving the overall goal. You can see the full conversation history to understand what previous agents have accomplished. Your task is to build upon their work and contribute your specialized expertise.
+  </introduction>
+
+  <workflow_goal>
+    ${this.workflow.instructions}
+  </workflow_goal>
+
+  <current_agent>
+    ${agent.systemPrompt}
+  </current_agent>
+</workflow>`
   }
 
   private async executeTextStep(

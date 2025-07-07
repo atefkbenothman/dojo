@@ -7,6 +7,7 @@ export function getDefaultAgentFormValues(agent?: Agent, defaultModelId?: string
   return {
     name: agent?.name || "",
     systemPrompt: agent?.systemPrompt || "",
+    contextPrompt: agent?.contextPrompt || "",
     outputType: (agent?.outputType as "text" | "object") || "text",
     mcpServers: agent?.mcpServers || [],
     aiModelId: agent?.aiModelId || defaultModelId || "",
@@ -46,6 +47,7 @@ export function prepareAgentData(data: AgentFormValues, isPublic: boolean = fals
   return {
     name: data.name,
     systemPrompt: data.systemPrompt,
+    contextPrompt: data.contextPrompt,
     outputType: data.outputType,
     mcpServers: (data.mcpServers || []) as Id<"mcp">[],
     aiModelId: data.aiModelId as Id<"models">,

@@ -122,11 +122,23 @@ export class AgentService {
       // Get tools after connections are established
       const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
+      // Filter out any empty messages from frontend
+      const filteredMessages = messages.filter(msg => 
+        msg.content !== "" && msg.content !== null && msg.content !== undefined
+      )
+      
+      logger.info("Agent", `Received ${messages.length} messages, ${filteredMessages.length} after filtering`)
+      
+      // Build messages based on execution type (standalone vs workflow)
+      const processedMessages = this.constructMessages(agent, filteredMessages)
+      
+      logger.info("Agent", `Constructed ${processedMessages.length} messages for agent execution`)
+
       // Execute agent based on output type
       await this.executeAgent({
         agent,
         aiModel,
-        messages,
+        messages: processedMessages,
         res,
         combinedTools,
         userIdForLogging,
@@ -257,6 +269,59 @@ export class AgentService {
     const modelInstance = await modelManager.getModel(agent.aiModelId, client)
 
     return modelInstance as LanguageModel
+  }
+
+  /**
+   * Constructs messages based on execution type:
+   * - Standalone: Creates new messages from agent's systemPrompt and contextPrompt
+   * - Workflow: Uses existing conversation history
+   */
+  private constructMessages(agent: Doc<"agents">, incomingMessages: CoreMessage[]): CoreMessage[] {
+    // For agent execution, we ALWAYS want to use the agent's own system prompt
+    // Check if we have any real user messages (not empty)
+    const userMessages = incomingMessages.filter(m => 
+      m.role === "user" && m.content && m.content.toString().trim() !== ""
+    )
+    
+    // Standalone execution if no real user messages exist
+    const isStandalone = userMessages.length === 0
+    
+    if (isStandalone) {
+      // Standalone agent execution - construct messages from agent config
+      const messages: CoreMessage[] = []
+      
+      // Add agent's system message
+      messages.push({
+        role: "system",
+        content: agent.systemPrompt,
+      })
+      
+      // Add user message - use context if available, otherwise a default prompt
+      const userContent = agent.contextPrompt?.trim() || 
+        "Please execute the instructions provided in your system prompt."
+      
+      messages.push({
+        role: "user",
+        content: userContent,
+      })
+      
+      return messages
+    } else {
+      // Conversation continuation or workflow
+      // Replace any existing system message with agent's own system prompt
+      const messages: CoreMessage[] = []
+      
+      // Add agent's system prompt
+      messages.push({
+        role: "system",
+        content: agent.systemPrompt,
+      })
+      
+      // Add all non-system messages from incoming messages
+      messages.push(...incomingMessages.filter(m => m.role !== "system"))
+      
+      return messages
+    }
   }
 
   private async executeAgent(params: {

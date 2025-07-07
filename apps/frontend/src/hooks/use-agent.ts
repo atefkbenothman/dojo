@@ -99,15 +99,14 @@ export function useAgent() {
         return
       }
 
-      const userMessage: Message = {
-        id: nanoid(),
-        role: "user",
-        content: agent.systemPrompt,
-      }
-
-      // Append message - backend will handle execution tracking
+      // For standalone agent execution, send empty messages array
+      // Backend will construct messages from agent's systemPrompt and contextPrompt
       try {
-        await append(userMessage, {
+        await append({
+          id: nanoid(),
+          role: "user",
+          content: "", // Empty content - backend will handle message construction
+        } as Message, {
           body: {
             interactionType: "agent",
             agent: {

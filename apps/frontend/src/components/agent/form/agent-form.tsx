@@ -157,6 +157,53 @@ function SystemPromptSection({ form, canEdit, onCopyPrompt }: SystemPromptSectio
   )
 }
 
+// Component for context prompt section
+interface ContextSectionProps {
+  form: UseFormReturn<AgentFormValues>
+  canEdit: boolean
+  onCopyContext: () => void
+}
+
+function ContextSection({ form, canEdit, onCopyContext }: ContextSectionProps) {
+  return (
+    <div className="space-y-2">
+      <p className="text-base font-medium text-muted-foreground">Context (Optional)</p>
+      <p className="text-sm text-muted-foreground">
+        Additional context or instructions that will be passed to the agent when it runs.
+      </p>
+      <FormField
+        control={form.control}
+        name="contextPrompt"
+        render={({ field }) => (
+          <FormItem>
+            <FormControl>
+              <div className="relative">
+                <Textarea
+                  {...field}
+                  className="min-h-[80px] max-h-[160px] h-[80px] font-mono text-sm bg-muted/20 pr-10"
+                  placeholder="Enter additional context or instructions for this agent..."
+                  disabled={!canEdit}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onCopyContext}
+                  className="absolute top-1 right-1 sm:top-2 sm:right-2 h-7 w-7 sm:h-8 sm:w-8"
+                  title="Copy context"
+                >
+                  <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                </Button>
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  )
+}
+
 // Component for model selection
 interface ModelSectionProps {
   form: UseFormReturn<AgentFormValues>
@@ -439,6 +486,16 @@ export function AgentForm({
     })
   }, [form, play])
 
+  const handleCopyContext = useCallback(() => {
+    const currentContext = form.getValues("contextPrompt") || ""
+    navigator.clipboard.writeText(currentContext)
+    play("./sounds/click.mp3", { volume: 0.5 })
+    toast.success("Context copied to clipboard", {
+      duration: 2000,
+      position: "bottom-center",
+    })
+  }, [form, play])
+
   const handleSave = async (data: AgentFormValues) => {
     try {
       const agentData = prepareAgentData(data, false)
@@ -512,6 +569,7 @@ export function AgentForm({
       <div className="space-y-8">
         <AgentNameSection form={form} canEdit={canEdit} />
         <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
+        <ContextSection form={form} canEdit={canEdit} onCopyContext={handleCopyContext} />
         <ModelSection form={form} canEdit={canEdit} />
         <OutputTypeSection form={form} canEdit={canEdit} />
         <div className="flex-1 sm:flex-initial min-h-0 sm:min-h-fit flex flex-col">
