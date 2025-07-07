@@ -1,6 +1,6 @@
 import { logger } from "../../lib/logger"
 import { mcpConnectionManager } from "../mcp/connection-manager"
-import { logWorkflow, WorkflowExecutor, type WorkflowExecutorOptions } from "./executor"
+import { WorkflowExecutor, type WorkflowExecutorOptions } from "./executor"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import type { CoreMessage } from "ai"
@@ -117,11 +117,14 @@ export class WorkflowService {
       // Note: Tools will be dynamically aggregated after workflow connections are established
       const combinedTools = mcpConnectionManager.aggregateTools(session._id)
 
-      logWorkflow(`Starting workflow ${workflow._id} for userId: ${userIdForLogging}, nodes: ${nodes.length}`)
+      logger.info(
+        "Workflow",
+        `Starting workflow ${workflow._id} for userId: ${userIdForLogging}, nodes: ${nodes.length}`,
+      )
 
       // Check if there are any active MCP connections for logging
       if (Object.keys(combinedTools).length > 0) {
-        logWorkflow(`Using ${Object.keys(combinedTools).length} existing tools`)
+        logger.info("Workflow", `Using ${Object.keys(combinedTools).length} existing tools`)
       }
 
       // Execute workflow with execution tracking
@@ -198,7 +201,6 @@ export class WorkflowService {
     }
   }
 
-  // New method to stop a workflow execution
   async stopExecution(executionId: string, client: ConvexHttpClient): Promise<{ success: boolean; error?: string }> {
     try {
       // First, check if the execution exists and is running
@@ -292,7 +294,7 @@ export class WorkflowService {
       })
 
       if (nodes.length === 0) {
-        logWorkflow(`WARNING: No nodes found for workflow ${workflow._id}`)
+        logger.info("Workflow", `No nodes found for workflow ${workflow._id}`)
         return []
       }
 

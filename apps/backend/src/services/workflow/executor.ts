@@ -133,10 +133,8 @@ export class WorkflowExecutor {
   async execute(initialMessages: CoreMessage[]): Promise<WorkflowExecutionResult> {
     try {
       // Filter out trigger messages from frontend
-      const filteredMessages = initialMessages.filter(msg => 
-        msg.content !== "trigger"
-      )
-      
+      const filteredMessages = initialMessages.filter((msg) => msg.content !== "trigger")
+
       // Store initial messages for context building
       this.initialMessages = filteredMessages.length > 0 ? filteredMessages : []
 
@@ -147,10 +145,10 @@ export class WorkflowExecutor {
 
       // Extract workflow prompt from initial messages or use workflow instructions
       const workflowPromptMessage = this.initialMessages.find((m) => m.role === "user")
-      const workflowPrompt = workflowPromptMessage?.content 
-        ? (typeof workflowPromptMessage.content === "string"
+      const workflowPrompt = workflowPromptMessage?.content
+        ? typeof workflowPromptMessage.content === "string"
           ? workflowPromptMessage.content
-          : JSON.stringify(workflowPromptMessage.content))
+          : JSON.stringify(workflowPromptMessage.content)
         : this.workflow.instructions
 
       this.log(`Starting workflow execution with ${this.workflowNodes.length} nodes`)
@@ -511,7 +509,6 @@ export class WorkflowExecutor {
     if (!contextPrompt || contextPrompt.trim() === "") {
       return `<Prompt>${prompt}</Prompt>`
     }
-
     // Build structured XML message with context
     return `<Context>${contextPrompt.trim()}</Context>
 <Prompt>${prompt}</Prompt>`
@@ -539,7 +536,7 @@ export class WorkflowExecutor {
     if (!hasUserPrompt) {
       // Build structured user message if agent has context
       const userContent = this.buildStructuredUserMessage(workflowPrompt, agent.contextPrompt)
-      
+
       messages.push({
         role: "user",
         content: userContent,
@@ -779,14 +776,5 @@ export class WorkflowExecutor {
     if (this.options.executionId) {
       await mcpConnectionManager.cleanupWorkflowConnections(this.options.executionId)
     }
-  }
-}
-
-// Export the logging function for external use
-export function logWorkflow(message: string, data?: unknown): void {
-  if (data !== undefined) {
-    logger.info("REST /workflow/run", message, data)
-  } else {
-    logger.info("REST /workflow/run", message)
   }
 }
