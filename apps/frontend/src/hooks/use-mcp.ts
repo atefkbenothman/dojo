@@ -55,6 +55,9 @@ export const canConnectMCP = (
   // Can't connect if already connected or connecting
   if (isMCPConnected(connectionState) || isMCPConnecting(connectionState)) return false
 
+  // Can't connect to template servers - templates are only for cloning
+  if (server.isTemplate === true) return false
+
   // Can't connect local servers in production
   if (server.localOnly && process.env.NODE_ENV === "production") return false
 
@@ -284,6 +287,8 @@ export function useMCP() {
     (server: Doc<"mcp">, connectionState?: MCPConnectionState | null) => {
       // Can't connect if already connected or connecting
       if (isMCPConnected(connectionState) || isMCPConnecting(connectionState)) return false
+      // Can't connect to template servers - templates are only for cloning
+      if (server.isTemplate === true) return false
       // Can't connect local servers in production
       if (server.localOnly && process.env.NODE_ENV === "production") return false
       // Can't connect servers requiring keys without authentication
