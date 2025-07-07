@@ -4,6 +4,7 @@ import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { SYSTEM_PROMPT } from "@/lib/constants"
 import { useSession } from "@/providers/session-provider"
+import { useNotificationStore } from "@/store/use-notification-store"
 import { useChat as useAIChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { env } from "@dojo/env/frontend"
@@ -28,7 +29,7 @@ export function useChat() {
 
   const [context, setContext] = useState<string>("")
   const [chatError, setChatError] = useState<string | null>(null)
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
+  const { addUnreadContext, removeUnreadContext } = useNotificationStore()
 
   const headers = useMemo(
     () => ({
@@ -48,8 +49,8 @@ export function useChat() {
 
   const onFinish = useCallback(() => {
     play("./sounds/done.mp3", { volume: 0.5 })
-    setHasUnreadMessages(true)
-  }, [play])
+    addUnreadContext("main-chat")
+  }, [play, addUnreadContext])
 
   const { messages, status, input, append, setMessages, error, stop, setInput, handleInputChange, handleSubmit } =
     useAIChat({
@@ -102,12 +103,12 @@ export function useChat() {
     stop()
     setMessages(initialMessages)
     setChatError(null)
-    setHasUnreadMessages(false)
-  }, [setMessages, stop])
+    removeUnreadContext("main-chat")
+  }, [setMessages, stop, removeUnreadContext])
 
   const clearNotifications = useCallback(() => {
-    setHasUnreadMessages(false)
-  }, [])
+    removeUnreadContext("main-chat")
+  }, [removeUnreadContext])
 
   return {
     messages: messages as (UIMessage & { images?: { type: "generated_image"; images: { base64: string }[] } })[],
@@ -123,7 +124,6 @@ export function useChat() {
     stop,
     setMessages,
     setChatError,
-    hasUnreadMessages,
     clearNotifications,
     setInput,
     handleInputChange,

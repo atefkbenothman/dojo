@@ -4,6 +4,7 @@ import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
+import { useNotificationStore } from "@/store/use-notification-store"
 import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -19,6 +20,7 @@ export function useWorkflow() {
   const authToken = useAuthToken()
   const { play } = useSoundEffectContext()
   const { currentSession, clientSessionId } = useSession()
+  const { addUnreadContext } = useNotificationStore()
 
   const { messages, append, status, setMessages } = useChat({
     id: "unified-chat",
@@ -34,6 +36,7 @@ export function useWorkflow() {
     },
     onFinish: () => {
       play("./sounds/done.mp3", { volume: 0.5 })
+      addUnreadContext("workflow")
     },
   })
 

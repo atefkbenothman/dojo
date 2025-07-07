@@ -6,6 +6,7 @@ import { SideNav } from "@/components/panels/side-nav"
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable"
 import { useChat } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
+import { useNotificationStore } from "@/store/use-notification-store"
 import { cn } from "@/lib/utils"
 import { useRef, useCallback, useEffect } from "react"
 import { ImperativePanelHandle } from "react-resizable-panels"
@@ -23,7 +24,8 @@ const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
 const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 60
 
 export function ResizableLayout({ children, defaultLayout, isServerHealthy }: ResizableLayoutProps) {
-  const { handleNewChat, hasUnreadMessages, clearNotifications } = useChat()
+  const { handleNewChat, clearNotifications } = useChat()
+  const { hasUnreadMessages, clearAllNotifications } = useNotificationStore()
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
 
@@ -60,8 +62,9 @@ export function ResizableLayout({ children, defaultLayout, isServerHealthy }: Re
   useEffect(() => {
     if (!isChatPanelCollapsed && hasUnreadMessages) {
       clearNotifications()
+      clearAllNotifications()
     }
-  }, [isChatPanelCollapsed, hasUnreadMessages, clearNotifications])
+  }, [isChatPanelCollapsed, hasUnreadMessages, clearNotifications, clearAllNotifications])
 
   // Chat panel toggle - same behavior for all screen sizes
   const onChatPanelToggle = useCallback(() => {
