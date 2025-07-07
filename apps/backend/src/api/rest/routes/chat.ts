@@ -1,9 +1,9 @@
 import { asyncHandler, throwError } from "../../../lib/errors"
 import { logger } from "../../../lib/logger"
+import { agentService } from "../../../services/agent/agent"
 import { modelManager } from "../../../services/ai/model-manager"
 import { streamTextResponse } from "../../../services/ai/stream-text"
 import { mcpConnectionManager } from "../../../services/mcp/connection-manager"
-import { agentService } from "../../../services/agent/agent"
 import { workflowService } from "../../../services/workflow/workflow"
 import { createValidatedRequestMiddleware } from "../middleware"
 import type { LanguageModel, CoreMessage } from "ai"
@@ -12,45 +12,38 @@ import { z } from "zod"
 
 export const chatRouter: Router = express.Router()
 
-// Unified schema that handles all types
-const unifiedChatSchema = z.object({
-  messages: z.array(z.any()),
-  type: z.enum(["chat", "agent", "workflow"]).optional().default("chat"),
-  // Chat-specific
-  modelId: z.string().optional(),
-  // Agent-specific
-  agentId: z.string().optional(),
-  // Workflow-specific
-  workflow: z.object({
-    workflowId: z.string(),
+const unifiedChatSchema = z
+  .object({
+    messages: z.array(z.any()),
+    type: z.enum(["chat", "agent", "workflow"]).optional().default("chat"),
     modelId: z.string().optional(),
-  }).optional(),
-}).refine(
-  (data) => {
-    // Validate based on type
-    if (data.type === "chat") {
-      return !!data.modelId && data.messages.length > 0
-    }
-    if (data.type === "agent") {
-      return !!data.agentId
-    }
-    if (data.type === "workflow") {
-      return !!data.workflow?.workflowId
-    }
-    return false
-  },
-  {
-    message: "Invalid request: missing required fields for the specified type",
-  }
-)
+    agentId: z.string().optional(),
+    workflow: z
+      .object({
+        workflowId: z.string(),
+        modelId: z.string().optional(),
+      })
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      switch (data.type) {
+        case "chat":
+          return !!data.modelId && data.messages.length > 0
+        case "agent":
+          return !!data.agentId
+        case "workflow":
+          return !!data.workflow?.workflowId
+        default:
+          return false
+      }
+    },
+    {
+      message: "Invalid request: missing required fields for the specified type",
+    },
+  )
 
-// Handler functions for each type
-async function handleDirectChat(
-  req: Request,
-  res: Response,
-  messages: CoreMessage[],
-  modelId: string
-): Promise<void> {
+async function handleDirectChat(req: Request, res: Response, messages: CoreMessage[], modelId: string): Promise<void> {
   const { session, client } = req
 
   logger.info(
@@ -75,12 +68,7 @@ async function handleDirectChat(
   })
 }
 
-async function handleAgentChat(
-  req: Request,
-  res: Response,
-  messages: CoreMessage[],
-  agentId: string
-): Promise<void> {
+async function handleAgentChat(req: Request, res: Response, messages: CoreMessage[], agentId: string): Promise<void> {
   const { session, client } = req
 
   logger.info(
@@ -108,7 +96,7 @@ async function handleWorkflowChat(
   req: Request,
   res: Response,
   messages: CoreMessage[],
-  workflowInfo: { workflowId: string; modelId?: string }
+  workflowInfo: { workflowId: string; modelId?: string },
 ): Promise<void> {
   const { session, client } = req
 
@@ -136,7 +124,6 @@ async function handleWorkflowChat(
   }
 }
 
-// Main unified endpoint
 chatRouter.post(
   "/",
   createValidatedRequestMiddleware(unifiedChatSchema),

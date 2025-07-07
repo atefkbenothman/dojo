@@ -2,49 +2,13 @@ import { asyncHandler, throwError } from "../../../lib/errors"
 import { logger } from "../../../lib/logger"
 import { agentService } from "../../../services/agent/agent"
 import { createValidatedRequestMiddleware } from "../middleware"
-import { CoreMessage } from "ai"
 import express, { type Request, type Response, Router } from "express"
 import { z } from "zod"
 
 export const agentRouter: Router = express.Router()
 
-const agentInputSchema = z.object({
-  messages: z.array(z.any()), // Allow empty array for standalone agent execution
-  agentId: z.string().min(1, { message: "Missing agentId" }),
-})
-
 // Schema for stop execution (empty body, just needs session)
 const stopExecutionSchema = z.object({})
-
-agentRouter.post(
-  "/run",
-  createValidatedRequestMiddleware(agentInputSchema),
-  asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { session, client } = req
-    const parsedInput = req.parsedInput as z.infer<typeof agentInputSchema>
-    const { agentId, messages } = parsedInput
-
-    logger.info(
-      "REST /agent/run",
-      `request received for userId: ${session.userId || "anonymous"}, agent: ${agentId}`,
-    )
-
-    const result = await agentService.runAgent({
-      agentId,
-      messages: messages as CoreMessage[],
-      session,
-      res,
-      client,
-    })
-
-    if (!result.success) {
-      if (result.error?.includes("not found")) {
-        throwError(`Agent with id '${agentId}' not found`, 404)
-      }
-      throw new Error(result.error || "Internal server error")
-    }
-  }),
-)
 
 agentRouter.post(
   "/execution/:executionId/stop",
