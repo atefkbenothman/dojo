@@ -26,7 +26,7 @@ export const SettingsDialog = memo(function SettingsDialog({ isOpen, setIsOpen }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl h-[40rem] flex flex-col border-2 overflow-hidden p-0 m-0 gap-0">
+      <DialogContent className="sm:max-w-2xl h-[90vh] sm:h-[40rem] flex flex-col border-2 overflow-hidden p-0 m-0 gap-0">
         <DialogHeader className="p-0 gap-0 m-0 h-12 flex justify-center p-4 border-b-[2px] bg-card">
           <DialogTitle className="text-base font-semibold">Settings</DialogTitle>
         </DialogHeader>

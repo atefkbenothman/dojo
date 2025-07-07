@@ -552,7 +552,7 @@ export function MCPForm({
             type="submit"
             disabled={!form.formState.isDirty || form.formState.isSubmitting || !canEdit}
             className="w-full sm:w-auto hover:cursor-pointer"
-            variant={variant === "dialog" ? "secondary" : "default"}
+            variant="default"
           >
             {mode === "add" ? "Create Server" : "Save"}
           </Button>
@@ -571,15 +571,15 @@ export function MCPForm({
     return (
       <>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSave)}>
-            <Card className="p-0 border-[1.5px] gap-0">
-              <CardHeader className="p-4 gap-0 border-b-[1.5px]">
+          <form onSubmit={form.handleSubmit(handleSave)} className="flex flex-col">
+            <Card className="p-0 border-[1.5px] gap-0 flex flex-col">
+              <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0">
                 <CardTitle>
                   {mode === "add" ? "New MCP Server" : `${form.watch("name") || server?.name} Config`}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 bg-background space-y-8">{formContent}</CardContent>
-              {shouldShowFooter && <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>}
+              <CardContent className="p-4 bg-background space-y-8 flex-1 overflow-y-auto max-h-[60vh]">{formContent}</CardContent>
+              {shouldShowFooter && <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0">{formFooter}</CardFooter>}
             </Card>
           </form>
         </Form>

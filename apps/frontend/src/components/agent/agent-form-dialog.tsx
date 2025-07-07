@@ -17,7 +17,7 @@ export function AgentFormDialog({ mode, agent, open, onOpenChange, onAgentCreate
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border border-2 sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0"
+        className="border border-2 sm:max-w-2xl h-[90vh] max-h-[90vh] p-0 flex flex-col"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <VisuallyHidden>
