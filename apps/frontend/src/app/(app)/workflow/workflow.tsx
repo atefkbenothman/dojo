@@ -9,21 +9,22 @@ import { WorkflowSidebar } from "@/components/workflow/workflow-sidebar"
 import { useAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useAuth } from "@/hooks/use-auth"
+import { useStableQuery } from "@/hooks/use-stable-query"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { useWorkflow } from "@/hooks/use-workflow"
 import { useWorkflowNodes } from "@/hooks/use-workflow-nodes"
+import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow as WorkflowType } from "@dojo/db/convex/types"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 
 export function Workflow() {
   const { isAuthenticated } = useAuth()
   const { selectedId: selectedWorkflowId, setSelectedId: setSelectedWorkflowId } = useUrlSelection()
 
-  // Get all workflow data and operations from the enhanced hook
+  // Get all workflow data and operations from the hook
   const {
-    selectedWorkflow,
-    workflowNodes,
+    workflows,
     executions,
     getWorkflowExecution,
     create,
@@ -35,6 +36,18 @@ export function Workflow() {
   } = useWorkflow()
   const { agents } = useAgent()
   const { getModel } = useAIModels()
+  
+  // Find selected workflow from the list
+  const selectedWorkflow = useMemo(() => {
+    if (!selectedWorkflowId) return null
+    return workflows.find((w) => w._id === selectedWorkflowId) || null
+  }, [workflows, selectedWorkflowId])
+  
+  // Fetch workflow nodes for selected workflow
+  const workflowNodes = useStableQuery(
+    api.workflows.getWorkflowNodes,
+    selectedWorkflow ? { workflowId: selectedWorkflow._id } : "skip"
+  ) || []
 
   // Get node operations
   const {

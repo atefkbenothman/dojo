@@ -2,7 +2,6 @@
 
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
-import { useUrlSelection } from "@/hooks/use-url-selection"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
 import { useChat, Message } from "@ai-sdk/react"
@@ -13,7 +12,6 @@ import { Workflow, WorkflowExecution } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
 import { useMutation } from "convex/react"
 import { nanoid } from "nanoid"
-import { usePathname } from "next/navigation"
 import { useCallback, useMemo, useEffect, useState, useRef } from "react"
 import { toast } from "sonner"
 
@@ -21,11 +19,6 @@ export function useWorkflow() {
   const authToken = useAuthToken()
   const { play } = useSoundEffectContext()
   const { currentSession, clientSessionId } = useSession()
-  const pathname = usePathname()
-
-  // Only use URL selection if we're on a workflow page
-  const { selectedId } = useUrlSelection()
-  const selectedWorkflowId = pathname?.includes("/workflow") ? selectedId : null
 
   const { messages, append, status, setMessages } = useChat({
     id: "unified-chat",
@@ -46,18 +39,6 @@ export function useWorkflow() {
 
   // Fetch all workflows
   const workflows = useStableQuery(api.workflows.list)
-
-  // Fetch selected workflow details
-  const selectedWorkflow = useStableQuery(
-    api.workflows.get,
-    selectedWorkflowId ? { id: selectedWorkflowId as Id<"workflows"> } : "skip",
-  )
-
-  // Fetch workflow nodes for selected workflow
-  const workflowNodes = useStableQuery(
-    api.workflows.getWorkflowNodes,
-    selectedWorkflowId && selectedWorkflow ? { workflowId: selectedWorkflowId as Id<"workflows"> } : "skip",
-  )
 
   // Fetch workflow executions for current session
   const workflowExecutions = useStableQuery(
@@ -283,7 +264,6 @@ export function useWorkflow() {
 
   // Memoize arrays to prevent unnecessary re-renders
   const stableWorkflows = useMemo(() => workflows || [], [workflows])
-  const stableWorkflowNodes = useMemo(() => workflowNodes || [], [workflowNodes])
   const stableExecutions = useMemo(() => workflowExecutions || [], [workflowExecutions])
 
   // Helper function to get active execution for a workflow
@@ -315,8 +295,6 @@ export function useWorkflow() {
     workflows: stableWorkflows,
     workflowMessages: messages,
     workflowStatus: status,
-    selectedWorkflow: selectedWorkflow || null,
-    workflowNodes: stableWorkflowNodes,
     executions: stableExecutions,
 
     // Helpers
