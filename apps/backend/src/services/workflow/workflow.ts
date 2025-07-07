@@ -48,7 +48,7 @@ export class WorkflowService {
         }
       })
 
-      // Fetch and validate workflow
+      // Fetch workflow - trust that it's valid since validation is done in Convex
       const workflow = await this.fetchWorkflow(workflowId, client)
       if (!workflow) {
         return {
@@ -58,42 +58,13 @@ export class WorkflowService {
         }
       }
 
-      // Fetch and validate workflow nodes
+      // Fetch workflow nodes - trust that structure is valid since validation is done in Convex
       const nodes = await this.fetchWorkflowNodes(workflow, client)
       if (nodes.length === 0) {
         return {
           success: false,
           completedSteps: 0,
-          error: "Workflow has no valid nodes.",
-        }
-      }
-
-      // Validate tree structure
-      const treeValidationError = this.validateWorkflowTree(nodes)
-      if (treeValidationError) {
-        return {
-          success: false,
-          completedSteps: 0,
-          error: treeValidationError,
-        }
-      }
-
-      // Pre-validate that all nodes have agents with models
-      for (const node of nodes) {
-        const agent = await client.query(api.agents.get, { id: node.agentId })
-        if (!agent) {
-          return {
-            success: false,
-            completedSteps: 0,
-            error: `Agent for node "${node.nodeId}" not found.`,
-          }
-        }
-        if (!agent.aiModelId) {
-          return {
-            success: false,
-            completedSteps: 0,
-            error: `Agent "${agent.name}" in node "${node.nodeId}" does not have an AI model configured.`,
-          }
+          error: "Workflow has no nodes.",
         }
       }
 
@@ -104,8 +75,6 @@ export class WorkflowService {
         totalSteps: nodes.length, // All nodes are step nodes now
         agentIds: nodes.map((n) => n.agentId),
       })
-
-      // Note: MCP connections are now handled per-step during execution
 
       // Register the abort controller
       WorkflowService.executionControllers.set(executionId, abortController)
@@ -302,87 +271,6 @@ export class WorkflowService {
     } catch (error) {
       logger.error("Workflow", "Error fetching workflow nodes", error)
       return []
-    }
-  }
-
-  private validateWorkflowTree(nodes: Doc<"workflowNodes">[]): string | null {
-    // Find root nodes (nodes with no parent)
-    const rootNodes = nodes.filter((n) => !n.parentNodeId)
-    if (rootNodes.length === 0) {
-      return "Workflow must have at least one root node (node with no parent)"
-    }
-
-    // Note: Multiple root nodes are allowed for workflows that start with multiple step nodes
-
-    // 1. Check for invalid parent references
-    const nodeIds = new Set(nodes.map((n) => n.nodeId))
-    for (const node of nodes) {
-      if (node.parentNodeId && !nodeIds.has(node.parentNodeId)) {
-        return `Node ${node.nodeId} has invalid parent reference: ${node.parentNodeId} does not exist`
-      }
-    }
-
-    // 3. Check for circular dependencies
-    const visited = new Set<string>()
-    const visiting = new Set<string>()
-
-    const hasCycle = (nodeId: string): boolean => {
-      if (visiting.has(nodeId)) return true
-      if (visited.has(nodeId)) return false
-
-      visiting.add(nodeId)
-
-      // Find children of this node
-      const children = nodes.filter((n) => n.parentNodeId === nodeId)
-      for (const child of children) {
-        if (hasCycle(child.nodeId)) return true
-      }
-
-      visiting.delete(nodeId)
-      visited.add(nodeId)
-      return false
-    }
-
-    for (const node of nodes) {
-      if (!visited.has(node.nodeId) && hasCycle(node.nodeId)) {
-        return `Circular dependency detected involving node ${node.nodeId}`
-      }
-    }
-
-    // 4. Check for orphaned nodes by traversing from all root nodes
-    const reachableNodes = new Set<string>()
-    for (const rootNode of rootNodes) {
-      this.markReachableNodes(nodes, rootNode.nodeId, reachableNodes)
-    }
-
-    const orphanedNodes = nodes.filter((n) => !reachableNodes.has(n.nodeId))
-    if (orphanedNodes.length > 0) {
-      return `Found orphaned nodes: ${orphanedNodes.map((n) => n.nodeId).join(", ")}`
-    }
-
-    return null // No errors
-  }
-
-  private markReachableNodes(nodes: Doc<"workflowNodes">[], nodeId: string, reachableNodes: Set<string>): void {
-    // Use iterative approach with a stack to avoid stack overflow
-    const nodesToVisit: string[] = [nodeId]
-
-    while (nodesToVisit.length > 0) {
-      const currentNodeId = nodesToVisit.pop()!
-
-      // Skip if already visited
-      if (reachableNodes.has(currentNodeId)) continue
-
-      // Mark as reachable
-      reachableNodes.add(currentNodeId)
-
-      // Find all children of this node and add them to the stack
-      const children = nodes.filter((n) => n.parentNodeId === currentNodeId)
-      for (const child of children) {
-        if (!reachableNodes.has(child.nodeId)) {
-          nodesToVisit.push(child.nodeId)
-        }
-      }
     }
   }
 }

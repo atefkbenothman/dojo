@@ -30,6 +30,87 @@ async function validateAgentForWorkflow(ctx: QueryCtx, workflowIsPublic: boolean
   }
 }
 
+// Workflow tree validation functions
+function validateWorkflowTree(
+  nodes: Array<{ nodeId: string; parentNodeId?: string; agentId: Id<"agents"> }>,
+  agentIds: Set<Id<"agents">>,
+): string | null {
+  if (nodes.length === 0) return null
+
+  // Check agent references
+  for (const node of nodes) {
+    if (!agentIds.has(node.agentId)) {
+      return `Node ${node.nodeId} references non-existent agent`
+    }
+  }
+
+  // Check for single root
+  const rootNodes = nodes.filter((n) => !n.parentNodeId)
+  if (rootNodes.length === 0) {
+    return "Workflow must have exactly one root node"
+  }
+  if (rootNodes.length > 1) {
+    return "Workflow cannot have multiple root nodes"
+  }
+
+  // Check for valid parent references
+  const nodeIds = new Set(nodes.map((n) => n.nodeId))
+  for (const node of nodes) {
+    if (node.parentNodeId && !nodeIds.has(node.parentNodeId)) {
+      return `Node ${node.nodeId} references non-existent parent ${node.parentNodeId}`
+    }
+  }
+
+  // Check for cycles
+  const visited = new Set<string>()
+  const visiting = new Set<string>()
+
+  function hasCycle(nodeId: string): boolean {
+    if (visiting.has(nodeId)) return true
+    if (visited.has(nodeId)) return false
+
+    visiting.add(nodeId)
+    const children = nodes.filter((n) => n.parentNodeId === nodeId)
+    for (const child of children) {
+      if (hasCycle(child.nodeId)) return true
+    }
+    visiting.delete(nodeId)
+    visited.add(nodeId)
+    return false
+  }
+
+  for (const node of nodes) {
+    if (!visited.has(node.nodeId) && hasCycle(node.nodeId)) {
+      return `Circular dependency detected involving node ${node.nodeId}`
+    }
+  }
+
+  // Check for orphaned nodes (unreachable from root)
+  const reachable = new Set<string>()
+  const rootNode = rootNodes[0]
+  if (!rootNode) return "No root node found" // This shouldn't happen due to earlier check
+
+  const queue = [rootNode.nodeId]
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (reachable.has(current)) continue
+    reachable.add(current)
+
+    const children = nodes.filter((n) => n.parentNodeId === current)
+    for (const child of children) {
+      queue.push(child.nodeId)
+    }
+  }
+
+  const orphaned = nodes.filter((n) => !reachable.has(n.nodeId))
+  if (orphaned.length > 0) {
+    return `Found orphaned nodes: ${orphaned.map((n) => n.nodeId).join(", ")}`
+  }
+
+  return null
+}
+
 // List: Return all public workflows and, if authenticated, also user-specific workflows
 export const list = query({
   args: {},
@@ -97,8 +178,13 @@ export const create = mutation({
     if (args.isPublic) throw new Error("Cannot create public workflows.")
     if (!userId) throw new Error("Must be signed in to create workflows.")
 
+    // Validate rootNodeId if provided
+    if (args.rootNodeId) {
+      throw new Error("Cannot create workflow with rootNodeId. Add nodes first, then root will be set automatically.")
+    }
+
     // Create the workflow (no auto-created nodes - user will add first step)
-    const workflowId = await ctx.db.insert("workflows", { ...args, userId })
+    const workflowId = await ctx.db.insert("workflows", { ...args, userId, rootNodeId: undefined })
 
     return workflowId
   },
@@ -296,19 +382,49 @@ export const addNode = mutation({
     // Validate agent usage for private workflows
     await validateAgentForWorkflow(ctx, workflow.isPublic, args.agentId)
 
-    // Validate parentNodeId if provided
-    if (args.parentNodeId) {
-      const parentNode = await ctx.db
-        .query("workflowNodes")
-        .withIndex("by_workflow_nodeId", (q) => q.eq("workflowId", args.workflowId).eq("nodeId", args.parentNodeId!))
-        .first()
+    // Check if node ID already exists
+    const existingNode = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow_nodeId", (q) => q.eq("workflowId", args.workflowId).eq("nodeId", args.nodeId))
+      .first()
 
-      if (!parentNode) {
-        throw new Error(`Parent node ${args.parentNodeId} not found in workflow`)
-      }
+    if (existingNode) {
+      throw new Error(`Node ${args.nodeId} already exists in workflow`)
     }
 
-    return await ctx.db.insert("workflowNodes", args)
+    // Get existing nodes and validate the tree structure after adding
+    const existingNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
+      .collect()
+
+    // Get all agents to validate references
+    const agents = await ctx.db.query("agents").collect()
+    const agentIds = new Set(agents.map((a) => a._id))
+
+    // Simulate adding the new node
+    const newNode = {
+      nodeId: args.nodeId,
+      parentNodeId: args.parentNodeId,
+      agentId: args.agentId,
+    }
+    const simulatedNodes = [...existingNodes, newNode]
+
+    // Validate the tree structure
+    const validationError = validateWorkflowTree(simulatedNodes, agentIds)
+    if (validationError) {
+      throw new Error(validationError)
+    }
+
+    // Insert the new node
+    const nodeId = await ctx.db.insert("workflowNodes", args)
+
+    // Set as root node if this is the first node
+    if (existingNodes.length === 0) {
+      await ctx.db.patch(args.workflowId, { rootNodeId: args.nodeId })
+    }
+
+    return nodeId
   },
 })
 
@@ -326,29 +442,6 @@ export const removeNode = mutation({
     if (workflow.isPublic) throw new Error("Cannot edit public workflows")
     if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
 
-    // Helper function to recursively collect all descendants
-    // Iteratively collect all descendants
-    const collectDescendants = async (nodeId: string): Promise<Id<"workflowNodes">[]> => {
-      const descendants: Id<"workflowNodes">[] = []
-      const queue = [nodeId]
-
-      while (queue.length > 0) {
-        const currentNodeId = queue.shift()!
-
-        const children = await ctx.db
-          .query("workflowNodes")
-          .withIndex("by_parent", (q) => q.eq("workflowId", args.workflowId).eq("parentNodeId", currentNodeId))
-          .collect()
-
-        for (const child of children) {
-          descendants.push(child._id)
-          queue.push(child.nodeId)
-        }
-      }
-
-      return descendants
-    }
-
     // Find the node to delete
     const node = await ctx.db
       .query("workflowNodes")
@@ -359,12 +452,27 @@ export const removeNode = mutation({
       throw new Error(`Node ${args.nodeId} not found`)
     }
 
-    // Collect all nodes to delete (the node itself and all descendants)
-    const nodesToDelete = [node._id]
-    const descendants = await collectDescendants(args.nodeId)
-    nodesToDelete.push(...descendants)
+    // Get all nodes to find children that need to be deleted
+    const allNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
+      .collect()
 
-    // Delete all nodes in a single transaction
+    // Find all descendants using iterative approach
+    const nodesToDelete: Id<"workflowNodes">[] = [node._id]
+    const queue = [args.nodeId]
+
+    while (queue.length > 0) {
+      const currentNodeId = queue.shift()!
+      const children = allNodes.filter((n) => n.parentNodeId === currentNodeId)
+
+      for (const child of children) {
+        nodesToDelete.push(child._id)
+        queue.push(child.nodeId)
+      }
+    }
+
+    // Delete all nodes (cascading to children)
     for (const nodeId of nodesToDelete) {
       await ctx.db.delete(nodeId)
     }
@@ -381,7 +489,8 @@ export const updateNode = mutation({
   args: {
     workflowId: v.id("workflows"),
     nodeId: v.string(),
-    agentId: v.id("agents"),
+    agentId: v.optional(v.id("agents")),
+    parentNodeId: v.optional(v.string()),
     label: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -405,15 +514,66 @@ export const updateNode = mutation({
 
     if (!node) throw new Error("Node not found")
 
+    // If updating parent or agent, validate the tree structure
+    if (args.parentNodeId !== undefined || args.agentId !== undefined) {
+      // Get all nodes
+      const allNodes = await ctx.db
+        .query("workflowNodes")
+        .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
+        .collect()
+
+      // Get all agents to validate references
+      const agents = await ctx.db.query("agents").collect()
+      const agentIds = new Set(agents.map((a) => a._id))
+
+      // Simulate the update
+      const simulatedNodes = allNodes.map((n) => {
+        if (n.nodeId === args.nodeId) {
+          return {
+            nodeId: n.nodeId,
+            parentNodeId: args.parentNodeId !== undefined ? args.parentNodeId : n.parentNodeId,
+            agentId: args.agentId !== undefined ? args.agentId : n.agentId,
+          }
+        }
+        return {
+          nodeId: n.nodeId,
+          parentNodeId: n.parentNodeId,
+          agentId: n.agentId,
+        }
+      })
+
+      // Validate the tree structure
+      const validationError = validateWorkflowTree(simulatedNodes, agentIds)
+      if (validationError) {
+        throw new Error(validationError)
+      }
+    }
+
     // Update the node
     const updateData: Partial<{
       agentId: Id<"agents">
+      parentNodeId: string | undefined
       label: string
     }> = {}
     if (args.agentId !== undefined) updateData.agentId = args.agentId
+    if (args.parentNodeId !== undefined) updateData.parentNodeId = args.parentNodeId
     if (args.label !== undefined) updateData.label = args.label
 
     await ctx.db.patch(node._id, updateData)
+
+    // If this was the root node and we're changing its parent, update workflow's rootNodeId
+    if (workflow.rootNodeId === args.nodeId && args.parentNodeId !== undefined) {
+      // Find the new root node
+      const updatedNodes = await ctx.db
+        .query("workflowNodes")
+        .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
+        .collect()
+
+      const newRootNode = updatedNodes.find((n) => !n.parentNodeId)
+      await ctx.db.patch(args.workflowId, {
+        rootNodeId: newRootNode ? newRootNode.nodeId : undefined,
+      })
+    }
   },
 })
 
