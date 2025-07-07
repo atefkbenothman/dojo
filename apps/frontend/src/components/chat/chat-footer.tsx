@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Textarea } from "@/components/ui/textarea"
 import { useAIModels } from "@/hooks/use-ai-models"
-import { useChatProvider } from "@/hooks/use-chat"
+import { useChat } from "@/hooks/use-chat"
 import { useImage } from "@/hooks/use-image"
 import { useImageStore } from "@/store/use-image-store"
 import { useModelStore } from "@/store/use-model-store"
@@ -35,7 +35,7 @@ const ChatControls = memo(function ChatControls({ onSend, isLoading }: ChatContr
 
 export const ChatFooter = memo(function ChatFooter() {
   const { selectedModel } = useAIModels()
-  const { handleChat, status } = useChatProvider()
+  const { handleChat, status } = useChat()
   const { handleImageGeneration } = useImage()
   const { isImageGenerating } = useImageStore()
 

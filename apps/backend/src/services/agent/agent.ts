@@ -122,7 +122,7 @@ export class AgentService {
       // Get tools after connections are established
       const combinedTools = session ? mcpConnectionManager.aggregateTools(session._id) : {}
 
-      // Filter out any empty messages from frontend
+      // Filter out any empty messages
       const filteredMessages = messages.filter(msg => 
         msg.content !== "" && msg.content !== null && msg.content !== undefined
       )

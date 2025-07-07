@@ -1,16 +1,18 @@
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { LoadingAnimation } from "@/components/ui/loading-animation"
-import { useChatProvider } from "@/hooks/use-chat"
+import { SYSTEM_PROMPT } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { useImageStore } from "@/store/use-image-store"
+import { useChat, type Message } from "@ai-sdk/react"
+import { env } from "@dojo/env/frontend"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { ToolInvocation, UIMessage } from "ai"
+import { ToolInvocation, type UIMessage } from "ai"
 import { Hammer, Check, Clock, Play, Lightbulb, Info, AlertTriangle } from "lucide-react"
 import { useEffect, RefObject, memo, useMemo, useRef } from "react"
 
 interface MessageAccordionProps {
-  variant?: "error" | "system" | "reasoning" | "tool"
+  variant?: "error" | "system" | "reasoning" | "tool" | "agent" | "workflow"
   icon: React.ReactNode
   title: string
   children: React.ReactNode
@@ -23,6 +25,8 @@ const variantStyles = {
   system: "bg-blue-100 dark:bg-blue-900 border border-blue-400/50 text-blue-900 dark:text-white",
   reasoning: "bg-yellow-100 dark:bg-yellow-900 border border-yellow-400/50 text-yellow-900 dark:text-white",
   tool: "bg-muted border border-muted-foreground/20 text-foreground dark:text-white",
+  agent: "bg-green-100 dark:bg-green-900 border border-green-400/50 text-green-900 dark:text-white",
+  workflow: "bg-purple-100 dark:bg-purple-900 border border-purple-400/50 text-purple-900 dark:text-white",
 }
 
 const preClassName = "p-2 text-xs wrap-break-word whitespace-pre-wrap bg-background/80 dark:bg-background/50 rounded-sm"
@@ -121,7 +125,7 @@ function GeneratedImagesRenderer({ images }: { images: { base64: string }[] }) {
 function SystemMessage({ content }: { content: string }) {
   return (
     <MessageAccordion variant="system" icon={<Info className="h-4 w-4" />} title="System">
-      <pre className={preClassName}>{content}</pre>
+      <pre className={preClassName}>{content.trim()}</pre>
     </MessageAccordion>
   )
 }
@@ -184,32 +188,40 @@ const MessageItem = memo(function MessageItem({
     }
   }
 
+  // Regular assistant messages
   return (
-    <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
-      {sortedParts.map((part, idx) => {
-        switch (part.type) {
-          case "text":
-            return (
-              <div key={idx}>
-                <MarkdownRenderer content={part.text} />
-              </div>
-            )
-          case "reasoning":
-            return (
-              <div className="py-2" key={idx}>
-                <ReasoningMessage content={part.reasoning} />
-              </div>
-            )
-          case "tool-invocation":
-            return (
-              <div className="py-2" key={idx}>
-                <ToolInvocationMessage content={part.toolInvocation} />
-              </div>
-            )
-          default:
-            return null
-        }
-      })}
+    <div className="py-4">
+      <div className="text-balanced inline-block h-fit w-full overflow-auto text-sm wrap-break-word">
+        {sortedParts.length > 0 ? (
+          sortedParts.map((part, idx) => {
+            switch (part.type) {
+              case "text":
+                return (
+                  <div key={idx}>
+                    <MarkdownRenderer content={part.text} />
+                  </div>
+                )
+              case "reasoning":
+                return (
+                  <div className="py-2" key={idx}>
+                    <ReasoningMessage content={part.reasoning} />
+                  </div>
+                )
+              case "tool-invocation":
+                return (
+                  <div className="py-2" key={idx}>
+                    <ToolInvocationMessage content={part.toolInvocation} />
+                  </div>
+                )
+              default:
+                return null
+            }
+          })
+        ) : (
+          // If no parts, render the content directly
+          <MarkdownRenderer content={msg.content.toString()} />
+        )}
+      </div>
     </div>
   )
 })
@@ -219,20 +231,35 @@ type VirtualMessage =
   | { type: "loading" }
   | { type: "error"; errorMessage: string }
 
+const initialMessages: Message[] = [
+  {
+    id: "system",
+    role: "system",
+    content: SYSTEM_PROMPT,
+  },
+]
+
 export function Messages({ scrollRef }: { scrollRef: RefObject<HTMLDivElement | null> }) {
-  const { messages, chatError, status } = useChatProvider()
+  const { messages, error, status } = useChat({
+    id: "unified-chat",
+    api: `${env.NEXT_PUBLIC_BACKEND_URL}/api/chat`,
+    initialMessages,
+  })
   const { isImageGenerating } = useImageStore()
+
+  const isStreaming = status === "streaming"
+  const isSubmitted = status === "submitted"
 
   const allItems = useMemo<VirtualMessage[]>(() => {
     const items: VirtualMessage[] = messages.map((msg) => ({ type: "message", msg }))
-    if (status === "submitted" || status === "streaming" || isImageGenerating) {
+    if (isSubmitted || isStreaming || isImageGenerating) {
       items.push({ type: "loading" })
     }
-    if (chatError && status !== "streaming") {
-      items.push({ type: "error", errorMessage: chatError })
+    if (error && !isStreaming) {
+      items.push({ type: "error", errorMessage: error.message || "An error occurred" })
     }
     return items
-  }, [messages, status, chatError, isImageGenerating])
+  }, [messages, isSubmitted, isStreaming, error, isImageGenerating])
 
   const virtualizer = useVirtualizer({
     count: allItems.length,

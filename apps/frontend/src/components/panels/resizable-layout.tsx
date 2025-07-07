@@ -4,7 +4,7 @@ import { ChatContent } from "@/components/chat/chat-content"
 import { MainPanelHeader } from "@/components/panels/main-panel-header"
 import { SideNav } from "@/components/panels/side-nav"
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable"
-import { useChatProvider } from "@/hooks/use-chat"
+import { useChat } from "@/hooks/use-chat"
 import { useResizableChatPanel } from "@/hooks/use-resizable-chat-panel"
 import { cn } from "@/lib/utils"
 import { useRef, useCallback, useEffect } from "react"
@@ -23,7 +23,7 @@ const CHAT_PANEL_MIN_SIZE_PERCENTAGE = 20
 const CHAT_PANEL_MAX_SIZE_PERCENTAGE = 60
 
 export function ResizableLayout({ children, defaultLayout, isServerHealthy }: ResizableLayoutProps) {
-  const { handleNewChat, hasUnreadMessages, clearNotifications } = useChatProvider()
+  const { handleNewChat, hasUnreadMessages, clearNotifications } = useChat()
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
 

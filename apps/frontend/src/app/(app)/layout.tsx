@@ -1,6 +1,5 @@
 import "../globals.css"
 import { ResizableLayout } from "@/components/panels/resizable-layout"
-import { AIChatProvider } from "@/hooks/use-chat"
 import { LayoutProvider } from "@/hooks/use-layout"
 import { SoundEffectProvider } from "@/hooks/use-sound-effect"
 import { serverTrpc } from "@/lib/trpc/client"
@@ -88,11 +87,9 @@ export default async function AppLayout({
                 <SessionProvider>
                   <TRPCProvider>
                     <LayoutProvider>
-                      <AIChatProvider>
-                        <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
-                          {children}
-                        </ResizableLayout>
-                      </AIChatProvider>
+                      <ResizableLayout defaultLayout={defaultLayout} isServerHealthy={isServerHealthy}>
+                        {children}
+                      </ResizableLayout>
                     </LayoutProvider>
                   </TRPCProvider>
                 </SessionProvider>

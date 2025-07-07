@@ -1,28 +1,48 @@
 "use client"
 
-import { useChatProvider } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
+import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, WorkflowExecution } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
-import { Message } from "ai"
 import { useMutation } from "convex/react"
 import { nanoid } from "nanoid"
+import { usePathname } from "next/navigation"
 import { useCallback, useMemo, useEffect, useState, useRef } from "react"
 import { toast } from "sonner"
 
 export function useWorkflow() {
   const authToken = useAuthToken()
   const { play } = useSoundEffectContext()
-  const { append, setMessages } = useChatProvider()
-  const { currentSession } = useSession()
-  const { selectedId: selectedWorkflowId } = useUrlSelection()
+  const { currentSession, clientSessionId } = useSession()
+  const pathname = usePathname()
+
+  // Only use URL selection if we're on a workflow page
+  const { selectedId } = useUrlSelection()
+  const selectedWorkflowId = pathname?.includes("/workflow") ? selectedId : null
+
+  const { messages, append, status, setMessages } = useChat({
+    id: "unified-chat",
+    api: `${env.NEXT_PUBLIC_BACKEND_URL}/api/chat`,
+    headers: {
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(clientSessionId ? { "X-Guest-Session-ID": clientSessionId } : {}),
+    },
+    experimental_throttle: 500,
+    generateId: () => nanoid(),
+    onError: (err) => {
+      play("./sounds/error.mp3", { volume: 0.5 })
+    },
+    onFinish: () => {
+      play("./sounds/done.mp3", { volume: 0.5 })
+    },
+  })
 
   // Fetch all workflows
   const workflows = useStableQuery(api.workflows.list)
@@ -48,15 +68,15 @@ export function useWorkflow() {
   // Use refs to stabilize callbacks while still accessing current values
   const currentSessionRef = useRef(currentSession)
   const appendRef = useRef(append)
-  const setMessagesRef = useRef(setMessages)
+  const setWorkflowMessagesRef = useRef(setMessages)
 
   // Update refs when values change - only update when session ID changes, not entire object
   useEffect(() => {
     currentSessionRef.current = currentSession
     appendRef.current = append
-    setMessagesRef.current = setMessages
+    setWorkflowMessagesRef.current = setMessages
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSession?._id, append, setMessages])
+  }, [currentSession?._id, append, setWorkflowMessagesRef])
 
   const create = useMutation(api.workflows.create)
   const edit = useMutation(api.workflows.edit)
@@ -97,25 +117,17 @@ export function useWorkflow() {
       // Set optimistic preparing state
       setPreparingWorkflows((prev) => new Set(prev).add(workflow._id))
 
-      setMessagesRef.current([
-        {
-          id: nanoid(),
-          role: "system",
-          content: workflow.instructions,
-        },
-      ])
-
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
-        content: workflow.instructions,
+        content: "trigger", // Trigger message - backend will handle actual workflow execution
       }
 
       // Append message - backend will handle execution tracking
       try {
         await appendRef.current(userMessage, {
           body: {
-            interactionType: "workflow",
+            type: "workflow",
             workflow: {
               workflowId: workflow._id,
             },
@@ -301,6 +313,8 @@ export function useWorkflow() {
   return {
     // Data
     workflows: stableWorkflows,
+    workflowMessages: messages,
+    workflowStatus: status,
     selectedWorkflow: selectedWorkflow || null,
     workflowNodes: stableWorkflowNodes,
     executions: stableExecutions,

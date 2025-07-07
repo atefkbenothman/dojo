@@ -10,9 +10,7 @@ export const agentRouter: Router = express.Router()
 
 const agentInputSchema = z.object({
   messages: z.array(z.any()), // Allow empty array for standalone agent execution
-  agent: z.object({
-    agentId: z.string(),
-  }),
+  agentId: z.string().min(1, { message: "Missing agentId" }),
 })
 
 // Schema for stop execution (empty body, just needs session)
@@ -24,15 +22,15 @@ agentRouter.post(
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { session, client } = req
     const parsedInput = req.parsedInput as z.infer<typeof agentInputSchema>
-    const { agent: agentInfo, messages } = parsedInput
+    const { agentId, messages } = parsedInput
 
     logger.info(
       "REST /agent/run",
-      `request received for userId: ${session.userId || "anonymous"}, agent: ${agentInfo.agentId}`,
+      `request received for userId: ${session.userId || "anonymous"}, agent: ${agentId}`,
     )
 
     const result = await agentService.runAgent({
-      agentId: agentInfo.agentId,
+      agentId,
       messages: messages as CoreMessage[],
       session,
       res,
@@ -41,7 +39,7 @@ agentRouter.post(
 
     if (!result.success) {
       if (result.error?.includes("not found")) {
-        throwError(`Agent with id '${agentInfo.agentId}' not found`, 404)
+        throwError(`Agent with id '${agentId}' not found`, 404)
       }
       throw new Error(result.error || "Internal server error")
     }

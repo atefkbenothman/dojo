@@ -30,6 +30,7 @@ app.use(
     origin: ["http://localhost:3000", "https://dojoai.vercel.app/", "https://dojoai.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-trpc-source", "x-guest-session-id"],
+    exposedHeaders: ["x-vercel-ai-data-stream"],
     credentials: true,
     optionsSuccessStatus: 200,
   }),

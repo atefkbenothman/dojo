@@ -1,16 +1,15 @@
 "use client"
 
-import { useChatProvider } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
+import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Agent } from "@dojo/db/convex/types"
 import { env } from "@dojo/env/frontend"
-import { Message } from "ai"
 import { useMutation, useConvex } from "convex/react"
 import { nanoid } from "nanoid"
 import { useCallback, useMemo } from "react"
@@ -69,8 +68,24 @@ export function useAgent() {
   const convex = useConvex()
   const authToken = useAuthToken()
   const { play } = useSoundEffectContext()
-  const { append } = useChatProvider()
-  const { currentSession } = useSession()
+  const { currentSession, clientSessionId } = useSession()
+
+  const { messages, append, status, setMessages } = useChat({
+    id: "unified-chat",
+    api: `${env.NEXT_PUBLIC_BACKEND_URL}/api/chat`,
+    headers: {
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(clientSessionId ? { "X-Guest-Session-ID": clientSessionId } : {}),
+    },
+    experimental_throttle: 500,
+    generateId: () => nanoid(),
+    onError: (err) => {
+      play("./sounds/error.mp3", { volume: 0.5 })
+    },
+    onFinish: () => {
+      play("./sounds/done.mp3", { volume: 0.5 })
+    },
+  })
 
   const agents = useStableQuery(api.agents.list)
   const createAgent = useMutation(api.agents.create)
@@ -99,21 +114,25 @@ export function useAgent() {
         return
       }
 
-      // For standalone agent execution, send empty messages array
+      // For standalone agent execution, send the context prompt or a default message
       // Backend will construct messages from agent's systemPrompt and contextPrompt
       try {
-        await append({
-          id: nanoid(),
-          role: "user",
-          content: "", // Empty content - backend will handle message construction
-        } as Message, {
-          body: {
-            interactionType: "agent",
-            agent: {
+        const userContent =
+          agent.contextPrompt?.trim() || "Please execute the instructions provided in your system prompt."
+
+        await append(
+          {
+            id: nanoid(),
+            role: "user",
+            content: userContent,
+          } as Message,
+          {
+            body: {
+              type: "agent",
               agentId: agent._id,
             },
           },
-        })
+        )
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Agent execution failed"
 
@@ -129,7 +148,7 @@ export function useAgent() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, play],
+    [append, play, setMessages],
   )
 
   const stopAllAgents = async () => {
@@ -185,10 +204,8 @@ export function useAgent() {
   // Helper function to get active execution for an agent
   const getAgentExecution = useCallback(
     (agentId: Id<"agents">) => {
-      // First check if we have a real execution from Convex
-      const realExecution = agentExecutions?.find((exec) => exec.agentId === agentId && isAgentRunning(exec)) || null
-
-      return realExecution
+      // Check if we have a real execution from Convex
+      return agentExecutions?.find((exec) => exec.agentId === agentId && isAgentRunning(exec)) || null
     },
     [agentExecutions, isAgentRunning],
   )
@@ -267,6 +284,8 @@ export function useAgent() {
 
   return {
     agents: stableAgents,
+    agentMessages: messages,
+    agentStatus: status,
     runAgent,
     create,
     edit,

@@ -4,11 +4,12 @@ import { useAIModels } from "@/hooks/use-ai-models"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { SYSTEM_PROMPT } from "@/lib/constants"
 import { useSession } from "@/providers/session-provider"
-import { useChat, Message } from "@ai-sdk/react"
+import { useChat as useAIChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
+import { env } from "@dojo/env/frontend"
 import type { UIMessage } from "ai"
 import { nanoid } from "nanoid"
-import { useState, createContext, useContext, useCallback, memo } from "react"
+import { useState, useCallback, useMemo } from "react"
 
 const initialMessages: Message[] = [
   {
@@ -18,7 +19,7 @@ const initialMessages: Message[] = [
   },
 ]
 
-export function useAIChat() {
+export function useChat() {
   const authToken = useAuthToken()
 
   const { play } = useSoundEffectContext()
@@ -29,24 +30,38 @@ export function useAIChat() {
   const [chatError, setChatError] = useState<string | null>(null)
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
 
-  const { messages, status, input, append, setMessages, error, stop } = useChat({
-    api: "/api/chat",
-    headers: {
+  const headers = useMemo(
+    () => ({
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...(clientSessionId ? { "X-Guest-Session-ID": clientSessionId } : {}),
-    },
-    initialMessages: initialMessages as Message[],
-    experimental_throttle: 500,
-    generateId: () => nanoid(),
-    onError: (err) => {
+    }),
+    [authToken, clientSessionId],
+  )
+
+  const onError = useCallback(
+    (err: Error) => {
       play("./sounds/error.mp3", { volume: 0.5 })
       setChatError(err.message || "An unexpected error occurred during the chat.")
     },
-    onFinish: () => {
-      play("./sounds/done.mp3", { volume: 0.5 })
-      setHasUnreadMessages(true)
-    },
-  })
+    [play],
+  )
+
+  const onFinish = useCallback(() => {
+    play("./sounds/done.mp3", { volume: 0.5 })
+    setHasUnreadMessages(true)
+  }, [play])
+
+  const { messages, status, input, append, setMessages, error, stop, setInput, handleInputChange, handleSubmit } =
+    useAIChat({
+      id: "unified-chat",
+      api: `${env.NEXT_PUBLIC_BACKEND_URL}/api/chat`,
+      headers,
+      initialMessages: initialMessages as Message[],
+      experimental_throttle: 500,
+      generateId: () => nanoid(),
+      onError,
+      onFinish,
+    })
 
   const handleChat = useCallback(
     async (message: string) => {
@@ -75,10 +90,8 @@ export function useAIChat() {
 
       await append(userMessage, {
         body: {
-          interactionType: "chat",
-          chat: {
-            modelId: selectedModel._id,
-          },
+          type: "chat",
+          modelId: selectedModel._id,
         },
       })
     },
@@ -112,26 +125,8 @@ export function useAIChat() {
     setChatError,
     hasUnreadMessages,
     clearNotifications,
+    setInput,
+    handleInputChange,
+    handleSubmit,
   }
 }
-
-type AIChatContextType = ReturnType<typeof useAIChat>
-
-const AIChatContext = createContext<AIChatContextType | undefined>(undefined)
-
-type AIChatProviderProps = {
-  children: React.ReactNode
-}
-
-export function useChatProvider() {
-  const context = useContext(AIChatContext)
-  if (!context) {
-    throw new Error("useChatProvider must be used within an AIChatProvider")
-  }
-  return context
-}
-
-export const AIChatProvider = memo(function AIChatProvider({ children }: AIChatProviderProps) {
-  const chatState = useAIChat()
-  return <AIChatContext.Provider value={chatState}>{children}</AIChatContext.Provider>
-})

@@ -132,20 +132,26 @@ export class WorkflowExecutor {
 
   async execute(initialMessages: CoreMessage[]): Promise<WorkflowExecutionResult> {
     try {
+      // Filter out trigger messages from frontend
+      const filteredMessages = initialMessages.filter(msg => 
+        msg.content !== "trigger"
+      )
+      
       // Store initial messages for context building
-      this.initialMessages = initialMessages
+      this.initialMessages = filteredMessages.length > 0 ? filteredMessages : []
 
       // Set streaming headers once at the start
       Object.entries(WorkflowExecutor.HEADERS).forEach(([key, value]) => {
         this.res.setHeader(key, value)
       })
 
-      // Extract workflow prompt from initial messages
-      const workflowPromptMessage = initialMessages.find((m) => m.role === "user")
-      const workflowPrompt =
-        typeof workflowPromptMessage?.content === "string"
+      // Extract workflow prompt from initial messages or use workflow instructions
+      const workflowPromptMessage = this.initialMessages.find((m) => m.role === "user")
+      const workflowPrompt = workflowPromptMessage?.content 
+        ? (typeof workflowPromptMessage.content === "string"
           ? workflowPromptMessage.content
-          : JSON.stringify(workflowPromptMessage?.content) || ""
+          : JSON.stringify(workflowPromptMessage.content))
+        : this.workflow.instructions
 
       this.log(`Starting workflow execution with ${this.workflowNodes.length} nodes`)
 
