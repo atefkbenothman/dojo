@@ -244,3 +244,101 @@ export const updateNodeProgress = mutation({
     await ctx.db.patch(args.executionId, updates)
   },
 })
+
+// Cancel an entire branch when a node fails (Phase 1 of Convex migration)
+export const cancelBranch = mutation({
+  args: {
+    executionId: v.id("workflowExecutions"),
+    failedNodeId: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const execution = await ctx.db.get(args.executionId)
+    if (!execution) throw new Error("Execution not found")
+
+    // Get all workflow nodes to perform tree traversal
+    const workflowNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", execution.workflowId))
+      .collect()
+
+    // Helper function to find all descendants using breadth-first search
+    const findAllDescendants = (nodeId: string): string[] => {
+      const descendants: string[] = []
+      const queue = [nodeId]
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!
+        const children = workflowNodes.filter((n) => n.parentNodeId === currentId)
+
+        for (const child of children) {
+          descendants.push(child.nodeId)
+          queue.push(child.nodeId)
+        }
+      }
+
+      return descendants
+    }
+
+    // Get all descendant node IDs
+    const descendantNodeIds = findAllDescendants(args.failedNodeId)
+
+    if (descendantNodeIds.length === 0) {
+      // No descendants to cancel
+      return { cancelledCount: 0 }
+    }
+
+    // Update node executions to cancel all descendants
+    const nodeExecutions = [...execution.nodeExecutions]
+
+    let cancelledCount = 0
+    for (const nodeExecution of nodeExecutions) {
+      if (descendantNodeIds.includes(nodeExecution.nodeId)) {
+        // Only cancel if not already in a final state
+        if (
+          nodeExecution.status === "pending" ||
+          nodeExecution.status === "connecting" ||
+          nodeExecution.status === "running"
+        ) {
+          nodeExecution.status = "cancelled"
+          nodeExecution.error = args.reason
+          nodeExecution.completedAt = Date.now()
+          cancelledCount++
+        }
+      }
+    }
+
+    // Add missing descendant nodes that haven't been created yet
+    for (const descendantNodeId of descendantNodeIds) {
+      const existingExecution = nodeExecutions.find((ne) => ne.nodeId === descendantNodeId)
+      if (!existingExecution) {
+        // Find the corresponding workflow node to get agentId
+        const workflowNode = workflowNodes.find((n) => n.nodeId === descendantNodeId)
+        if (workflowNode) {
+          nodeExecutions.push({
+            nodeId: descendantNodeId,
+            agentId: workflowNode.agentId,
+            status: "cancelled",
+            startedAt: undefined,
+            completedAt: Date.now(),
+            error: args.reason,
+            output: undefined,
+            metadata: undefined,
+          })
+          cancelledCount++
+        }
+      }
+    }
+
+    // Update current nodes to remove any cancelled nodes
+    const currentNodes = execution.currentNodes.filter((nodeId) => !descendantNodeIds.includes(nodeId))
+
+    // Update the execution with cancelled descendants
+    await ctx.db.patch(args.executionId, {
+      nodeExecutions,
+      currentNodes,
+    })
+
+    return { cancelledCount }
+  },
+})

@@ -86,6 +86,24 @@ export const get = query({
   },
 })
 
+// Get multiple agents: Return multiple agents if they're public or belong to the user
+export const getMultiple = query({
+  args: { ids: v.array(v.id("agents")) },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    const agents = []
+
+    for (const id of args.ids) {
+      const agent = await ctx.db.get(id)
+      if (agent && (agent.isPublic || (userId && agent.userId === userId))) {
+        agents.push(agent)
+      }
+    }
+
+    return agents
+  },
+})
+
 // Edit: Only allow editing if not public and user is the owner
 export const edit = mutation({
   args: {

@@ -23,31 +23,19 @@ export function Workflow() {
   const { selectedId: selectedWorkflowId, setSelectedId: setSelectedWorkflowId } = useUrlSelection()
 
   // Get all workflow data and operations from the hook
-  const {
-    workflows,
-    executions,
-    getWorkflowExecution,
-    create,
-    edit,
-    remove,
-    runWorkflow,
-    stopWorkflow,
-    clone,
-  } = useWorkflow()
+  const { executions, getWorkflowExecution, create, edit, remove, runWorkflow, stopWorkflow, clone } = useWorkflow()
   const { agents } = useAgent()
   const { getModel } = useAIModels()
-  
-  // Find selected workflow from the list
-  const selectedWorkflow = useMemo(() => {
-    if (!selectedWorkflowId) return null
-    return workflows.find((w) => w._id === selectedWorkflowId) || null
-  }, [workflows, selectedWorkflowId])
-  
-  // Fetch workflow nodes for selected workflow
-  const workflowNodes = useStableQuery(
-    api.workflows.getWorkflowNodes,
-    selectedWorkflow ? { workflowId: selectedWorkflow._id } : "skip"
-  ) || []
+
+  // Find selected workflow and its nodes in a single query
+  const selectedWorkflowWithNodes = useStableQuery(
+    api.workflows.getWithNodes,
+    selectedWorkflowId ? { id: selectedWorkflowId as Id<"workflows"> } : "skip",
+  )
+
+  // Extract workflow and nodes from the combined result
+  const selectedWorkflow = selectedWorkflowWithNodes?.workflow || null
+  const workflowNodes = selectedWorkflowWithNodes?.nodes || []
 
   // Get node operations
   const {

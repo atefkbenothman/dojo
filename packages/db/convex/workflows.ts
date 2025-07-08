@@ -153,6 +153,154 @@ export const get = query({
   },
 })
 
+// Get workflow with nodes: Return a workflow and its nodes in a single query
+export const getWithNodes = query({
+  args: { id: v.id("workflows") },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+
+    // Get the workflow
+    const workflow = await ctx.db.get(args.id)
+    if (!workflow) return null
+
+    // Check authorization
+    if (!workflow.isPublic && (!userId || workflow.userId !== userId)) {
+      throw new Error("Unauthorized")
+    }
+
+    // Get all workflow nodes for this workflow
+    const allNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
+      .collect()
+
+    // Get all agents to check for valid references
+    const agents = await ctx.db.query("agents").collect()
+    const validAgentIds = new Set(agents.map((agent) => agent._id))
+
+    // Filter out orphaned nodes (same logic as getWorkflowNodes)
+    const validNodes = allNodes.filter((node) => {
+      // Node must reference a valid agent
+      if (!validAgentIds.has(node.agentId)) {
+        return false
+      }
+
+      // If node has a parent, the parent must exist in the workflow
+      if (node.parentNodeId) {
+        const parentExists = allNodes.some((parentNode) => parentNode.nodeId === node.parentNodeId)
+        if (!parentExists) {
+          return false
+        }
+      }
+
+      return true
+    })
+
+    return {
+      workflow,
+      nodes: validNodes,
+    }
+  },
+})
+
+// Get all data needed for workflow execution in a single query
+export const getExecutionBundle = query({
+  args: {
+    id: v.id("workflows"),
+    sessionId: v.id("sessions"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+
+    // Get the workflow
+    const workflow = await ctx.db.get(args.id)
+    if (!workflow) return null
+
+    // Check authorization
+    if (!workflow.isPublic && (!userId || workflow.userId !== userId)) {
+      throw new Error("Unauthorized")
+    }
+
+    // Get all workflow nodes for this workflow using index
+    const allNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", args.id))
+      .collect()
+
+    if (allNodes.length === 0) {
+      return {
+        workflow,
+        nodes: [],
+        agents: [],
+        agentMap: {},
+        activeExecution: null,
+      }
+    }
+
+    // Get unique agent IDs from nodes
+    const agentIds = [...new Set(allNodes.map((n) => n.agentId))]
+
+    // Fetch all agents in parallel using Promise.all for better performance
+    const agentPromises = agentIds.map((agentId) => ctx.db.get(agentId))
+    const agentResults = await Promise.all(agentPromises)
+
+    // Filter out null results and create both array and map
+    const agents = agentResults.filter((agent): agent is NonNullable<typeof agent> => agent !== null)
+
+    const validAgentIds = new Set(agents.map((agent) => agent._id))
+
+    // Filter out orphaned nodes that reference non-existent agents
+    const validNodes = allNodes.filter((node) => {
+      // Node must reference a valid agent
+      if (!validAgentIds.has(node.agentId)) {
+        return false
+      }
+
+      // If node has a parent, the parent must exist in the workflow
+      if (node.parentNodeId) {
+        const parentExists = allNodes.some((parentNode) => parentNode.nodeId === node.parentNodeId)
+        if (!parentExists) {
+          return false
+        }
+      }
+
+      return true
+    })
+
+    // Create pre-computed agent map for O(1) lookups
+    const agentMap = agents.reduce(
+      (map, agent) => {
+        map[agent._id] = agent
+        return map
+      },
+      {} as Record<string, (typeof agents)[0]>,
+    )
+
+    // Check for any active executions for this workflow + session
+    const activeExecution = await ctx.db
+      .query("workflowExecutions")
+      .withIndex("by_session_status", (q) => q.eq("sessionId", args.sessionId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("workflowId"), args.id),
+          q.or(q.eq(q.field("status"), "preparing"), q.eq(q.field("status"), "running")),
+        ),
+      )
+      .first()
+
+    return {
+      workflow,
+      nodes: validNodes,
+      agents,
+      agentMap,
+      activeExecution,
+      // Additional computed data for efficiency
+      totalNodes: validNodes.length,
+      rootNode: validNodes.find((node) => node.nodeId === workflow.rootNodeId) || null,
+    }
+  },
+})
+
 // Edit: Only allow editing if not public and user is the owner
 export const edit = mutation({
   args: {
