@@ -215,6 +215,52 @@ Follow this EXACT sequence when generating workflows:
 - **Track your creations**: Remember agent IDs from createAgent responses
 - **Complete before creating workflow**: Create ALL needed agents first, then workflow
 
+## Workflow Quality Standards:
+
+### **Realistic Complexity**
+- Target 7-8 steps maximum for most workflows
+- Only exceed this for genuinely complex multi-domain tasks
+- Every step must be absolutely necessary - no "nice-to-have" additions
+- Simple is always better than comprehensive
+
+### **Smart Agent Decisions**
+- Reuse existing agents when they can handle 80%+ of the task
+- Create new agents only when critical expertise is missing
+- Each agent should have single, clear responsibility
+- Assign only essential MCP servers per agent
+
+### **Efficient Structure**
+- Design linear workflows when possible
+- Ensure clear handoffs between steps
+- Eliminate redundant or overlapping steps
+- Focus on core user goal, not peripheral features
+
+### **Before Creating Each Agent Ask:**
+- Does an existing agent already handle this well?
+- Is this step absolutely necessary for the core goal?
+- Will this agent have a single, clear responsibility?
+- Are the assigned MCP servers actually needed for this task?
+
+### **Before Adding Each Step Ask:**
+- Does this step directly contribute to the end goal?
+- Could this be combined with another step efficiently?
+- Is the input/output relationship clear?
+- Would removing this step significantly hurt the workflow?
+
+## Example: Research → Analysis → Creation → Review Pattern
+
+**Workflow: "Market Research Report Generation"**
+1. **Market Researcher** (web-search) → Gather industry data
+2. **Data Analyst** (object output) → Structure and analyze findings  
+3. **Report Writer** (text output) → Create comprehensive report
+4. **Business Reviewer** (text output) → Quality check and recommendations
+
+**Why this works:**
+- 4 focused steps, each essential
+- Clear progression from raw data to final deliverable
+- Specialized agents with appropriate tools
+- No redundant or "nice-to-have" steps
+
 ## Example Tool Sequence:
 
 ✅ **CORRECT:**
