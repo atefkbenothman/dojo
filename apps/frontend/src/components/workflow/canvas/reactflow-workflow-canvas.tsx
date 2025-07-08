@@ -294,6 +294,24 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     wasVisibleRef.current = isVisible ?? false
   }, [isVisible, enhancedNodes.length, fitView])
 
+  // Format execution duration (similar to WorkflowExecutionView)
+  const getExecutionDuration = useCallback(() => {
+    if (!execution?.startedAt) return null
+    const endTime = execution.completedAt || Date.now()
+    const duration = endTime - execution.startedAt
+    const seconds = Math.floor(duration / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m ${seconds % 60}s`
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`
+    } else {
+      return `${seconds}s`
+    }
+  }, [execution?.startedAt, execution?.completedAt])
+
   const hasWorkflowNodes = workflowNodes && workflowNodes.length > 0
 
   return (
@@ -352,10 +370,58 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           <Panel position="bottom-left">
             <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95" />
           </Panel>
-          <Panel position="top-left">
-            <div className="bg-background/95 backdrop-blur border text-sm text-muted-foreground flex items-center h-12 px-4">
-              {(workflowNodes || []).length} {(workflowNodes || []).length === 1 ? "step" : "steps"}
-            </div>
+          
+          {/* Workflow status indicator */}
+          <Panel position="top-left" className="m-4">
+            {execution && (
+              <div className="bg-background/95 backdrop-blur border border-border rounded-xl shadow-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div
+                      className={cn(
+                        "w-3 h-3 rounded-full transition-all duration-300",
+                        execution.status === "running" && "bg-blue-500 animate-pulse shadow-lg shadow-blue-500/50",
+                        execution.status === "completed" && "bg-green-500 shadow-lg shadow-green-500/50",
+                        execution.status === "failed" && "bg-red-500 shadow-lg shadow-red-500/50",
+                        execution.status === "preparing" && "bg-yellow-500 animate-pulse shadow-lg shadow-yellow-500/50",
+                      )}
+                    />
+                    {(execution.status === "running" || execution.status === "preparing") && (
+                      <div
+                        className={cn(
+                          "absolute inset-0 rounded-full animate-ping",
+                          execution.status === "running" && "bg-blue-400",
+                          execution.status === "preparing" && "bg-yellow-400",
+                        )}
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="capitalize text-foreground font-medium text-sm">{execution.status}</span>
+                      {/* Execution time badge */}
+                      {getExecutionDuration() && (
+                        <span className={cn(
+                          "text-xs text-muted-foreground px-2 py-0.5 rounded-full",
+                          execution.status === "completed" && "bg-green-500/10",
+                          execution.status === "failed" && "bg-red-500/10", 
+                          execution.status === "running" && "bg-blue-500/10",
+                          execution.status === "preparing" && "bg-yellow-500/10"
+                        )}>
+                          {getExecutionDuration()}
+                        </span>
+                      )}
+                    </div>
+                    {execution.status === "running" && execution.nodeExecutions && (
+                      <span className="text-xs text-muted-foreground">
+                        {execution.nodeExecutions.filter((ne) => ne.status === "completed").length} of{" "}
+                        {execution.nodeExecutions.length} steps
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </Panel>
 
           {/* Show empty state panel when no workflow steps */}
@@ -399,32 +465,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
             </Panel>
           )}
 
-          {/* Control panels */}
-          <Panel position="top-right" className="m-4 space-y-2">
-            {/* Workflow status indicator */}
-            {execution && (
-              <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm p-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "w-2 h-2 rounded-full",
-                      execution.status === "running" && "bg-blue-500 animate-pulse",
-                      execution.status === "completed" && "bg-green-500",
-                      execution.status === "failed" && "bg-red-500",
-                      execution.status === "preparing" && "bg-yellow-500",
-                    )}
-                  />
-                  <span className="capitalize text-foreground">{execution.status}</span>
-                </div>
-                {execution.status === "running" && execution.nodeExecutions && (
-                  <div className="text-muted-foreground bg-red-300">
-                    {execution.nodeExecutions.filter((ne) => ne.status === "completed").length} /{" "}
-                    {execution.nodeExecutions.length} steps
-                  </div>
-                )}
-              </div>
-            )}
-          </Panel>
         </ReactFlow>
       </div>
     </div>
