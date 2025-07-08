@@ -774,6 +774,120 @@ export const getWorkflowNodes = query({
   },
 })
 
+// Insert a new node as the root, making the existing root its child
+export const insertAsNewRoot = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+    nodeId: v.string(),
+    agentId: v.id("agents"),
+    label: v.optional(v.string()),
+    order: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx)
+    const workflow = await ctx.db.get(args.workflowId)
+
+    if (!workflow) throw new Error("Workflow not found")
+    if (workflow.isPublic) throw new Error("Cannot edit public workflows")
+    if (!userId || workflow.userId !== userId) throw new Error("Unauthorized")
+
+    // Validate agent usage for private workflows
+    await validateAgentForWorkflow(ctx, workflow.isPublic, args.agentId)
+
+    // Check if node ID already exists
+    const existingNode = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow_nodeId", (q) => q.eq("workflowId", args.workflowId).eq("nodeId", args.nodeId))
+      .first()
+
+    if (existingNode) {
+      throw new Error(`Node ${args.nodeId} already exists in workflow`)
+    }
+
+    // Get existing nodes
+    const existingNodes = await ctx.db
+      .query("workflowNodes")
+      .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
+      .collect()
+
+    // If no existing nodes, just create as root (same as addNode for first node)
+    if (existingNodes.length === 0) {
+      const nodeId = await ctx.db.insert("workflowNodes", {
+        ...args,
+        type: "step",
+        parentNodeId: undefined,
+      })
+      await ctx.db.patch(args.workflowId, { rootNodeId: args.nodeId })
+      return nodeId
+    }
+
+    // Find current root node (node with no parent or current workflow rootNodeId)
+    let currentRootNode = existingNodes.find(node => node.nodeId === workflow.rootNodeId)
+    if (!currentRootNode) {
+      // Fallback: find root by looking for node with no parent
+      currentRootNode = existingNodes.find(node => !node.parentNodeId)
+    }
+
+    if (!currentRootNode) {
+      throw new Error("Could not find current root node")
+    }
+
+    // Get all agents to validate references
+    const agents = await ctx.db.query("agents").collect()
+    const agentIds = new Set(agents.map((a) => a._id))
+
+    // Create the new root node
+    const newRootNode = {
+      workflowId: args.workflowId,
+      nodeId: args.nodeId,
+      parentNodeId: undefined, // This makes it the root
+      type: "step" as const,
+      agentId: args.agentId,
+      label: args.label,
+      order: args.order ?? 0,
+    }
+
+    // Update current root to have new node as parent
+    const updatedCurrentRoot = {
+      ...currentRootNode,
+      parentNodeId: args.nodeId,
+    }
+
+    // Create simulated node list for validation
+    const simulatedNodes = [
+      newRootNode,
+      updatedCurrentRoot,
+      ...existingNodes.filter(node => node.nodeId !== currentRootNode.nodeId)
+    ].map(node => ({
+      nodeId: node.nodeId,
+      parentNodeId: node.parentNodeId,
+      agentId: node.agentId,
+    }))
+
+    // Validate the tree structure
+    const validationError = validateWorkflowTree(simulatedNodes, agentIds)
+    if (validationError) {
+      throw new Error(validationError)
+    }
+
+    // Perform the database operations
+    // 1. Insert new root node
+    const nodeId = await ctx.db.insert("workflowNodes", newRootNode)
+
+    // 2. Update current root to be child of new root
+    await ctx.db.patch(currentRootNode._id, {
+      parentNodeId: args.nodeId,
+    })
+
+    // 3. Update workflow's rootNodeId to point to new root
+    await ctx.db.patch(args.workflowId, {
+      rootNodeId: args.nodeId,
+    })
+
+    return nodeId
+  },
+})
+
 // Internal function to clean up orphaned workflow nodes
 export const cleanupOrphanedNodes = internalMutation({
   handler: async (ctx) => {

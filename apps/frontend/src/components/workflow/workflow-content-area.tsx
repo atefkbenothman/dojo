@@ -7,7 +7,7 @@ import { WorkflowHeader } from "@/components/workflow/workflow-header"
 import { useAgent } from "@/hooks/use-agent"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { Workflow, Agent, WorkflowExecution, WorkflowNode } from "@dojo/db/convex/types"
-import { useState, useCallback, memo } from "react"
+import { useState, useCallback, memo, useMemo } from "react"
 
 interface WorkflowContentAreaProps {
   workflow: Workflow
@@ -18,6 +18,7 @@ interface WorkflowContentAreaProps {
   onStopWorkflow: (workflowId: Id<"workflows">) => void
   onRemoveNode: (nodeId: string) => void
   onChangeNodeAgent: (nodeId: string, agent: Agent) => void
+  onEditAgent: (agent: Agent) => void
   onAddStepWithAgent: (parentNodeId: string, agent: Agent) => void
   onAddFirstStep: (agent: Agent) => void
   getModel: (modelId: string) => { name: string } | undefined
@@ -32,12 +33,26 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   onStopWorkflow,
   onRemoveNode,
   onChangeNodeAgent,
+  onEditAgent,
   onAddStepWithAgent,
   onAddFirstStep,
   getModel,
 }: WorkflowContentAreaProps) {
   // Get agents from hook
   const { agents } = useAgent()
+
+  // Filter agents based on workflow visibility
+  const filteredAgents = useMemo(() => {
+    if (!agents) return []
+    
+    if (workflow.isPublic) {
+      // Public workflows can only use public agents
+      return agents.filter(agent => agent.isPublic)
+    } else {
+      // Private workflows can only use private (user-specific) agents
+      return agents.filter(agent => !agent.isPublic)
+    }
+  }, [agents, workflow.isPublic])
 
   const [activeTab, setActiveTab] = useState<"build" | "run">("build")
 
@@ -82,7 +97,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
       <TabsContent value="build" className="flex-1 overflow-hidden gap-0">
         <ReactFlowWorkflowCanvas
           workflow={workflow}
-          agents={agents || []}
+          agents={filteredAgents}
           workflowNodes={workflowNodes}
           workflowExecutions={workflowExecutions}
           getModel={getModel}
@@ -91,13 +106,14 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
           onEditMetadata={() => onEditWorkflow(workflow)}
           onRemoveNode={onRemoveNode}
           onChangeNodeAgent={onChangeNodeAgent}
+          onEditAgent={onEditAgent}
           onAddStepWithAgent={onAddStepWithAgent}
         />
       </TabsContent>
       <TabsContent value="run" className="flex-1 mt-0 overflow-hidden">
         <WorkflowRunner
           workflow={workflow}
-          agents={agents || []}
+          agents={filteredAgents}
           workflowExecutions={workflowExecutions}
           workflowNodes={workflowNodes}
           onRunWorkflow={onRunWorkflow}

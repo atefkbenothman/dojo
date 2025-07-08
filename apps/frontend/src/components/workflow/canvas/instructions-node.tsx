@@ -3,15 +3,20 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { cn } from "@/lib/utils"
+import { Agent } from "@dojo/db/convex/types"
 import { Handle, Position } from "@xyflow/react"
-import { FileText, Pencil } from "lucide-react"
-import { memo } from "react"
+import { FileText, Pencil, Plus } from "lucide-react"
+import { memo, useCallback } from "react"
 
 // Instructions Node Data
 export interface InstructionsNodeData {
   instructions?: string
   onEditClick?: () => void
+  onAddStepToInstructions?: (agent: Agent) => void
+  agents?: Agent[]
+  getModel?: (modelId: string) => { name: string } | undefined
 }
 
 export interface InstructionsNodeProps {
@@ -24,14 +29,27 @@ export interface InstructionsNodeProps {
 interface InstructionsCardProps {
   instructions?: string
   onEditClick?: () => void
+  onAddStepToInstructions?: (agent: Agent) => void
+  agents?: Agent[]
+  getModel?: (modelId: string) => { name: string } | undefined
   selected?: boolean
 }
 
 const InstructionsCard = memo(function InstructionsCard({
   instructions,
   onEditClick,
+  onAddStepToInstructions,
+  agents,
+  getModel,
   selected = false,
 }: InstructionsCardProps) {
+  const handleAddStepToInstructions = useCallback(
+    (agent: Agent) => {
+      onAddStepToInstructions?.(agent)
+    },
+    [onAddStepToInstructions],
+  )
+
   return (
     <>
       {/* Header */}
@@ -64,6 +82,29 @@ const InstructionsCard = memo(function InstructionsCard({
         className="h-[120px] max-h-[300px] resize-none text-xs bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default overflow-y-auto"
         placeholder="No instructions provided"
       />
+
+      {/* Add step button at the bottom */}
+      {onAddStepToInstructions && agents && agents.length > 0 && (
+        <div className="h-8 mt-2">
+          <AgentSelectorPopover
+            agents={agents}
+            onSelect={handleAddStepToInstructions}
+            getModel={getModel}
+            trigger={
+              <Button
+                variant="outline"
+                className="w-full text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs font-medium hover:cursor-pointer"
+                title="Add step with agent"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add step
+              </Button>
+            }
+          />
+        </div>
+      )}
     </>
   )
 })
@@ -86,7 +127,14 @@ export const InstructionsNode = memo(function InstructionsNode({ data, selected 
         </div>
 
         <div className="p-4">
-          <InstructionsCard instructions={data.instructions} onEditClick={data.onEditClick} selected={selected} />
+          <InstructionsCard 
+            instructions={data.instructions} 
+            onEditClick={data.onEditClick} 
+            onAddStepToInstructions={data.onAddStepToInstructions}
+            agents={data.agents}
+            getModel={data.getModel}
+            selected={selected} 
+          />
         </div>
       </Card>
 

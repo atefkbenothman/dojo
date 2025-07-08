@@ -36,6 +36,7 @@ interface ReactFlowWorkflowCanvasProps {
   // Node handlers
   onRemoveNode?: (nodeId: string) => void
   onChangeNodeAgent?: (nodeId: string, agent: Agent) => void
+  onEditAgent?: (agent: Agent) => void
   onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
   onAddFirstStep?: (agent: Agent) => void
 }
@@ -65,6 +66,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   isVisible,
   onRemoveNode,
   onChangeNodeAgent,
+  onEditAgent,
   onAddStepWithAgent,
   onAddFirstStep,
 }: ReactFlowWorkflowCanvasProps) {
@@ -124,6 +126,13 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     [onAddStepWithAgent],
   )
 
+  const stableOnEditAgent = useCallback(
+    (agent: Agent) => {
+      onEditAgent?.(agent)
+    },
+    [onEditAgent],
+  )
+
   // Transform workflow data to ReactFlow format (without execution status)
   const { nodes: transformedNodes, edges: transformedEdges } = useMemo(() => {
     const result = transformToReactFlow({
@@ -131,6 +140,8 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
       agents,
       instructions: workflow.instructions,
       onEditInstructions: onEditMetadata,
+      onAddStepToInstructions: handleAddFirstStep,
+      getModel,
     })
 
     // Update node heights based on expanded state and fix width/height types
@@ -142,7 +153,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
         height: getNodeHeight(node.id, node.data.variant === "instructions"),
       })),
     }
-  }, [workflowNodes, agents, workflow.instructions, onEditMetadata, getNodeHeight])
+  }, [workflowNodes, agents, workflow.instructions, onEditMetadata, handleAddFirstStep, getModel, getNodeHeight])
 
   // Apply layout algorithm
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
@@ -170,6 +181,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           executionStatus,
           onRemove: stableOnRemove,
           onChangeAgent: stableOnChangeAgent,
+          onEditAgent: stableOnEditAgent,
           onAddStepWithAgent: stableOnAddStepWithAgent,
           agents,
           getModel,
@@ -180,6 +192,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     layoutedNodes,
     stableOnRemove,
     stableOnChangeAgent,
+    stableOnEditAgent,
     stableOnAddStepWithAgent,
     agents,
     getModel,

@@ -38,6 +38,7 @@ export function useWorkflowNodes({
   const addNodeMutation = useMutation(api.workflows.addNode)
   const removeNodeMutation = useMutation(api.workflows.removeNode)
   const updateNodeMutation = useMutation(api.workflows.updateNode)
+  const insertAsNewRootMutation = useMutation(api.workflows.insertAsNewRoot)
 
   // Node state
   const [nodeToDelete, setNodeToDelete] = useState<NodeToDelete | null>(null)
@@ -158,6 +159,30 @@ export function useWorkflowNodes({
     [selectedWorkflow, isAuthenticated, addNodeMutation, onEditWorkflow],
   )
 
+  // Insert a new step as root, making the existing root its child
+  const handleInsertAsNewRoot = useCallback(
+    async (agent: Agent) => {
+      if (!selectedWorkflow || !isAuthenticated) return
+
+      try {
+        // Generate a unique node ID for the new root
+        const nodeId = `node_${Date.now()}`
+
+        // Insert the new node as root, moving existing root to be its child
+        await insertAsNewRootMutation({
+          workflowId: selectedWorkflow._id,
+          nodeId,
+          agentId: agent._id,
+          label: agent.name,
+          order: 0,
+        })
+      } catch (error) {
+        console.error("Failed to insert as new root:", error)
+      }
+    },
+    [selectedWorkflow, isAuthenticated, insertAsNewRootMutation],
+  )
+
   return {
     // State
     nodeToDelete,
@@ -169,5 +194,6 @@ export function useWorkflowNodes({
     handleChangeNodeAgent,
     handleAddStepWithAgent,
     handleAddFirstStep,
+    handleInsertAsNewRoot,
   }
 }

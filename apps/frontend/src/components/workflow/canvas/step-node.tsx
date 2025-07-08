@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-transform"
 import { Agent } from "@dojo/db/convex/types"
 import { Handle, Position } from "@xyflow/react"
-import { Trash, CheckCircle, XCircle, Clock, Plus, SquarePen } from "lucide-react"
+import { Trash, CheckCircle, XCircle, Clock, Plus, Pencil, Bot } from "lucide-react"
 import { memo, useCallback } from "react"
 
 // Step Node Data
@@ -19,6 +19,7 @@ export interface StepNodeData {
   executionStatus?: NodeExecutionStatus
   onRemove?: (nodeId: string) => void
   onChangeAgent?: (nodeId: string, agent: Agent) => void
+  onEditAgent?: (agent: Agent) => void
   onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
   agents?: Agent[]
   getModel?: (modelId: string) => { name: string } | undefined
@@ -52,6 +53,12 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
   const handleRemove = useCallback(() => {
     if (data.workflowNode && data.onRemove) {
       data.onRemove(data.workflowNode.nodeId)
+    }
+  }, [data])
+
+  const handleEditAgent = useCallback(() => {
+    if (data.agent && data.onEditAgent) {
+      data.onEditAgent(data.agent)
     }
   }, [data])
 
@@ -126,14 +133,28 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
                   variant="outline"
                   size="icon"
                   className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                  title="Change agent"
+                  title="Select different agent"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <SquarePen className="h-3 w-3" />
+                  <Bot className="h-3 w-3" />
                 </Button>
               }
             />
+          )}
+
+          {/* Edit agent settings button */}
+          {data.agent && data.onEditAgent && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              onClick={handleEditAgent}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="Edit agent settings"
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
           )}
 
           {/* Remove button */}

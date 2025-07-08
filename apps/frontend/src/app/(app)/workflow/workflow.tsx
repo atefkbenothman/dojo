@@ -1,5 +1,6 @@
 "use client"
 
+import { AgentFormDialog } from "@/components/agent/agent-form-dialog"
 import { NodeDeleteDialog } from "@/components/workflow/node-delete-dialog"
 import { WorkflowContentArea } from "@/components/workflow/workflow-content-area"
 import { WorkflowDeleteDialog } from "@/components/workflow/workflow-delete-dialog"
@@ -15,8 +16,8 @@ import { useWorkflow } from "@/hooks/use-workflow"
 import { useWorkflowNodes } from "@/hooks/use-workflow-nodes"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { Workflow as WorkflowType } from "@dojo/db/convex/types"
-import { useState, useCallback, useMemo } from "react"
+import { Workflow as WorkflowType, Agent } from "@dojo/db/convex/types"
+import { useState, useCallback } from "react"
 
 export function Workflow() {
   const { isAuthenticated } = useAuth()
@@ -46,6 +47,7 @@ export function Workflow() {
     handleChangeNodeAgent,
     handleAddStepWithAgent,
     handleAddFirstStep,
+    handleInsertAsNewRoot,
   } = useWorkflowNodes({
     selectedWorkflow,
     workflowNodes,
@@ -58,6 +60,8 @@ export function Workflow() {
   const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false)
   const [workflowToDelete, setWorkflowToDelete] = useState<WorkflowType | null>(null)
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false)
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
+  const [isAgentDialogOpen, setIsAgentDialogOpen] = useState(false)
 
   // Memoized callbacks
   const handleEditWorkflow = useCallback((workflow: WorkflowType) => {
@@ -118,6 +122,18 @@ export function Workflow() {
     [agents],
   )
 
+  const handleEditAgent = useCallback((agent: Agent) => {
+    setEditingAgent(agent)
+    setIsAgentDialogOpen(true)
+  }, [])
+
+  const handleAgentDialogChange = useCallback((open: boolean) => {
+    setIsAgentDialogOpen(open)
+    if (!open) {
+      setEditingAgent(null)
+    }
+  }, [])
+
   const handleConfirmDeleteWorkflow = useCallback(async () => {
     if (workflowToDelete) {
       // Clear the selection BEFORE deletion to prevent queries from running on deleted workflow
@@ -128,6 +144,20 @@ export function Workflow() {
       setWorkflowToDelete(null)
     }
   }, [remove, selectedWorkflowId, workflowToDelete, setSelectedWorkflowId])
+
+  // Conditional handler for adding steps from instructions
+  const handleAddStepToInstructions = useCallback(
+    (agent: Agent) => {
+      if (workflowNodes.length === 0) {
+        // Empty workflow - create first root node
+        handleAddFirstStep(agent)
+      } else {
+        // Workflow has nodes - insert as new root
+        handleInsertAsNewRoot(agent)
+      }
+    },
+    [workflowNodes.length, handleAddFirstStep, handleInsertAsNewRoot],
+  )
 
   const handleCreateWorkflow = useCallback(async () => {
     const newWorkflow = {
@@ -208,8 +238,9 @@ export function Workflow() {
               onStopWorkflow={stopWorkflow}
               onRemoveNode={handleRemoveNode}
               onChangeNodeAgent={handleChangeNodeAgent}
+              onEditAgent={handleEditAgent}
               onAddStepWithAgent={handleAddStepWithAgent}
-              onAddFirstStep={handleAddFirstStep}
+              onAddFirstStep={handleAddStepToInstructions}
               getModel={getModelWrapper}
             />
           ) : (
@@ -235,6 +266,15 @@ export function Workflow() {
           open={isMetadataDialogOpen}
           onOpenChange={handleMetadataDialogChange}
           onSave={handleSaveWorkflowMetadata}
+        />
+      )}
+      {/* Agent Edit Dialog */}
+      {editingAgent && (
+        <AgentFormDialog
+          mode="edit"
+          agent={editingAgent}
+          open={isAgentDialogOpen}
+          onOpenChange={handleAgentDialogChange}
         />
       )}
       {/* Node Delete Confirmation Dialog */}
