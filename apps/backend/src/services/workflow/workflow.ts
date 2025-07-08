@@ -1,6 +1,6 @@
 import { logger } from "../../lib/logger"
 import { mcpConnectionManager } from "../mcp/connection-manager"
-import { WorkflowExecutor, type WorkflowExecutorOptions } from "./executor"
+import { WorkflowExecutor } from "./executor"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Doc, Id } from "@dojo/db/convex/_generated/dataModel"
 import { asyncTryCatch } from "@dojo/utils"
@@ -56,7 +56,7 @@ export class WorkflowService {
           }
         }
 
-        const { workflow, nodes, agents, agentMap, activeExecution } = executionBundle
+        const { workflow, nodes, agents, activeExecution } = executionBundle
 
         // Check for active execution before starting new one
         if (activeExecution) {
@@ -76,7 +76,7 @@ export class WorkflowService {
         // Convert pre-computed agent map to Map object for compatibility with existing code
         const agentMapObject = new Map<string, Doc<"agents">>()
         for (const agent of agents) {
-          agentMapObject.set(agent._id, agent as Doc<"agents">)
+          agentMapObject.set(agent._id, agent)
         }
 
         // Create execution record
@@ -130,7 +130,7 @@ export class WorkflowService {
     // Always clean up the controller from registry
     if (executionId) {
       WorkflowService.executionControllers.delete(executionId)
-      logger.info("Workflow", `Cleaned up abort controller for execution ${executionId}`)
+      logger.info("Workflow", `Cleaned up abort controller for execution ${String(executionId)}`)
     }
 
     if (error) {
@@ -191,7 +191,7 @@ export class WorkflowService {
           logger.info("Workflow", `Execution ${executionId} is not running (status: ${execution.status})`)
           return {
             success: true, // Return success for idempotency
-            error: `Execution already ${execution.status}`,
+            error: `Execution already in ${execution.status} state`,
           }
         }
 

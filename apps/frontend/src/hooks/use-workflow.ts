@@ -31,7 +31,7 @@ export function useWorkflow() {
     },
     experimental_throttle: 500,
     generateId: () => nanoid(),
-    onError: (err) => {
+    onError: () => {
       play("./sounds/error.mp3", { volume: 0.5 })
     },
     onFinish: () => {

@@ -72,7 +72,7 @@ export function useAgent() {
   const { currentSession, clientSessionId } = useSession()
   const { addUnreadContext } = useNotificationStore()
 
-  const { messages, append, status, setMessages } = useChat({
+  const { messages, append, status } = useChat({
     id: "unified-chat",
     api: `${env.NEXT_PUBLIC_BACKEND_URL}/api/chat`,
     headers: {
@@ -81,7 +81,7 @@ export function useAgent() {
     },
     experimental_throttle: 500,
     generateId: () => nanoid(),
-    onError: (err) => {
+    onError: () => {
       play("./sounds/error.mp3", { volume: 0.5 })
     },
     onFinish: () => {
@@ -151,7 +151,7 @@ export function useAgent() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [append, play, setMessages],
+    [append, play],
   )
 
   const stopAllAgents = async () => {

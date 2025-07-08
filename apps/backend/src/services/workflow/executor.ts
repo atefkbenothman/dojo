@@ -34,6 +34,17 @@ interface WorkflowExecutionResult {
   error?: string
 }
 
+interface AgentStreamingResult {
+  text?: string
+  object?: unknown
+  metadata?: {
+    usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
+    toolCalls?: Array<{ toolCallId: string; toolName: string; args: unknown }>
+    model?: string
+    finishReason?: string
+  }
+}
+
 export class WorkflowExecutor {
   private static readonly HEADERS = {
     "Content-Type": "text/plain; charset=utf-8",
@@ -213,10 +224,10 @@ export class WorkflowExecutor {
   }
 
   private async executeNodeRecursively(node: Doc<"workflowNodes">, workflowPrompt: string): Promise<void> {
-    const { data, error } = await asyncTryCatch(
+    const { error } = await asyncTryCatch(
       (async () => {
         // Execute this node
-        const { agent, tools, context } = await this.prepareNode(node, workflowPrompt)
+        const { agent, context } = await this.prepareNode(node)
         const result = await this.executeNode(node, agent, context, workflowPrompt)
 
         if (result.success) {
@@ -275,8 +286,7 @@ export class WorkflowExecutor {
 
   private async prepareNode(
     node: Doc<"workflowNodes">,
-    workflowPrompt: string,
-  ): Promise<{ agent: Doc<"agents">; tools: ToolSet; context: NodeExecutionContext }> {
+  ): Promise<{ agent: Doc<"agents">; context: NodeExecutionContext }> {
     // Get the agent from cache
     const agent = this.agentMap.get(node.agentId)
     if (!agent) {
@@ -293,7 +303,7 @@ export class WorkflowExecutor {
       conversationHistory: this.conversationState.messages, // Use progressive conversation
     }
 
-    return { agent, tools, context }
+    return { agent, context }
   }
 
   private async executeNode(
@@ -314,7 +324,7 @@ export class WorkflowExecutor {
         const messages = this.buildMessagesWithContext(workflowPrompt, agent, context)
 
         // Execute based on agent output type
-        let result: any
+        let result: AgentStreamingResult
         let output: string
 
         if (agent.outputType === "text") {
@@ -326,7 +336,7 @@ export class WorkflowExecutor {
             end: false, // Don't end the response, we have more steps
             abortSignal: this.options.abortSignal,
           })
-          output = result.text
+          output = result.text || ""
         } else {
           result = await streamObjectResponse({
             res: this.res,
@@ -484,7 +494,7 @@ export class WorkflowExecutor {
         toolCalls?: Array<{
           toolCallId: string
           toolName: string
-          args: any
+          args: unknown
         }>
         model?: string
         finishReason?: string

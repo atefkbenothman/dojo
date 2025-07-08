@@ -1,6 +1,5 @@
 "use client"
 
-import { DemoVideo } from "@/components/demo-video"
 import { MCP_SERVER_ICONS } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -13,8 +12,10 @@ import { useEffect, useState } from "react"
 export default function LandingPage() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
   const [mounted, setMounted] = useState(false)
   const [isVideoPopupOpen, setIsVideoPopupOpen] = useState(false)
+
   const GitHubIcon = MCP_SERVER_ICONS.github as React.ComponentType<{ className?: string }>
 
   // Prefetch all app routes immediately when landing page loads
@@ -134,17 +135,17 @@ export default function LandingPage() {
 
       {/* Video Popup */}
       <Dialog open={isVideoPopupOpen} onOpenChange={setIsVideoPopupOpen}>
-        <DialogContent className="sm:max-w-2xl p-0">
-          <DialogTitle />
-          <div className="p-12">
+        <DialogTitle />
+        <DialogClose className="absolute right-4 top-4 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogClose>
+        <DialogContent className="sm:max-w-4xl">
+          <div className="">
             <div className="aspect-video">
               <video src={"/demo.mp4"} controls autoPlay className="w-full h-full" tabIndex={-1} />
             </div>
           </div>
-          <DialogClose className="absolute right-4 top-4 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
         </DialogContent>
       </Dialog>
     </div>

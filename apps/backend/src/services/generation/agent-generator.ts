@@ -19,9 +19,6 @@ const agentSchema = z.object({
   mcpServerIds: z.array(z.string()).describe("Array of MCP server IDs to connect to this agent"),
 })
 
-// TypeScript interface for the generated agent
-type GeneratedAgent = z.infer<typeof agentSchema>
-
 interface GenerateAgentParams {
   prompt: string
   sessionId: string
