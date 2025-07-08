@@ -24,6 +24,7 @@
     "@trpc/server": "latest",
     "ai": "^4.3.13",
     "chokidar": "^4.0.3",
+    "convex-helpers": "^0.1.96",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",

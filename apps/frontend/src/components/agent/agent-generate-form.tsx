@@ -1,5 +1,6 @@
 "use client"
 
+import { getModelIdFromConvex } from "@/components/agent/form/agent-form-utils"
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,7 +14,7 @@ import { useGeneration } from "@/hooks/use-generation"
 import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Sparkles } from "lucide-react"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useEffect } from "react"
 import { useForm, UseFormReturn } from "react-hook-form"
 import { z } from "zod"
 
@@ -93,11 +94,11 @@ interface ModelSectionProps {
 function ModelSection({ form }: ModelSectionProps) {
   const { models } = useAIModels()
 
+  // Extract the watched value to a variable to simplify the dependency array
+  const watchedModelId = form.watch("aiModelId")
+
   // Convert between Convex ID and modelId
-  const selectedModelId = useMemo(() => {
-    const model = models.find((m) => m._id === form.watch("aiModelId"))
-    return model?.modelId
-  }, [models, form])
+  const selectedModelId = useMemo(() => getModelIdFromConvex(models, watchedModelId), [models, watchedModelId])
 
   const handleModelChange = useCallback(
     (modelId: string) => {
@@ -156,6 +157,13 @@ export function AgentGenerateForm({ onClose }: Pick<AgentGenerateFormProps, "onC
       aiModelId: defaultModel,
     },
   })
+
+  // Update form when default model becomes available
+  useEffect(() => {
+    if (defaultModel && defaultModel !== form.getValues("aiModelId")) {
+      form.setValue("aiModelId", defaultModel, { shouldDirty: false })
+    }
+  }, [defaultModel, form])
 
   const handleGenerate = useCallback(
     async (data: AgentGenerateFormValues) => {

@@ -1,11 +1,26 @@
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { AGENT_GENERATOR_PROMPT } from "../ai/prompts"
-import { createGetMcpServers, createCreateAgent } from "./tools"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
-import { generateText, type LanguageModel } from "ai"
+import { agentsFields } from "@dojo/db/convex/schema"
+import { generateObject, type LanguageModel } from "ai"
+import { convexToZodFields } from "convex-helpers/server/zod"
 import type { ConvexHttpClient } from "convex/browser"
+import { z } from "zod"
+
+// Schema for generated agent specification using convex-helpers
+// Pick the fields we need from the agents schema
+const { name, systemPrompt, outputType } = agentsFields
+
+const agentSchema = z.object({
+  ...convexToZodFields({ name, systemPrompt, outputType }),
+  // Override mcpServers to accept strings during generation (we'll validate/convert later)
+  mcpServerIds: z.array(z.string()).describe("Array of MCP server IDs to connect to this agent"),
+})
+
+// TypeScript interface for the generated agent
+type GeneratedAgent = z.infer<typeof agentSchema>
 
 interface GenerateAgentParams {
   prompt: string
@@ -42,67 +57,65 @@ export async function generateAgent({
     // Get the model using the session and authenticated client
     const model = (await modelManager.getModel(modelId, client)) as LanguageModel
 
-    // Create tools with the authenticated client
-    const toolsWithClient = {
-      getMcpServers: createGetMcpServers(client),
-      createAgent: createCreateAgent(client),
-    }
+    // Fetch available MCP servers for context injection
+    const availableMcpServers = await client.query(api.generation.getMcpServersForUser, {})
 
-    const result = await generateText({
+    // Create context-rich prompt with available MCP servers
+    const contextPrompt = `${prompt}
+
+Available MCP Servers:
+${availableMcpServers
+  .map((server) => `- ${server.name} (ID: ${server._id}): ${server.summary || "MCP server for " + server.name}`)
+  .join("\n")}
+
+When selecting mcpServerIds, use the exact ID values from the list above. Select servers that match the agent's intended functionality.`
+
+    // Generate structured object instead of using tools
+    const result = await generateObject({
       model,
+      schema: agentSchema,
       messages: [
         { role: "system", content: AGENT_GENERATOR_PROMPT },
-        { role: "user", content: prompt },
+        { role: "user", content: contextPrompt },
       ],
-      tools: toolsWithClient,
-      toolChoice: {
-        type: "tool",
-        toolName: "createAgent",
-      },
-      maxSteps: 5,
+      maxTokens: 2000,
     })
 
-    // Find the createAgent tool result
-    // First check toolResults from the last step (for single-step operations)
-    let createAgentResult = result.toolResults?.find((tr) => tr.toolName === "createAgent")
+    const generatedAgent = result.object
 
-    // If not found, search through all steps for multi-step operations
-    if (!createAgentResult && result.steps) {
-      // Iterate through steps to find the createAgent tool result
-      for (const step of result.steps) {
-        // Check if this step has tool results
-        if (step.toolResults && step.toolResults.length > 0) {
-          // Find the createAgent tool result in this step
-          const agentResult = step.toolResults.find((tr) => tr.toolName === "createAgent")
-          if (agentResult) {
-            createAgentResult = agentResult
-            break
-          }
-        }
+    // Validate that the generated MCP server IDs exist in the user's available servers
+    const validMcpServerIds: Id<"mcp">[] = []
+    for (const providedId of generatedAgent.mcpServerIds) {
+      const matchingServer = availableMcpServers.find((server) => server._id === providedId)
+
+      if (matchingServer) {
+        validMcpServerIds.push(matchingServer._id)
+      } else {
+        logger.info("Agent generation", `Invalid MCP server ID generated: ${providedId}. Skipping.`)
       }
     }
 
-    // Type guard to check if result has success and agentId
-    if (
-      createAgentResult &&
-      createAgentResult.result &&
-      typeof createAgentResult.result === "object" &&
-      "success" in createAgentResult.result &&
-      createAgentResult.result.success &&
-      "agentId" in createAgentResult.result &&
-      createAgentResult.result.agentId
-    ) {
-      logger.info("Agent generation", `Successfully created agent: ${createAgentResult.result.agentId}`)
-      return {
-        success: true,
-        agentId: createAgentResult.result.agentId as string,
-      }
+    // Get default model for the agent (first free model)
+    const models = await client.query(api.generation.getModels, {})
+    const defaultModel = models.find((m) => !m.requiresApiKey)
+
+    if (!defaultModel) {
+      throw new Error("No default model found")
     }
 
-    // If no agent was created, return an error
+    // Create the agent in the database
+    const createResult = await client.mutation(api.generation.createAgentForUser, {
+      name: generatedAgent.name,
+      systemPrompt: generatedAgent.systemPrompt,
+      mcpServers: validMcpServerIds,
+      outputType: generatedAgent.outputType,
+      aiModelId: defaultModel._id,
+    })
+
+    logger.info("Agent generation", `Successfully created agent: ${createResult.agentId}`)
     return {
-      success: false,
-      error: "Failed to create agent - AI did not call the creation tool",
+      success: true,
+      agentId: createResult.agentId,
     }
   } catch (error) {
     logger.error("Agent generation", "Agent generation error", error)

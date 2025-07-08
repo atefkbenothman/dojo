@@ -1,5 +1,6 @@
 "use client"
 
+import { getModelIdFromConvex } from "@/components/agent/form/agent-form-utils"
 import { ModelSelect } from "@/components/model-select"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -98,10 +99,7 @@ function ModelSection({ form }: ModelSectionProps) {
   const watchedModelId = form.watch("aiModelId")
 
   // Convert between Convex ID and modelId
-  const selectedModelId = useMemo(() => {
-    const model = models.find((m) => m._id === watchedModelId)
-    return model?.modelId
-  }, [models, watchedModelId])
+  const selectedModelId = useMemo(() => getModelIdFromConvex(models, watchedModelId), [models, watchedModelId])
 
   const handleModelChange = useCallback(
     (modelId: string) => {

@@ -8,9 +8,12 @@ import { z } from "zod"
 // Tool factory functions that create tools with a specific Convex client
 // This ensures proper request isolation and prevents auth state leakage
 
+// Agent-related tools have been removed as we now use generateObject instead of tool-based generation
+// However, these tools are still needed for workflow generation which can create agents
+
 export function createGetMcpServers(client: ConvexHttpClient) {
   return tool({
-    description: "Get user's MCP servers",
+    description: "Get user's MCP servers available for agent creation",
     parameters: z.object({}), // No userId parameter needed
     execute: async () => {
       try {
@@ -34,46 +37,61 @@ export function createGetMcpServers(client: ConvexHttpClient) {
 
 export function createCreateAgent(client: ConvexHttpClient) {
   return tool({
-    description: "Create a new agent in the database",
+    description: "Create a new agent for use in workflows",
     parameters: z.object({
       name: z.string().describe("The name of the agent"),
       systemPrompt: z.string().describe("The system prompt that guides the agent's behavior"),
-      mcpServerIds: z.array(z.string()).describe("Array of MCP server IDs to connect to this agent"),
+      mcpServerIds: z.array(z.string()).describe("Array of MCP server IDs. Use the 'id' field from getMcpServers results, NOT the server name."),
       outputFormat: z
         .enum(["text", "object"])
         .describe("The output format - text for general responses, object for structured data"),
     }),
     execute: async (params) => {
       try {
-        // Get available models
+        // Get available models and MCP servers
         const models = await client.query(api.generation.getModels, {})
+        const availableMcpServers = await client.query(api.generation.getMcpServersForUser, {})
 
-        if (models.length === 0) {
-          throw new Error("No models available")
-        }
-
-        // Use a free model as default (could be improved to let AI choose based on requirements)
-        const defaultModel = models.find((m: Doc<"models">) => !m.requiresApiKey) || models[0]
-
+        // Use first free model as default
+        const defaultModel = models.find((m) => !m.requiresApiKey)
         if (!defaultModel) {
           throw new Error("No default model found")
         }
 
-        // Create the agent using the user-based mutation
+        // Validate and resolve MCP server IDs
+        const validMcpServerIds: Id<"mcp">[] = []
+        for (const providedId of params.mcpServerIds) {
+          const matchingServer = availableMcpServers.find(
+            (server: Doc<"mcp">) => server._id === providedId
+          )
+          
+          if (matchingServer) {
+            validMcpServerIds.push(matchingServer._id)
+          } else {
+            logger.info(
+              "Generation tools", 
+              `Invalid MCP server ID provided for agent creation: ${providedId}. Skipping.`
+            )
+          }
+        }
+
+        // Create the agent
         const result = await client.mutation(api.generation.createAgentForUser, {
           name: params.name,
           systemPrompt: params.systemPrompt,
-          mcpServers: params.mcpServerIds as Id<"mcp">[],
+          mcpServers: validMcpServerIds,
           outputType: params.outputFormat,
           aiModelId: defaultModel._id,
         })
 
+        logger.info("Generation tools", `Successfully created agent for workflow: ${result.agentId}`)
         return {
           success: true,
           agentId: result.agentId,
+          name: params.name,
         }
       } catch (error) {
-        logger.error("Generation tools", "Error creating agent", error)
+        logger.error("Generation tools", "Error creating agent for workflow", error)
         return {
           success: false,
           error: error instanceof Error ? error.message : "Failed to create agent",
@@ -117,18 +135,41 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
         .array(
           z.object({
             name: z.string().describe("The name of this step"),
-            agentId: z.string().describe("The ID of the agent to use for this step"),
+            agentId: z.string().describe("The exact agent ID returned from createAgent or getAgents calls. Must be a valid Convex ID (e.g., 'jd7abc123...'). Do NOT use agent names or create your own IDs."),
           }),
         )
         .describe("The steps that make up this workflow"),
     }),
     execute: async (params) => {
       try {
+        // Validate agent IDs before creating workflow
+        const availableAgents = await client.query(api.generation.getAgentsForUser, {})
+        const validAgentIds: Id<"agents">[] = []
+
+        for (const step of params.steps) {
+          const matchingAgent = availableAgents.find(
+            (agent: Doc<"agents">) => agent._id === step.agentId
+          )
+          
+          if (matchingAgent) {
+            validAgentIds.push(matchingAgent._id)
+          } else {
+            const availableIds = availableAgents.map(a => `${a.name} (${a._id})`).join(", ")
+            logger.error(
+              "Generation tools",
+              `Invalid agent ID provided for workflow step "${step.name}": ${step.agentId}. Available agents: ${availableIds}`
+            )
+            throw new Error(
+              `Invalid agent ID "${step.agentId}" for step "${step.name}". Use exact IDs from createAgent results or getAgents. Available: ${availableIds}`
+            )
+          }
+        }
+
         // Generate node IDs for the steps
         const stepsWithNodeIds = params.steps.map((step, index) => ({
           nodeId: `step_${index + 1}`,
           name: step.name,
-          agentId: step.agentId as Id<"agents">,
+          agentId: validAgentIds[index]!, // Safe because we validated all IDs above
         }))
 
         // Create the workflow using the user-based mutation

@@ -1,7 +1,7 @@
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
 import { WORKFLOW_GENERATOR_PROMPT } from "../ai/prompts"
-import { createGetAgents, createCreateWorkflow } from "./tools"
+import { createGetAgents, createGetMcpServers, createCreateAgent, createCreateWorkflow } from "./tools"
 import { api } from "@dojo/db/convex/_generated/api"
 import { Id } from "@dojo/db/convex/_generated/dataModel"
 import { generateText, type LanguageModel } from "ai"
@@ -45,6 +45,8 @@ export async function generateWorkflow({
     // Create tools with the authenticated client
     const toolsWithClient = {
       getAgents: createGetAgents(client),
+      getMcpServers: createGetMcpServers(client),
+      createAgent: createCreateAgent(client),
       createWorkflow: createCreateWorkflow(client),
     }
 
@@ -55,11 +57,8 @@ export async function generateWorkflow({
         { role: "user", content: prompt },
       ],
       tools: toolsWithClient,
-      toolChoice: {
-        type: "tool",
-        toolName: "createWorkflow",
-      },
-      maxSteps: 5,
+      toolChoice: "auto", // Let AI choose tools naturally
+      maxSteps: 10, // Allow enough steps for agent creation workflow
     })
 
     // Find the createWorkflow tool result
