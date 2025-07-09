@@ -40,10 +40,10 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
   )
 
   // Set headers for Vercel AI SDK compatibility - must be before any write
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-  res.setHeader('x-vercel-ai-data-stream', 'v1')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
+  res.setHeader("Content-Type", "text/plain; charset=utf-8")
+  res.setHeader("x-vercel-ai-data-stream", "v1")
+  res.setHeader("Cache-Control", "no-cache")
+  res.setHeader("Connection", "keep-alive")
 
   let capturedMetadata: StreamTextResult["metadata"] = {}
   let streamError: Error | null = null
@@ -53,6 +53,8 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
     model: languageModel,
     messages: messages,
     tools: tools,
+    toolChoice: "auto",
+    maxRetries: 5,
     maxSteps: 20,
     abortSignal,
     experimental_transform: smoothStream({

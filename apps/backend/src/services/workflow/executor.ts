@@ -1,5 +1,6 @@
 import { logger } from "../../lib/logger"
 import { modelManager } from "../ai/model-manager"
+import { WORKFLOW_EXECUTION_PROMPT } from "../ai/prompts"
 import { streamObjectResponse } from "../ai/stream-object"
 import { streamTextResponse } from "../ai/stream-text"
 import { mcpConnectionManager } from "../mcp/connection-manager"
@@ -160,7 +161,7 @@ export class WorkflowExecutor {
         logger.info("Workflow", `Starting workflow execution with 1 root node`)
 
         // Execute root node recursively (children will execute automatically when parent completes)
-        await this.executeNodeRecursively(rootNode, workflowPrompt)
+        await this.executeNodeRecursively(rootNode)
 
         logger.info("Workflow", "Workflow execution completed")
 
@@ -223,12 +224,12 @@ export class WorkflowExecutor {
     return data
   }
 
-  private async executeNodeRecursively(node: Doc<"workflowNodes">, workflowPrompt: string): Promise<void> {
+  private async executeNodeRecursively(node: Doc<"workflowNodes">): Promise<void> {
     const { error } = await asyncTryCatch(
       (async () => {
         // Execute this node
         const { agent, context } = await this.prepareNode(node)
-        const result = await this.executeNode(node, agent, context, workflowPrompt)
+        const result = await this.executeNode(node, agent, context)
 
         if (result.success) {
           // Get children and execute them immediately in parallel
@@ -243,7 +244,7 @@ export class WorkflowExecutor {
             )
 
             // Each child branch executes independently and concurrently
-            await Promise.allSettled(children.map((child) => this.executeNodeRecursively(child, workflowPrompt)))
+            await Promise.allSettled(children.map((child) => this.executeNodeRecursively(child)))
           } else {
             logger.info("Workflow", `Node ${node.nodeId} completed (leaf node)`)
           }
@@ -310,7 +311,6 @@ export class WorkflowExecutor {
     node: Doc<"workflowNodes">,
     agent: Doc<"agents">,
     context: NodeExecutionContext,
-    workflowPrompt: string,
   ): Promise<{ success: boolean; output?: string }> {
     logger.info("Workflow", `Executing step node: ${node.nodeId}`)
 
@@ -321,7 +321,7 @@ export class WorkflowExecutor {
 
         // Get AI model and execute (includes agent validation)
         const aiModel = await this.getAgentModel(agent)
-        const messages = this.buildMessagesWithContext(workflowPrompt, agent, context)
+        const messages = this.buildMessagesWithContext(agent, context)
 
         // Execute based on agent output type
         let result: AgentStreamingResult
@@ -404,30 +404,10 @@ export class WorkflowExecutor {
    * @param contextPrompt - Optional context for user messages
    */
   private buildWorkflowSystemPrompt(agent: Doc<"agents">): string {
-    const systemPrompt = `<workflow>
-  <introduction>
-    You are part of a multi-agent workflow system. Each agent has a specific role and contributes to achieving the overall goal. You can see the full conversation history to understand what previous agents have accomplished. Your task is to build upon their work and contribute your specialized expertise.
-  </introduction>
-
-  <workflow_goal>
-    ${this.conversationState.workflowGoal}
-  </workflow_goal>
-
-  <workflow_progress>
-    You are step ${this.conversationState.currentStep + 1} in this workflow. Previous agents have completed ${this.conversationState.currentStep} steps before you.
-  </workflow_progress>
-
-  <current_agent>
-    ${agent.systemPrompt}
-  </current_agent>
-
-  <instructions>
-    - Analyze the conversation history to understand what has been accomplished so far
-    - Build upon the work of previous agents rather than starting from scratch
-    - Focus on your specific role and expertise as defined in the current_agent section
-    - Provide output that will be useful for subsequent agents in the workflow
-  </instructions>
-</workflow>`
+    const systemPrompt = WORKFLOW_EXECUTION_PROMPT.replace("{{WORKFLOW_GOAL}}", this.conversationState.workflowGoal)
+      .replace("{{CURRENT_STEP}}", String(this.conversationState.currentStep + 1))
+      .replace("{{PREVIOUS_STEPS}}", String(this.conversationState.currentStep))
+      .replace("{{AGENT_SYSTEM_PROMPT}}", agent.systemPrompt)
 
     logger.info(
       "Workflow",
@@ -437,11 +417,7 @@ export class WorkflowExecutor {
     return systemPrompt
   }
 
-  private buildMessagesWithContext(
-    workflowPrompt: string,
-    agent: Doc<"agents">,
-    context: NodeExecutionContext,
-  ): CoreMessage[] {
+  private buildMessagesWithContext(agent: Doc<"agents">, context: NodeExecutionContext): CoreMessage[] {
     const messages: CoreMessage[] = []
 
     // 1. Add enhanced system prompt with workflow context (includes current agent instructions)
