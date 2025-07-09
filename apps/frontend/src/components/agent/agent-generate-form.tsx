@@ -2,6 +2,7 @@
 
 import { getModelIdFromConvex } from "@/components/agent/form/agent-form-utils"
 import { ModelSelect } from "@/components/model-select"
+import { BorderBeam } from "@/components/ui/border-beam"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
@@ -219,9 +220,13 @@ export function AgentGenerateForm({ onClose }: Pick<AgentGenerateFormProps, "onC
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleGenerate)}>
+      <form onSubmit={form.handleSubmit(handleGenerate)} className="w-full">
         <Card
-          className={cn("p-0 border-[1.5px] gap-0", isGeneratingAgent && "border-yellow-200 dark:border-yellow-800")}
+          className={cn(
+            "p-0 border-[1.5px] gap-0",
+            isGeneratingAgent &&
+              "[background:linear-gradient(45deg,#172033,theme(colors.slate.800)_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),theme(colors.slate.600/.48)_80%,_theme(colors.indigo.500)_86%,_theme(colors.indigo.300)_90%,_theme(colors.indigo.500)_94%,_theme(colors.slate.600/.48))_border-box] border border-transparent animate-border",
+          )}
         >
           <CardHeader className="p-4 gap-0 border-b-[1.5px]">
             <CardTitle className="flex items-center gap-2 leading-normal">Generate Agent with AI</CardTitle>
@@ -232,29 +237,11 @@ export function AgentGenerateForm({ onClose }: Pick<AgentGenerateFormProps, "onC
             {formContent}
           </CardContent>
           <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
+          {isGeneratingAgent && (
+            <BorderBeam duration={4} size={300} colorFrom="purple" colorTo="purple" borderWidth={3} />
+          )}
         </Card>
       </form>
     </Form>
   )
-
-  // Page variant (if needed in the future)
-  // if (variant === "page") {
-  //   return (
-  //     <Form {...form}>
-  //       <form onSubmit={form.handleSubmit(handleGenerate)} className="h-full sm:h-auto flex flex-col">
-  //         <Card className="p-0 border-0 sm:border-[1.5px] gap-0 rounded-none sm:rounded-lg h-full sm:h-auto flex flex-col">
-  //           <CardHeader className="p-4 gap-0 border-b-[1.5px] flex-shrink-0 sticky top-0 z-10 bg-card sm:static">
-  //             <CardTitle>Generate Agent with AI</CardTitle>
-  //           </CardHeader>
-  //           <CardContent className="p-4 bg-background flex-1 sm:flex-initial overflow-y-auto sm:overflow-visible flex flex-col">
-  //             {formContent}
-  //           </CardContent>
-  //           <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0 sticky bottom-0 z-10 bg-card sm:static">
-  //             {formFooter}
-  //           </CardFooter>
-  //         </Card>
-  //       </form>
-  //     </Form>
-  //   )
-  // }
 }

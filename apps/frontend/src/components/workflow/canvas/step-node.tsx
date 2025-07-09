@@ -1,5 +1,6 @@
 "use client"
 
+import { BorderBeam } from "@/components/ui/border-beam"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -296,6 +297,32 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
     }
   }
 
+  const getBorderBeamProps = () => {
+    switch (data.executionStatus) {
+      case "connecting":
+        return {
+          duration: 3,
+          size: 100,
+          colorFrom: "#facc15", // yellow-400
+          colorTo: "#eab308", // yellow-500
+          borderWidth: 3,
+        }
+      case "running":
+        return {
+          duration: 2,
+          size: 100,
+          colorFrom: "#60a5fa", // blue-400
+          colorTo: "#3b82f6", // blue-500
+          borderWidth: 3,
+        }
+      default:
+        return null
+    }
+  }
+
+  const shouldShowBorderBeam = data.executionStatus === "running" || data.executionStatus === "connecting"
+  const borderBeamProps = getBorderBeamProps()
+
   return (
     <>
       {/* Input handle */}
@@ -317,7 +344,7 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
           "w-[280px] h-[260px] overflow-hidden relative p-0",
           getStatusBorderClass(),
           "bg-background/95 backdrop-blur",
-          data.executionStatus === "running" && "animate-pulse shadow-blue-200 dark:shadow-blue-800",
+          data.executionStatus === "running" && "shadow-blue-200 dark:shadow-blue-800",
           selected && "ring-2 ring-primary/80",
         )}
       >
@@ -334,6 +361,15 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
           getMcpServer={data.getMcpServer}
           selected={selected}
         />
+        {shouldShowBorderBeam && borderBeamProps && (
+          <BorderBeam
+            duration={borderBeamProps.duration}
+            size={borderBeamProps.size}
+            colorFrom={borderBeamProps.colorFrom}
+            colorTo={borderBeamProps.colorTo}
+            borderWidth={borderBeamProps.borderWidth}
+          />
+        )}
       </Card>
 
       {/* Output handle */}

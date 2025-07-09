@@ -115,14 +115,13 @@ export const WorkflowListItem = memo(function WorkflowListItem({
   const handlePlayClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      play("./sounds/click.mp3", { volume: 0.5 })
       if (isRunning) {
         onStop()
       } else {
         onRun()
       }
     },
-    [play, isRunning, onRun, onStop],
+    [isRunning, onRun, onStop],
   )
 
   const handleMenuAction = useCallback((e: React.MouseEvent, action: () => void) => {

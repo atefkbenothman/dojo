@@ -2,6 +2,7 @@
 
 import { getModelIdFromConvex } from "@/components/agent/form/agent-form-utils"
 import { ModelSelect } from "@/components/model-select"
+import { BorderBeam } from "@/components/ui/border-beam"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
@@ -229,6 +230,9 @@ export function WorkflowGenerateForm({ onClose }: Pick<WorkflowGenerateFormProps
             {formContent}
           </CardContent>
           <CardFooter className="p-4 gap-0 border-t-[1.5px]">{formFooter}</CardFooter>
+          {isGeneratingWorkflow && (
+            <BorderBeam duration={4} size={300} colorFrom="purple" colorTo="purple" borderWidth={3} />
+          )}
         </Card>
       </form>
     </Form>

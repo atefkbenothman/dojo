@@ -165,10 +165,6 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                   {/* Overall status section */}
                   {execution && execution.status !== "preparing" && execution.status !== "running" && (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                        <h2 className="text-base sm:text-lg font-semibold">Workflow Status</h2>
-                      </div>
                       <Card
                         className={cn(
                           "p-3 sm:p-4 rounded-none sm:rounded-lg border-0 sm:border",
@@ -194,7 +190,6 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                   {/* Nodes section */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                       <h2 className="text-base sm:text-lg font-semibold">Execution Steps</h2>
                     </div>
                     {workflowNodes.filter((n) => n.type === "step").length > 0 ? (
@@ -318,9 +313,6 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                                                             <div className="flex items-center gap-2">
                                                               <span className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-md font-medium">
                                                                 {toolCall.toolName}
-                                                              </span>
-                                                              <span className="text-xs text-muted-foreground">
-                                                                #{toolCall.toolCallId.slice(-6)}
                                                               </span>
                                                             </div>
                                                             {toolCall.args && (
