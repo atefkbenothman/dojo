@@ -194,7 +194,7 @@ export class AgentService {
         AgentService.executionControllers.delete(executionId)
         logger.info("Agent", `Cleaned up abort controller for execution ${executionId}`)
         // Clean up agent-created connections
-        await mcpConnectionManager.cleanupAgentConnections(executionId)
+        // await mcpConnectionManager.cleanupAgentConnections(executionId)
       }
     }
   }

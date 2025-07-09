@@ -180,7 +180,7 @@ export class WorkflowExecutor {
 
     // Handle cleanup in both success and error cases
     if (this.options.executionId) {
-      await mcpConnectionManager.cleanupWorkflowConnections(this.options.executionId)
+      // await mcpConnectionManager.cleanupWorkflowConnections(this.options.executionId)
 
       // Assess final workflow status if execution completed successfully
       if (data && data.success && !this.hasAnyNodeFailed) {

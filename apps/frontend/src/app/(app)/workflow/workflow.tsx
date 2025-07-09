@@ -37,8 +37,10 @@ export function Workflow() {
   )
 
   // Extract workflow and nodes from the combined result
-  const selectedWorkflow = selectedWorkflowWithNodes?.workflow || null
-  const workflowNodes = selectedWorkflowWithNodes?.nodes || []
+  // Explicitly handle deselection - when selectedWorkflowId is null, force workflow to null
+  // This prevents useStableQuery from keeping stale data when query becomes "skip"
+  const selectedWorkflow = selectedWorkflowId && selectedWorkflowWithNodes ? selectedWorkflowWithNodes.workflow : null
+  const workflowNodes = selectedWorkflowId && selectedWorkflowWithNodes ? selectedWorkflowWithNodes.nodes : []
 
   // Get node operations
   const {

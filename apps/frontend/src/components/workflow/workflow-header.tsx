@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { useWorkflow } from "@/hooks/use-workflow"
+import { cn } from "@/lib/utils"
 import { Workflow, WorkflowExecution } from "@dojo/db/convex/types"
 import { Play, Pencil, Square } from "lucide-react"
 import { memo, ReactNode } from "react"
@@ -66,7 +67,12 @@ export const WorkflowHeader = memo(function WorkflowHeader({
         <div className="flex items-center justify-end">
           <Button
             size="sm"
-            className="bg-green-700 hover:bg-green-800 text-white border-green-500 border-[1px] hover:border-green-800 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-700 h-8"
+            className={cn(
+              "text-white border-[1px] hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed h-8",
+              isRunning
+                ? "bg-red-700 hover:bg-red-800 border-red-500 hover:border-red-800 disabled:hover:bg-red-700"
+                : "bg-green-700 hover:bg-green-800 border-green-500 hover:border-green-800 disabled:hover:bg-green-700",
+            )}
             onClick={handleButtonClick}
             disabled={shouldDisableRunButton}
             title={isRunning ? "Stop workflow" : "Run workflow"}

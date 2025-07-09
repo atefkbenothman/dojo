@@ -197,6 +197,58 @@ export function useMCP() {
     play("./sounds/disconnect.mp3", { volume: 0.5 })
   }
 
+  const disconnectAll = async () => {
+    if (!currentSession) {
+      toast.error("Session not ready. Please wait a moment and try again.", {
+        icon: null,
+        id: "mcp-session-not-ready",
+        duration: 3000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+      return
+    }
+
+    try {
+      const result = await convex.mutation(api.mcpConnections.disconnectAllBySession, {
+        sessionId: currentSession._id,
+      })
+
+      if (result.disconnectedCount > 0) {
+        // Clear all tools from store for disconnected servers
+        result.serverIds.forEach((serverId) => {
+          clearTools(serverId)
+        })
+
+        play("./sounds/disconnect.mp3", { volume: 0.5 })
+        toast.success(`Disconnected from ${result.disconnectedCount} server${result.disconnectedCount > 1 ? 's' : ''}`, {
+          icon: null,
+          id: "mcp-disconnect-all-success",
+          duration: 3000,
+          position: "bottom-center",
+          style: successToastStyle,
+        })
+      } else {
+        toast.info("No servers to disconnect", {
+          icon: null,
+          id: "mcp-disconnect-all-info",
+          duration: 2000,
+          position: "bottom-center",
+        })
+      }
+    } catch (error) {
+      play("./sounds/error.mp3", { volume: 0.5 })
+      const errorMessage = error instanceof Error ? error.message : "Failed to disconnect from servers"
+      toast.error(errorMessage, {
+        icon: null,
+        id: "mcp-disconnect-all-error",
+        duration: 5000,
+        position: "bottom-center",
+        style: errorToastStyle,
+      })
+    }
+  }
+
   const create = async (mcp: WithoutSystemFields<Doc<"mcp">>) => {
     try {
       const serverId = await createMCP(mcp)
@@ -304,6 +356,7 @@ export function useMCP() {
     getConnection,
     connect,
     disconnect,
+    disconnectAll,
     create,
     edit,
     remove,

@@ -202,7 +202,10 @@ export const WorkflowListItem = memo(function WorkflowListItem({
               size="icon"
               onClick={handlePlayClick}
               disabled={shouldDisableRunButton}
-              className="size-8 hover:cursor-pointer"
+              className={cn(
+                "size-8 hover:cursor-pointer",
+                isRunning && "border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20",
+              )}
               title={isRunning ? "Stop workflow" : "Run workflow"}
             >
               {isPreparing ? (

@@ -5,6 +5,7 @@ import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
 import { useNotificationStore } from "@/store/use-notification-store"
+import { useChat as useChatHook } from "@/hooks/use-chat"
 import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"
@@ -21,6 +22,7 @@ export function useWorkflow() {
   const { play } = useSoundEffectContext()
   const { currentSession, clientSessionId } = useSession()
   const { addUnreadContext } = useNotificationStore()
+  const { handleNewChat } = useChatHook()
 
   const { messages, append, status, setMessages } = useChat({
     id: "unified-chat",
@@ -98,6 +100,9 @@ export function useWorkflow() {
         return
       }
 
+      // Clear chat before starting workflow execution
+      handleNewChat()
+
       // Set optimistic preparing state
       setPreparingWorkflows((prev) => new Set(prev).add(workflow._id))
 
@@ -146,7 +151,7 @@ export function useWorkflow() {
 
       play("./sounds/chat.mp3", { volume: 0.5 })
     },
-    [play],
+    [play, handleNewChat],
   )
 
   const headers = useMemo(() => {

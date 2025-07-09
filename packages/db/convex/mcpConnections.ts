@@ -158,3 +158,41 @@ export const getByAgentExecution = query({
     return connections
   },
 })
+
+// Disconnect all connections for a session
+export const disconnectAllBySession = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+  },
+  handler: async (ctx, args) => {
+    // Get all connected connections for this session
+    const connections = await ctx.db
+      .query("mcpConnections")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .filter((q) => q.eq(q.field("status"), "connected"))
+      .collect()
+
+    if (connections.length === 0) {
+      return { disconnectedCount: 0, serverIds: [] }
+    }
+
+    const now = Date.now()
+    const serverIds = connections.map((conn) => conn.mcpServerId)
+
+    // Update all connected connections to disconnected status
+    await Promise.all(
+      connections.map((conn) =>
+        ctx.db.patch(conn._id, {
+          status: "disconnected",
+          disconnectedAt: now,
+          error: undefined, // Clear any previous errors
+        }),
+      ),
+    )
+
+    return {
+      disconnectedCount: connections.length,
+      serverIds,
+    }
+  },
+})
