@@ -308,18 +308,32 @@ export const WorkflowExecutionView = memo(function WorkflowExecutionView({
                                                 )}
                                                 {nodeExecution.metadata.toolCalls &&
                                                   nodeExecution.metadata.toolCalls.length > 0 && (
-                                                    <div className="w-full space-y-1 p-2 rounded-md bg-background/50 mt-3">
+                                                    <div className="w-full space-y-2 p-2 rounded-md bg-background/50 mt-3">
                                                       <div className="text-xs text-muted-foreground">
                                                         Tools Used ({nodeExecution.metadata.toolCalls.length})
                                                       </div>
-                                                      <div className="flex flex-wrap gap-1.5">
+                                                      <div className="space-y-2">
                                                         {nodeExecution.metadata.toolCalls.map((toolCall, idx) => (
-                                                          <span
-                                                            key={idx}
-                                                            className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-md font-medium"
-                                                          >
-                                                            {toolCall.toolName}
-                                                          </span>
+                                                          <div key={idx} className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                              <span className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-md font-medium">
+                                                                {toolCall.toolName}
+                                                              </span>
+                                                              <span className="text-xs text-muted-foreground">
+                                                                #{toolCall.toolCallId.slice(-6)}
+                                                              </span>
+                                                            </div>
+                                                            {toolCall.args && (
+                                                              <details className="text-xs">
+                                                                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                  View arguments
+                                                                </summary>
+                                                                <pre className="mt-1 p-2 bg-muted/30 rounded text-xs text-muted-foreground overflow-x-auto">
+                                                                  {JSON.stringify(toolCall.args, null, 2)}
+                                                                </pre>
+                                                              </details>
+                                                            )}
+                                                          </div>
                                                         ))}
                                                       </div>
                                                     </div>

@@ -355,6 +355,12 @@ export class WorkflowExecutor {
           output = ""
         }
 
+        // if (result.metadata?.toolCalls && result.metadata.toolCalls.length > 0) {
+        //   logger.info("------- Workflow", `Node ${node.nodeId} used ${result.metadata.toolCalls.length} tools:`, {
+        //     toolCalls: result.metadata.toolCalls.map((tc) => tc.toolName),
+        //   })
+        // }
+
         // Mark as completed (with metadata if available)
         await this.updateNodeStatus(node.nodeId, agent._id, "completed", {
           output: output,

@@ -135,7 +135,7 @@ export class AgentService {
       logger.info("Agent", `Constructed ${processedMessages.length} messages for agent execution`)
 
       // Execute agent based on output type
-      await this.executeAgent({
+      const result = await this.executeAgent({
         agent,
         aiModel,
         messages: processedMessages,
@@ -144,6 +144,12 @@ export class AgentService {
         userIdForLogging,
         abortSignal: abortController.signal,
       })
+
+      // if (result.metadata?.toolCalls && result.metadata.toolCalls.length > 0) {
+      //   logger.info("------- Agent", `Agent ${agent._id} used ${result.metadata.toolCalls.length} tools:`, {
+      //     toolCalls: result.metadata.toolCalls.map((tc) => tc.toolName),
+      //   })
+      // }
 
       // Update execution status to completed
       if (executionId) {
@@ -332,29 +338,36 @@ export class AgentService {
     combinedTools: ToolSet
     userIdForLogging: string
     abortSignal: AbortSignal
-  }): Promise<void> {
+  }): Promise<{
+    text?: string
+    object?: unknown
+    metadata?: {
+      usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
+      toolCalls?: Array<{ toolCallId: string; toolName: string; args: unknown }>
+      model?: string
+      finishReason?: string
+    }
+  }> {
     const { agent, aiModel, messages, res, combinedTools, userIdForLogging, abortSignal } = params
 
     switch (agent.outputType) {
       case "text":
         logger.info("Agent", `Using ${Object.keys(combinedTools).length} total tools for userId: ${userIdForLogging}`)
-        await streamTextResponse({
+        return await streamTextResponse({
           res,
           languageModel: aiModel,
           messages,
           tools: combinedTools,
           abortSignal,
         })
-        break
 
       case "object":
-        await streamObjectResponse({
+        return await streamObjectResponse({
           res,
           languageModel: aiModel,
           messages,
           abortSignal,
         })
-        break
 
       default:
         throw new Error("Unknown or unhandled output type")

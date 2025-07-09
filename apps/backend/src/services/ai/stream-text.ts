@@ -17,6 +17,13 @@ interface ToolCall {
   args: unknown
 }
 
+interface ToolCallContent {
+  type: "tool-call"
+  toolCallId: string
+  toolName: string
+  args: unknown
+}
+
 interface StreamTextResult {
   text: string
   metadata?: {
@@ -71,6 +78,31 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
     onFinish: ({ usage, finishReason, response }) => {
       // Only capture metadata if we haven't errored
       if (!hasErrored) {
+        // Extract tool calls from assistant messages
+        const toolCalls = response.messages
+          .filter((msg) => msg.role === "assistant")
+          .flatMap((msg) => {
+            // Extract tool calls from the content array
+            if (Array.isArray(msg.content)) {
+              return msg.content.filter((content: any): content is ToolCallContent => 
+                content.type === "tool-call"
+              )
+            }
+            return []
+          })
+          .map((toolCall: ToolCallContent) => ({
+            toolCallId: toolCall.toolCallId,
+            toolName: toolCall.toolName,
+            args: toolCall.args,
+          }))
+
+        // Log tool calls for debugging
+        if (toolCalls.length > 0) {
+          logger.info("AI", `Captured ${toolCalls.length} tool calls:`, {
+            toolNames: toolCalls.map(tc => tc.toolName),
+          })
+        }
+
         capturedMetadata = {
           usage: usage
             ? {
@@ -79,20 +111,7 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
                 totalTokens: usage.totalTokens,
               }
             : undefined,
-          toolCalls: response.messages
-            .filter((msg) => msg.role === "assistant" && "toolInvocations" in msg)
-            .flatMap((msg) => {
-              // Type assertion since we've already checked for toolInvocations
-              const assistantMsg = msg as {
-                toolInvocations?: Array<{ toolCallId: string; toolName: string; args: unknown }>
-              }
-              return assistantMsg.toolInvocations || []
-            })
-            .map((toolInvocation) => ({
-              toolCallId: toolInvocation.toolCallId,
-              toolName: toolInvocation.toolName,
-              args: toolInvocation.args,
-            })),
+          toolCalls,
           model: response.modelId || languageModel.modelId,
           finishReason: finishReason,
         }
