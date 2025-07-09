@@ -54,6 +54,9 @@ export default function LandingPage() {
                   {GitHubIcon && <GitHubIcon className="w-4 h-4" />}
                 </Link>
               </Button>
+              <Button asChild className="hover:cursor-pointer">
+                <Link href="/dashboard">Start Building</Link>
+              </Button>
             </div>
           </div>
         </div>
