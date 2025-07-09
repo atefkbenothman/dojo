@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { cn } from "@/lib/utils"
 import { Agent, WorkflowExecution, Workflow } from "@dojo/db/convex/types"
-import { CheckCircle, XCircle, Circle, Copy, AlertTriangle, AlertCircle } from "lucide-react"
+import { CheckCircle, XCircle, Circle, Copy, AlertTriangle } from "lucide-react"
 import { memo, useCallback, useRef } from "react"
 
 interface WorkflowExecutionViewProps {

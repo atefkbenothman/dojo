@@ -1,11 +1,11 @@
 "use client"
 
+import { useChat as useChatHook } from "@/hooks/use-chat"
 import { useSoundEffectContext } from "@/hooks/use-sound-effect"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { errorToastStyle } from "@/lib/styles"
 import { useSession } from "@/providers/session-provider"
 import { useNotificationStore } from "@/store/use-notification-store"
-import { useChat as useChatHook } from "@/hooks/use-chat"
 import { useChat, Message } from "@ai-sdk/react"
 import { useAuthToken } from "@convex-dev/auth/react"
 import { api } from "@dojo/db/convex/_generated/api"

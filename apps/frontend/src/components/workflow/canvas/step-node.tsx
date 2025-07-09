@@ -4,7 +4,6 @@ import { BorderBeam } from "@/components/ui/border-beam"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Textarea } from "@/components/ui/textarea"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { NodeExecutionStatus } from "@/hooks/use-stable-execution-status"
@@ -12,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-transform"
 import { Agent } from "@dojo/db/convex/types"
 import { Handle, Position } from "@xyflow/react"
-import { Trash, CheckCircle, XCircle, Clock, Plus, Pencil, Bot, Settings } from "lucide-react"
+import { Trash, Plus, Pencil, Bot, Settings } from "lucide-react"
 import { memo, useCallback, useState } from "react"
 
 // Step Node Data
@@ -39,7 +38,6 @@ export interface StepNodeProps {
 interface StepCardProps {
   workflowNode?: TransformNodeData["workflowNode"]
   agent?: Agent
-  executionStatus?: NodeExecutionStatus
   onRemove?: (nodeId: string) => void
   onChangeAgent?: (nodeId: string, agent: Agent) => void
   onEditAgent?: (agent: Agent) => void
@@ -47,13 +45,11 @@ interface StepCardProps {
   agents?: Agent[]
   getModel?: (modelId: string) => { name: string } | undefined
   getMcpServer?: (serverId: string) => { name: string } | undefined
-  selected?: boolean
 }
 
 const StepCard = memo(function StepCard({
   workflowNode,
   agent,
-  executionStatus,
   onRemove,
   onChangeAgent,
   onEditAgent,
@@ -61,7 +57,6 @@ const StepCard = memo(function StepCard({
   agents,
   getModel,
   getMcpServer,
-  selected = false,
 }: StepCardProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
@@ -97,23 +92,6 @@ const StepCard = memo(function StepCard({
     }
     setDropdownOpen(false)
   }, [agent, onEditAgent])
-
-  const getExecutionStatusIcon = () => {
-    if (!executionStatus) return null
-
-    switch (executionStatus) {
-      case "connecting":
-        return <Clock className="h-3 w-3 text-yellow-500" />
-      case "running":
-        return <LoadingAnimationInline className="h-3 w-3 text-blue-500" />
-      case "completed":
-        return <CheckCircle className="h-3 w-3 text-green-500" />
-      case "failed":
-        return <XCircle className="h-3 w-3 text-red-500" />
-      default:
-        return null
-    }
-  }
 
   const modelName = agent && getModel ? getModel(agent.aiModelId)?.name : undefined
 
@@ -351,7 +329,6 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
         <StepCard
           workflowNode={data.workflowNode}
           agent={data.agent}
-          executionStatus={data.executionStatus}
           onRemove={data.onRemove}
           onChangeAgent={data.onChangeAgent}
           onEditAgent={data.onEditAgent}
@@ -359,7 +336,6 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
           agents={data.agents}
           getModel={data.getModel}
           getMcpServer={data.getMcpServer}
-          selected={selected}
         />
         {shouldShowBorderBeam && borderBeamProps && (
           <BorderBeam

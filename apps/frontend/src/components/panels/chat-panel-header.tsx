@@ -32,12 +32,7 @@ function MCPServersPopover() {
                   <span className="text-xs">{mcpServers.find((mcp) => mcp._id === conn.serverId)?.name}</span>
                 </div>
               ))}
-              <Button
-                onClick={disconnectAll}
-                variant="destructive"
-                size="sm"
-                className="mt-2 w-full text-xs"
-              >
+              <Button onClick={disconnectAll} variant="destructive" size="sm" className="mt-2 w-full text-xs">
                 Disconnect All
               </Button>
             </div>

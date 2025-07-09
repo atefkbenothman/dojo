@@ -578,8 +578,12 @@ export function MCPForm({
                   {mode === "add" ? "New MCP Server" : `${form.watch("name") || server?.name} Config`}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 bg-background space-y-8 flex-1 overflow-y-auto max-h-[60vh]">{formContent}</CardContent>
-              {shouldShowFooter && <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0">{formFooter}</CardFooter>}
+              <CardContent className="p-4 bg-background space-y-8 flex-1 overflow-y-auto max-h-[60vh]">
+                {formContent}
+              </CardContent>
+              {shouldShowFooter && (
+                <CardFooter className="p-4 gap-0 border-t-[1.5px] flex-shrink-0">{formFooter}</CardFooter>
+              )}
             </Card>
           </form>
         </Form>

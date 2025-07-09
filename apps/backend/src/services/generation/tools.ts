@@ -41,7 +41,9 @@ export function createCreateAgent(client: ConvexHttpClient) {
     parameters: z.object({
       name: z.string().describe("The name of the agent"),
       systemPrompt: z.string().describe("The system prompt that guides the agent's behavior"),
-      mcpServerIds: z.array(z.string()).describe("Array of MCP server IDs. Use the 'id' field from getMcpServers results, NOT the server name."),
+      mcpServerIds: z
+        .array(z.string())
+        .describe("Array of MCP server IDs. Use the 'id' field from getMcpServers results, NOT the server name."),
       outputFormat: z
         .enum(["text", "object"])
         .describe("The output format - text for general responses, object for structured data"),
@@ -61,16 +63,14 @@ export function createCreateAgent(client: ConvexHttpClient) {
         // Validate and resolve MCP server IDs
         const validMcpServerIds: Id<"mcp">[] = []
         for (const providedId of params.mcpServerIds) {
-          const matchingServer = availableMcpServers.find(
-            (server: Doc<"mcp">) => server._id === providedId
-          )
-          
+          const matchingServer = availableMcpServers.find((server: Doc<"mcp">) => server._id === providedId)
+
           if (matchingServer) {
             validMcpServerIds.push(matchingServer._id)
           } else {
             logger.info(
-              "Generation tools", 
-              `Invalid MCP server ID provided for agent creation: ${providedId}. Skipping.`
+              "Generation tools",
+              `Invalid MCP server ID provided for agent creation: ${providedId}. Skipping.`,
             )
           }
         }
@@ -135,7 +135,11 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
         .array(
           z.object({
             name: z.string().describe("The name of this step"),
-            agentId: z.string().describe("The exact agent ID returned from createAgent or getAgents calls. Must be a valid Convex ID (e.g., 'jd7abc123...'). Do NOT use agent names or create your own IDs."),
+            agentId: z
+              .string()
+              .describe(
+                "The exact agent ID returned from createAgent or getAgents calls. Must be a valid Convex ID (e.g., 'jd7abc123...'). Do NOT use agent names or create your own IDs.",
+              ),
           }),
         )
         .describe("The steps that make up this workflow"),
@@ -147,20 +151,18 @@ export function createCreateWorkflow(client: ConvexHttpClient) {
         const validAgentIds: Id<"agents">[] = []
 
         for (const step of params.steps) {
-          const matchingAgent = availableAgents.find(
-            (agent: Doc<"agents">) => agent._id === step.agentId
-          )
-          
+          const matchingAgent = availableAgents.find((agent: Doc<"agents">) => agent._id === step.agentId)
+
           if (matchingAgent) {
             validAgentIds.push(matchingAgent._id)
           } else {
-            const availableIds = availableAgents.map(a => `${a.name} (${a._id})`).join(", ")
+            const availableIds = availableAgents.map((a) => `${a.name} (${a._id})`).join(", ")
             logger.error(
               "Generation tools",
-              `Invalid agent ID provided for workflow step "${step.name}": ${step.agentId}. Available agents: ${availableIds}`
+              `Invalid agent ID provided for workflow step "${step.name}": ${step.agentId}. Available agents: ${availableIds}`,
             )
             throw new Error(
-              `Invalid agent ID "${step.agentId}" for step "${step.name}". Use exact IDs from createAgent results or getAgents. Available: ${availableIds}`
+              `Invalid agent ID "${step.agentId}" for step "${step.name}". Use exact IDs from createAgent results or getAgents. Available: ${availableIds}`,
             )
           }
         }

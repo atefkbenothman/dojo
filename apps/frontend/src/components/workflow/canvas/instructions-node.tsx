@@ -7,7 +7,7 @@ import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popov
 import { cn } from "@/lib/utils"
 import { Agent } from "@dojo/db/convex/types"
 import { Handle, Position } from "@xyflow/react"
-import { FileText, Pencil, Plus } from "lucide-react"
+import { Pencil, Plus } from "lucide-react"
 import { memo, useCallback } from "react"
 
 // Instructions Node Data
@@ -32,7 +32,6 @@ interface InstructionsCardProps {
   onAddStepToInstructions?: (agent: Agent) => void
   agents?: Agent[]
   getModel?: (modelId: string) => { name: string } | undefined
-  selected?: boolean
 }
 
 const InstructionsCard = memo(function InstructionsCard({
@@ -41,7 +40,6 @@ const InstructionsCard = memo(function InstructionsCard({
   onAddStepToInstructions,
   agents,
   getModel,
-  selected = false,
 }: InstructionsCardProps) {
   const handleAddStepToInstructions = useCallback(
     (agent: Agent) => {
@@ -133,7 +131,6 @@ export const InstructionsNode = memo(function InstructionsNode({ data, selected 
           onAddStepToInstructions={data.onAddStepToInstructions}
           agents={data.agents}
           getModel={data.getModel}
-          selected={selected}
         />
       </Card>
 

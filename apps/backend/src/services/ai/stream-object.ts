@@ -27,10 +27,10 @@ export async function streamObjectResponse(options: StreamObjectOptions): Promis
   const { res, languageModel, messages, end = true, abortSignal } = options
 
   // Set headers for Vercel AI SDK compatibility - must be before any write
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-  res.setHeader('x-vercel-ai-data-stream', 'v1')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
+  res.setHeader("Content-Type", "text/plain; charset=utf-8")
+  res.setHeader("x-vercel-ai-data-stream", "v1")
+  res.setHeader("Cache-Control", "no-cache")
+  res.setHeader("Connection", "keep-alive")
 
   let capturedMetadata: StreamObjectResult["metadata"] = {}
   let streamError: Error | null = null

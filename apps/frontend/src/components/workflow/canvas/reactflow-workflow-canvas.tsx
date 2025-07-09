@@ -1,7 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { CustomReactFlowControls } from "@/components/workflow/canvas/custom-reactflow-controls"
 import { InstructionsNode } from "@/components/workflow/canvas/instructions-node"
 import { StepNode } from "@/components/workflow/canvas/step-node"
@@ -23,7 +21,6 @@ import {
   ViewportPortal,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
-import { Plus } from "lucide-react"
 import { useCallback, useState, memo, useMemo, useEffect, useRef } from "react"
 
 interface ReactFlowWorkflowCanvasProps {
@@ -66,7 +63,6 @@ interface NodeStatusIndicatorProps {
 }
 
 const NodeStatusIndicator = memo(function NodeStatusIndicator({
-  nodeId,
   position,
   height,
   executionStatus,
@@ -243,7 +239,16 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
         height: getNodeHeight(node.id, node.data.variant === "instructions"),
       })),
     }
-  }, [workflowNodes, agents, workflow.instructions, onEditMetadata, handleAddFirstStep, getModel, getNodeHeight])
+  }, [
+    workflowNodes,
+    agents,
+    workflow.instructions,
+    onEditMetadata,
+    handleAddFirstStep,
+    getModel,
+    getMcpServer,
+    getNodeHeight,
+  ])
 
   // Apply layout algorithm
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
@@ -287,6 +292,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     stableOnAddStepWithAgent,
     agents,
     getModel,
+    getMcpServer,
     getNodeExecutionStatus,
     selectedNodes,
   ])
@@ -384,26 +390,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     // Update the ref after processing
     wasVisibleRef.current = isVisible ?? false
   }, [isVisible, enhancedNodes.length, fitView])
-
-  // Format execution duration (similar to WorkflowExecutionView)
-  const getExecutionDuration = useCallback(() => {
-    if (!execution?.startedAt) return null
-    const endTime = execution.completedAt || Date.now()
-    const duration = endTime - execution.startedAt
-    const seconds = Math.floor(duration / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-
-    if (hours > 0) {
-      return `${hours}h ${minutes % 60}m ${seconds % 60}s`
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`
-    } else {
-      return `${seconds}s`
-    }
-  }, [execution?.startedAt, execution?.completedAt])
-
-  const hasWorkflowNodes = workflowNodes && workflowNodes.length > 0
 
   return (
     <div className="h-full" ref={containerRef}>

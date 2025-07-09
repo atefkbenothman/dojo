@@ -221,13 +221,16 @@ export function useMCP() {
         })
 
         play("./sounds/disconnect.mp3", { volume: 0.5 })
-        toast.success(`Disconnected from ${result.disconnectedCount} server${result.disconnectedCount > 1 ? 's' : ''}`, {
-          icon: null,
-          id: "mcp-disconnect-all-success",
-          duration: 3000,
-          position: "bottom-center",
-          style: successToastStyle,
-        })
+        toast.success(
+          `Disconnected from ${result.disconnectedCount} server${result.disconnectedCount > 1 ? "s" : ""}`,
+          {
+            icon: null,
+            id: "mcp-disconnect-all-success",
+            duration: 3000,
+            position: "bottom-center",
+            style: successToastStyle,
+          },
+        )
       } else {
         toast.info("No servers to disconnect", {
           icon: null,

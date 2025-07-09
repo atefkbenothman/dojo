@@ -135,7 +135,7 @@ export class AgentService {
       logger.info("Agent", `Constructed ${processedMessages.length} messages for agent execution`)
 
       // Execute agent based on output type
-      const result = await this.executeAgent({
+      await this.executeAgent({
         agent,
         aiModel,
         messages: processedMessages,

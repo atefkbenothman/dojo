@@ -822,10 +822,10 @@ export const insertAsNewRoot = mutation({
     }
 
     // Find current root node (node with no parent or current workflow rootNodeId)
-    let currentRootNode = existingNodes.find(node => node.nodeId === workflow.rootNodeId)
+    let currentRootNode = existingNodes.find((node) => node.nodeId === workflow.rootNodeId)
     if (!currentRootNode) {
       // Fallback: find root by looking for node with no parent
-      currentRootNode = existingNodes.find(node => !node.parentNodeId)
+      currentRootNode = existingNodes.find((node) => !node.parentNodeId)
     }
 
     if (!currentRootNode) {
@@ -857,8 +857,8 @@ export const insertAsNewRoot = mutation({
     const simulatedNodes = [
       newRootNode,
       updatedCurrentRoot,
-      ...existingNodes.filter(node => node.nodeId !== currentRootNode.nodeId)
-    ].map(node => ({
+      ...existingNodes.filter((node) => node.nodeId !== currentRootNode.nodeId),
+    ].map((node) => ({
       nodeId: node.nodeId,
       parentNodeId: node.parentNodeId,
       agentId: node.agentId,

@@ -24,6 +24,13 @@ interface ToolCallContent {
   args: unknown
 }
 
+interface MessageContent {
+  type: string
+  toolCallId?: string
+  toolName?: string
+  args?: unknown
+}
+
 interface StreamTextResult {
   text: string
   metadata?: {
@@ -84,8 +91,8 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
           .flatMap((msg) => {
             // Extract tool calls from the content array
             if (Array.isArray(msg.content)) {
-              return msg.content.filter((content: any): content is ToolCallContent => 
-                content.type === "tool-call"
+              return msg.content.filter(
+                (content: MessageContent): content is ToolCallContent => content.type === "tool-call",
               )
             }
             return []
@@ -99,7 +106,7 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
         // Log tool calls for debugging
         if (toolCalls.length > 0) {
           logger.info("AI", `Captured ${toolCalls.length} tool calls:`, {
-            toolNames: toolCalls.map(tc => tc.toolName),
+            toolNames: toolCalls.map((tc) => tc.toolName),
           })
         }
 
