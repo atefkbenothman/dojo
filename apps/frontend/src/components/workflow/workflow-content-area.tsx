@@ -22,6 +22,7 @@ interface WorkflowContentAreaProps {
   onAddStepWithAgent: (parentNodeId: string, agent: Agent) => void
   onAddFirstStep: (agent: Agent) => void
   getModel: (modelId: string) => { name: string } | undefined
+  getMcpServer: (serverId: string) => { name: string } | undefined
 }
 
 export const WorkflowContentArea = memo(function WorkflowContentArea({
@@ -37,6 +38,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   onAddStepWithAgent,
   onAddFirstStep,
   getModel,
+  getMcpServer,
 }: WorkflowContentAreaProps) {
   // Get agents from hook
   const { agents } = useAgent()
@@ -44,13 +46,13 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
   // Filter agents based on workflow visibility
   const filteredAgents = useMemo(() => {
     if (!agents) return []
-    
+
     if (workflow.isPublic) {
       // Public workflows can only use public agents
-      return agents.filter(agent => agent.isPublic)
+      return agents.filter((agent) => agent.isPublic)
     } else {
       // Private workflows can only use private (user-specific) agents
-      return agents.filter(agent => !agent.isPublic)
+      return agents.filter((agent) => !agent.isPublic)
     }
   }, [agents, workflow.isPublic])
 
@@ -101,6 +103,7 @@ export const WorkflowContentArea = memo(function WorkflowContentArea({
           workflowNodes={workflowNodes}
           workflowExecutions={workflowExecutions}
           getModel={getModel}
+          getMcpServer={getMcpServer}
           isVisible={activeTab === "build"}
           onAddFirstStep={onAddFirstStep}
           onEditMetadata={() => onEditWorkflow(workflow)}

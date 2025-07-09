@@ -10,6 +10,7 @@ import { WorkflowSidebar } from "@/components/workflow/workflow-sidebar"
 import { useAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useAuth } from "@/hooks/use-auth"
+import { useMCP } from "@/hooks/use-mcp"
 import { useStableQuery } from "@/hooks/use-stable-query"
 import { useUrlSelection } from "@/hooks/use-url-selection"
 import { useWorkflow } from "@/hooks/use-workflow"
@@ -27,6 +28,7 @@ export function Workflow() {
   const { executions, getWorkflowExecution, create, edit, remove, runWorkflow, stopWorkflow, clone } = useWorkflow()
   const { agents } = useAgent()
   const { getModel } = useAIModels()
+  const { mcpServers } = useMCP()
 
   // Find selected workflow and its nodes in a single query
   const selectedWorkflowWithNodes = useStableQuery(
@@ -90,6 +92,14 @@ export function Workflow() {
       return model ? { name: model.name } : undefined
     },
     [getModel],
+  )
+
+  const getMcpServerWrapper = useCallback(
+    (serverId: string) => {
+      const server = mcpServers.find((s) => s._id === serverId)
+      return server ? { name: server.name } : undefined
+    },
+    [mcpServers],
   )
 
   const handleWorkflowDeleteDialogChange = useCallback((open: boolean) => {
@@ -242,6 +252,7 @@ export function Workflow() {
               onAddStepWithAgent={handleAddStepWithAgent}
               onAddFirstStep={handleAddStepToInstructions}
               getModel={getModelWrapper}
+              getMcpServer={getMcpServerWrapper}
             />
           ) : (
             <div className="flex items-center justify-center h-full">

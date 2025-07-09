@@ -25,6 +25,7 @@ export interface StepNodeData {
   onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
   agents?: Agent[]
   getModel?: (modelId: string) => { name: string } | undefined
+  getMcpServer?: (serverId: string) => { name: string } | undefined
 }
 
 export interface StepNodeProps {
@@ -44,6 +45,7 @@ interface StepCardProps {
   onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
   agents?: Agent[]
   getModel?: (modelId: string) => { name: string } | undefined
+  getMcpServer?: (serverId: string) => { name: string } | undefined
   selected?: boolean
 }
 
@@ -57,6 +59,7 @@ const StepCard = memo(function StepCard({
   onAddStepWithAgent,
   agents,
   getModel,
+  getMcpServer,
   selected = false,
 }: StepCardProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -200,11 +203,11 @@ const StepCard = memo(function StepCard({
         {/* Second line: agent info */}
         <div className="mt-2">
           {agent ? (
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs overflow-x-auto scrollbar-none nodrag nopan nowheel no-scrollbar">
               <span
                 className={cn(
                   "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium",
-                  "bg-background/70 text-secondary-foreground",
+                  "bg-background/70 text-secondary-foreground flex-shrink-0",
                 )}
               >
                 {agent.outputType === "object" ? "JSON" : "Text"}
@@ -213,12 +216,27 @@ const StepCard = memo(function StepCard({
                 <span
                   className={cn(
                     "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium",
-                    "bg-background/70 text-secondary-foreground",
+                    "bg-background/70 text-secondary-foreground flex-shrink-0",
                   )}
                 >
                   {modelName}
                 </span>
               )}
+              {/* MCP server names on same line */}
+              {agent.mcpServers &&
+                agent.mcpServers.length > 0 &&
+                getMcpServer &&
+                agent.mcpServers.map((serverId) => {
+                  const server = getMcpServer(serverId)
+                  return server ? (
+                    <span
+                      key={serverId}
+                      className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 flex-shrink-0"
+                    >
+                      {server.name}
+                    </span>
+                  ) : null
+                })}
             </div>
           ) : (
             <div className="text-xs text-muted-foreground">No agent assigned</div>
@@ -231,7 +249,7 @@ const StepCard = memo(function StepCard({
         <Textarea
           value={agent?.systemPrompt || "No system prompt provided"}
           readOnly
-          className="w-full min-h-[170px] max-h-[170px] text-xs resize-none bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-text overflow-y-auto nodrag nopan nowheel"
+          className="w-full min-h-[170px] max-h-[170px] text-xs resize-none bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-text overflow-y-auto nodrag nopan nowheel no-scrollbar"
           placeholder="No system prompt provided"
         />
       </div>
@@ -313,6 +331,7 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
           onAddStepWithAgent={data.onAddStepWithAgent}
           agents={data.agents}
           getModel={data.getModel}
+          getMcpServer={data.getMcpServer}
           selected={selected}
         />
       </Card>

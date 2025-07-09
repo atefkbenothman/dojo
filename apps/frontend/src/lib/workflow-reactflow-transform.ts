@@ -8,6 +8,7 @@ export interface UnifiedNodeData {
   onAddStepToInstructions?: (agent: Agent) => void
   agents?: Agent[]
   getModel?: (modelId: string) => { name: string } | undefined
+  getMcpServer?: (serverId: string) => { name: string } | undefined
   workflowNode?: WorkflowNode
   agent?: Agent
 }
@@ -19,6 +20,7 @@ export interface TransformToReactFlowParams {
   onEditInstructions?: () => void
   onAddStepToInstructions?: (agent: Agent) => void
   getModel?: (modelId: string) => { name: string } | undefined
+  getMcpServer?: (serverId: string) => { name: string } | undefined
 }
 
 export interface ReactFlowTransformResult {
@@ -56,6 +58,7 @@ export function transformToReactFlow({
   onEditInstructions,
   onAddStepToInstructions,
   getModel,
+  getMcpServer,
 }: TransformToReactFlowParams): ReactFlowTransformResult {
   const nodes: Node<UnifiedNodeData>[] = []
   const edges: Edge[] = []
@@ -74,6 +77,7 @@ export function transformToReactFlow({
       onAddStepToInstructions,
       agents,
       getModel,
+      getMcpServer,
     },
   }
   nodes.push(instructionsNode)
@@ -92,6 +96,7 @@ export function transformToReactFlow({
         variant: "step",
         workflowNode,
         agent,
+        getMcpServer,
       },
     }
   })

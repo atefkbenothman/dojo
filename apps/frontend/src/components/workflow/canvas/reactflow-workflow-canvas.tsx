@@ -31,6 +31,7 @@ interface ReactFlowWorkflowCanvasProps {
   workflowNodes: WorkflowNode[]
   workflowExecutions: WorkflowExecution[]
   getModel: (modelId: string) => { name: string } | undefined
+  getMcpServer: (serverId: string) => { name: string } | undefined
   onEditMetadata?: () => void
   isVisible?: boolean
   // Node handlers
@@ -62,6 +63,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   workflowNodes,
   workflowExecutions,
   getModel,
+  getMcpServer,
   onEditMetadata,
   isVisible,
   onRemoveNode,
@@ -142,6 +144,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
       onEditInstructions: onEditMetadata,
       onAddStepToInstructions: handleAddFirstStep,
       getModel,
+      getMcpServer,
     })
 
     // Update node heights based on expanded state and fix width/height types
@@ -185,6 +188,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           onAddStepWithAgent: stableOnAddStepWithAgent,
           agents,
           getModel,
+          getMcpServer,
         },
       }
     })
