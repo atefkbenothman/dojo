@@ -90,10 +90,10 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
   // Calculate node heights
   const getNodeHeight = useCallback((nodeId: string, isInstructionsNode: boolean = false) => {
     if (isInstructionsNode) {
-      return 180 // Instructions node fixed height
+      return 260 // Instructions node fixed height - increased to match new structure
     }
     // Always use expanded height since we removed the collapse functionality
-    return 240
+    return 260 // Updated to match current step node height
   }, [])
 
   // Stable callback for adding first step
@@ -302,7 +302,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     const seconds = Math.floor(duration / 1000)
     const minutes = Math.floor(seconds / 60)
     const hours = Math.floor(minutes / 60)
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes % 60}m ${seconds % 60}s`
     } else if (minutes > 0) {
@@ -370,7 +370,7 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
           <Panel position="bottom-left">
             <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95" />
           </Panel>
-          
+
           {/* Workflow status indicator */}
           <Panel position="top-left" className="m-4">
             {execution && (
@@ -383,7 +383,8 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
                         execution.status === "running" && "bg-blue-500 animate-pulse shadow-lg shadow-blue-500/50",
                         execution.status === "completed" && "bg-green-500 shadow-lg shadow-green-500/50",
                         execution.status === "failed" && "bg-red-500 shadow-lg shadow-red-500/50",
-                        execution.status === "preparing" && "bg-yellow-500 animate-pulse shadow-lg shadow-yellow-500/50",
+                        execution.status === "preparing" &&
+                          "bg-yellow-500 animate-pulse shadow-lg shadow-yellow-500/50",
                       )}
                     />
                     {(execution.status === "running" || execution.status === "preparing") && (
@@ -401,13 +402,15 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
                       <span className="capitalize text-foreground font-medium text-sm">{execution.status}</span>
                       {/* Execution time badge */}
                       {getExecutionDuration() && (
-                        <span className={cn(
-                          "text-xs text-muted-foreground px-2 py-0.5 rounded-full",
-                          execution.status === "completed" && "bg-green-500/10",
-                          execution.status === "failed" && "bg-red-500/10", 
-                          execution.status === "running" && "bg-blue-500/10",
-                          execution.status === "preparing" && "bg-yellow-500/10"
-                        )}>
+                        <span
+                          className={cn(
+                            "text-xs text-muted-foreground px-2 py-0.5 rounded-full",
+                            execution.status === "completed" && "bg-green-500/10",
+                            execution.status === "failed" && "bg-red-500/10",
+                            execution.status === "running" && "bg-blue-500/10",
+                            execution.status === "preparing" && "bg-yellow-500/10",
+                          )}
+                        >
                           {getExecutionDuration()}
                         </span>
                       )}
@@ -423,48 +426,6 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
               </div>
             )}
           </Panel>
-
-          {/* Show empty state panel when no workflow steps */}
-          {!hasWorkflowNodes && (
-            <Panel position="bottom-center" className="m-8">
-              <div className="text-center space-y-6 p-6 bg-background/95 backdrop-blur border border-border rounded-lg shadow-sm max-w-md">
-                {/* Empty state illustration */}
-                <div className="relative">
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center border-2 border-dashed border-primary/20">
-                    <Plus className="w-8 h-8 text-primary/60" />
-                  </div>
-                </div>
-
-                {/* Empty state message */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground">Add Your First Step</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Connect AI agents to build intelligent workflows that process data and make decisions.
-                  </p>
-                </div>
-
-                {/* Add first step button */}
-                {agents && agents.length > 0 ? (
-                  <AgentSelectorPopover
-                    agents={agents}
-                    onSelect={handleAddFirstStep}
-                    getModel={getModel}
-                    trigger={
-                      <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-                        <Plus className="w-4 h-4" />
-                        Add Step
-                      </Button>
-                    }
-                  />
-                ) : (
-                  <div className="text-center space-y-2">
-                    <p className="text-xs text-muted-foreground">No agents available. Create an agent first.</p>
-                  </div>
-                )}
-              </div>
-            </Panel>
-          )}
-
         </ReactFlow>
       </div>
     </div>

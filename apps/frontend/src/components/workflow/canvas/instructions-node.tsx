@@ -51,49 +51,55 @@ const InstructionsCard = memo(function InstructionsCard({
   )
 
   return (
-    <>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+    <div className="flex flex-col h-full">
+      {/* Header - similar to dialog header */}
+      <div className="p-4 border-b-[2px] bg-muted flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <h4 className="text-sm font-medium leading-none text-foreground">Workflow Instructions</h4>
+          <h4 className="text-base font-semibold text-foreground">Workflow Instructions</h4>
         </div>
-        {onEditClick && selected && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground hover:text-foreground border-muted-foreground/20"
-            onClick={(e) => {
-              e.stopPropagation()
-              onEditClick()
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-            title="Edit workflow metadata"
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-        )}
+
+        {/* Action buttons in header */}
+        <div className="flex items-center gap-1">
+          {/* Edit button */}
+          {onEditClick && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground border border-border"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditClick()
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="Edit workflow metadata"
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Instructions textarea */}
-      <Textarea
-        value={instructions || "Edit your workflow instructions here"}
-        readOnly
-        className="h-[120px] max-h-[300px] resize-none text-xs bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default overflow-y-auto"
-        placeholder="No instructions provided"
-      />
+      {/* Content area */}
+      <div className="h-full min-h-0 bg-background">
+        <Textarea
+          value={instructions || "Edit your workflow instructions here"}
+          readOnly
+          className="w-full min-h-[170px] max-h-[170px] text-xs resize-none bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-text overflow-y-auto nodrag nopan nowheel"
+          placeholder="No instructions provided"
+        />
+      </div>
 
-      {/* Add step button at the bottom */}
+      {/* Footer - similar to dialog pattern */}
       {onAddStepToInstructions && agents && agents.length > 0 && (
-        <div className="h-8 mt-2">
+        <div className="p-2 border-t-[2px] bg-muted">
           <AgentSelectorPopover
             agents={agents}
             onSelect={handleAddStepToInstructions}
             getModel={getModel}
             trigger={
               <Button
-                variant="outline"
-                className="w-full text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs font-medium hover:cursor-pointer"
+                variant="default"
+                className="w-full hover:cursor-pointer bg-primary/90"
                 title="Add step with agent"
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
@@ -105,7 +111,7 @@ const InstructionsCard = memo(function InstructionsCard({
           />
         </div>
       )}
-    </>
+    </div>
   )
 })
 
@@ -115,27 +121,20 @@ export const InstructionsNode = memo(function InstructionsNode({ data, selected 
     <>
       <Card
         className={cn(
-          "w-[280px] overflow-hidden",
-          "border-2 border-dashed border-muted-foreground/25",
-          "bg-background/95 backdrop-blur p-0",
-          selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+          "w-[360px] h-[260px] overflow-hidden relative p-0",
+          "border-2 border-primary/20 border-dashed",
+          "bg-background/95 backdrop-blur",
+          selected && "ring-2 ring-primary/80",
         )}
       >
-        {/* Instructions badge */}
-        <div className="absolute left-0 -translate-x-full -ml-2.5 top-2 z-10 flex items-center justify-center h-6 w-6 border bg-background rounded-full">
-          <FileText className="h-3 w-3 text-muted-foreground" />
-        </div>
-
-        <div className="p-4">
-          <InstructionsCard 
-            instructions={data.instructions} 
-            onEditClick={data.onEditClick} 
-            onAddStepToInstructions={data.onAddStepToInstructions}
-            agents={data.agents}
-            getModel={data.getModel}
-            selected={selected} 
-          />
-        </div>
+        <InstructionsCard
+          instructions={data.instructions}
+          onEditClick={data.onEditClick}
+          onAddStepToInstructions={data.onAddStepToInstructions}
+          agents={data.agents}
+          getModel={data.getModel}
+          selected={selected}
+        />
       </Card>
 
       {/* Output handle */}
@@ -143,11 +142,11 @@ export const InstructionsNode = memo(function InstructionsNode({ data, selected 
         type="source"
         position={Position.Bottom}
         style={{
-          background: "hsl(var(--muted-foreground))",
+          background: "hsl(var(--primary))",
           width: 10,
           height: 10,
           border: "2px solid hsl(var(--background))",
-          boxShadow: "0 0 0 2px hsl(var(--border))",
+          boxShadow: "0 0 0 2px hsl(var(--primary))",
           transition: "all 0.2s ease",
         }}
       />

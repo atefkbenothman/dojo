@@ -11,7 +11,7 @@ export interface DagreLayoutConfig {
 
 const DEFAULT_DAGRE_CONFIG: DagreLayoutConfig = {
   nodeWidth: 280,
-  nodeHeight: 140,
+  nodeHeight: 260,
   horizontalSpacing: 120,
   verticalSpacing: 80,
   direction: "TB",
@@ -159,7 +159,7 @@ export function calculateWorkflowLayout<T>(
   const workflowConfig: Partial<DagreLayoutConfig> = {
     direction: "TB",
     nodeWidth: 280,
-    nodeHeight: 140,
+    nodeHeight: 260,
     horizontalSpacing: 100, // Slightly less than before for more compact layout
     verticalSpacing: 80,
     ...config,

@@ -65,8 +65,8 @@ export function transformToReactFlow({
     id: "instructions-root",
     type: "instructionsNode",
     position: { x: 0, y: 0 }, // Will be set by layout algorithm
-    width: 280, // Same width as step nodes for proper alignment
-    height: 180,
+    width: 360, // Wider than step nodes for better content display
+    height: 260,
     data: {
       variant: "instructions",
       instructions: instructions || "",
@@ -87,7 +87,7 @@ export function transformToReactFlow({
       type: "stepNode",
       position: { x: 0, y: 0 }, // Will be set by layout algorithm
       width: 280, // Default width for step nodes
-      height: 140, // Default height for step nodes
+      height: 260, // Default height for step nodes
       data: {
         variant: "step",
         workflowNode,

@@ -2,15 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
+import { Textarea } from "@/components/ui/textarea"
 import { AgentSelectorPopover } from "@/components/workflow/agent-selector-popover"
 import { NodeExecutionStatus } from "@/hooks/use-stable-execution-status"
 import { cn } from "@/lib/utils"
 import { UnifiedNodeData as TransformNodeData } from "@/lib/workflow-reactflow-transform"
 import { Agent } from "@dojo/db/convex/types"
 import { Handle, Position } from "@xyflow/react"
-import { Trash, CheckCircle, XCircle, Clock, Plus, Pencil, Bot } from "lucide-react"
-import { memo, useCallback } from "react"
+import { Trash, CheckCircle, XCircle, Clock, Plus, Pencil, Bot, Settings } from "lucide-react"
+import { memo, useCallback, useState } from "react"
 
 // Step Node Data
 export interface StepNodeData {
@@ -31,41 +33,71 @@ export interface StepNodeProps {
   id: string
 }
 
-export const StepNode = memo(function StepNode({ data, selected = false }: StepNodeProps) {
+// Step Card Component
+interface StepCardProps {
+  workflowNode?: TransformNodeData["workflowNode"]
+  agent?: Agent
+  executionStatus?: NodeExecutionStatus
+  onRemove?: (nodeId: string) => void
+  onChangeAgent?: (nodeId: string, agent: Agent) => void
+  onEditAgent?: (agent: Agent) => void
+  onAddStepWithAgent?: (parentNodeId: string, agent: Agent) => void
+  agents?: Agent[]
+  getModel?: (modelId: string) => { name: string } | undefined
+  selected?: boolean
+}
+
+const StepCard = memo(function StepCard({
+  workflowNode,
+  agent,
+  executionStatus,
+  onRemove,
+  onChangeAgent,
+  onEditAgent,
+  onAddStepWithAgent,
+  agents,
+  getModel,
+  selected = false,
+}: StepCardProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
   const handleAddStep = useCallback(
-    (agent: Agent) => {
-      if (data.workflowNode && data.onAddStepWithAgent) {
-        data.onAddStepWithAgent(data.workflowNode.nodeId, agent)
+    (selectedAgent: Agent) => {
+      if (workflowNode && onAddStepWithAgent) {
+        onAddStepWithAgent(workflowNode.nodeId, selectedAgent)
       }
     },
-    [data],
+    [workflowNode, onAddStepWithAgent],
   )
 
   const handleChangeAgent = useCallback(
-    (agent: Agent) => {
-      if (data.workflowNode && data.onChangeAgent) {
-        data.onChangeAgent(data.workflowNode.nodeId, agent)
+    (selectedAgent: Agent) => {
+      if (workflowNode && onChangeAgent) {
+        onChangeAgent(workflowNode.nodeId, selectedAgent)
       }
+      setDropdownOpen(false)
     },
-    [data],
+    [workflowNode, onChangeAgent],
   )
 
   const handleRemove = useCallback(() => {
-    if (data.workflowNode && data.onRemove) {
-      data.onRemove(data.workflowNode.nodeId)
+    if (workflowNode && onRemove) {
+      onRemove(workflowNode.nodeId)
     }
-  }, [data])
+    setDropdownOpen(false)
+  }, [workflowNode, onRemove])
 
   const handleEditAgent = useCallback(() => {
-    if (data.agent && data.onEditAgent) {
-      data.onEditAgent(data.agent)
+    if (agent && onEditAgent) {
+      onEditAgent(agent)
     }
-  }, [data])
+    setDropdownOpen(false)
+  }, [agent, onEditAgent])
 
   const getExecutionStatusIcon = () => {
-    if (!data.executionStatus) return null
+    if (!executionStatus) return null
 
-    switch (data.executionStatus) {
+    switch (executionStatus) {
       case "connecting":
         return <Clock className="h-3 w-3 text-yellow-500" />
       case "running":
@@ -79,22 +111,172 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
     }
   }
 
+  const modelName = agent && getModel ? getModel(agent.aiModelId)?.name : undefined
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Progress bar for running nodes */}
+      {/* {executionStatus === "running" && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-blue-100 dark:bg-blue-900/50 overflow-hidden z-10">
+          <div className="h-full w-full bg-blue-500 animate-pulse" />
+        </div>
+      )} */}
+
+      {/* Header - similar to instructions-node pattern */}
+      <div className="p-4 border-b-[2px] bg-muted">
+        {/* First line: title, status, and action buttons */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h4 className="text-base font-semibold text-foreground">
+              {workflowNode?.label || `Step ${workflowNode?.nodeId}`}
+            </h4>
+          </div>
+
+          {/* Action buttons in header */}
+          <div className="flex items-center gap-2">
+            {/* Swap agent button */}
+            {agents && onChangeAgent && (
+              <AgentSelectorPopover
+                agents={agents}
+                onSelect={handleChangeAgent}
+                getModel={getModel}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground border border-border"
+                    title="Swap agent"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Bot className="h-3 w-3" />
+                  </Button>
+                }
+              />
+            )}
+
+            {/* Settings dropdown */}
+            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground border border-border"
+                  title="Node settings"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Settings className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {agent && onEditAgent && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEditAgent()
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit agent
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRemove()
+                  }}
+                  className="flex items-center gap-2 text-destructive focus:text-destructive"
+                >
+                  <Trash className="h-3 w-3" />
+                  Delete node
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Second line: agent info */}
+        <div className="mt-2">
+          {agent ? (
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={cn(
+                  "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium",
+                  "bg-background/70 text-secondary-foreground",
+                )}
+              >
+                {agent.outputType === "object" ? "JSON" : "Text"}
+              </span>
+              {modelName && (
+                <span
+                  className={cn(
+                    "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium",
+                    "bg-background/70 text-secondary-foreground",
+                  )}
+                >
+                  {modelName}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground">No agent assigned</div>
+          )}
+        </div>
+      </div>
+
+      {/* Content area */}
+      <div className="h-full min-h-0 bg-background">
+        <Textarea
+          value={agent?.systemPrompt || "No system prompt provided"}
+          readOnly
+          className="w-full min-h-[170px] max-h-[170px] text-xs resize-none bg-muted/30 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 cursor-text overflow-y-auto nodrag nopan nowheel"
+          placeholder="No system prompt provided"
+        />
+      </div>
+
+      {/* Footer - similar to instructions-node pattern */}
+      {onAddStepWithAgent && agents && (
+        <div className="p-2 border-t-[2px] bg-muted">
+          <AgentSelectorPopover
+            agents={agents}
+            onSelect={handleAddStep}
+            getModel={getModel}
+            trigger={
+              <Button
+                variant="default"
+                className="w-full hover:cursor-pointer bg-primary/90"
+                title="Add step with agent"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add step
+              </Button>
+            }
+          />
+        </div>
+      )}
+    </div>
+  )
+})
+
+export const StepNode = memo(function StepNode({ data, selected = false }: StepNodeProps) {
   const getStatusBorderClass = () => {
     switch (data.executionStatus) {
       case "connecting":
-        return "border-yellow-200 dark:border-yellow-800"
+        return "ring-yellow-400 ring-2 dark:ring-yellow-800"
       case "running":
-        return "border-blue-200 dark:border-blue-800 shadow-sm"
+        return "ring-blue-400 ring-2 dark:ring-blue-800"
       case "completed":
-        return "border-green-200 dark:border-green-800"
+        return "ring-green-400 ring-2 dark:ring-green-800"
       case "failed":
-        return "border-red-200 dark:border-red-800"
+        return "ring-red-400 ring-2 dark:ring-red-800"
       default:
-        return "border"
+        return "ring-primary/20 ring-2"
     }
   }
-
-  const modelName = data.agent && data.getModel ? data.getModel(data.agent.aiModelId)?.name : undefined
 
   return (
     <>
@@ -114,153 +296,25 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
 
       <Card
         className={cn(
-          "w-[280px] overflow-hidden p-4 relative",
+          "w-[280px] h-[260px] overflow-hidden relative p-0",
           getStatusBorderClass(),
+          "bg-background/95 backdrop-blur",
           data.executionStatus === "running" && "animate-pulse shadow-blue-200 dark:shadow-blue-800",
           selected && "ring-2 ring-primary/80",
         )}
       >
-        {/* Action buttons in top right corner */}
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-          {/* Change agent button */}
-          {data.agents && data.onChangeAgent && (
-            <AgentSelectorPopover
-              agents={data.agents}
-              onSelect={handleChangeAgent}
-              getModel={data.getModel}
-              trigger={
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                  title="Select different agent"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Bot className="h-3 w-3" />
-                </Button>
-              }
-            />
-          )}
-
-          {/* Edit agent settings button */}
-          {data.agent && data.onEditAgent && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              onClick={handleEditAgent}
-              onMouseDown={(e) => e.stopPropagation()}
-              title="Edit agent settings"
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-          )}
-
-          {/* Remove button */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:border-destructive/50"
-            onClick={handleRemove}
-            onMouseDown={(e) => e.stopPropagation()}
-            title="Remove node"
-          >
-            <Trash className="h-3 w-3" />
-          </Button>
-        </div>
-
-        <div className="">
-          {/* Progress bar for running nodes */}
-          {data.executionStatus === "running" && (
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-blue-100 dark:bg-blue-900/50 overflow-hidden">
-              <div className="h-full w-full bg-blue-500 animate-pulse" />
-            </div>
-          )}
-
-          {/* Step content */}
-          <div className="space-y-2">
-            {/* Node info */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                {/* Primary: Node name/label with type icon and execution status */}
-                <div className="flex items-center gap-1.5">
-                  <h4 className="text-sm font-medium leading-none text-foreground">
-                    {data.workflowNode?.label || `Step ${data.workflowNode?.nodeId}`}
-                  </h4>
-                  {data.executionStatus && getExecutionStatusIcon()}
-                </div>
-
-                {/* Agent info */}
-                <div className="mt-1">
-                  {data.agent ? (
-                    <div className="flex items-center gap-1.5 text-xs">
-                      {/* <span className="text-muted-foreground">Agent:</span>
-                      <span className="font-medium">{data.agent.name}</span>
-                      <span className="text-muted-foreground">•</span> */}
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium",
-                          "bg-secondary/80 text-secondary-foreground",
-                        )}
-                      >
-                        {data.agent.outputType === "object" ? "JSON" : "Text"}
-                      </span>
-                      {modelName && (
-                        <>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-muted-foreground truncate text-xs">{modelName}</span>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">No agent assigned (structural node)</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Agent details - always visible */}
-          {data.agent && (
-            <div className="border-t mt-2 pt-2">
-              <div className="space-y-1.5">
-                {/* System Prompt */}
-                <div className="space-y-0.5">
-                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                    System Prompt
-                  </label>
-                  <div className="text-xs text-foreground/90 bg-muted/30 rounded p-2 max-h-20 overflow-y-auto">
-                    {data.agent.systemPrompt || "No system prompt"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Add step button at the bottom */}
-        {data.onAddStepWithAgent && data.agents && (
-          <div className="h-8">
-            <AgentSelectorPopover
-              agents={data.agents}
-              onSelect={handleAddStep}
-              getModel={data.getModel}
-              trigger={
-                <Button
-                  variant="outline"
-                  className="w-full text-muted-foreground hover:text-foreground border-muted-foreground/20 text-xs font-medium hover:cursor-pointer"
-                  title="Add step with agent"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add step
-                </Button>
-              }
-            />
-          </div>
-        )}
+        <StepCard
+          workflowNode={data.workflowNode}
+          agent={data.agent}
+          executionStatus={data.executionStatus}
+          onRemove={data.onRemove}
+          onChangeAgent={data.onChangeAgent}
+          onEditAgent={data.onEditAgent}
+          onAddStepWithAgent={data.onAddStepWithAgent}
+          agents={data.agents}
+          getModel={data.getModel}
+          selected={selected}
+        />
       </Card>
 
       {/* Output handle */}
@@ -268,7 +322,7 @@ export const StepNode = memo(function StepNode({ data, selected = false }: StepN
         type="source"
         position={Position.Bottom}
         style={{
-          background: data.executionStatus === "completed" ? "hsl(var(--green-500))" : "hsl(var(--muted-foreground))",
+          background: data.executionStatus === "completed" ? "hsl(var(--green-400))" : "hsl(var(--muted-foreground))",
           width: 10,
           height: 10,
           border: "2px solid hsl(var(--background))",
