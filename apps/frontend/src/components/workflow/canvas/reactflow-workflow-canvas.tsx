@@ -20,6 +20,7 @@ import {
   Viewport,
   MarkerType,
   useReactFlow,
+  ViewportPortal,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Plus } from "lucide-react"
@@ -55,6 +56,92 @@ const fitViewOptions = {
 
 // Define default viewport
 const defaultViewport = { x: 0, y: 0, zoom: 1 }
+
+// Node Status Indicator Component
+interface NodeStatusIndicatorProps {
+  nodeId: string
+  position: { x: number; y: number }
+  height: number
+  executionStatus?: string
+}
+
+const NodeStatusIndicator = memo(function NodeStatusIndicator({
+  nodeId,
+  position,
+  height,
+  executionStatus,
+}: NodeStatusIndicatorProps) {
+  if (!executionStatus) return null
+
+  const getStatusConfig = () => {
+    switch (executionStatus) {
+      case "connecting":
+        return {
+          color: "text-yellow-500",
+          bgColor: "bg-yellow-500/20",
+          borderColor: "border-yellow-500/40",
+          content: "connecting",
+          isText: true,
+        }
+      case "running":
+        return {
+          color: "text-blue-500",
+          bgColor: "bg-blue-500/20",
+          borderColor: "border-blue-500/40",
+          content: "running",
+          isText: true,
+        }
+      case "completed":
+        return {
+          color: "text-green-500",
+          bgColor: "bg-green-500/20",
+          borderColor: "border-green-500/40",
+          content: "✓",
+          isText: false,
+        }
+      case "failed":
+        return {
+          color: "text-red-500",
+          bgColor: "bg-red-500/20",
+          borderColor: "border-red-500/40",
+          content: "✗",
+          isText: false,
+        }
+      default:
+        return null
+    }
+  }
+
+  const config = getStatusConfig()
+  if (!config) return null
+
+  // Position to the left of the node with some offset and vertically centered
+  const indicatorPosition = {
+    x: position.x - (config.isText ? 80 : 60), // More space for text
+    y: position.y + height / 2 - (config.isText ? 12 : 20), // Adjusted for text height
+  }
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: indicatorPosition.x,
+        top: indicatorPosition.y,
+        zIndex: 1000,
+      }}
+      className={cn(
+        "border-2 flex items-center justify-center transition-all duration-300",
+        "backdrop-blur-sm font-medium text-xs",
+        config.bgColor,
+        config.borderColor,
+        config.color,
+        config.isText ? "px-2 py-1 rounded-md min-w-[70px] h-6" : "w-10 h-10 rounded-full font-bold text-sm",
+      )}
+    >
+      {config.content}
+    </div>
+  )
+})
 
 // Separate the inner component that uses React Flow hooks
 const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner({
@@ -375,61 +462,22 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
             <CustomReactFlowControls minZoom={0.25} maxZoom={2} className="bg-background/95" />
           </Panel>
 
-          {/* Workflow status indicator */}
-          <Panel position="top-left" className="m-4">
-            {execution && (
-              <div className="bg-background/95 backdrop-blur border border-border rounded-xl shadow-lg px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div
-                      className={cn(
-                        "w-3 h-3 rounded-full transition-all duration-300",
-                        execution.status === "running" && "bg-blue-500 animate-pulse shadow-lg shadow-blue-500/50",
-                        execution.status === "completed" && "bg-green-500 shadow-lg shadow-green-500/50",
-                        execution.status === "failed" && "bg-red-500 shadow-lg shadow-red-500/50",
-                        execution.status === "preparing" &&
-                          "bg-yellow-500 animate-pulse shadow-lg shadow-yellow-500/50",
-                      )}
-                    />
-                    {(execution.status === "running" || execution.status === "preparing") && (
-                      <div
-                        className={cn(
-                          "absolute inset-0 rounded-full animate-ping",
-                          execution.status === "running" && "bg-blue-400",
-                          execution.status === "preparing" && "bg-yellow-400",
-                        )}
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="capitalize text-foreground font-medium text-sm">{execution.status}</span>
-                      {/* Execution time badge */}
-                      {getExecutionDuration() && (
-                        <span
-                          className={cn(
-                            "text-xs text-muted-foreground px-2 py-0.5 rounded-full",
-                            execution.status === "completed" && "bg-green-500/10",
-                            execution.status === "failed" && "bg-red-500/10",
-                            execution.status === "running" && "bg-blue-500/10",
-                            execution.status === "preparing" && "bg-yellow-500/10",
-                          )}
-                        >
-                          {getExecutionDuration()}
-                        </span>
-                      )}
-                    </div>
-                    {execution.status === "running" && execution.nodeExecutions && (
-                      <span className="text-xs text-muted-foreground">
-                        {execution.nodeExecutions.filter((ne) => ne.status === "completed").length} of{" "}
-                        {execution.nodeExecutions.length} steps
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </Panel>
+          {/* Node Status Indicators using ViewportPortal */}
+          {enhancedNodes.map((node) => {
+            const executionStatus = getNodeExecutionStatus(node.id)
+            if (!executionStatus) return null
+
+            return (
+              <ViewportPortal key={`status-${node.id}`}>
+                <NodeStatusIndicator
+                  nodeId={node.id}
+                  position={node.position}
+                  height={node.height || 260}
+                  executionStatus={executionStatus}
+                />
+              </ViewportPortal>
+            )
+          })}
         </ReactFlow>
       </div>
     </div>

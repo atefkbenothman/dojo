@@ -218,9 +218,7 @@ export function WorkflowGenerateForm({ onClose }: Pick<WorkflowGenerateFormProps
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleGenerate)}>
-        <Card
-          className={cn("p-0 border-[1.5px] gap-0", isGeneratingWorkflow && "border-yellow-200 dark:border-yellow-800")}
-        >
+        <Card className={cn("p-0 border-[1.5px] gap-0")}>
           <CardHeader className="p-4 gap-0 border-b-[1.5px]">
             <CardTitle className="flex items-center gap-2 leading-normal">Generate Workflow with AI</CardTitle>
           </CardHeader>
