@@ -2,6 +2,7 @@ import { config as baseConfig } from "./base.js"
 import js from "@eslint/js"
 import pluginNext from "@next/eslint-plugin-next"
 import pluginReactCompiler from "babel-plugin-react-compiler"
+import pluginReactHooksExtra from "eslint-plugin-react-hooks-extra"
 import eslintConfigPrettier from "eslint-config-prettier"
 import pluginReact from "eslint-plugin-react"
 import pluginReactHooks from "eslint-plugin-react-hooks"
@@ -32,6 +33,7 @@ export const nextJsConfig = [
       "@next/next": pluginNext,
       "react-hooks": pluginReactHooks,
       "react-compiler": pluginReactCompiler,
+      "react-hooks-extra": pluginReactHooksExtra,
     },
     settings: { react: { version: "detect" } },
     rules: {
@@ -42,6 +44,7 @@ export const nextJsConfig = [
       "@next/next/no-img-element": "off",
       "react/react-in-jsx-scope": "off",
       "turbo/no-undeclared-env-vars": "warn",
+      "react-hooks-extra/no-direct-set-state-in-use-effect": "warn",
     },
   },
 ]

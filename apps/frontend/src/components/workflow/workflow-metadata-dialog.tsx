@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/hooks/use-auth"
 import { Workflow } from "@dojo/db/convex/types"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 interface WorkflowMetadataDialogProps {
   workflow: Workflow
@@ -33,15 +33,6 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
 
   // Check if this workflow can be edited
   const canEdit = isAuthenticated && !workflow.isPublic
-
-  // Reset form when workflow changes or dialog opens
-  useEffect(() => {
-    if (open) {
-      setName(workflow.name)
-      setDescription(workflow.description)
-      setInstructions(workflow.instructions)
-    }
-  }, [workflow, open])
 
   const handleSave = async () => {
     setIsSaving(true)

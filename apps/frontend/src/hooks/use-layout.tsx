@@ -19,7 +19,6 @@ const MOBILE_BREAKPOINT = 768 // md breakpoint
 const TABLET_BREAKPOINT = 1024 // lg breakpoint
 
 export function LayoutProvider({ children }: LayoutProviderProps) {
-  // Initialize with SSR-safe detection
   const [windowWidth, setWindowWidth] = useState(() => {
     if (typeof window !== "undefined") {
       return window.innerWidth
@@ -32,14 +31,11 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
   const isTablet = windowWidth >= MOBILE_BREAKPOINT && windowWidth < TABLET_BREAKPOINT
   const isDesktop = windowWidth >= TABLET_BREAKPOINT
 
+  const handleResize = () => {
+    setWindowWidth(window.innerWidth)
+  }
+
   useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth)
-    }
-
-    // Set initial width
-    handleResize()
-
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])

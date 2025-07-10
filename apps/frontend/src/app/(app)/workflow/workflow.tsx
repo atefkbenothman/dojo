@@ -275,6 +275,7 @@ export function Workflow() {
       {/* Metadata Edit Dialog */}
       {editingWorkflow && (
         <WorkflowMetadataDialog
+          key={`${editingWorkflow._id}-${isMetadataDialogOpen}`}
           workflow={editingWorkflow}
           open={isMetadataDialogOpen}
           onOpenChange={handleMetadataDialogChange}

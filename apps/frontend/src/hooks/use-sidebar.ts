@@ -27,9 +27,11 @@ type PageType = "workflows" | "agents" | "mcps"
 
 export function useSidebar() {
   const { readStorage, writeStorage } = useLocalStorage()
+
   const [state, setState] = useState<SidebarState>(DEFAULT_SIDEBAR_STATE)
   const [isInitialized, setIsInitialized] = useState(false)
 
+  // Hydrate from localStorage after component mounts (prevents hydration mismatch)
   useEffect(() => {
     const storedState = readStorage<SidebarState>(SIDEBAR_STATE_KEY)
 
@@ -45,9 +47,11 @@ export function useSidebar() {
           mcps: Array.isArray(storedState.accordionSections?.mcps) ? storedState.accordionSections.mcps : [],
         },
       }
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setState(validatedState)
     }
 
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setIsInitialized(true)
   }, [readStorage])
 

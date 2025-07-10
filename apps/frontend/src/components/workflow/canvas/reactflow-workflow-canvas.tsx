@@ -352,24 +352,20 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     return calculateInitialViewport(enhancedNodes, containerSize.width, containerSize.height, fitViewOptions.padding)
   }, [enhancedNodes, containerSize.width, containerSize.height])
 
-  // Update container size when component mounts
-  useEffect(() => {
-    const updateContainerSize = () => {
-      if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        })
-      }
+  const updateContainerSize = useCallback(() => {
+    if (containerRef.current) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setContainerSize({
+        width: containerRef.current.clientWidth,
+        height: containerRef.current.clientHeight,
+      })
     }
+  }, [])
 
-    // Set initial size
-    updateContainerSize()
-
-    // Listen for resize events
+  useEffect(() => {
     window.addEventListener("resize", updateContainerSize)
     return () => window.removeEventListener("resize", updateContainerSize)
-  }, [])
+  }, [updateContainerSize])
 
   // Handle tab visibility changes - re-center when becoming visible
   useEffect(() => {
@@ -378,18 +374,13 @@ const ReactFlowWorkflowCanvasInner = memo(function ReactFlowWorkflowCanvasInner(
     // Check if we're transitioning from hidden to visible
     if (isVisible && !wasVisible && enhancedNodes.length > 0) {
       // Re-measure container size in case it changed while hidden
-      if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        })
-      }
+      updateContainerSize()
       fitView(fitViewOptions)
     }
 
     // Update the ref after processing
     wasVisibleRef.current = isVisible ?? false
-  }, [isVisible, enhancedNodes.length, fitView])
+  }, [isVisible, enhancedNodes.length, fitView, updateContainerSize])
 
   return (
     <div className="h-full" ref={containerRef}>
