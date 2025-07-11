@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@dojo/eslint": "*",
-    "@dojo/tsconfig": "*",
+    "@dojo/eslint": "workspace:*",
+    "@dojo/tsconfig": "workspace:*",
     "typescript": "latest"
   }
 }

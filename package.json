@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "type": "module",
-  "packageManager": "npm@10.0.0",
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -21,9 +21,5 @@
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "turbo": "latest"
-  },
-  "dependencies": {
-    "@dojo/eslint": "*",
-    "@dojo/tsconfig": "*"
   }
 }
