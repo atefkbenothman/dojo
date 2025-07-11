@@ -336,6 +336,9 @@ importers:
       '@dojo/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.7
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
@@ -398,6 +401,9 @@ importers:
       '@dojo/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.7
       typescript:
         specifier: latest
         version: 5.8.3
@@ -5801,7 +5807,7 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 22.16.3
+      '@types/node': 20.19.7
 
   '@types/bun@1.2.18(@types/react@19.1.8)':
     dependencies:
@@ -5816,7 +5822,7 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 22.16.3
+      '@types/node': 20.19.7
 
   '@types/cors@2.8.19':
     dependencies:
@@ -5957,7 +5963,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.0.7':
     dependencies:
-      '@types/node': 22.16.3
+      '@types/node': 20.19.7
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 0.17.5
@@ -6011,12 +6017,12 @@ snapshots:
   '@types/send@0.17.5':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 22.16.3
+      '@types/node': 20.19.7
 
   '@types/serve-static@1.15.8':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 22.16.3
+      '@types/node': 20.19.7
       '@types/send': 0.17.5
 
   '@types/unist@2.0.11': {}
@@ -6358,7 +6364,7 @@ snapshots:
 
   bun-types@1.2.18(@types/react@19.1.8):
     dependencies:
-      '@types/node': 22.16.3
+      '@types/node': 20.19.7
       '@types/react': 19.1.8
 
   busboy@1.6.0:

@@ -13,6 +13,7 @@
   "devDependencies": {
     "@dojo/eslint": "workspace:*",
     "@dojo/tsconfig": "workspace:*",
+    "@types/node": "^20.0.0",
     "typescript": "latest"
   }
 }

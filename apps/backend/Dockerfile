@@ -5,8 +5,13 @@ FROM oven/bun:1.2.8-alpine AS base
 FROM base AS builder
 WORKDIR /app
 
-# Install turbo globally using npm (since the monorepo uses npm)
-RUN apk add --no-cache npm && npm install -g turbo
+# Install pnpm and turbo globally (since the monorepo uses pnpm)
+RUN apk add --no-cache nodejs npm && \
+    npm install -g pnpm@9.0.0 turbo@latest && \
+    npm cache clean --force
+
+# Copy package.json and lock file first for better caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Copy the entire monorepo
 COPY . .
@@ -18,22 +23,30 @@ RUN turbo prune @dojo/backend --docker
 FROM base AS installer
 WORKDIR /app
 
-# Install npm for turbo to use (since packageManager is set to npm)
-RUN apk add --no-cache npm
+# Install pnpm and turbo for dependency management and builds (since packageManager is set to pnpm)
+RUN apk add --no-cache nodejs npm && \
+    npm install -g pnpm@9.0.0 turbo@latest && \
+    npm cache clean --force
 
-# Copy pruned package.json files
+# Copy pruned package.json files and workspace configuration first for better layer caching
 COPY --from=builder /app/out/json/ .
+# Copy lock file from the original root (turbo prune doesn't include lock files in out/full)
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Install dependencies using Bun
-# Since we're converting from npm to bun, we don't use frozen-lockfile
-RUN bun install
+# Install dependencies using pnpm with frozen lockfile for production consistency
+# This layer will be cached unless package.json or lock file changes
+RUN pnpm install --frozen-lockfile && \
+    pnpm store prune
 
-# Copy source code from the pruned output
+# Copy source code from the pruned output (separate layer for better caching)
 COPY --from=builder /app/out/full/ .
 
 # Build dependencies that need building (like utils package)
 # Using --filter to only build dependencies of backend, not backend itself
-RUN bunx turbo run build --filter=@dojo/backend^...
+RUN turbo run build --filter=@dojo/backend^... && \
+    pnpm prune --prod && \
+    npm uninstall -g turbo pnpm && \
+    npm cache clean --force
 
 # Runtime stage - create the production image
 FROM base AS runner
@@ -43,7 +56,9 @@ WORKDIR /app
 RUN apk add --no-cache nodejs npm python3 curl && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
     mv /root/.local/bin/uv /usr/local/bin/uv && \
-    mv /root/.local/bin/uvx /usr/local/bin/uvx
+    mv /root/.local/bin/uvx /usr/local/bin/uvx && \
+    apk del curl && \
+    rm -rf /var/cache/apk/* /tmp/*
 
 # Set production environment
 ENV NODE_ENV=production
