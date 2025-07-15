@@ -9,6 +9,7 @@ interface StreamTextOptions {
   tools: ToolSet
   end?: boolean
   abortSignal?: AbortSignal
+  skipHeaders?: boolean
 }
 
 interface ToolCall {
@@ -46,7 +47,7 @@ interface StreamTextResult {
 }
 
 export async function streamTextResponse(options: StreamTextOptions): Promise<StreamTextResult> {
-  const { res, languageModel, messages, tools, end = true, abortSignal } = options
+  const { res, languageModel, messages, tools, end = true, abortSignal, skipHeaders = false } = options
 
   logger.info(
     "AI",
@@ -54,10 +55,12 @@ export async function streamTextResponse(options: StreamTextOptions): Promise<St
   )
 
   // Set headers for Vercel AI SDK compatibility - must be before any write
-  res.setHeader("Content-Type", "text/plain; charset=utf-8")
-  res.setHeader("x-vercel-ai-data-stream", "v1")
-  res.setHeader("Cache-Control", "no-cache")
-  res.setHeader("Connection", "keep-alive")
+  if (!skipHeaders && !res.headersSent) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8")
+    res.setHeader("x-vercel-ai-data-stream", "v1")
+    res.setHeader("Cache-Control", "no-cache")
+    res.setHeader("Connection", "keep-alive")
+  }
 
   let capturedMetadata: StreamTextResult["metadata"] = {}
   let streamError: Error | null = null

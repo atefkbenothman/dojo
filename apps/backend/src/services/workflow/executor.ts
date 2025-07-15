@@ -49,9 +49,10 @@ interface AgentStreamingResult {
 export class WorkflowExecutor {
   private static readonly HEADERS = {
     "Content-Type": "text/plain; charset=utf-8",
-    "Transfer-Encoding": "chunked",
+    "x-vercel-ai-data-stream": "v1",
     "Cache-Control": "no-cache",
-    Connection: "keep-alive",
+    "Connection": "keep-alive",
+    "Transfer-Encoding": "chunked",
   } as const
 
   private workflowNodes: Doc<"workflowNodes">[] = []
@@ -335,6 +336,7 @@ export class WorkflowExecutor {
             tools: context.tools,
             end: false, // Don't end the response, we have more steps
             abortSignal: this.options.abortSignal,
+            skipHeaders: true, // Headers already set by WorkflowExecutor
           })
           output = result.text || ""
         } else {
@@ -344,6 +346,7 @@ export class WorkflowExecutor {
             messages,
             end: false, // Don't end the response, we have more steps
             abortSignal: this.options.abortSignal,
+            skipHeaders: true, // Headers already set by WorkflowExecutor
           })
           output = JSON.stringify(result.object)
           logger.info("Workflow", `Node ${node.nodeId} object output:`, output)
