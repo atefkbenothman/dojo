@@ -196,14 +196,14 @@ export function AgentListItem({
         {/* Badge Row */}
         <div className="px-3 py-2 space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border">
+            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border bg-muted">
               {modelName}
             </span>
-            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border">
+            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border bg-muted">
               {agent.outputType.toUpperCase()}
             </span>
             {agent.mcpServers && agent.mcpServers.length > 0 && (
-              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border">
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border bg-muted">
                 {agent.mcpServers.length} MCP
               </span>
             )}

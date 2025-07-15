@@ -197,17 +197,17 @@ export function MCPListItem({
         <div className="px-3 py-2 space-y-1.5">
           <div className="flex items-center gap-1.5">
             {server.transportType && (
-              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border">
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border bg-muted">
                 {getTransportAbbr(server.transportType)}
               </span>
             )}
             {server.localOnly && (
-              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border">
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border bg-muted">
                 LOCAL
               </span>
             )}
             {server.requiresUserKey && (
-              <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border">
+              <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border bg-muted">
                 <Key className="h-2.5 w-2.5" />
                 KEY
               </span>
