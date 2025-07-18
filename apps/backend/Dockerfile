@@ -1,5 +1,5 @@
 # Base Bun image
-FROM oven/bun:1.2.8-alpine AS base
+FROM oven/bun:1.2.18-alpine AS base
 
 # Builder stage for pruning the monorepo
 FROM base AS builder
