@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/hooks/use-auth"
+import { useWorkflow } from "@/hooks/use-workflow"
 import { Workflow } from "@dojo/db/convex/types"
 import { useState } from "react"
 
@@ -25,6 +26,7 @@ interface WorkflowMetadataDialogProps {
 
 export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }: WorkflowMetadataDialogProps) {
   const { isAuthenticated } = useAuth()
+  const { runWorkflow } = useWorkflow()
 
   const [name, setName] = useState(workflow.name)
   const [description, setDescription] = useState(workflow.description)
@@ -33,6 +35,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
 
   // Check if this workflow can be edited
   const canEdit = isAuthenticated && !workflow.isPublic
+  const canEditInstructions = (isAuthenticated && !workflow.isPublic) || (!isAuthenticated && workflow.isPublic)
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -48,6 +51,12 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
 
   const hasChanges =
     name !== workflow.name || description !== workflow.description || instructions !== workflow.instructions
+  const hasInstructionsChanges = canEditInstructions && instructions !== workflow.instructions
+
+  const handleRunWithInstructions = () => {
+    runWorkflow(workflow, instructions)
+    onOpenChange(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,7 +96,7 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Detailed instructions for the workflow execution"
               className="min-h-[80px] max-h-[120px] h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
-              disabled={!canEdit}
+              disabled={!canEditInstructions}
             />
           </div>
         </div>
@@ -95,6 +104,11 @@ export function WorkflowMetadataDialog({ workflow, open, onOpenChange, onSave }:
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
+          {hasInstructionsChanges && (
+            <Button onClick={handleRunWithInstructions} variant="default">
+              Run with Instructions
+            </Button>
+          )}
           <Button onClick={handleSave} disabled={!hasChanges || isSaving || !canEdit}>
             {isSaving ? "Saving..." : "Save Changes"}
           </Button>

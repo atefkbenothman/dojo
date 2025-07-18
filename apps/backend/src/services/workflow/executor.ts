@@ -16,6 +16,7 @@ export interface WorkflowExecutorOptions {
   sessionId: Id<"sessions">
   abortSignal?: AbortSignal
   client: ConvexHttpClient
+  runtimeContext?: string
 }
 
 interface NodeExecutionContext {
@@ -429,10 +430,18 @@ export class WorkflowExecutor {
   private buildMessagesWithContext(agent: Doc<"agents">, context: NodeExecutionContext): CoreMessage[] {
     const messages: CoreMessage[] = []
 
-    // 1. Add enhanced system prompt with workflow context (includes current agent instructions)
+    // 1. Build enhanced system prompt with workflow context and runtime context merged in
+    let systemPrompt = this.buildWorkflowSystemPrompt(agent)
+    
+    // Merge runtime context into system prompt if provided for public workflows
+    if (this.options.runtimeContext && this.workflow.isPublic) {
+      systemPrompt += `\n\nAdditional context for this workflow: ${this.options.runtimeContext}`
+      logger.info("Workflow", `Added runtime context for agent ${agent.name} in public workflow`)
+    }
+
     messages.push({
       role: "system",
-      content: this.buildWorkflowSystemPrompt(agent),
+      content: systemPrompt,
     })
 
     // 2. Add progressive conversation history from previous agents

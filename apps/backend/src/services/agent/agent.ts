@@ -15,6 +15,7 @@ interface RunAgentParams {
   session: Doc<"sessions"> | undefined
   res: Response
   client: ConvexHttpClient
+  runtimeContext?: string
 }
 
 interface RunAgentResult {
@@ -27,7 +28,7 @@ export class AgentService {
   private static executionControllers = new Map<string, AbortController>()
 
   async runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-    const { agentId, messages, session, res, client } = params
+    const { agentId, messages, session, res, client, runtimeContext } = params
 
     let executionId: Id<"agentExecutions"> | null = null
     const abortController = new AbortController()
@@ -130,7 +131,7 @@ export class AgentService {
       logger.info("Agent", `Received ${messages.length} messages, ${filteredMessages.length} after filtering`)
 
       // Build messages based on execution type (standalone vs workflow)
-      const processedMessages = this.constructMessages(agent, filteredMessages)
+      const processedMessages = this.constructMessages(agent, filteredMessages, runtimeContext, session)
 
       logger.info("Agent", `Constructed ${processedMessages.length} messages for agent execution`)
 
@@ -281,8 +282,32 @@ export class AgentService {
    * Constructs messages based on execution type:
    * - Standalone: Creates new messages from agent's systemPrompt and contextPrompt
    * - Workflow: Uses existing conversation history
+   * - Runtime Context: Allows dynamic context injection for public agents
    */
-  private constructMessages(agent: Doc<"agents">, incomingMessages: CoreMessage[]): CoreMessage[] {
+  private constructMessages(
+    agent: Doc<"agents">,
+    incomingMessages: CoreMessage[],
+    runtimeContext?: string,
+    session?: Doc<"sessions">,
+  ): CoreMessage[] {
+    // Validate runtime context usage - only allow for public agents or authenticated users
+    if (runtimeContext && !agent.isPublic && !session?.userId) {
+      logger.info("Agent", `Runtime context attempted on private agent ${String(agent._id)} by non-authenticated user`)
+      // Ignore runtime context for private agents accessed by non-authenticated users
+      runtimeContext = undefined
+    }
+
+    // Log runtime context usage for tracking
+    if (runtimeContext) {
+      logger.info(
+        "Agent",
+        `Runtime context provided for agent ${String(agent._id)} by userId: ${session?.userId || "anonymous"}`,
+      )
+    }
+
+    // Build system prompt with runtime context merged in
+    const systemPrompt = runtimeContext ? `${agent.systemPrompt}\n\nContext: ${runtimeContext}` : agent.systemPrompt
+
     // For agent execution, we ALWAYS want to use the agent's own system prompt
     // Check if we have any real user messages (not empty)
     const userMessages = incomingMessages.filter(
@@ -296,13 +321,13 @@ export class AgentService {
       // Standalone agent execution - construct messages from agent config
       const messages: CoreMessage[] = []
 
-      // Add agent's system message
+      // Add agent's system message (with runtime context merged in)
       messages.push({
         role: "system",
-        content: agent.systemPrompt,
+        content: systemPrompt,
       })
 
-      // Add user message - use context if available, otherwise a default prompt
+      // Add user message - use agent's context or default (runtime context is already in system prompt)
       const userContent =
         agent.contextPrompt?.trim() || "Please execute the instructions provided in your system prompt."
 
@@ -317,10 +342,10 @@ export class AgentService {
       // Replace any existing system message with agent's own system prompt
       const messages: CoreMessage[] = []
 
-      // Add agent's system prompt
+      // Add agent's system prompt (with runtime context merged in)
       messages.push({
         role: "system",
-        content: agent.systemPrompt,
+        content: systemPrompt,
       })
 
       // Add all non-system messages from incoming messages

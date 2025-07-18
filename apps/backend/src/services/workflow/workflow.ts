@@ -14,6 +14,7 @@ interface RunWorkflowParams {
   session: Doc<"sessions">
   res: Response
   client: ConvexHttpClient
+  runtimeContext?: string
 }
 
 interface RunWorkflowResult {
@@ -26,7 +27,7 @@ export class WorkflowService {
   private static executionControllers = new Map<string, AbortController>()
 
   async runWorkflow(params: RunWorkflowParams): Promise<RunWorkflowResult> {
-    const { workflowId, messages, session, res, client } = params
+    const { workflowId, messages, session, res, client, runtimeContext } = params
 
     let executionId: Id<"workflowExecutions"> | null = null
     const abortController = new AbortController()
@@ -113,6 +114,7 @@ export class WorkflowService {
           sessionId: session._id,
           abortSignal: abortController.signal,
           client,
+          runtimeContext,
         })
 
         const result = await executor.execute(messages, agentMapObject)

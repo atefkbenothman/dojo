@@ -24,6 +24,7 @@ const unifiedChatSchema = z
         modelId: z.string().optional(),
       })
       .optional(),
+    runtimeContext: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -68,7 +69,7 @@ async function handleDirectChat(req: Request, res: Response, messages: CoreMessa
   })
 }
 
-async function handleAgentChat(req: Request, res: Response, messages: CoreMessage[], agentId: string): Promise<void> {
+async function handleAgentChat(req: Request, res: Response, messages: CoreMessage[], agentId: string, runtimeContext?: string): Promise<void> {
   const { session, client } = req
 
   logger.info(
@@ -82,6 +83,7 @@ async function handleAgentChat(req: Request, res: Response, messages: CoreMessag
     session,
     res,
     client,
+    runtimeContext,
   })
 
   if (!result.success) {
@@ -97,6 +99,7 @@ async function handleWorkflowChat(
   res: Response,
   messages: CoreMessage[],
   workflowInfo: { workflowId: string; modelId?: string },
+  runtimeContext?: string,
 ): Promise<void> {
   const { session, client } = req
 
@@ -111,6 +114,7 @@ async function handleWorkflowChat(
     session,
     res,
     client,
+    runtimeContext,
   })
 
   if (!result.success) {
@@ -129,17 +133,17 @@ chatRouter.post(
   createValidatedRequestMiddleware(unifiedChatSchema),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const parsedInput = req.parsedInput as z.infer<typeof unifiedChatSchema>
-    const { messages, type } = parsedInput
+    const { messages, type, runtimeContext } = parsedInput
 
     switch (type) {
       case "chat":
         await handleDirectChat(req, res, messages as CoreMessage[], parsedInput.modelId!)
         break
       case "agent":
-        await handleAgentChat(req, res, messages as CoreMessage[], parsedInput.agentId!)
+        await handleAgentChat(req, res, messages as CoreMessage[], parsedInput.agentId!, runtimeContext)
         break
       case "workflow":
-        await handleWorkflowChat(req, res, messages as CoreMessage[], parsedInput.workflow!)
+        await handleWorkflowChat(req, res, messages as CoreMessage[], parsedInput.workflow!, runtimeContext)
         break
       default:
         throwError("Invalid request type", 400)

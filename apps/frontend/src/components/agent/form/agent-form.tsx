@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { LoadingAnimationInline } from "@/components/ui/loading-animation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useAgent, type AgentStatus } from "@/hooks/use-agent"
+import { useAgent, type AgentStatus, canRunAgent } from "@/hooks/use-agent"
 import { useAIModels } from "@/hooks/use-ai-models"
 import { useAuth } from "@/hooks/use-auth"
 import { useMCP } from "@/hooks/use-mcp"
@@ -402,24 +402,33 @@ export function AgentForm({
   const { mcpServers } = useMCP()
   const { models } = useAIModels()
   const { play } = useSoundEffectContext()
-  const { create, edit, clone } = useAgent()
+  const { create, edit, clone, runAgent } = useAgent()
   const { isAuthenticated } = useAuth()
-
-  // Check if user can edit
-  const isPublicAgent = agent?.isPublic || false
-  const canEdit = Boolean(isAuthenticated && !isPublicAgent)
-
-  // Filter MCP servers based on agent visibility
-  const availableMcpServers = useMemo(
-    () => filterMcpServersByVisibility(mcpServers, mode, agent?.isPublic),
-    [mcpServers, mode, agent?.isPublic],
-  )
 
   // Get default model for new agents
   const defaultModel = useMemo(() => {
     const defaultModel = models.find((m) => m.modelId === DEFAULT_MODEL_ID)
     return defaultModel?._id || ""
   }, [models])
+
+  // Form setup
+  const form = useForm<AgentFormValues>({
+    resolver: zodResolver(agentFormSchema),
+    defaultValues: getDefaultAgentFormValues(agent, defaultModel),
+  })
+
+  // Check if user can edit
+  const isPublicAgent = agent?.isPublic || false
+  const canEdit = Boolean(isAuthenticated && !isPublicAgent)
+  const canEditContext = Boolean(isAuthenticated && !isPublicAgent) || Boolean(!isAuthenticated && isPublicAgent)
+  const canRun = agent ? canRunAgent(agent, isAuthenticated, execution?.status) : false
+  const hasContextChanges = canEditContext && form.watch("contextPrompt") !== agent?.contextPrompt
+
+  // Filter MCP servers based on agent visibility
+  const availableMcpServers = useMemo(
+    () => filterMcpServersByVisibility(mcpServers, mode, agent?.isPublic),
+    [mcpServers, mode, agent?.isPublic],
+  )
 
   // Get execution status info
   const statusInfo = useMemo(() => {
@@ -467,12 +476,6 @@ export function AgentForm({
     }
   }, [execution])
 
-  // Form setup
-  const form = useForm<AgentFormValues>({
-    resolver: zodResolver(agentFormSchema),
-    defaultValues: getDefaultAgentFormValues(agent, defaultModel),
-  })
-
   // Reset form when agent changes
   useEffect(() => {
     if (agent) {
@@ -499,6 +502,12 @@ export function AgentForm({
       position: "bottom-center",
     })
   }, [form, play])
+
+  const handleRunWithContext = useCallback(() => {
+    if (!agent) return
+    const runtimeContext = form.getValues("contextPrompt")
+    runAgent(agent, runtimeContext)
+  }, [agent, form, runAgent])
 
   const handleSave = async (data: AgentFormValues) => {
     try {
@@ -573,7 +582,7 @@ export function AgentForm({
       <div className="space-y-8">
         <AgentNameSection form={form} canEdit={canEdit} />
         <SystemPromptSection form={form} canEdit={canEdit} onCopyPrompt={handleCopyPrompt} />
-        <ContextSection form={form} canEdit={canEdit} onCopyContext={handleCopyContext} />
+        <ContextSection form={form} canEdit={canEditContext} onCopyContext={handleCopyContext} />
         <ModelSection form={form} canEdit={canEdit} />
         <OutputTypeSection form={form} canEdit={canEdit} />
         <div className="flex-1 sm:flex-initial min-h-0 sm:min-h-fit flex flex-col">
@@ -603,6 +612,16 @@ export function AgentForm({
       {mode === "edit" && isPublicAgent && isAuthenticated && (
         <Button type="button" variant="outline" onClick={handleClone} className="w-full sm:w-auto hover:cursor-pointer">
           Clone
+        </Button>
+      )}
+      {mode === "edit" && canRun && hasContextChanges && (
+        <Button
+          type="button"
+          variant="default"
+          onClick={handleRunWithContext}
+          className="w-full sm:w-auto hover:cursor-pointer"
+        >
+          Run with Context
         </Button>
       )}
       <Button

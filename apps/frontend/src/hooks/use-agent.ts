@@ -105,7 +105,7 @@ export function useAgent() {
   )
 
   const runAgent = useCallback(
-    async (agent: Agent) => {
+    async (agent: Agent, runtimeContext?: string) => {
       // Check if agent has a model configured
       if (!agent.aiModelId) {
         toast.error("Agent does not have an AI model configured.", {
@@ -138,6 +138,7 @@ export function useAgent() {
             body: {
               type: "agent",
               agentId: agent._id,
+              runtimeContext,
             },
           },
         )

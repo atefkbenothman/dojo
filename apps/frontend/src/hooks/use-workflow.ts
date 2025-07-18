@@ -73,7 +73,7 @@ export function useWorkflow() {
   const [, setPreparingWorkflows] = useState<Set<Id<"workflows">>>(new Set())
 
   const runWorkflow = useCallback(
-    async (workflow: Workflow) => {
+    async (workflow: Workflow, runtimeContext?: string) => {
       // Check if session is ready before attempting to run workflow
       if (!currentSessionRef.current) {
         toast.error("Session not ready. Please wait a moment and try again.", {
@@ -120,6 +120,7 @@ export function useWorkflow() {
             workflow: {
               workflowId: workflow._id,
             },
+            runtimeContext,
           },
         })
 
