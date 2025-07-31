@@ -67,7 +67,7 @@ export default function LandingPage() {
       <section className="py-32 px-6">
         <div className="max-w-4xl mx-auto text-center">
           {/* Vercel Badge */}
-          <div className="inline-flex items-center px-3 py-1 bg-muted border border-border text-xs text-muted-foreground mb-8 rounded-none">
+          <div className="inline-flex items-center px-3 py-1 bg-muted border border-border text-sm font-medium text-muted-foreground mb-8 rounded-none">
             Part of the Vercel AI Accelerator
           </div>
 
